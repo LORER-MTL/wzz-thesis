@@ -1,0 +1,20 @@
+% Liste des sigles et abbréviations / List of symbols and acronyms
+\ifthenelse{\equal{\Langue}{english}}{
+	\newcommand\abbrevname{LIST OF SYMBOLS AND ACRONYMS}
+}{
+	\newcommand\abbrevname{LISTE DES SIGLES ET ABRÉVIATIONS}
+}
+\chapter*{\abbrevname}
+\addcontentsline{toc}{compteur}{\abbrevname}
+\pagestyle{pagenumber}
+%
+\begin{acronym}
+  \acro{IETF}{Internet Engineering Task Force}
+  \acro{OSI}{Open Systems Interconnection}
+\end{acronym}
+%
+\begin{longtable}{lp{5in}}
+IETF       & Internet Engineering Task Force\\
+OSI        & Open Systems Interconnection\\
+\end{longtable}
+
