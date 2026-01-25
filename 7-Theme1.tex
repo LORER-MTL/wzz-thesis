@@ -1,2 +1,15 @@
-\Chapter{PREMIER THÈME / FIRST THEME}\label{sec:Theme1}
-Texte / Text.
+\Chapter{Setting the stage}\label{sec:Theme1}
+
+\paragraph{Functional convex programming}
+Users specify problems---by providing expression trees for each function---as the standard ``functional'' form for convex optimization
+%In other words, the problem can be mapped to the standard convex program
+\begin{equation}\label{eq:functional-standard-form}
+\begin{array}{ll}
+\mbox{minimize} & f_0(x; \theta) \\
+\mbox{subject to} & f_i(x; \theta) \leq 0, \ i=1,\ldots,m_1,\\
+& g_i(x; \theta) = 0, \ i=1,\ldots,m_2,
+\end{array}
+\end{equation}
+with variable $x\in\mathbb R^n$ and parameter vector $\theta\in\mathbb R^p$ \cite{boyd2004convex}.
+When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it defines a problem family.
+
