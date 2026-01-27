@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Polytechnique Montréal thesis/dissertation LaTeX template supporting both Master's and PhD documents in French or English. The current configuration is for a PhD dissertation in Computer Engineering.
+This is a Polytechnique Montréal thesis/dissertation LaTeX template supporting both Master's and PhD documents in French or English. The current configuration is for a Master's thesis in Electrical Engineering.
 
 ## Build Commands
 
@@ -16,6 +16,8 @@ make final        # Compile in final mode
 make clean        # Remove intermediate files (.aux, .log, .bbl, etc.)
 make all_clean    # Clean including dia/ and gnuplot/ subdirectories
 make images       # Pre-generate all diagrams and plots
+make show         # Compile and open with XDVI viewer
+make archive      # Create dated backup tarball
 ```
 
 The Makefile handles the full LaTeX compilation cycle: multiple pdflatex runs, bibtex for bibliography, and regenerates TOC/references until stable.
@@ -34,6 +36,7 @@ The Makefile handles the full LaTeX compilation cycle: multiple pdflatex runs, b
 - `MemoireThese.sty` - Institutional formatting (margins, spacing, chapter headings)
 - `IEEEtran.bst` / `IEEEtran-francais.bst` - Bibliography styles
 - `modules/` - Supporting LaTeX packages (soulutf8, aeguill, etc.)
+- `defs.tex` - Custom math/text macros (e.g., `\eg`, `\ie`, `\Expect`, `\argmin`, `\prox`)
 
 ## Image Pipeline
 
@@ -57,6 +60,7 @@ For thesis content, edit only:
 1. `0-Definitions_Etudiant.tex` - Author info, title, jury, degree type (M/D)
 2. Chapter files (`5-Introduction.tex`, `6-Revue_litterature.tex`, `7-Theme*.tex`, `8-Conclusion.tex`)
 3. `Document.bib` - Add bibliography entries
+4. `defs.tex` - Add custom macros as needed
 
 ## Dependencies
 

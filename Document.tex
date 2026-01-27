@@ -86,7 +86,9 @@
 \usepackage{amssymb} % autres symboles mathematiques / other mathematical symbols
 \usepackage[bottom]{footmisc} % pour avoir les notes de bas de page en dessous des figures... / to have the footnotes below the figures
 %\usepackage{listings} % Si on veut ajouter des lignes de codes dans le texte / If you want to add lines of code to the text
-
+\usepackage{tikz} % TikZ graphics
+\usetikzlibrary{arrows.meta,positioning,shapes,calc} % Common TikZ libraries
+\usepackage{blkarray} % Block arrays with row/column labels
 
 %%
 %% Définitions spécifiques au format de rédaction de Poly.
@@ -112,7 +114,10 @@
   pdfsubject={\monSujet},
   pdfauthor={\monPrenom{} \monNom},
   pdfkeywords={\mesMotsClef},
-  bookmarksnumbered,
+  bookmarks=true,
+  bookmarksnumbered=true,
+  bookmarksopen=true,
+  bookmarksdepth=3,
   pdfstartview={FitV},
   hidelinks,
   linktoc=all
