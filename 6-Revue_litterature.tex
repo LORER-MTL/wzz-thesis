@@ -6,8 +6,36 @@
 %%
 %% SECTION 1
 %%
-\section{Background}
+\section{Historical Background}
 
+Solving an optimization problem on a computer requires translating the mathematical formulation into a data format that solvers can process.
+For linear programs, this means constructing the constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$
+that define the \emph{standard form},
+\begin{equation}
+\begin{array}{ll}
+\mbox{minimize} & c^T x \\
+\mbox{subject to} & Ax \leq b, \\
+& x \geq 0.
+\end{array}
+\end{equation}
+
+\paragraph{Manual encoding}
+In the early days of linear programming, analysts manually computed and encoded each coefficient onto punch cards.
+This process was tedious, error-prone and became impractical as linear programming found applications 
+in large-scale industrial problems~\cite{fourer1983modeling}.
+
+\paragraph{MPS format}
+IBM's Mathematical Programming System (MPS) file format,
+developed in the 1960s, established a standardized file format
+for representing linear programs~\cite{ibm1971mps}.
+The MPS format uses fixed-width fields designed for 80-column punch cards,
+with sections for rows, columns, and coefficients.
+
+\paragraph{Matrix generators}
+To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s: procedural programs that computed
+coefficients through explicit loops and output the results in MPS format~\cite{marceau1971matrix}.
+Commercial systems such as MAGEN~\cite{haverly1977magen}, GAMMA~\cite{sperry1977gamma}, and DATAFORM~\cite{ketron1975dataform}
+provided frameworks for this process, though as Fourer~\cite{fourer1983modeling} observed, they remained difficult to write, debug, and maintain.
 
 %%
 %% SECTION 2
