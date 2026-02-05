@@ -30,7 +30,10 @@ problems~\cite{fourer1978modern}.
 IBM's Mathematical Programming System (MPS) file format, developed in the 1960s, established a
 standardized file format for representing linear programs~\cite{ibm1976mpsx}. The MPS format uses
 fixed-width fields designed for 80-column punch cards, with sections for rows, columns, and
-coefficients.
+coefficients. 
+William Orchard-Hays~\cite{orchard-hays1984history} provides a comprehensive history of these
+early mathematical programming systems, tracing their development from 1952 at RAND Corporation
+through their widespread adoption on mainframe computers in the late 1960s.
 
 \paragraph{Matrix generators}
 To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
@@ -74,19 +77,22 @@ form~\cite{boyd2004convex}:
       \label{eq:conic}
 \end{equation}
 where $\mathcal{K}$ is a closed convex cone. This formulation generalizes linear programming
-(recovered when $\mathcal{K}$ is the nonnegative orthant) to include second-order cone programs
-(SOCPs) and semidefinite programs (SDPs) and more.
+(when $\mathcal{K}$ is the nonnegative orthant) to include second-order cone programs
+(SOCPs), semidefinite programs (SDPs) and more.
 
-\paragraph{Conic optimization modeling languages}
-New modeling systems were developed to support conic optimization, including
-CVX~\cite{grant2008cvx} and YALMIP~\cite{lofberg2004yalmip} in MATLAB,
-CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting} in Python, and Convex.jl~\cite{udell2014convexjl}
-in Julia.
+\paragraph{Embedded modeling languages}
+In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
+programming languages (in contrast with standalone systems like AMPL and GAMS). Examples include
+YALMIP~\cite{lofberg2004yalmip} in MATLAB, Pyomo~\cite{hart2011pyomo} in Python,
+JuMP~\cite{dunning2017jump} in Julia, and CasADi~\cite{andersson2019} in C++.
 
+\paragraph{Disciplined convex programming}
+In addition, there are domain specific languages that implement \emph{disciplined convex programming} (DCP),
+a set of composition rules that can automatically verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
+These include CVX~\cite{cvx} in MATLAB, CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting}
+in Python, and Convex.jl~\cite{udell2014convex} in Julia.
 
-\paragraph{JuMP}
-JuMP is a domain-specific modeling language for mathematical optimization embedded in Julia. It is
-based on the \texttt{MathOptInterface} (MOI) \cite{legat2020mathoptinterface} abstraction layer.
+\paragraph{MathOptInterface}
 
 %%
 %% SECTION 3
