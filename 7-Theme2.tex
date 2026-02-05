@@ -1,2 +1,223 @@
 \Chapter{Handling parameters}\label{sec:Theme2}
 
+\paragraph{Parameters in optimization models}
+Many applications require solving a sequence of related optimization problems that differ only in their data.
+In Model Predictive Control (MPC), a controller solves an optimization problem at each timestep with the current system state as input.
+In parameter sweeps, we explore the behavior of a system across a range of parameter values.
+The key insight is that these problems share the same structure---only the numerical coefficients change.
+We want to solve many such problems efficiently without reconstructing the problem from scratch each time.
+
+\paragraph{A first example: scalar objective coefficient}
+Consider the simplest case where parameters affect the objective function.
+The following CVXPY code defines a linear objective with a parametric coefficient vector:
+\begin{verbatim}
+c = cp.Parameter(3)
+x = cp.Variable(3)
+objective = c @ x  # c^T x
+\end{verbatim}
+When the parameter vector $\theta = [c_1, c_2, c_3]^T$ is set, the objective coefficient vector $c(\theta)$ is computed.
+In this case, the mapping from $\theta$ to $c$ is simply the identity:
+\[
+c(\theta) =
+\begin{bmatrix}
+c_1 \\ c_2 \\ c_3
+\end{bmatrix}
+=
+\begin{blockarray}{ccc}
+\theta_1 & \theta_2 & \theta_3 \\
+\begin{block}{[ccc]}
+1 & 0 & 0 \\
+0 & 1 & 0 \\
+0 & 0 & 1 \\
+\end{block}
+\end{blockarray}
+\begin{bmatrix}
+\theta_1 \\ \theta_2 \\ \theta_3
+\end{bmatrix}
+\]
+We can write this as $c(\theta) = M\theta$ where $M$ is the mapping matrix.
+Here $M = I$, but as we will see, more complex expressions produce sparse, non-identity mapping matrices.
+
+\paragraph{A second example: mixed constants and parameters}
+Consider an objective where only some coefficients are parametric:
+\begin{verbatim}
+c = cp.Parameter(2)
+x = cp.Variable(4)
+objective = c @ x[:2] + np.array([5, 3]) @ x[2:]
+\end{verbatim}
+This is equivalent to $[c_1, c_2, 5, 3]^T x$, where two coefficients are parametric and two are constant.
+The mapping is now:
+\[
+c(\theta) =
+\begin{bmatrix}
+c_1 \\ c_2 \\ 5 \\ 3
+\end{bmatrix}
+=
+\begin{blockarray}{ccc}
+1 & \theta_1 & \theta_2 \\
+\begin{block}{[ccc]}
+0 & 1 & 0 \\
+0 & 0 & 1 \\
+5 & 0 & 0 \\
+3 & 0 & 0 \\
+\end{block}
+\end{blockarray}
+\begin{bmatrix}
+1 \\ \theta_1 \\ \theta_2
+\end{bmatrix}
+\]
+The first column represents the constant part (multiplied by the implicit constant 1), and the remaining columns map $\theta_1$ and $\theta_2$ to their positions.
+Note that this matrix is sparse---most entries are zero.
+This sparsity is typical: each coefficient depends on at most one parameter, so each row has few nonzeros.
+
+\paragraph{Generalizing to constraint matrices: the 3D tensor}
+So far we have considered vectors $c(\theta)$.
+Constraints involve matrices $A(\theta)$, where each entry $A_{ij}$ may depend on parameters.
+Consider a parametric constraint matrix:
+\begin{verbatim}
+P = cp.Parameter((2, 2))
+x = cp.Variable(2)
+constraint = P @ x <= 0
+\end{verbatim}
+The parameter $P$ contributes four scalar parameters $\theta_1, \theta_2, \theta_3, \theta_4$ (in column-major order: $P_{11}, P_{21}, P_{12}, P_{22}$).
+The constraint matrix $A(\theta)$ equals $P$:
+\[
+A(\theta) =
+\begin{bmatrix}
+A_{11} & A_{12} \\
+A_{21} & A_{22}
+\end{bmatrix}
+=
+\begin{bmatrix}
+\theta_1 & \theta_3 \\
+\theta_2 & \theta_4
+\end{bmatrix}
+\]
+To represent how each matrix entry depends on the parameters, we use a 3D tensor.
+Flattening the matrix entries $(i,j)$ into rows and the parameter indices into columns:
+\[
+\begin{blockarray}{cccccc}
+& 1 & \theta_1 & \theta_2 & \theta_3 & \theta_4 \\
+\begin{block}{c[ccccc]}
+A_{11} & 0 & 1 & 0 & 0 & 0 \\
+A_{12} & 0 & 0 & 0 & 1 & 0 \\
+A_{21} & 0 & 0 & 1 & 0 & 0 \\
+A_{22} & 0 & 0 & 0 & 0 & 1 \\
+\end{block}
+\end{blockarray}
+\]
+Each row shows how one matrix entry is computed from the parameters.
+The first column (labeled $1$) is for constants; here it is all zeros since $P$ has no constant part.
+
+\paragraph{A mixed example with constants}
+When parameters are combined with constants, both contribute to the tensor:
+\begin{verbatim}
+P = cp.Parameter((2, 2))
+Q = np.array([[1, 2], [3, 4]])
+x = cp.Variable(2)
+constraint = (P + Q) @ x <= 0
+\end{verbatim}
+Now $A(\theta) = P + Q$, so each entry is the sum of a parameter and a constant:
+\[
+A(\theta) =
+\begin{bmatrix}
+\theta_1 + 1 & \theta_3 + 2 \\
+\theta_2 + 3 & \theta_4 + 4
+\end{bmatrix}
+\]
+The tensor representation includes the constants in the first column:
+\[
+\begin{blockarray}{cccccc}
+& 1 & \theta_1 & \theta_2 & \theta_3 & \theta_4 \\
+\begin{block}{c[ccccc]}
+A_{11} & 1 & 1 & 0 & 0 & 0 \\
+A_{12} & 2 & 0 & 0 & 1 & 0 \\
+A_{21} & 3 & 0 & 1 & 0 & 0 \\
+A_{22} & 4 & 0 & 0 & 0 & 1 \\
+\end{block}
+\end{blockarray}
+\]
+This representation makes evaluation straightforward: to compute $A(\theta)$, we multiply each row by the extended parameter vector $[1, \theta_1, \theta_2, \theta_3, \theta_4]^T$.
+
+\paragraph{The tensor contraction operation}
+Given the tensor representation, evaluating $A(\theta)$ is a tensor contraction: we sum over the parameter dimension.
+Conceptually, think of the tensor as a stack of matrices---one ``slice'' for the constants and one for each parameter:
+\begin{itemize}
+\item Slice 0 (constants): $A_0 = Q$
+\item Slice 1 ($\theta_1$): has a 1 at position $(1,1)$, zeros elsewhere
+\item Slice 2 ($\theta_2$): has a 1 at position $(2,1)$, zeros elsewhere
+\item Slice 3 ($\theta_3$): has a 1 at position $(1,2)$, zeros elsewhere
+\item Slice 4 ($\theta_4$): has a 1 at position $(2,2)$, zeros elsewhere
+\end{itemize}
+The evaluation is:
+\[
+A(\theta) = A_0 \cdot 1 + A_1 \cdot \theta_1 + A_2 \cdot \theta_2 + A_3 \cdot \theta_3 + A_4 \cdot \theta_4
+\]
+This is simply a weighted sum of the slices.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    slice/.style={draw, minimum width=20mm, minimum height=20mm, fill=blue!10},
+    param/.style={draw, minimum width=8mm, minimum height=8mm, fill=green!20},
+    result/.style={draw, minimum width=20mm, minimum height=20mm, fill=orange!20},
+    label/.style={font=\small}
+]
+
+% Slices (stacked)
+\node[slice] (A0) at (0, 0) {$A_0$};
+\node[slice] (A1) at (0.4, 0.4) {$A_1$};
+\node[slice] (A2) at (0.8, 0.8) {$A_2$};
+\node[slice] (A3) at (1.2, 1.2) {$A_3$};
+\node[slice] (A4) at (1.6, 1.6) {$A_4$};
+
+\node[label, below=2mm of A0] {Tensor slices};
+
+% Multiplication symbol
+\node at (3.5, 0.8) {\Large $\times$};
+
+% Parameter vector
+\node[param] (p0) at (5, 1.6) {$1$};
+\node[param] (p1) at (5, 0.8) {$\theta_1$};
+\node[param] (p2) at (5, 0) {$\theta_2$};
+\node[param] (p3) at (5, -0.8) {$\theta_3$};
+\node[param] (p4) at (5, -1.6) {$\theta_4$};
+
+\node[label] at (5, 2.4) {Parameters};
+
+% Draw bracket for parameter vector
+\draw[thick] (4.4, -2.1) -- (4.5, -2.1) -- (4.5, 2.1) -- (4.4, 2.1);
+\draw[thick] (5.6, -2.1) -- (5.5, -2.1) -- (5.5, 2.1) -- (5.6, 2.1);
+
+% Equals
+\node at (7, 0.8) {\Large $=$};
+
+% Result
+\node[result] (result) at (9, 0.8) {$A(\theta)$};
+\node[label, below=2mm of result] {Result matrix};
+
+\end{tikzpicture}
+\caption{Tensor contraction: the parameter vector weights each slice of the tensor, and the weighted sum produces the coefficient matrix $A(\theta)$.}
+\label{fig:tensor-contraction}
+\end{figure}
+
+\paragraph{Sparse representation}
+The tensor is extremely sparse.
+In the example above, each slice $A_1, A_2, A_3, A_4$ has exactly one nonzero entry.
+More generally, each parameter affects only specific entries of the coefficient matrices.
+We store the tensor in a sparse format:
+\begin{itemize}
+\item Shape: $(m, n, p+1)$ where $A(\theta) \in \reals^{m \times n}$ and $\theta \in \reals^p$
+\item Storage: list of (row, column, slice, value) tuples for nonzero entries
+\end{itemize}
+Evaluation produces $A(\theta)$ in COO (Coordinate) format, which we then convert to CSR for efficient arithmetic.
+
+\paragraph{Summary}
+The tensor approach represents parametric coefficient matrices as a sparse 3D tensor:
+\begin{itemize}
+\item Each matrix entry's dependence on parameters is encoded as a row of the flattened tensor
+\item The first slice holds constants; subsequent slices hold parameter coefficients
+\item Evaluation is a sparse tensor-vector multiplication
+\item Sparsity is high because each coefficient typically depends on few parameters
+\end{itemize}
+This representation enables efficient re-evaluation when parameters change, without rebuilding the optimization problem structure.
