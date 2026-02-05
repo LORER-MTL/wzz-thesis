@@ -8,9 +8,10 @@
 %%
 \section{Historical Background}
 
-Solving an optimization problem on a computer requires translating the mathematical formulation into a data format that solvers can process.
-For linear programs, this means constructing the constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$
-that define the \emph{standard form},
+Solving an optimization problem on a computer requires translating the mathematical formulation
+into a data format that solvers can process. For linear programs, this means constructing the
+constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$ that
+define the \emph{standard form},
 \begin{equation}
 \begin{array}{ll}
 \mbox{minimize} & c^T x \\
@@ -20,57 +21,73 @@ that define the \emph{standard form},
 \end{equation}
 
 \paragraph{Manual encoding}
-In the early days of linear programming, analysts manually computed and encoded each coefficient onto punch cards.
-This process was tedious, error-prone and became impractical as linear programming found more and more applications 
-in large-scale industrial problems~\cite{fourer1978modern}.
+In the early days of linear programming, analysts manually computed and encoded each coefficient
+onto punch cards. This process was tedious, error-prone and became impractical as linear
+programming found more and more applications in large-scale industrial
+problems~\cite{fourer1978modern}.
 
 \paragraph{MPS format}
-IBM's Mathematical Programming System (MPS) file format,
-developed in the 1960s, established a standardized file format
-for representing linear programs~\cite{ibm1976mpsx}.
-The MPS format uses fixed-width fields designed for 80-column punch cards,
-with sections for rows, columns, and coefficients.
+IBM's Mathematical Programming System (MPS) file format, developed in the 1960s, established a
+standardized file format for representing linear programs~\cite{ibm1976mpsx}. The MPS format uses
+fixed-width fields designed for 80-column punch cards, with sections for rows, columns, and
+coefficients.
 
 \paragraph{Matrix generators}
-To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they are procedural programs that compute
-the problem coefficients through explicit loops and output the results in MPS format~\cite{marceau1971matrix}.
-Commercial systems such as MaGen~\cite{haverly1977magen}, GAMMA~\cite{sperry1977gamma}, and DATAFORM~\cite{ketron1975dataform}
+To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
+are procedural programs that compute the problem coefficients through explicit loops and output
+the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
+MaGen~\cite{haverly1977magen}, GAMMA~\cite{sperry1977gamma}, and DATAFORM~\cite{ketron1975dataform}
 were among the first matrix generators which were used in various domains.
 
 \paragraph{A modern approach}
-Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of individual matrix entries.
-Matrix generators simplified the encoding process but still required modelers to translate their mathematical formulations
-into procedural code that explicitly constructs the coefficient matrices.
-This suggests that the gap between the modeler's representation of the problem
-and the solver's required format hadn't been resolved yet~\cite{fourer1978modern}.
+Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
+individual matrix entries. Matrix generators simplified the encoding process but still required
+modelers to translate their mathematical formulations into procedural code that explicitly
+constructs the coefficient matrices. This suggests that the gap between the modeler's
+representation of the problem and the solver's required format hadn't been resolved
+yet~\cite{fourer1978modern}.
 
 \paragraph{Algebraic modeling languages}
-In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages
-designed to accept problem descriptions that closely mirror standard mathematical
-notation~\cite{fourer1983modeling}.
-By working directly with the modeler's representation, these languages simplify verification
-(the model can be inspected as written), modification (changing the problem does not require
-rewriting procedural code), and communication (the formulation serves as its own documentation).
-In the late 1980s and early 1990s, commercial algebraic modeling systems such as GAMS~\cite{brooke1988gams}, AIMMS~\cite{bisschop2006aimms} and
-AMPL~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still widely used today).
+In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
+accept problem descriptions that closely mirror standard mathematical
+notation~\cite{fourer1983modeling}. By working directly with the modeler's representation, these
+languages simplify verification (the model can be inspected as written), modification (changing
+the problem does not require rewriting procedural code), and communication (the formulation serves
+as its own documentation). In the late 1980s and early 1990s, commercial algebraic modeling
+systems such as GAMS~\cite{brooke1988gams}, AIMMS~\cite{bisschop2006aimms} and
+AMPL~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
+widely used today).
 %%
 %% SECTION 2
 %%
 \section{Related work}
 
-In this section we review the high level implementation of three widely used
-open-source modeling languages: JuMP \cite{dunning2017jump, lubin2023jump10recent},
-Pyomo \cite{hart2011pyomo, bynum2021pyomo} and CVXPY.
+In the 2000s, advances in convex optimization made it practical to solve a much broader class of
+problems efficiently. Solvers such as MOSEK \cite{mosekSolver, aps2025mosek} adopted \emph{conic
+optimization} as their interface---a structured subclass of convex optimization with the standard
+form~\cite{boyd2004convex}:
+\begin{equation}
+      \begin{array}{ll}
+        \text{minimize} & c^T x\\
+        \text{subject to} &  b-Ax \in \mathcal K,\\
+      \end{array}
+      \label{eq:conic}
+\end{equation}
+where $\mathcal{K}$ is a closed convex cone. This formulation generalizes linear programming
+(recovered when $\mathcal{K}$ is the nonnegative orthant) to include second-order cone programs
+(SOCPs) and semidefinite programs (SDPs) and more.
+
+\paragraph{Conic optimization modeling languages}
+New modeling systems were developed to support conic optimization, including
+CVX~\cite{grant2008cvx} and YALMIP~\cite{lofberg2004yalmip} in MATLAB,
+CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting} in Python, and Convex.jl~\cite{udell2014convexjl}
+in Julia.
+
 
 \paragraph{JuMP}
-JuMP is a domain-specific modeling language for mathematical optimization embedded in Julia.
-It is based on the \texttt{MathOptInterface} (MOI) \cite{legat2020mathoptinterface} abstraction layer.
+JuMP is a domain-specific modeling language for mathematical optimization embedded in Julia. It is
+based on the \texttt{MathOptInterface} (MOI) \cite{legat2020mathoptinterface} abstraction layer.
 
-\paragraph{Pyomo}
-Pyomo is a Python-based open-source optimization modeling language.
-
-\paragraph{CVXPY}
-CVXPY is a Python-embedded modeling language for convex optimization problems.
 %%
 %% SECTION 3
 %%

@@ -1,36 +1,11 @@
 \Chapter{Setting the stage}\label{sec:Theme1}
 
-\paragraph{Functional convex programming}
-Users specify problems---by providing expression trees for each function---as the standard ``functional'' form for convex optimization
-\begin{equation}\label{eq:functional-standard-form}
-\begin{array}{ll}
-\mbox{minimize} & f_0(x; \theta) \\
-\mbox{subject to} & f_i(x; \theta) \leq 0, \ i=1,\ldots,m_1,\\
-& g_i(x; \theta) = 0, \ i=1,\ldots,m_2,
-\end{array}
-\end{equation}
-with variable $x\in\mathbb R^n$ and parameter vector $\theta\in\mathbb R^p$ \cite{boyd2004convex}.
-When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it defines a problem family.
-
-\paragraph{Quadratic conic programming}
-CVXPY transforms the problem in \eqref{eq:functional-standard-form} into an equivalent quadratic conic program (QCP) of the form
-\begin{equation}
-      \begin{array}{ll}
-        \text{minimize} & \frac{1}{2} x^T P x + q^T x\\
-        \text{subject to} &  b-Ax \in \mathcal K,\\
-      \end{array}
-      \label{eq:cp}
-\end{equation}
-where $x\in \mathbf{R}^n$ is the variable, $\mathcal{K}\subseteq \mathbf{R}^m$ is a closed convex cone,
-and the \emph{problem data} are $P \in \mathbf{S}^{n}_{+}$, $q \in \mathbf{R}^n$, $A \in \mathbf{R}^{m \times n}$, and $b\in \mathbf{R}^m$.
-CVXPY supports problems where the cone is a product of the zero cone ($\{0\}$), the nonnegative cone ($\mathbf{R}_+$),
-the second-order cone ($\mathcal K_{\textrm{soc}}$), the power cone ($\mathcal K_{\textrm{pow}}$),
-the exponential cone ($\mathcal K_{\textrm{exp}}$), and the cone of positive-semi-definite matrices ($\mathbf{S}_+$).
-
 \paragraph{Linear operator tree}
-CVXPY's canonicalization guarantees that all constraints and the objective function in \eqref{eq:functional-standard-form} are affine functions of the variable $x$.
-An affine function can be expressed as the composition of linear functions and addition of constants.
-CVXPY represents each affine function as an \emph{expression tree}, where each node is a linear function or \emph{atom}.
+CVXPY's canonicalization guarantees that all constraints and the objective function in
+\eqref{eq:functional-standard-form} are affine functions of the variable $x$. An affine function
+can be expressed as the composition of linear functions and addition of constants. CVXPY represents
+each affine function as an \emph{expression tree}, where each node is a linear function or
+\emph{atom}.
 
 \begin{figure}
 \centering
@@ -116,7 +91,8 @@ When you specify a matrix variable in CVXPY, such as
 \begin{verbatim}
 X = cp.Variable((3, 2))
 \end{verbatim}
-the entries of the matrix are vectorized in column-major order, and the internal representation is the identity linear operator of size $6\times 6$:
+the entries of the matrix are vectorized in column-major order, and the internal representation is
+the identity linear operator of size $6\times 6$:
 \[
 \begin{blockarray}{cccccc}
 X_{11} & X_{21} & X_{31} & X_{12} & X_{22} & X_{32} \\
@@ -145,8 +121,8 @@ the internal representation is the composition of three linear operators:
 \item the vector addition operator $+b$ where $b \in \reals^5$,
 \item the sum operator $\ones^T \in \reals^{1 \times 5}$.
 \end{itemize}
-The constant $b$ is incorporated by augmenting the matrix with a column for the constant term.
-The resulting linear operator is $\ones^T [A \mid b] \in \reals^{1 \times 4}$:
+The constant $b$ is incorporated by augmenting the matrix with a column for the constant term. The
+resulting linear operator is $\ones^T [A \mid b] \in \reals^{1 \times 4}$:
 \[
 \underbrace{\begin{bmatrix}
 1 & 1 & 1 & 1 & 1
@@ -175,8 +151,9 @@ y = cp.Variable(3)
 z = cp.Variable(2)
 constraints = [8*x == 28, cp.sum(y) + 5*cp.sum(z) == 58, z == 26]
 \end{verbatim}
-the variables are concatenated into a single vector $[x, y_1, y_2, y_3, z_1, z_2]^T$.
-Each constraint is converted to the form $Ax + b = 0$, producing a linear operator with a constant column:
+the variables are concatenated into a single vector $[x, y_1, y_2, y_3, z_1, z_2]^T$. Each
+constraint is converted to the form $Ax + b = 0$, producing a linear operator with a constant
+column:
 \begin{itemize}
 \item \texttt{8*x == 28} becomes $8x - 28 = 0$:
 \[
@@ -221,10 +198,12 @@ x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
 \]
 
 \paragraph{The current approach: sparse matrix multiplication}
-CVXPY's current approach is to convert the linear operator tree into a single sparse matrix.
-The tree is traversed in post-order: each leaf node returns its coefficient matrix, and each internal node composes its children's matrices via sparse matrix multiplication.
-For example, in the expression \texttt{sum(A @ x)}, the traversal first returns $A$ at the \texttt{matmul} node, then multiplies by $\ones^T$ at the \texttt{sum} node, yielding $\ones^T A$.
-The final matrix at the root is returned.
+CVXPY's current approach is to convert the linear operator tree into a single sparse matrix. The
+tree is traversed in post-order: each leaf node returns its coefficient matrix, and each internal
+node composes its children's matrices via sparse matrix multiplication. For example, in the
+expression \texttt{sum(A @ x)}, the traversal first returns $A$ at the \texttt{matmul} node, then
+multiplies by $\ones^T$ at the \texttt{sum} node, yielding $\ones^T A$. The final matrix at the
+root is returned.
 
 \begin{figure}[h]
 \centering
@@ -254,19 +233,23 @@ The final matrix at the root is returned.
 \draw[arrow] (sum-coef) -- (sum);
 
 \end{tikzpicture}
-\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node composes its operator with the child's coefficient matrix via sparse matrix multiplication.}
+\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node composes its operator
+with the child's coefficient matrix via sparse matrix multiplication.}
 \label{fig:sparse-matmul-tree}
 \end{figure}
 
 \paragraph{Limitations of current approach}
-This approach requires storing intermediate sparse matrices at each node during traversal.
-For deep expression trees or large problem dimensions, this leads to significant memory overhead.
-Additionally, sparse matrix multiplication is computationally expensive and may produce matrices with more nonzeros than the operands, further increasing memory and runtime costs.
+This approach requires storing intermediate sparse matrices at each node during traversal. For deep
+expression trees or large problem dimensions, this leads to significant memory overhead.
+Additionally, sparse matrix multiplication is computationally expensive and may produce matrices
+with more nonzeros than the operands, further increasing memory and runtime costs.
 
 \paragraph{Our approach: direct encoding of linear operators}
-We keep the coefficient matrix in CSR (Compressed Sparse Row) format and directly manipulate its index arrays without forming intermediate matrices.
-Each linear operator is implemented as a transformation on the CSR arrays \texttt{(indptr, indices, data)}.
-For example, the \texttt{sum} operator collapses all rows into row 0 by setting all entries of \texttt{indptr} to $[0, \texttt{nnz}]$, effectively mapping every row index to 0 without any matrix multiplication.
+We keep the coefficient matrix in CSR (Compressed Sparse Row) format and directly manipulate its
+index arrays without forming intermediate matrices. Each linear operator is implemented as a
+transformation on the CSR arrays \texttt{(indptr, indices, data)}. For example, the \texttt{sum}
+operator collapses all rows into row 0 by setting all entries of \texttt{indptr} to
+$[0, \texttt{nnz}]$, effectively mapping every row index to 0 without any matrix multiplication.
 
 \begin{figure}[h]
 \centering
@@ -379,6 +362,9 @@ For example, the \texttt{sum} operator collapses all rows into row 0 by setting 
 \node[font=\footnotesize, right] at (7, -4.9) {unchanged};
 
 \end{tikzpicture}
-\caption{CSR representation before and after applying \texttt{sum}. The 3-row matrix collapses to 1 row by setting \texttt{indptr} $= [0, 6]$. Duplicate column indices (0 and 2) represent values that sum together. The \texttt{indices} and \texttt{data} arrays remain unchanged---no matrix multiplication required.}
+\caption{CSR representation before and after applying \texttt{sum}. The 3-row matrix collapses to
+1 row by setting \texttt{indptr} $= [0, 6]$. Duplicate column indices (0 and 2) represent values
+that sum together. The \texttt{indices} and \texttt{data} arrays remain unchanged---no matrix
+multiplication required.}
 \label{fig:csr-sum-operator}
 \end{figure}
