@@ -87,15 +87,129 @@ YALMIP~\cite{lofberg2004yalmip} in MATLAB, Pyomo~\cite{hart2011pyomo} in Python,
 JuMP~\cite{dunning2017jump} in Julia, and CasADi~\cite{andersson2019} in C++.
 
 \paragraph{Disciplined convex programming}
-In addition, there are domain specific languages that implement \emph{disciplined convex programming} (DCP),
-a set of composition rules that can automatically verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
+In addition, there are also \emph{domain specific languages} that implement
+\emph{disciplined convex programming} (DCP), a set of composition rules that can automatically
+verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
 These include CVX~\cite{cvx} in MATLAB, CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting}
 in Python, and Convex.jl~\cite{udell2014convex} in Julia.
 
-\paragraph{MathOptInterface}
+\paragraph{Modern open-source modeling languages}
+At the time of writing, most modeling languages mentioned above continue to be
+developed and have active communities. In the remainder of the section, we focus
+our attention on two in particular: JuMP for the design ideas introduced by
+MathOptInterface, and
+CVXPY because it is the system on which the present work builds---a choice
+motivated by the author's previous experience as a CVXPY contributor.
+
+\subsection{JuMP and MathOptInterface}
+
+JuMP is an algebraic modeling language embedded in Julia, originally developed in 2012 by
+Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
+Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, MathOptInterface
+(MOI)~\cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
+moving away from the traditional approach of reducing every problem to a single standard form.
+
+\paragraph{Function-set pairs}
+MOI represents each constraint as a \emph{function-set pair}: a mathematical function paired with
+the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as
+(\texttt{ScalarAffineFunction}, \texttt{LessThan(b)}), while a conic constraint $Ax + b \in
+\mathcal{K}$ uses (\texttt{VectorAffineFunction}, \texttt{SecondOrderCone}). This is more granular
+than committing to a single conic standard form as in~\eqref{eq:conic}---MOI preserves the
+semantic type of each constraint. Solvers that accept specific constraint types can receive them
+directly,
+without unnecessary reformulations.
+
+\paragraph{Bridges}
+When a solver does not natively support a particular function-set pair, MOI uses
+\emph{bridges}---small, composable transformations between equivalent constraint
+representations.
+For instance, a bridge can split an interval constraint into separate less-than and greater-than
+constraints. The bridge system maintains a directed hyper-graph of all known transformations and
+finds the shortest path to the target solver's supported types. Adding a reformulation once in MOI
+benefits all solvers, rather than requiring each solver wrapper to implement its own conversions.
+
+\paragraph{Incremental problem construction}
+Some solvers, notably MOSEK~\cite{mosekSolver} and
+HiGHS~\cite{huangfu2018highs}, expose APIs that add constraints one at a
+time. MOI supports this incremental mode natively: rather than assembling a
+complete coefficient matrix and passing it to the solver in one call, MOI
+can issue individual \texttt{add\_constraint} calls as the model is built.
+For example, adding a cut $a^T x \leq b$ after an initial solve requires
+only one such call, not a full reconstruction of the problem data. This is
+particularly useful in algorithms that iteratively refine a formulation,
+such as cutting-plane methods or branch-and-cut, where constraints are
+added between successive solves.
+
+\paragraph{Extensibility}
+MOI makes it straightforward to support new constraint types. A solver declares which function-set
+pairs it handles, and new bridges can be registered at any time. When Hypatia.jl introduced spectral
+cones~\cite{coey2022hypatia} and SCS added the exponential cone~\cite{odonoghue2016scs}, the
+corresponding pairs and bridges were added without modifying the core interface. This plug-in
+architecture decouples the evolution of the modeling layer from individual solvers.
+
+\paragraph{Limitations relative to CVXPY}
+Despite these strengths, JuMP and MOI lack features central to the present work. MOI does not
+implement disciplined convex programming: users must specify conic constraints explicitly.
+Furthermore, MOI has no built-in parameter mechanism that allows compiling a problem once and
+re-solving efficiently with different data.
+
+\subsection{CVXPY}
+
+CVXPY is a domain-specific language for convex optimization embedded in Python,
+that was originally developed by Steven Diamond and Stephen Boyd at Stanford
+University~\cite{diamond2016cvxpy}. Akshay Agrawal later redesigned the
+rewriting system in CVXPY~\cite{agrawal2018rewriting}, 
+which enabled support for other disciplined
+languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}, and the
+project has since grown through contributions from many others. Unlike MOI,
+which preserves constraint diversity, CVXPY channels all problems through a
+single compilation pipeline targeting one unified standard form.
+
+\paragraph{Unified standard form}
+CVXPY rewrites every problem into a conic standard form with a quadratic objective:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize}   & \frac{1}{2}\, x^T P\, x + c^T x \\
+\text{subject to} & Ax + b \in \mathcal{K},
+\end{array}
+\label{eq:cvxpy-standard}
+\end{equation}
+Because the rewriting system targets a unique form, solver interfaces only need to map from this
+single representation. This centralization simplifies the codebase: one set of rewriting rules
+rather than a combinatorial number of bridges, and every solver benefits from the same
+transformation
+pipeline.
+
+\paragraph{Disciplined convex programming}
+CVXPY implements DCP rules that automatically verify convexity and transform high-level expressions
+into conic form. A user can write \texttt{cp.sum\_squares(A @ x - b)} and CVXPY will verify
+convexity, introduce auxiliary variables, and emit the equivalent second-order cone constraint
+transparently. In contrast, JuMP requires users to formulate conic constraints directly (\eg
+specifying a rotated second-order cone rather than a sum-of-squares objective), demanding deeper
+conic optimization knowledge.
+
+\paragraph{Parameters and efficient re-solving}
+CVXPY provides first-class support for parameters via \texttt{cp.Parameter}. When a problem
+contains parameters, CVXPY compiles the structure once---sparsity pattern, cone types, variable
+ordering---and stores a mapping from parameter values to numerical coefficients. Subsequent solves
+only require evaluating this mapping and calling the solver, skipping the full canonicalization. The
+cvxpygen library~\cite{schaller2022cvxpygen} extends this by generating standalone C code embedding
+the compiled structure, enabling deployment without a Python runtime.
 
 %%
 %% SECTION 3
 %%
 \section{Summary}
+
+The evolution from manual encoding to algebraic modeling languages reveals a consistent trend toward
+raising the abstraction level between modeler and solver. JuMP's MathOptInterface extends this
+trajectory with function-set pairs, composable bridges, and incremental construction, offering a
+flexible architecture that preserves constraint semantics all the way to the
+solver~\cite{legat2020mathoptinterface}. CVXPY takes a complementary path: by funneling all problems
+through a single conic standard form and providing DCP verification and first-class parameters, it
+enables a compilation model where the problem structure is determined once and only numerical data
+changes between solves~\cite{diamond2016cvxpy, agrawal2018rewriting}. Neither system, however,
+provides a self-contained C implementation of the coefficient extraction pipeline. The ability to
+compile a CVXPY problem into a lightweight, dependency-free C module that maps parameters to
+solver-ready coefficient matrices is the contribution of this thesis.
 
