@@ -39,7 +39,7 @@ through their widespread adoption on mainframe computers in the late 1960s.
 To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
 are procedural programs that compute the problem coefficients through explicit loops and output
 the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
-MaGen~\cite{haverly1977magen}, GAMMA~\cite{sperry1977gamma}, and DATAFORM~\cite{ketron1975dataform}
+\texttt{MaGen}~\cite{haverly1977magen}, \texttt{GAMMA}~\cite{sperry1977gamma}, and \texttt{DATAFORM}~\cite{ketron1975dataform}
 were among the first matrix generators which were used in various domains.
 
 \paragraph{A modern approach}
@@ -57,8 +57,8 @@ notation~\cite{fourer1983modeling}. By working directly with the modeler's repre
 languages simplify verification (the model can be inspected as written), modification (changing
 the problem does not require rewriting procedural code), and communication (the formulation serves
 as its own documentation). In the late 1980s and early 1990s, commercial algebraic modeling
-systems such as GAMS~\cite{brooke1988gams}, AIMMS~\cite{bisschop2006aimms} and
-AMPL~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
+systems such as \texttt{GAMS}~\cite{brooke1988gams}, \texttt{AIMMS}~\cite{bisschop2006aimms} and
+\texttt{AMPL}~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
 widely used today).
 %%
 %% SECTION 2
@@ -66,7 +66,7 @@ widely used today).
 \section{Related work}
 
 In the 2000s, advances in convex optimization made it practical to solve a much broader class of
-problems efficiently. Solvers such as MOSEK \cite{mosekSolver, aps2025mosek} adopted \emph{conic
+problems efficiently. Solvers such as \texttt{MOSEK} \cite{mosekSolver, aps2025mosek} adopted \emph{conic
 optimization} as their interface---a structured subclass of convex optimization with the standard
 form~\cite{boyd2004convex}:
 \begin{equation}
@@ -82,57 +82,57 @@ where $\mathcal{K}$ is a closed convex cone. This formulation generalizes linear
 
 \paragraph{Embedded modeling languages}
 In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
-programming languages (in contrast with standalone systems like AMPL and GAMS). Examples include
-YALMIP~\cite{lofberg2004yalmip} in MATLAB, Pyomo~\cite{hart2011pyomo} in Python,
-JuMP~\cite{dunning2017jump} in Julia, and CasADi~\cite{andersson2019} in C++.
+programming languages (in contrast with standalone systems like \texttt{AMPL} and \texttt{GAMS}). Examples include
+\texttt{YALMIP}~\cite{lofberg2004yalmip} in MATLAB, \texttt{Pyomo}~\cite{hart2011pyomo} in Python,
+\texttt{JuMP}~\cite{dunning2017jump} in Julia, and \texttt{CasADi}~\cite{andersson2019} in C++.
 
 \paragraph{Disciplined convex programming}
 In addition, there are also \emph{domain specific languages} that implement
 \emph{disciplined convex programming} (DCP), a set of composition rules that can automatically
 verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
-These include CVX~\cite{cvx} in MATLAB, CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting}
-in Python, and Convex.jl~\cite{udell2014convex} in Julia.
+These include \texttt{CVX}~\cite{cvx} in MATLAB, \texttt{CVXPY}~\cite{diamond2016cvxpy, agrawal2018rewriting}
+in Python, and \texttt{Convex.jl}~\cite{udell2014convex} in Julia.
 
 \paragraph{Modern open-source modeling languages}
 At the time of writing, most modeling languages mentioned above continue to be
 developed and have active communities. In the remainder of the section, we focus
-our attention on two in particular: JuMP for the design ideas introduced by
-MathOptInterface, and
-CVXPY because it is the system on which the present work builds---a choice
-motivated by the author's previous experience as a CVXPY contributor.
+our attention on two in particular: \texttt{JuMP} for the design ideas introduced by
+\texttt{MathOptInterface}, and
+\texttt{CVXPY} because it is the system on which the present work builds---a choice
+motivated by the author's previous experience as a \texttt{CVXPY} contributor.
 
-\subsection{JuMP and MathOptInterface}
+\subsection{\texttt{JuMP} and \texttt{MathOptInterface}}
 
-JuMP is an algebraic modeling language embedded in Julia, originally developed in 2012 by
+\texttt{JuMP} is an algebraic modeling language embedded in Julia, originally developed in 2012 by
 Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
-Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, MathOptInterface
-(MOI)~\cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
+Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, \texttt{MathOptInterface}
+(\texttt{MOI})~\cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
 moving away from the traditional approach of reducing every problem to a single standard form.
 
 \paragraph{Function-set pairs}
-MOI represents each constraint as a \emph{function-set pair}: a mathematical function paired with
+\texttt{MOI} represents each constraint as a \emph{function-set pair}: a mathematical function paired with
 the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as
-(\texttt{ScalarAffineFunction}, \texttt{LessThan(b)}), while a conic constraint $Ax + b \in
-\mathcal{K}$ uses (\texttt{VectorAffineFunction}, \texttt{SecondOrderCone}). This is more granular
-than committing to a single conic standard form as in~\eqref{eq:conic}---MOI preserves the
+(\texttt{ScalarAffineFunction}, \texttt{LessThan(b)}), while a second-order cone
+constraint $\|Ax + b\|_2 \leq c^T x + d$ uses (\texttt{VectorAffineFunction},
+\texttt{SecondOrderCone}). This is more granular
+than committing to a single conic standard form as in~\eqref{eq:conic}---\texttt{MOI} preserves the
 semantic type of each constraint. Solvers that accept specific constraint types can receive them
-directly,
-without unnecessary reformulations.
+directly, without unnecessary reformulations.
 
 \paragraph{Bridges}
-When a solver does not natively support a particular function-set pair, MOI uses
+When a solver does not natively support a particular function-set pair, \texttt{MOI} uses
 \emph{bridges}---small, composable transformations between equivalent constraint
 representations.
 For instance, a bridge can split an interval constraint into separate less-than and greater-than
 constraints. The bridge system maintains a directed hyper-graph of all known transformations and
-finds the shortest path to the target solver's supported types. Adding a reformulation once in MOI
+finds the shortest path to the target solver's supported types. Adding a reformulation once in \texttt{MOI}
 benefits all solvers, rather than requiring each solver wrapper to implement its own conversions.
 
 \paragraph{Incremental problem construction}
-Some solvers, notably MOSEK~\cite{mosekSolver} and
-HiGHS~\cite{huangfu2018highs}, expose APIs that add constraints one at a
-time. MOI supports this incremental mode natively: rather than assembling a
-complete coefficient matrix and passing it to the solver in one call, MOI
+Some solvers, notably \texttt{MOSEK}~\cite{mosekSolver} and
+\texttt{HiGHS}~\cite{huangfu2018highs}, expose APIs that add constraints one at a
+time. \texttt{MOI} supports this incremental mode natively: rather than assembling a
+complete coefficient matrix and passing it to the solver in one call, \texttt{MOI}
 can issue individual \texttt{add\_constraint} calls as the model is built.
 For example, adding a cut $a^T x \leq b$ after an initial solve requires
 only one such call, not a full reconstruction of the problem data. This is
@@ -141,32 +141,24 @@ such as cutting-plane methods or branch-and-cut, where constraints are
 added between successive solves.
 
 \paragraph{Extensibility}
-MOI makes it straightforward to support new constraint types. A solver declares which function-set
-pairs it handles, and new bridges can be registered at any time. When Hypatia.jl introduced spectral
-cones~\cite{coey2022hypatia} and SCS added the exponential cone~\cite{odonoghue2016scs}, the
-corresponding pairs and bridges were added without modifying the core interface. This plug-in
-architecture decouples the evolution of the modeling layer from individual solvers.
+\texttt{MOI} makes it straightforward to support new constraint types. A solver declares which function-set
+pairs it handles, and new bridges can be registered at any time. \texttt{Hypatia} \cite{coey2022solving}
+\cite{ocpb:16, odonoghue:21, cederbergspectralmatrixcones}.
 
-\paragraph{Limitations relative to CVXPY}
-Despite these strengths, JuMP and MOI lack features central to the present work. MOI does not
-implement disciplined convex programming: users must specify conic constraints explicitly.
-Furthermore, MOI has no built-in parameter mechanism that allows compiling a problem once and
-re-solving efficiently with different data.
+\subsection{\texttt{CVXPY}}
 
-\subsection{CVXPY}
-
-CVXPY is a domain-specific language for convex optimization embedded in Python,
+\texttt{CVXPY} is a domain-specific language for convex optimization embedded in Python,
 that was originally developed by Steven Diamond and Stephen Boyd at Stanford
 University~\cite{diamond2016cvxpy}. Akshay Agrawal later redesigned the
-rewriting system in CVXPY~\cite{agrawal2018rewriting}, 
+rewriting system in \texttt{CVXPY}~\cite{agrawal2018rewriting}, 
 which enabled support for other disciplined
 languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}, and the
-project has since grown through contributions from many others. Unlike MOI,
-which preserves constraint diversity, CVXPY channels all problems through a
+project has since grown through contributions from many others. Unlike \texttt{MOI},
+which preserves constraint diversity, \texttt{CVXPY} channels all problems through a
 single compilation pipeline targeting one unified standard form.
 
 \paragraph{Unified standard form}
-CVXPY rewrites every problem into a conic standard form with a quadratic objective:
+\texttt{CVXPY} rewrites every problem into a conic standard form with a quadratic objective:
 \begin{equation}
 \begin{array}{ll}
 \text{minimize}   & \frac{1}{2}\, x^T P\, x + c^T x \\
@@ -181,35 +173,177 @@ transformation
 pipeline.
 
 \paragraph{Disciplined convex programming}
-CVXPY implements DCP rules that automatically verify convexity and transform high-level expressions
-into conic form. A user can write \texttt{cp.sum\_squares(A @ x - b)} and CVXPY will verify
+\texttt{CVXPY} implements DCP rules that automatically verify convexity and transform high-level expressions
+into conic form. A user can write \texttt{cp.sum\_squares(A @ x - b)} and \texttt{CVXPY} will verify
 convexity, introduce auxiliary variables, and emit the equivalent second-order cone constraint
-transparently. In contrast, JuMP requires users to formulate conic constraints directly (\eg
+transparently. In contrast, \texttt{JuMP} requires users to formulate conic constraints directly (\eg
 specifying a rotated second-order cone rather than a sum-of-squares objective), demanding deeper
 conic optimization knowledge.
 
 \paragraph{Parameters and efficient re-solving}
-CVXPY provides first-class support for parameters via \texttt{cp.Parameter}. When a problem
-contains parameters, CVXPY compiles the structure once---sparsity pattern, cone types, variable
+\texttt{CVXPY} provides first-class support for parameters via \texttt{cp.Parameter}. When a problem
+contains parameters, \texttt{CVXPY} compiles the structure once---sparsity pattern, cone types, variable
 ordering---and stores a mapping from parameter values to numerical coefficients. Subsequent solves
 only require evaluating this mapping and calling the solver, skipping the full canonicalization. The
-cvxpygen library~\cite{schaller2022cvxpygen} extends this by generating standalone C code embedding
+\texttt{cvxpygen} library~\cite{schaller2022cvxpygen} extends this by generating standalone C code embedding
 the compiled structure, enabling deployment without a Python runtime.
 
+\section{Canonicalization and Coefficient Extraction}
+
+The previous sections described what modeling languages do at a high level:
+they accept mathematical formulations and produce solver-ready data. This
+section examines \emph{how} that translation works, using a concrete example
+to illustrate the canonicalization pipelines of both \texttt{MOI} and \texttt{CVXPY}.
+
+\subsection{A worked example: least-squares}
+
+Consider the least-squares problem
+\begin{equation}
+\begin{array}{ll}
+\text{minimize} & \|Ax - b\|_2^2,
+\end{array}
+\label{eq:least-squares}
+\end{equation}
+with data $A \in \reals^{2 \times 2}$ and $b \in \reals^2$. This problem is
+small enough to trace every step of the canonicalization, yet it exercises the
+key mechanisms of both systems.
+
+\paragraph{\texttt{MOI}'s bridge-based path}
+In \texttt{JuMP}, writing \texttt{@objective(model, Min, sum((A*x - b).\^{}2))} creates
+a \emph{scalar quadratic function}. \texttt{MOI} represents the objective as a
+function-set pair
+(\texttt{ScalarQuadraticFunction}, \texttt{MinSense}). If the target solver
+accepts quadratic objectives directly (\eg \texttt{MOSEK}, \texttt{Gurobi}), no further
+transformation is needed---\texttt{MOI} passes the quadratic coefficients as-is.
+
+If the solver only supports conic constraints, \texttt{MOI}'s bridge system activates.
+A \emph{quadratic-to-SOC bridge} rewrites the quadratic objective into a
+second-order cone constraint by introducing an epigraph variable $t$ and
+enforcing $\|Ax - b\|_2 \leq t$, with the objective changed to
+$\text{minimize } t$. Each bridge is a small, self-contained transformation;
+\texttt{MOI} composes as many as needed to reach the solver's supported types.
+
+\paragraph{\texttt{CVXPY}'s compilation path}
+In \texttt{CVXPY}, the same problem is written as
+\begin{verbatim}
+x = cp.Variable(2)
+prob = cp.Problem(cp.Minimize(cp.sum_squares(A @ x - b)))
+\end{verbatim}
+
+\texttt{CVXPY} processes this through several stages:
+
+\begin{enumerate}
+\item \textbf{Expression tree.} \texttt{CVXPY} builds a tree whose root is
+  \texttt{sum\_squares}, with children \texttt{sub}($-$), which in turn has
+  children \texttt{matmul}($A$, $x$) and constant $b$.
+
+\item \textbf{DCP verification.} The \texttt{sum\_squares} atom is convex, and
+  its argument $Ax - b$ is affine; by DCP composition rules, the overall
+  expression is convex.
+
+\item \textbf{Epigraph reformulation.} The \texttt{sum\_squares} atom's
+  canonicalization method introduces an auxiliary variable $t \in \reals$ and
+  rewrites the objective as $\text{minimize } t$ subject to
+  $\|Ax - b\|_2^2 \leq t$, which is equivalent to
+  $\left\|\begin{smallmatrix} Ax - b \\ \frac{1}{2}(t - 1)
+  \end{smallmatrix}\right\|_2 \leq \frac{1}{2}(t + 1)$---a second-order cone
+  constraint.
+
+\item \textbf{Conic standard form.} \texttt{CVXPY} assembles the constraint into the
+  form $\mathcal{A}z + \beta \in \mathcal{K}$ where $z = (x, t)$, and
+  $\mathcal{K}$ is a second-order cone. The objective becomes $c^T z$ with
+  $c = (0, 0, 1)$, selecting the epigraph variable.
+\end{enumerate}
+
+For our $2 \times 2$ example with $z = (x_1, x_2, t)^T$, the final
+solver-ready data is:
+\begin{equation}
+  c = \begin{pmatrix} 0 \\ 0 \\ 1 \end{pmatrix}, \quad
+  \mathcal{A} = \begin{pmatrix}
+    0 & 0 & \frac{1}{2} \\[2pt]
+    0 & 0 & -\frac{1}{2} \\[2pt]
+    a_{11} & a_{12} & 0 \\
+    a_{21} & a_{22} & 0
+  \end{pmatrix}, \quad
+  \beta = \begin{pmatrix}
+    \frac{1}{2} \\ \frac{1}{2} \\ -b_1 \\ -b_2
+  \end{pmatrix},
+  \label{eq:ls-coefficients}
+\end{equation}
+with $\mathcal{K} = \mathcal{Q}^4$ (second-order cone of dimension 4). The
+matrices $\mathcal{A}$, $\beta$, and $c$ are the \emph{coefficient data} that
+this thesis is concerned with extracting.
+
+\subsection{From atoms to coefficients}
+
+The least-squares example illustrates a general pattern. Every \texttt{CVXPY} problem
+goes through the same pipeline, regardless of complexity.
+
+\paragraph{What is coefficient extraction?}
+Coefficient extraction is the process of transforming a high-level convex
+optimization formulation into the numerical arrays that a solver
+consumes---the matrices $P$, $\mathcal{A}$, vectors $c$, $\beta$, and cone
+specifications $\mathcal{K}$ of the standard
+form~\eqref{eq:cvxpy-standard}. This is the final, computational step of the
+canonicalization pipeline: once the problem has been rewritten into conic
+form, the system must traverse the resulting expression trees and assemble
+concrete numerical data.
+
+\paragraph{The canonicalization pipeline}
+\texttt{CVXPY}'s full pipeline proceeds in three phases:
+\begin{enumerate}
+\item \textbf{DCP verification.} Each node in the expression tree is checked
+  against DCP composition rules. If the overall problem is verified as convex
+  (or concave for maximization), canonicalization proceeds; otherwise, \texttt{CVXPY}
+  raises an error.
+
+\item \textbf{Atom canonicalization.} Each non-affine atom (\eg
+  \texttt{sum\_squares}, \texttt{norm}, \texttt{log}) is replaced by its
+  conic equivalent. This step introduces auxiliary variables and constraints,
+  producing a reformulated problem where every expression is affine and every
+  constraint has the form $\mathcal{A}z + \beta \in \mathcal{K}$.
+
+\item \textbf{Coefficient assembly.} The system traverses the affine
+  expression trees that remain after atom canonicalization, evaluating each
+  linear operator node and assembling the results into sparse coefficient
+  matrices. Chapter~\ref{sec:Theme1} details how these linear operators are
+  represented and composed.
+\end{enumerate}
+
+\paragraph{Parametric compilation}
+When a problem contains \texttt{cp.Parameter} objects, \texttt{CVXPY} can separate
+structure from data. The sparsity pattern and cone types are determined once
+at compilation time; only the numerical values in $\mathcal{A}$ and $\beta$
+change when parameters are updated. This separation is what makes it possible
+to extract the coefficient computation as a standalone routine---a mapping
+from parameter values to solver-ready arrays---which is the core idea behind
+the C extractor developed in this thesis.
+
+\paragraph{Contrast with \texttt{MOI}}
+\texttt{MOI}'s bridge-based architecture achieves a similar end---translating high-level
+formulations into solver-ready data---but through a different mechanism.
+Rather than compiling to a single standard form, \texttt{MOI} applies targeted
+transformations that preserve constraint semantics as long as possible.
+This design favors flexibility and incrementality (constraints can be added or
+removed without recompiling the entire problem), while \texttt{CVXPY}'s design favors
+a clean compilation model where the entire problem is reduced to one
+uniform representation. The trade-off is architectural: \texttt{MOI}'s approach is
+more modular, while \texttt{CVXPY}'s approach makes the coefficient extraction step
+uniform and predictable, which is advantageous for code generation.
+
 %%
-%% SECTION 3
+%% SUMMARY
 %%
 \section{Summary}
 
 The evolution from manual encoding to algebraic modeling languages reveals a consistent trend toward
-raising the abstraction level between modeler and solver. JuMP's MathOptInterface extends this
+raising the abstraction level between modeler and solver. \texttt{JuMP}'s \texttt{MathOptInterface} extends this
 trajectory with function-set pairs, composable bridges, and incremental construction, offering a
 flexible architecture that preserves constraint semantics all the way to the
-solver~\cite{legat2020mathoptinterface}. CVXPY takes a complementary path: by funneling all problems
+solver. \texttt{CVXPY} takes a complementary path: by funneling all problems
 through a single conic standard form and providing DCP verification and first-class parameters, it
 enables a compilation model where the problem structure is determined once and only numerical data
-changes between solves~\cite{diamond2016cvxpy, agrawal2018rewriting}. Neither system, however,
+changes between solves. Neither system, however,
 provides a self-contained C implementation of the coefficient extraction pipeline. The ability to
-compile a CVXPY problem into a lightweight, dependency-free C module that maps parameters to
+compile a \texttt{CVXPY} problem into a lightweight, dependency-free C module that maps parameters to
 solver-ready coefficient matrices is the contribution of this thesis.
-
