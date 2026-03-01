@@ -84,8 +84,51 @@ The remainder of this chapter develops such a method.
 %%
 \section{Affine atoms}
 
-% TODO: Summary table of all 14 atoms
-% Columns: atom name | math operation | Jacobian | CSR trick
+Table~\ref{tab:affine-atoms} catalogues the fifteen affine atoms implemented
+in the engine. Each atom exposes two entry points: \texttt{jacobian\_init},
+which determines the output Jacobian's sparsity pattern once at problem-build
+time, and \texttt{eval\_jacobian}, which fills in the numerical values each
+time parameters change. The table's third column summarises the key CSR
+manipulation performed by each atom.
+
+\begin{table}[ht]
+\centering
+\caption{Catalogue of affine atoms. Each row describes one node type, its
+mathematical operation, and the core CSR transformation applied to the
+child's Jacobian during \texttt{eval\_jacobian}.}
+\label{tab:affine-atoms}
+\small
+\begin{tabular}{lll}
+\hline
+\textbf{Atom} & \textbf{Math operation} & \textbf{Jacobian action on CSR} \\
+\hline
+\texttt{variable}    & $y = x$                        & Identity (leaf node) \\
+\texttt{parameter}   & $y = \theta$                   & None (data node) \\
+\texttt{linear\_op}  & $y = Ax + b$                   & $J = A$ (stored directly) \\
+\texttt{add}         & $y = a + b$                    & Union sparsity, sum values \\
+\texttt{neg}         & $y = -x$                       & Same sparsity, negate \texttt{data} \\
+\texttt{sum}         & $y = \sum x$ (along axis)      & Merge rows via \texttt{idx\_map} \\
+\texttt{hstack}      & $y = [a;\, b;\, \ldots]$       & Concatenate row blocks \\
+\texttt{index}       & $y = x[\text{idx}]$            & Select/reorder rows \\
+\texttt{reshape}     & $\text{reshape}(x, m, n)$      & No-op (copy arrays) \\
+\texttt{transpose}   & $y = X^T$                      & Permute rows \\
+\texttt{broadcast}   & $(1,n) \to (m,n)$              & Tile/replicate rows \\
+\texttt{promote}     & scalar $\to$ vector             & Replicate single row \\
+\texttt{trace}       & $y = \Tr(X)$                   & Sum diagonal rows via \texttt{idx\_map} \\
+\texttt{diag\_vec}   & $v \to \diag(v)$               & Place rows at diagonal positions \\
+\texttt{left\_matmul}& $y = A \cdot f(x)$             & Block-diagonal multiply (no Kronecker) \\
+\hline
+\end{tabular}
+\end{table}
+
+The subsections that follow first describe the general principle of encoding
+linear operators directly on CSR arrays, then examine three representative
+atoms in detail: \texttt{sum} (Section~\ref{sec:atom-sum}), which
+illustrates the \texttt{idx\_map} accumulation trick;
+\texttt{left\_matmul} (Section~\ref{sec:atom-leftmatmul}), which avoids
+forming a Kronecker product; and \texttt{index}
+(Section~\ref{sec:atom-index}), which performs pure structural row
+selection with no arithmetic.
 
 \subsection{Direct encoding of linear operators}
 
@@ -217,22 +260,219 @@ multiplication required.}
 \label{fig:csr-sum-operator}
 \end{figure}
 
-% TODO: Deep-dive 1: sum (the indptr trick)
-%   - Math: sum collapses m rows into 1 row
-%   - Key insight: in CSR, collapsing rows = changing indptr only
-%   - Pseudocode: Algorithm 1
-%   - Complexity: O(1) vs O(nnz) for sparse matmul
+%%
+%% Deep-dive 1: sum
+%%
+\subsection{The \texttt{sum} atom and the \texttt{idx\_map} trick}
+\label{sec:atom-sum}
 
-% TODO: Deep-dive 2: left_matmul / Kronecker avoidance
-%   - Math: y = (I_p ⊗ A) · vec(X), never form Kronecker product
-%   - Pseudocode: Algorithm 2
-%   - Why: I_p ⊗ A is p²n² entries; block version is p·nnz(A)
+Summing along an axis collapses multiple rows of the child's Jacobian into
+fewer rows. Mathematically, for a full summation ($y = \ones^T x$, scalar
+output), the Jacobian is $J_y = \ones^T J_{\text{child}}$---every row of
+$J_{\text{child}}$ is accumulated into a single output row. The naïve
+approach would compute this via sparse matrix multiplication, allocating a
+new matrix each time. Instead, the engine precomputes a mapping from every
+nonzero position in the child's Jacobian to its target position in the
+output, then uses a simple scatter-accumulate loop at evaluation time.
 
-% TODO: Deep-dive 3: index (permutation-only slicing)
-%   - Math: y = x[indices], Jacobian is row-selection
-%   - Key insight: reorder CSR rows, no arithmetic
+\paragraph{Initialisation (Algorithm~\ref{alg:sum-init})}
+During \texttt{jacobian\_init}, the output sparsity pattern is determined
+by taking the union of all column indices that appear across the rows being
+summed. Duplicate column indices from different rows are merged into a
+single output entry. An array \texttt{idx\_map} of length
+$\texttt{nnz}(J_{\text{child}})$ is then built: for each nonzero $k$ in
+the child's Jacobian, $\texttt{idx\_map}[k]$ stores the position in the
+output's \texttt{data} array where that value should be accumulated.
 
-% TODO: (optional) Deep-dive 4: reshape / transpose
+\begin{algorithm}[ht]
+\caption{\texttt{sum} --- Jacobian initialisation (sparsity + index map)}
+\label{alg:sum-init}
+\begin{algorithmic}[1]
+\Require Child Jacobian $J_x$ in CSR format; rows to sum: $\{r_0, \ldots, r_{s-1}\}$
+\Ensure  Output Jacobian $J$ with one row per output element; array \texttt{idx\_map}
+\State $\textit{cols} \gets$ union of column indices across summed rows of $J_x$
+\State Sort \textit{cols}; remove duplicates
+\Comment{$O(\texttt{nnz} \log \texttt{nnz})$}
+\State Set $J.\texttt{indptr}$, $J.\texttt{indices}$ from \textit{cols}
+\State Build reverse map $\texttt{col\_to\_pos}[\,]$: for each unique column $c$
+  at position $p$, set $\texttt{col\_to\_pos}[c] \gets p$
+\For{each nonzero $k$ in $J_x$ (across summed rows)}
+  \State $\texttt{idx\_map}[k] \gets \texttt{col\_to\_pos}[J_x.\texttt{indices}[k]]$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Evaluation (Algorithm~\ref{alg:sum-eval})}
+At each parameter update, \texttt{eval\_jacobian} zeroes the output values
+and then scatters the child's nonzeros through the precomputed map. The
+loop body is a single indexed addition per nonzero---no sorting, no
+allocation, and no matrix multiply.
+
+\begin{algorithm}[ht]
+\caption{\texttt{sum} --- Jacobian evaluation}
+\label{alg:sum-eval}
+\begin{algorithmic}[1]
+\Require Child Jacobian $J_x$ (values updated); precomputed \texttt{idx\_map}
+\Ensure  Output Jacobian $J$ with accumulated values
+\State $J.\texttt{data} \gets \mathbf{0}$
+\For{$k = 0$ \textbf{to} $\texttt{nnz}(J_x) - 1$}
+  \State $J.\texttt{data}[\texttt{idx\_map}[k]]
+         \mathrel{+}= J_x.\texttt{data}[k]$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Complexity}
+Initialisation costs $O(\texttt{nnz} \log \texttt{nnz})$ (dominated by the
+sort) and runs once. Evaluation costs $O(\texttt{nnz})$ with a single pass
+over the child's nonzeros. While sparse matrix multiplication
+$\ones^T J_x$ is also $O(\texttt{nnz})$ in principle, it must allocate a
+new result matrix, compute its sparsity pattern, and sort indices at every
+call---overhead that the \texttt{idx\_map} approach eliminates entirely.
+Figure~\ref{fig:csr-sum-operator} illustrates the CSR transformation for a
+concrete example.
+
+%%
+%% Deep-dive 2: left_matmul
+%%
+\subsection{The \texttt{left\_matmul} atom and Kronecker avoidance}
+\label{sec:atom-leftmatmul}
+
+Left multiplication computes $Y = A \, X$ where $A \in \reals^{m \times n}$
+is a constant (or parameter) matrix and $X \in \reals^{n \times p}$ is the
+child expression. Writing the operation in vectorised form gives
+\begin{equation}
+  \vect(Y) = (I_p \otimes A) \, \vect(X),
+\end{equation}
+so the Jacobian with respect to $\vect(X)$ is the block-diagonal matrix
+$I_p \otimes A$ of size $mp \times np$. Forming this Kronecker product
+explicitly would require storing $p \cdot \texttt{nnz}(A)$ entries in the
+best case; worse, composing it with the child's Jacobian via sparse
+matrix multiplication is $O(p^2 \cdot \texttt{nnz}(A))$ in general.
+
+The engine avoids the Kronecker product entirely by exploiting the
+block-diagonal structure. It stores only $A$ (of size $m \times n$) and
+applies it independently to each of the $p$ column-blocks of the child's
+Jacobian. The computation is carried out in CSC (Compressed Sparse Column)
+format, because the child's Jacobian columns each decompose naturally into
+$p$ consecutive blocks of $n$ rows.
+
+\paragraph{Initialisation}
+During \texttt{jacobian\_init}, the child's Jacobian sparsity is converted
+to CSC. For each column $j$ and each block $b \in \{0, \ldots, p-1\}$,
+the engine identifies which rows of $A$ have overlapping column support
+with the child's nonzeros in block~$b$. These overlaps determine the
+output sparsity without ever forming $I_p \otimes A$.
+
+\paragraph{Evaluation (Algorithm~\ref{alg:leftmatmul-eval})}
+At each parameter update, the child's Jacobian values are converted to
+CSC, then each output nonzero is computed as a sparse dot product of a
+row of $A$ with the corresponding block-slice of the child's column.
+
+\begin{algorithm}[ht]
+\caption{\texttt{left\_matmul} --- Jacobian evaluation
+  (block-diagonal multiply)}
+\label{alg:leftmatmul-eval}
+\begin{algorithmic}[1]
+\Require Constant matrix $A \in \reals^{m \times n}$; child Jacobian
+  $J_x$ in CSC with $p$ column-blocks of $n$ rows;
+  precomputed output sparsity $J$ in CSC
+\Ensure  Output Jacobian $J$ with filled values
+\State Convert $J_x$ values from CSR to CSC
+  \Comment{pattern already fixed}
+\For{each column $j$ of $J$}
+  \For{each block $b = 0, \ldots, p-1$}
+    \State $S \gets$ nonzeros of $J_x$ column $j$ in rows
+      $[b \cdot n,\; (b+1) \cdot n)$
+    \For{each output nonzero $(b \cdot m + i,\; j)$ in $J$}
+      \State $J.\texttt{data}[\cdot] \gets
+        \text{sparse\_dot}(A[i, :],\; S)$
+    \EndFor
+  \EndFor
+\EndFor
+\State Convert $J$ values from CSC to CSR
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Complexity}
+Let $\bar{k}$ denote the average number of nonzeros per column of
+$J_{\text{child}}$ within a single block. Each output nonzero requires a
+sparse dot product of cost at most $O(\texttt{nnz\_row}(A) + \bar{k})$.
+The total work is therefore
+$O(\texttt{nnz}(J) \cdot (\texttt{nnz\_row}(A) + \bar{k}))$, which for
+typical sparse problems is far smaller than the
+$O(p^2 \cdot \texttt{nnz}(A))$ cost of forming and multiplying the
+Kronecker product.
+
+%%
+%% Deep-dive 3: index
+%%
+\subsection{The \texttt{index} atom and structural row selection}
+\label{sec:atom-index}
+
+Indexing selects a subset of elements from the child expression:
+$y = x[\text{indices}]$. Its Jacobian is a row-selection matrix~$P$
+whose rows are drawn from the identity---row~$i$ of $P$ is row
+$\text{indices}[i]$ of $I$. Since the child's Jacobian is stored in CSR,
+selecting rows amounts to copying contiguous segments of the
+\texttt{indices} and \texttt{data} arrays guided by \texttt{indptr}. No
+arithmetic is performed at all.
+
+\paragraph{Initialisation (Algorithm~\ref{alg:index-init})}
+During \texttt{jacobian\_init}, the output Jacobian's sparsity pattern is
+constructed by copying the column-index segment of each selected row from
+the child's Jacobian. The row pointer array \texttt{indptr} is built
+incrementally.
+
+\begin{algorithm}[ht]
+\caption{\texttt{index} --- Jacobian initialisation (structural copy)}
+\label{alg:index-init}
+\begin{algorithmic}[1]
+\Require Child Jacobian $J_x$ in CSR; selection array
+  $\texttt{idx}[0 \ldots k{-}1]$
+\Ensure  Output Jacobian $J$ in CSR with selected rows
+\State $J.\texttt{indptr}[0] \gets 0$
+\For{$i = 0$ \textbf{to} $k - 1$}
+  \State $r \gets \texttt{idx}[i]$
+  \Comment{source row in $J_x$}
+  \State $\ell \gets J_x.\texttt{indptr}[r+1] - J_x.\texttt{indptr}[r]$
+  \State Copy $J_x.\texttt{indices}[J_x.\texttt{indptr}[r] \ldots
+    J_x.\texttt{indptr}[r] + \ell)$ into
+    $J.\texttt{indices}[J.\texttt{indptr}[i] \ldots]$
+  \State $J.\texttt{indptr}[i+1] \gets J.\texttt{indptr}[i] + \ell$
+\EndFor
+\State $J.\texttt{nnz} \gets J.\texttt{indptr}[k]$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Evaluation (Algorithm~\ref{alg:index-eval})}
+At each parameter update, \texttt{eval\_jacobian} copies the \texttt{data}
+segments for the same selected rows. The sparsity pattern is identical to
+the child's selected rows, so only values move.
+
+\begin{algorithm}[ht]
+\caption{\texttt{index} --- Jacobian evaluation (value copy)}
+\label{alg:index-eval}
+\begin{algorithmic}[1]
+\Require Child Jacobian $J_x$ (values updated); selection array
+  $\texttt{idx}[0 \ldots k{-}1]$; output Jacobian $J$ (pattern fixed)
+\Ensure  Output Jacobian $J$ with copied values
+\For{$i = 0$ \textbf{to} $k - 1$}
+  \State $r \gets \texttt{idx}[i]$
+  \State $\ell \gets J.\texttt{indptr}[i+1] - J.\texttt{indptr}[i]$
+  \State Copy $J_x.\texttt{data}[J_x.\texttt{indptr}[r] \ldots
+    J_x.\texttt{indptr}[r] + \ell)$ into
+    $J.\texttt{data}[J.\texttt{indptr}[i] \ldots]$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Complexity}
+Both initialisation and evaluation cost
+$O\!\bigl(\sum_{i=0}^{k-1} \texttt{nnz}(\text{row}_{\texttt{idx}[i]})\bigr)$,
+proportional to the total number of nonzeros in the selected rows. The
+operation involves no arithmetic---only \texttt{memcpy} calls---making it
+one of the cheapest atoms in the engine.
 
 %%
 %% SECTION 4: Optimizations

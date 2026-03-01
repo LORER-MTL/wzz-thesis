@@ -91,15 +91,14 @@ In addition, there are also \emph{domain specific languages} that implement
 \emph{disciplined convex programming} (DCP), a set of composition rules that can automatically
 verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
 These include \texttt{CVX}~\cite{cvx} in MATLAB, \texttt{CVXPY}~\cite{diamond2016cvxpy, agrawal2018rewriting}
-in Python, and \texttt{Convex.jl}~\cite{udell2014convex} in Julia.
+in Python, \texttt{CVXR}~\cite{Fu_2020} in R, and \texttt{Convex.jl}~\cite{udell2014convex} in Julia.
 
 \paragraph{Modern open-source modeling languages}
 At the time of writing, most modeling languages mentioned above continue to be
 developed and have active communities. In the remainder of the section, we focus
 our attention on two in particular: \texttt{JuMP} for the design ideas introduced by
 \texttt{MathOptInterface}, and
-\texttt{CVXPY} because it is the system on which the present work builds---a choice
-motivated by the author's previous experience as a \texttt{CVXPY} contributor.
+\texttt{CVXPY} because it is the modeling language on which the present work builds.
 
 \subsection{\texttt{JuMP} and \texttt{MathOptInterface}}
 
@@ -111,39 +110,44 @@ moving away from the traditional approach of reducing every problem to a single 
 
 \paragraph{Function-set pairs}
 \texttt{MOI} represents each constraint as a \emph{function-set pair}: a mathematical function paired with
-the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as
-(\texttt{ScalarAffineFunction}, \texttt{LessThan(b)}), while a second-order cone
-constraint $\|Ax + b\|_2 \leq c^T x + d$ uses (\texttt{VectorAffineFunction},
-\texttt{SecondOrderCone}). This is more granular
-than committing to a single conic standard form as in~\eqref{eq:conic}---\texttt{MOI} preserves the
-semantic type of each constraint. Solvers that accept specific constraint types can receive them
-directly, without unnecessary reformulations.
+the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as:
+\begin{lstlisting}
+MOI.add_constraint(model,
+    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(a, x), 0.0),
+    MOI.LessThan(b))
+\end{lstlisting}
+while a second-order cone constraint $t \geq \|x\|_2$ with $n$ variables uses:
+\begin{lstlisting}
+MOI.add_constraint(model,
+    MOI.VectorOfVariables([t; x]),
+    MOI.SecondOrderCone(n)).
+\end{lstlisting}
+\texttt{MOI} therefore preserves the semantic type of each constraint, so solvers that
+accept specific constraint types can receive them directly without unnecessary reformulations.
 
 \paragraph{Bridges}
-When a solver does not natively support a particular function-set pair, \texttt{MOI} uses
-\emph{bridges}---small, composable transformations between equivalent constraint
-representations.
-For instance, a bridge can split an interval constraint into separate less-than and greater-than
-constraints. The bridge system maintains a directed hyper-graph of all known transformations and
-finds the shortest path to the target solver's supported types. Adding a reformulation once in \texttt{MOI}
-benefits all solvers, rather than requiring each solver wrapper to implement its own conversions.
+When a solver does not natively support a particular function-set pair, \texttt{MOI} applies
+a \emph{bridge}, a composable transformation to an equivalent representation the solver accepts.
+The bridge system maintains a directed hyper-graph of known transformations and finds the shortest
+path to the target solver's supported types, so adding a reformulation once benefits all solvers.
 
 \paragraph{Incremental problem construction}
 Some solvers, notably \texttt{MOSEK}~\cite{mosekSolver} and
-\texttt{HiGHS}~\cite{huangfu2018highs}, expose APIs that add constraints one at a
-time. \texttt{MOI} supports this incremental mode natively: rather than assembling a
-complete coefficient matrix and passing it to the solver in one call, \texttt{MOI}
-can issue individual \texttt{add\_constraint} calls as the model is built.
-For example, adding a cut $a^T x \leq b$ after an initial solve requires
-only one such call, not a full reconstruction of the problem data. This is
-particularly useful in algorithms that iteratively refine a formulation,
-such as cutting-plane methods or branch-and-cut, where constraints are
-added between successive solves.
+\texttt{HiGHS}~\cite{huangfu2018highs}, allow constraints to be added one at a time
+rather than requiring the entire problem to be submitted at once. \texttt{MOI} supports
+this incremental mode natively, so algorithms that iteratively refine a formulation, such
+as cutting-plane or branch-and-cut methods, can append a constraint between successive
+solves without reconstructing the full problem data.
 
 \paragraph{Extensibility}
-\texttt{MOI} makes it straightforward to support new constraint types. A solver declares which function-set
-pairs it handles, and new bridges can be registered at any time. \texttt{Hypatia} \cite{coey2022solving}
-\cite{ocpb:16, odonoghue:21, cederbergspectralmatrixcones}.
+\texttt{MOI} makes it straightforward to support new constraint types: a solver declares
+which function-set pairs it handles, and new bridges can be registered at any time.
+\texttt{Hypatia}~\cite{coey2022solving, coey2022performance}, for example, natively implements over twenty
+specialized cones, including the log-determinant cone, the relative-entropy cone, and
+several spectral matrix cones, all of which are first-class \texttt{MOI} set types.
+\texttt{SCS}~\cite{ocpb:16, odonoghue:21} has similarly begun adding native spectral
+matrix cone support~\cite{cederbergspectralmatrixcones}, bypassing the large
+semidefinite reformulations that would otherwise be required.
 
 \subsection{\texttt{CVXPY}}
 

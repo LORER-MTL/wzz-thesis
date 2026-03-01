@@ -85,10 +85,34 @@
 \usepackage{siunitx} % unites SI / SI units
 \usepackage{amssymb} % autres symboles mathematiques / other mathematical symbols
 \usepackage[bottom]{footmisc} % pour avoir les notes de bas de page en dessous des figures... / to have the footnotes below the figures
-%\usepackage{listings} % Si on veut ajouter des lignes de codes dans le texte / If you want to add lines of code to the text
+\usepackage{listings} % Si on veut ajouter des lignes de codes dans le texte / If you want to add lines of code to the text
+\lstdefinelanguage{Julia}{
+  morekeywords={function,end,if,else,elseif,for,while,return,begin,let,
+    const,struct,mutable,abstract,type,module,import,using,export,true,false},
+  morekeywords=[2]{MOI,MathOptInterface,JuMP},
+  sensitive=true,
+  morecomment=[l]{\#},
+  morecomment=[s]{\#=}{=\#},
+  morestring=[b]",
+}
+\lstset{
+  language=Julia,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\bfseries,
+  keywordstyle=[2]\bfseries,
+  commentstyle=\itshape\color{gray},
+  columns=flexible,
+  breaklines=true,
+  frame=none,
+  xleftmargin=1em,
+  xrightmargin=1em,
+  numbers=none,
+}
 \usepackage{tikz} % TikZ graphics
 \usetikzlibrary{arrows.meta,positioning,shapes,calc} % Common TikZ libraries
 \usepackage{blkarray} % Block arrays with row/column labels
+\usepackage{algorithm} % Float wrapper for algorithms
+\usepackage{algpseudocode} % Pseudocode typesetting (algorithmicx bundle)
 
 %%
 %% Définitions spécifiques au format de rédaction de Poly.
