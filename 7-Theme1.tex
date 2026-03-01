@@ -1,209 +1,24 @@
-\Chapter{Setting the stage}\label{sec:Theme1}
+\Chapter{METHODOLOGY}\label{sec:Theme1}
 
-\paragraph{Linear operator tree}
-CVXPY's canonicalization guarantees that all constraints and the objective function in
-are affine functions of the variable $x$. An affine function
-can be expressed as the composition of linear functions and addition of constants. CVXPY represents
-each affine function as an \emph{expression tree}, where each node is a linear function or
-\emph{atom}.
+%%
+%% SECTION 1: Current approach and its limitations
+%%
+\section{Current approach and its limitations}
 
-\begin{figure}
-\centering
-\scalebox{0.55}{
-\begin{tikzpicture}[
-    level distance=22mm,
-    level 1/.style={sibling distance=70mm},
-    level 2/.style={sibling distance=35mm},
-    level 3/.style={sibling distance=20mm},
-    every node/.style={circle, draw, minimum size=18mm, inner sep=0pt}
-]
+The previous chapter described expression trees and how \texttt{CVXPY}
+represents affine functions as compositions of linear operators. This section
+examines how \texttt{CVXPY} currently evaluates those trees to produce
+solver-ready coefficient matrices, and why that approach has limitations that
+motivate the present work.
 
-\node {$+$}
-  child {
-    node {\texttt{sum}}
-      child {
-          node {$-$}
-          child {
-            node {\texttt{matmul}}
-            child { node {\texttt{A}} }
-            child { node {\texttt{x}} }
-          }
-          child { node {\texttt{b}} }
-      }
-  }
-  child {
-    node {\texttt{matmul}}
-      child { node {\texttt{C}} }
-      child { node {\texttt{y}} }
-  };
-\end{tikzpicture}
-}
-\caption{Expression tree for the affine expression \texttt{sum(A @ x - b) + C @ y}.}
-\label{fig:expression-tree}
-\end{figure}
-
-\paragraph{A first example}
-When you specify a single variable in CVXPY, such as
-\begin{verbatim}
-x = cp.Variable(4)
-\end{verbatim}
-the internal representation is the identity linear operator of size $4\times 4$:
-\[
-\begin{blockarray}{cccc}
-x_1 & x_2 & x_3 & x_4 \\
-\begin{block}{[cccc]}
-1 & 0 & 0 & 0 \\
-0 & 1 & 0 & 0 \\
-0 & 0 & 1 & 0 \\
-0 & 0 & 0 & 1 \\
-\end{block}
-\end{blockarray}
-\]
-
-\paragraph{A second example}
-When you specify a sum operator on a variable in CVXPY, such as
-\begin{verbatim}
-x = cp.Variable(4)
-y = cp.sum(x)
-\end{verbatim}
-the internal representation is a $1\times 4$ matrix of all ones:
-\[
-\begin{blockarray}{cccc}
-x_1 & x_2 & x_3 & x_4 \\
-\begin{block}{[cccc]}
-1 & 1 & 1 & 1 \\
-\end{block}
-\end{blockarray}
-\]
-Applying this operator to the variable vector yields the sum:
-\[
-\begin{bmatrix}
-1 & 1 & 1 & 1
-\end{bmatrix}
-\begin{bmatrix}
-x_1 \\ x_2 \\ x_3 \\ x_4
-\end{bmatrix}
-= x_1 + x_2 + x_3 + x_4
-\]
-
-\paragraph{A matrix example}
-When you specify a matrix variable in CVXPY, such as
-\begin{verbatim}
-X = cp.Variable((3, 2))
-\end{verbatim}
-the entries of the matrix are vectorized in column-major order, and the internal representation is
-the identity linear operator of size $6\times 6$:
-\[
-\begin{blockarray}{cccccc}
-X_{11} & X_{21} & X_{31} & X_{12} & X_{22} & X_{32} \\
-\begin{block}{[cccccc]}
-1 & 0 & 0 & 0 & 0 & 0 \\
-0 & 1 & 0 & 0 & 0 & 0 \\
-0 & 0 & 1 & 0 & 0 & 0 \\
-0 & 0 & 0 & 1 & 0 & 0 \\
-0 & 0 & 0 & 0 & 1 & 0 \\
-0 & 0 & 0 & 0 & 0 & 1 \\
-\end{block}
-\end{blockarray}
-\]
-
-\paragraph{A composition example}
-When you specify a more complex linear function in CVXPY, such as
-\begin{verbatim}
-x = cp.Variable(3)
-A = np.random.randn(5, 3)
-b = np.random.randn(5)
-y = cp.sum(A @ x + b)
-\end{verbatim}
-the internal representation is the composition of three linear operators:
-\begin{itemize}
-\item the matrix multiplication operator $A \in \reals^{5 \times 3}$,
-\item the vector addition operator $+b$ where $b \in \reals^5$,
-\item the sum operator $\ones^T \in \reals^{1 \times 5}$.
-\end{itemize}
-The constant $b$ is incorporated by augmenting the matrix with a column for the constant term. The
-resulting linear operator is $\ones^T [A \mid b] \in \reals^{1 \times 4}$:
-\[
-\underbrace{\begin{bmatrix}
-1 & 1 & 1 & 1 & 1
-\end{bmatrix}}_{\ones^T}
-\underbrace{\left[\begin{array}{ccc|c}
-A_{11} & A_{12} & A_{13} & b_1 \\
-A_{21} & A_{22} & A_{23} & b_2 \\
-A_{31} & A_{32} & A_{33} & b_3 \\
-A_{41} & A_{42} & A_{43} & b_4 \\
-A_{51} & A_{52} & A_{53} & b_5
-\end{array}\right]}_{[A \mid b]}
-=
-\begin{blockarray}{cccc}
-x_1 & x_2 & x_3 & 1 \\
-\begin{block}{[ccc|c]}
-\sum_i A_{i1} & \sum_i A_{i2} & \sum_i A_{i3} & \sum_i b_i \\
-\end{block}
-\end{blockarray}
-\]
-
-\paragraph{A multi-variable example}
-When you specify multiple variables and constraints in CVXPY, such as
-\begin{verbatim}
-x = cp.Variable()
-y = cp.Variable(3)
-z = cp.Variable(2)
-constraints = [8*x == 28, cp.sum(y) + 5*cp.sum(z) == 58, z == 26]
-\end{verbatim}
-the variables are concatenated into a single vector $[x, y_1, y_2, y_3, z_1, z_2]^T$. Each
-constraint is converted to the form $Ax + b = 0$, producing a linear operator with a constant
-column:
-\begin{itemize}
-\item \texttt{8*x == 28} becomes $8x - 28 = 0$:
-\[
-\begin{blockarray}{ccccccc}
-x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
-\begin{block}{[cccccc|c]}
-8 & 0 & 0 & 0 & 0 & 0 & -28 \\
-\end{block}
-\end{blockarray}
-\]
-\item \texttt{cp.sum(y) + 5*cp.sum(z) == 58} becomes $\sum y_i + 5\sum z_i - 58 = 0$:
-\[
-\begin{blockarray}{ccccccc}
-x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
-\begin{block}{[cccccc|c]}
-0 & 1 & 1 & 1 & 5 & 5 & -58 \\
-\end{block}
-\end{blockarray}
-\]
-\item \texttt{z == 26} becomes $z_1 - 26 = 0$ and $z_2 - 26 = 0$:
-\[
-\begin{blockarray}{ccccccc}
-x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
-\begin{block}{[cccccc|c]}
-0 & 0 & 0 & 0 & 1 & 0 & -26 \\
-0 & 0 & 0 & 0 & 0 & 1 & -26 \\
-\end{block}
-\end{blockarray}
-\]
-\end{itemize}
-These are then stacked into a single linear operator:
-\[
-\begin{blockarray}{ccccccc}
-x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
-\begin{block}{[cccccc|c]}
-8 & 0 & 0 & 0 & 0 & 0 & -28 \\
-0 & 1 & 1 & 1 & 5 & 5 & -58 \\
-0 & 0 & 0 & 0 & 1 & 0 & -26 \\
-0 & 0 & 0 & 0 & 0 & 1 & -26 \\
-\end{block}
-\end{blockarray}
-\]
-
-\paragraph{The current approach: sparse matrix multiplication}
-CVXPY's current approach is to convert the linear operator tree into a single sparse matrix. The
-tree is traversed in post-order: each leaf node returns its coefficient matrix, and each internal
-node composes its children's matrices via sparse matrix multiplication. For example, in the
-expression \texttt{sum(A @ x)}, the traversal first returns $A$ at the \texttt{matmul} node, then
-multiplies by $\ones^T$ at the \texttt{sum} node, yielding $\ones^T A$. The final matrix at the
-root is returned.
+\paragraph{Sparse matrix multiplication}
+\texttt{CVXPY}'s current approach is to convert the linear operator tree into
+a single sparse matrix. The tree is traversed in post-order: each leaf node
+returns its coefficient matrix, and each internal node composes its children's
+matrices via sparse matrix multiplication. For example, in the expression
+\texttt{sum(A @ x)}, the traversal first returns $A$ at the \texttt{matmul}
+node, then multiplies by $\ones^T$ at the \texttt{sum} node, yielding
+$\ones^T A$. The final matrix at the root is returned.
 
 \begin{figure}[h]
 \centering
@@ -233,23 +48,55 @@ root is returned.
 \draw[arrow] (sum-coef) -- (sum);
 
 \end{tikzpicture}
-\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node composes its operator
-with the child's coefficient matrix via sparse matrix multiplication.}
+\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node
+composes its operator with the child's coefficient matrix via sparse matrix
+multiplication.}
 \label{fig:sparse-matmul-tree}
 \end{figure}
 
-\paragraph{Limitations of current approach}
-This approach requires storing intermediate sparse matrices at each node during traversal. For deep
-expression trees or large problem dimensions, this leads to significant memory overhead.
-Additionally, sparse matrix multiplication is computationally expensive and may produce matrices
-with more nonzeros than the operands, further increasing memory and runtime costs.
+\paragraph{Limitations}
+This approach requires storing intermediate sparse matrices at each node
+during traversal. For deep expression trees or large problem dimensions, this
+leads to significant memory overhead. Additionally, sparse matrix
+multiplication is computationally expensive and may produce matrices with more
+nonzeros than the operands, further increasing memory and runtime costs.
 
-\paragraph{Our approach: direct encoding of linear operators}
-We keep the coefficient matrix in CSR (Compressed Sparse Row) format and directly manipulate its
-index arrays without forming intermediate matrices. Each linear operator is implemented as a
-transformation on the CSR arrays \texttt{(indptr, indices, data)}. For example, the \texttt{sum}
-operator collapses all rows into row 0 by setting all entries of \texttt{indptr} to
-$[0, \texttt{nnz}]$, effectively mapping every row index to 0 without any matrix multiplication.
+\paragraph{Motivation}
+These limitations are particularly acute in embedded and real-time settings
+where memory budgets are tight and latency requirements are strict. A method
+that avoids forming intermediate matrices entirely---by directly manipulating
+the sparse storage arrays---could achieve the same result with lower overhead.
+The remainder of this chapter develops such a method.
+
+%%
+%% SECTION 2: Architecture overview
+%%
+\section{Architecture overview}
+
+% TODO: Describe the SparseDiffEngine architecture:
+% - expr struct: polymorphic node with function-pointer dispatch
+% - DAG structure (shared subexpressions)
+% - problem container: objective + constraints + derivative storage
+% - Two-phase design: init (sparsity) -> eval (values only)
+
+%%
+%% SECTION 3: Affine atoms
+%%
+\section{Affine atoms}
+
+% TODO: Summary table of all 14 atoms
+% Columns: atom name | math operation | Jacobian | CSR trick
+
+\subsection{Direct encoding of linear operators}
+
+Rather than composing operators via sparse matrix multiplication, we keep the
+coefficient matrix in CSR (Compressed Sparse Row) format and directly
+manipulate its index arrays without forming intermediate matrices. Each linear
+operator is implemented as a transformation on the CSR arrays
+\texttt{(indptr, indices, data)}. For example, the \texttt{sum} operator
+collapses all rows into row~0 by setting all entries of \texttt{indptr} to
+$[0, \texttt{nnz}]$, effectively mapping every row index to~0 without any
+matrix multiplication.
 
 \begin{figure}[h]
 \centering
@@ -362,9 +209,50 @@ $[0, \texttt{nnz}]$, effectively mapping every row index to 0 without any matrix
 \node[font=\footnotesize, right] at (7, -4.9) {unchanged};
 
 \end{tikzpicture}
-\caption{CSR representation before and after applying \texttt{sum}. The 3-row matrix collapses to
-1 row by setting \texttt{indptr} $= [0, 6]$. Duplicate column indices (0 and 2) represent values
-that sum together. The \texttt{indices} and \texttt{data} arrays remain unchanged---no matrix
+\caption{CSR representation before and after applying \texttt{sum}. The 3-row
+matrix collapses to 1 row by setting \texttt{indptr} $= [0, 6]$. Duplicate
+column indices (0 and 2) represent values that sum together. The
+\texttt{indices} and \texttt{data} arrays remain unchanged---no matrix
 multiplication required.}
 \label{fig:csr-sum-operator}
 \end{figure}
+
+% TODO: Deep-dive 1: sum (the indptr trick)
+%   - Math: sum collapses m rows into 1 row
+%   - Key insight: in CSR, collapsing rows = changing indptr only
+%   - Pseudocode: Algorithm 1
+%   - Complexity: O(1) vs O(nnz) for sparse matmul
+
+% TODO: Deep-dive 2: left_matmul / Kronecker avoidance
+%   - Math: y = (I_p ⊗ A) · vec(X), never form Kronecker product
+%   - Pseudocode: Algorithm 2
+%   - Why: I_p ⊗ A is p²n² entries; block version is p·nnz(A)
+
+% TODO: Deep-dive 3: index (permutation-only slicing)
+%   - Math: y = x[indices], Jacobian is row-selection
+%   - Key insight: reorder CSR rows, no arithmetic
+
+% TODO: (optional) Deep-dive 4: reshape / transpose
+
+%%
+%% SECTION 4: Optimizations
+%%
+\section{Optimizations}
+
+% TODO:
+% - Affine Jacobian caching: computed once, reused forever
+% - Sparsity-first design: init determines CSR structure, eval only fills values
+% - Precomputed index maps (sum's idx_map[])
+
+%%
+%% SECTION 5: Parameter handling
+%%
+\section{Parameter handling}
+
+% TODO:
+% - Direct re-traversal of expression trees on each parameter update
+%   (NOT the 3D tensor representation)
+% - register_params / update_params lifecycle
+% - Lazy refresh via jacobian_called flag
+% - Contrast with tensor approach: simpler, no extra storage,
+%   leverages the same tree-walking infrastructure

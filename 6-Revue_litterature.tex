@@ -167,18 +167,7 @@ single compilation pipeline targeting one unified standard form.
 \label{eq:cvxpy-standard}
 \end{equation}
 Because the rewriting system targets a unique form, solver interfaces only need to map from this
-single representation. This centralization simplifies the codebase: one set of rewriting rules
-rather than a combinatorial number of bridges, and every solver benefits from the same
-transformation
-pipeline.
-
-\paragraph{Disciplined convex programming}
-\texttt{CVXPY} implements DCP rules that automatically verify convexity and transform high-level expressions
-into conic form. A user can write \texttt{cp.sum\_squares(A @ x - b)} and \texttt{CVXPY} will verify
-convexity, introduce auxiliary variables, and emit the equivalent second-order cone constraint
-transparently. In contrast, \texttt{JuMP} requires users to formulate conic constraints directly (\eg
-specifying a rotated second-order cone rather than a sum-of-squares objective), demanding deeper
-conic optimization knowledge.
+single representation.
 
 \paragraph{Parameters and efficient re-solving}
 \texttt{CVXPY} provides first-class support for parameters via \texttt{cp.Parameter}. When a problem
@@ -188,162 +177,338 @@ only require evaluating this mapping and calling the solver, skipping the full c
 \texttt{cvxpygen} library~\cite{schaller2022cvxpygen} extends this by generating standalone C code embedding
 the compiled structure, enabling deployment without a Python runtime.
 
+\paragraph{Applications of parametric optimization}
+Many applications require solving a sequence of related optimization problems that differ only in
+their data. In Model Predictive Control (MPC), a controller solves an optimization problem at each
+timestep with the current system state as input. In parameter sweeps, we explore the behavior of a
+system across a range of parameter values. These problems share the same structure---only the
+numerical coefficients change---and we want to solve them efficiently without reconstructing the
+problem from scratch each time. First-class parameter support in \texttt{CVXPY} addresses this need
+by separating the problem structure from its numerical data.
+
 \section{Canonicalization and Coefficient Extraction}
 
 The previous sections described what modeling languages do at a high level:
 they accept mathematical formulations and produce solver-ready data. This
-section examines \emph{how} that translation works, using a concrete example
-to illustrate the canonicalization pipelines of both \texttt{MOI} and \texttt{CVXPY}.
+section examines \emph{how} that translation is performed, using two concrete
+examples---a least-squares problem and a semidefinite program---to illustrate
+the machinery behind \texttt{CVXPY} and \texttt{MOI}.
 
 \subsection{A worked example: least-squares}
 
 Consider the least-squares problem
 \begin{equation}
 \begin{array}{ll}
-\text{minimize} & \|Ax - b\|_2^2,
+\text{minimize} & \|Fx - g\|_2^2,
 \end{array}
 \label{eq:least-squares}
 \end{equation}
-with data $A \in \reals^{2 \times 2}$ and $b \in \reals^2$. This problem is
-small enough to trace every step of the canonicalization, yet it exercises the
-key mechanisms of both systems.
+with concrete data
+\[
+F = \begin{pmatrix} 1 & 2 \\ 3 & 4 \\ 5 & 6 \end{pmatrix}, \quad
+g = \begin{pmatrix} 1 \\ 2 \\ 3 \end{pmatrix},
+\]
+so that $F \in \reals^{3 \times 2}$ and $g \in \reals^3$.
+This problem is small enough to trace every step of the canonicalization, yet
+it exercises the key mechanisms of both systems.
 
-\paragraph{\texttt{MOI}'s bridge-based path}
-In \texttt{JuMP}, writing \texttt{@objective(model, Min, sum((A*x - b).\^{}2))} creates
-a \emph{scalar quadratic function}. \texttt{MOI} represents the objective as a
-function-set pair
-(\texttt{ScalarQuadraticFunction}, \texttt{MinSense}). If the target solver
-accepts quadratic objectives directly (\eg \texttt{MOSEK}, \texttt{Gurobi}), no further
-transformation is needed---\texttt{MOI} passes the quadratic coefficients as-is.
-
-If the solver only supports conic constraints, \texttt{MOI}'s bridge system activates.
-A \emph{quadratic-to-SOC bridge} rewrites the quadratic objective into a
-second-order cone constraint by introducing an epigraph variable $t$ and
-enforcing $\|Ax - b\|_2 \leq t$, with the objective changed to
-$\text{minimize } t$. Each bridge is a small, self-contained transformation;
-\texttt{MOI} composes as many as needed to reach the solver's supported types.
-
-\paragraph{\texttt{CVXPY}'s compilation path}
-In \texttt{CVXPY}, the same problem is written as
+\paragraph{\texttt{CVXPY}'s canonicalization pipeline}
+In \texttt{CVXPY}, the problem is written as:
 \begin{verbatim}
+import numpy as np, cvxpy as cp
+F = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+g = np.array([1.0, 2.0, 3.0])
 x = cp.Variable(2)
-prob = cp.Problem(cp.Minimize(cp.sum_squares(A @ x - b)))
+prob = cp.Problem(cp.Minimize(cp.sum_squares(F @ x - g)))
 \end{verbatim}
-
-\texttt{CVXPY} processes this through several stages:
+Chu~et~al.~\cite{chu2013codegen} describe the general pipeline that systems
+like \texttt{CVXPY} follow to convert such a formulation into solver-ready data.
+The first two steps are common to all canonicalization paths:
 
 \begin{enumerate}
 \item \textbf{Expression tree.} \texttt{CVXPY} builds a tree whose root is
-  \texttt{sum\_squares}, with children \texttt{sub}($-$), which in turn has
-  children \texttt{matmul}($A$, $x$) and constant $b$.
+  \texttt{sum\_squares}, with child \texttt{sub}($-$), which in turn has
+  children \texttt{matmul}($F$, $x$) and constant $g$.
 
 \item \textbf{DCP verification.} The \texttt{sum\_squares} atom is convex, and
-  its argument $Ax - b$ is affine; by DCP composition rules, the overall
+  its argument $Fx - g$ is affine; by DCP composition rules, the overall
   expression is convex.
-
-\item \textbf{Epigraph reformulation.} The \texttt{sum\_squares} atom's
-  canonicalization method introduces an auxiliary variable $t \in \reals$ and
-  rewrites the objective as $\text{minimize } t$ subject to
-  $\|Ax - b\|_2^2 \leq t$, which is equivalent to
-  $\left\|\begin{smallmatrix} Ax - b \\ \frac{1}{2}(t - 1)
-  \end{smallmatrix}\right\|_2 \leq \frac{1}{2}(t + 1)$---a second-order cone
-  constraint.
-
-\item \textbf{Conic standard form.} \texttt{CVXPY} assembles the constraint into the
-  form $\mathcal{A}z + \beta \in \mathcal{K}$ where $z = (x, t)$, and
-  $\mathcal{K}$ is a second-order cone. The objective becomes $c^T z$ with
-  $c = (0, 0, 1)$, selecting the epigraph variable.
 \end{enumerate}
 
-For our $2 \times 2$ example with $z = (x_1, x_2, t)^T$, the final
-solver-ready data is:
+What happens next depends on the target solver's capabilities.
+
+\paragraph{Quadratic objective path}
+\texttt{CVXPY}'s default canonicalization for \texttt{sum\_squares} introduces
+an auxiliary variable $t = Fx - g$ (as a linear equality constraint) and sets
+the objective to $t^T t = \|t\|_2^2$.
+\texttt{CVXPY}'s standard form~\eqref{eq:cvxpy-standard} includes a $P$~matrix
+precisely for this case.
+With $z = (x_1, x_2, t_1, t_2, t_3)$, the QP data is:
+\begin{equation}
+P = \begin{pmatrix}
+  0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & 2 & 0 & 0 \\
+  0 & 0 & 0 & 2 & 0 \\
+  0 & 0 & 0 & 0 & 2
+\end{pmatrix}, \quad
+c = 0,
+\label{eq:ls-qp-P}
+\end{equation}
+\ie $P = \diag(0_{2}, 2 I_3)$---sparse, with no need to form $F^T F$.
+The equality constraint $t - Fx = -g$ gives:
+\begin{equation}
+\begin{pmatrix}
+  -1 & -2 & 1 & 0 & 0 \\
+  -3 & -4 & 0 & 1 & 0 \\
+  -5 & -6 & 0 & 0 & 1
+\end{pmatrix} z = \begin{pmatrix} -1 \\ -2 \\ -3 \end{pmatrix}.
+\label{eq:ls-qp-eq}
+\end{equation}
+Direct support for quadratic objectives in conic solvers is a relatively recent
+development; solvers such as \texttt{MOSEK}~\cite{mosekSolver} and
+\texttt{Gurobi}~\cite{gurobi} now accept them natively.
+
+\paragraph{Epigraph reformulation}
+For solvers limited to conic constraints, such as
+\texttt{ECOS}~\cite{domahidi2013ecos}, \texttt{CVXPY} instead applies an
+epigraph reformulation. The \texttt{sum\_squares} atom's canonicalization
+method introduces an auxiliary variable $t$ and rewrites the objective as
+$\text{minimize } t$ subject to $\|Fx - g\|_2^2 \leq t$, which is equivalent
+to the second-order cone constraint
+$\left\|\begin{smallmatrix} Fx - g \\ \frac{1}{2}(t - 1)
+\end{smallmatrix}\right\|_2 \leq \frac{1}{2}(t + 1)$.
+Chu~et~al.\ call the intermediate step of introducing a variable per
+subexpression ``Smith form,'' followed by ``relaxation'' to inequalities.
+\texttt{CVXPY} then assembles the constraint into the form
+$\mathcal{A}z + \beta \in \mathcal{K}$ where $z = (x_1, x_2, t)$, and
+$\mathcal{K}$ is a second-order cone. The objective becomes $c^T z$ with
+$c = (0, 0, 1)$, selecting the epigraph variable.
+
+For our example, the solver-ready data is:
 \begin{equation}
   c = \begin{pmatrix} 0 \\ 0 \\ 1 \end{pmatrix}, \quad
   \mathcal{A} = \begin{pmatrix}
     0 & 0 & \frac{1}{2} \\[2pt]
     0 & 0 & -\frac{1}{2} \\[2pt]
-    a_{11} & a_{12} & 0 \\
-    a_{21} & a_{22} & 0
+    1 & 2 & 0 \\
+    3 & 4 & 0 \\
+    5 & 6 & 0
   \end{pmatrix}, \quad
   \beta = \begin{pmatrix}
-    \frac{1}{2} \\ \frac{1}{2} \\ -b_1 \\ -b_2
+    \frac{1}{2} \\[2pt] \frac{1}{2} \\[2pt] -1 \\ -2 \\ -3
   \end{pmatrix},
-  \label{eq:ls-coefficients}
+  \label{eq:ls-soc-coefficients}
 \end{equation}
-with $\mathcal{K} = \mathcal{Q}^4$ (second-order cone of dimension 4). The
-matrices $\mathcal{A}$, $\beta$, and $c$ are the \emph{coefficient data} that
-this thesis is concerned with extracting.
+with $\mathcal{K} = \mathcal{Q}^5$ (second-order cone of dimension~5).
 
-\subsection{From atoms to coefficients}
+The two paths can be contrasted side by side:
+\begin{itemize}
+\item \textbf{QP path:} $z = (x, t) \in \reals^5$,
+  $P = \diag(0_2, 2I_3)$,
+  equality constraint $t = Fx - g$.
+\item \textbf{SOC path:} $z = (x, s) \in \reals^3$,
+  $c = (0, 0, 1)$,
+  SOC constraint
+  $(s, Fx - g) \in \mathcal{Q}^4$.
+\end{itemize}
+The user writes the same four lines of code; \texttt{CVXPY} selects the
+appropriate canonicalization path depending on the target solver.
 
-The least-squares example illustrates a general pattern. Every \texttt{CVXPY} problem
-goes through the same pipeline, regardless of complexity.
+\paragraph{\texttt{JuMP}/\texttt{MOI} perspective}
+In \texttt{JuMP}, writing \texttt{@objective(model, Min, sum((F*x - g).\^{}2))}
+creates a \emph{scalar quadratic function}. \texttt{MOI} represents the
+objective as a (\texttt{ScalarQuadraticFunction}, \texttt{MinSense}) pair.
+If the solver accepts quadratic objectives (\eg \texttt{MOSEK},
+\texttt{Gurobi}), \texttt{MOI} passes the coefficients directly---no
+reformulation is needed. If the solver only supports conic constraints,
+\texttt{MOI}'s bridge system activates: a \emph{quadratic-to-SOC bridge}
+rewrites the quadratic objective into a second-order cone constraint,
+introducing an epigraph variable exactly as in the SOC path above. The same
+user code, with a different solver backend, triggers a different chain of
+bridges---all automatically.
 
-\paragraph{What is coefficient extraction?}
-Coefficient extraction is the process of transforming a high-level convex
-optimization formulation into the numerical arrays that a solver
-consumes---the matrices $P$, $\mathcal{A}$, vectors $c$, $\beta$, and cone
-specifications $\mathcal{K}$ of the standard
-form~\eqref{eq:cvxpy-standard}. This is the final, computational step of the
-canonicalization pipeline: once the problem has been rewritten into conic
-form, the system must traverse the resulting expression trees and assemble
-concrete numerical data.
+\subsection{A worked example: semidefinite program}
 
-\paragraph{The canonicalization pipeline}
-\texttt{CVXPY}'s full pipeline proceeds in three phases:
-\begin{enumerate}
-\item \textbf{DCP verification.} Each node in the expression tree is checked
-  against DCP composition rules. If the overall problem is verified as convex
-  (or concave for maximization), canonicalization proceeds; otherwise, \texttt{CVXPY}
-  raises an error.
+Consider the problem of finding the maximum eigenvalue of a symmetric matrix
+$C \in \symm^2$:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize} & -t \\
+\text{subject to} & t I - C \succeq 0,
+\end{array}
+\label{eq:maxeig}
+\end{equation}
+with concrete data
+\[
+C = \begin{pmatrix} 4 & 1 \\ 1 & 2 \end{pmatrix}.
+\]
+The optimal value is $-\lambdamax(C) \approx -4.24$.
+This example exercises the semidefinite cone $\symm^n_+$, which requires
+\emph{vectorization}---a step that reveals another dimension of solver-specific
+adaptation.
 
-\item \textbf{Atom canonicalization.} Each non-affine atom (\eg
-  \texttt{sum\_squares}, \texttt{norm}, \texttt{log}) is replaced by its
-  conic equivalent. This step introduces auxiliary variables and constraints,
-  producing a reformulated problem where every expression is affine and every
-  constraint has the form $\mathcal{A}z + \beta \in \mathcal{K}$.
+\paragraph{\texttt{CVXPY} path}
+In \texttt{CVXPY}:
+\begin{verbatim}
+import numpy as np, cvxpy as cp
+C = np.array([[4.0, 1.0], [1.0, 2.0]])
+t = cp.Variable()
+prob = cp.Problem(cp.Minimize(-t),
+                  [t * np.eye(2) - C >> 0])
+\end{verbatim}
+DCP verification is straightforward: the constraint $tI - C \succeq 0$ is an
+affine expression constrained to the positive semidefinite cone, which is a
+valid DCP constraint.
 
-\item \textbf{Coefficient assembly.} The system traverses the affine
-  expression trees that remain after atom canonicalization, evaluating each
-  linear operator node and assembling the results into sparse coefficient
-  matrices. Chapter~\ref{sec:Theme1} details how these linear operators are
-  represented and composed.
-\end{enumerate}
+Canonicalization maps the matrix constraint into the standard form
+$\mathcal{A}z + \beta \in \mathcal{K}$ with $\mathcal{K} = \symm^2_+$.
+The $2 \times 2$ matrix $tI - C$ is vectorized into a vector in $\reals^3$
+using \emph{scaled lower-triangular} (svec) ordering:
+\[
+\text{svec}(tI - C) =
+\begin{pmatrix} t - 4 \\ \sqrt{2}(0 - 1) \\ t - 2 \end{pmatrix}
+= \begin{pmatrix} t - 4 \\ -\sqrt{2} \\ t - 2 \end{pmatrix}.
+\]
+With $z = (t)$, the coefficient data is:
+\begin{equation}
+c = (-1), \quad
+\mathcal{A} = \begin{pmatrix} 1 \\ 0 \\ 1 \end{pmatrix}, \quad
+\beta = \begin{pmatrix} -4 \\ -\sqrt{2} \\ -2 \end{pmatrix},
+\label{eq:sdp-coefficients}
+\end{equation}
+with $\mathcal{K} = \symm^2_+$ (PSD cone of order~2, vectorized to
+dimension~3).
 
-\paragraph{Parametric compilation}
-When a problem contains \texttt{cp.Parameter} objects, \texttt{CVXPY} can separate
-structure from data. The sparsity pattern and cone types are determined once
-at compilation time; only the numerical values in $\mathcal{A}$ and $\beta$
-change when parameters are updated. This separation is what makes it possible
-to extract the coefficient computation as a standalone routine---a mapping
-from parameter values to solver-ready arrays---which is the core idea behind
-the C extractor developed in this thesis.
+\paragraph{\texttt{MOI}/\texttt{JuMP} path}
+\texttt{MOI} represents this constraint as a function-set pair
+(\texttt{VectorAffineFunction}, \texttt{PositiveSemidefiniteConeTriangle}).
+The key difference from \texttt{CVXPY} is that different solvers expect
+different PSD formats:
+\begin{itemize}
+\item \texttt{MOSEK} expects scaled lower-triangular (svec) ordering, with
+  off-diagonal entries scaled by $\sqrt{2}$.
+\item \texttt{SCS} expects the vectorized upper triangle without scaling.
+\end{itemize}
+\texttt{MOI} bridges automatically convert between these representations. The
+user writes one formulation; bridges adapt to each solver's expected format.
 
-\paragraph{Contrast with \texttt{MOI}}
-\texttt{MOI}'s bridge-based architecture achieves a similar end---translating high-level
-formulations into solver-ready data---but through a different mechanism.
-Rather than compiling to a single standard form, \texttt{MOI} applies targeted
-transformations that preserve constraint semantics as long as possible.
-This design favors flexibility and incrementality (constraints can be added or
-removed without recompiling the entire problem), while \texttt{CVXPY}'s design favors
-a clean compilation model where the entire problem is reduced to one
-uniform representation. The trade-off is architectural: \texttt{MOI}'s approach is
-more modular, while \texttt{CVXPY}'s approach makes the coefficient extraction step
-uniform and predictable, which is advantageous for code generation.
+\paragraph{Contrast}
+This mirrors the least-squares example: \texttt{MOI} preserves the semantic
+PSD constraint type and adapts per solver via bridges, while \texttt{CVXPY}
+flattens into one standard form with $\mathcal{K}$ containing a PSD cone.
+Both achieve solver-ready data through different architectural choices---the
+same principle of automatic adaptation, applied through different mechanisms.
 
-%%
-%% SUMMARY
-%%
-\section{Summary}
+\subsection{Expression trees and linear operators}
 
-The evolution from manual encoding to algebraic modeling languages reveals a consistent trend toward
-raising the abstraction level between modeler and solver. \texttt{JuMP}'s \texttt{MathOptInterface} extends this
-trajectory with function-set pairs, composable bridges, and incremental construction, offering a
-flexible architecture that preserves constraint semantics all the way to the
-solver. \texttt{CVXPY} takes a complementary path: by funneling all problems
-through a single conic standard form and providing DCP verification and first-class parameters, it
-enables a compilation model where the problem structure is determined once and only numerical data
-changes between solves. Neither system, however,
-provides a self-contained C implementation of the coefficient extraction pipeline. The ability to
-compile a \texttt{CVXPY} problem into a lightweight, dependency-free C module that maps parameters to
-solver-ready coefficient matrices is the contribution of this thesis.
+The worked examples above showed the \emph{result} of canonicalization---the
+solver-ready coefficient data. We now examine the \emph{representation} that
+modeling languages use internally to produce those coefficients.
+
+\texttt{CVXPY}'s canonicalization guarantees that all constraints and the
+objective function are affine functions of the variable~$x$. An affine
+function can be expressed as the composition of linear functions and addition
+of constants. \texttt{CVXPY} represents each affine function as an
+\emph{expression tree}, where each node is a linear function or \emph{atom}.
+
+\begin{figure}[h]
+\centering
+\scalebox{0.55}{
+\begin{tikzpicture}[
+    level distance=22mm,
+    level 1/.style={sibling distance=70mm},
+    level 2/.style={sibling distance=35mm},
+    level 3/.style={sibling distance=20mm},
+    every node/.style={circle, draw, minimum size=18mm, inner sep=0pt}
+]
+
+\node {$+$}
+  child {
+    node {\texttt{sum}}
+      child {
+          node {$-$}
+          child {
+            node {\texttt{matmul}}
+            child { node {\texttt{A}} }
+            child { node {\texttt{x}} }
+          }
+          child { node {\texttt{b}} }
+      }
+  }
+  child {
+    node {\texttt{matmul}}
+      child { node {\texttt{C}} }
+      child { node {\texttt{y}} }
+  };
+\end{tikzpicture}
+}
+\caption{Expression tree for the affine expression \texttt{sum(A @ x - b) + C @ y}.}
+\label{fig:expression-tree}
+\end{figure}
+
+\paragraph{Column-major vectorization}
+When a modeling language handles matrix variables, it must flatten them into
+vectors to build coefficient matrices. \texttt{CVXPY} uses column-major
+(Fortran) ordering: a matrix variable $X \in \reals^{m \times n}$ is
+vectorized as $(X_{11}, X_{21}, \ldots, X_{m1}, X_{12}, \ldots, X_{mn})^T
+\in \reals^{mn}$. This convention determines the column ordering in all
+coefficient matrices produced during canonicalization.
+
+\paragraph{Composition of linear operators}
+The power of the expression tree representation is that complex affine
+expressions reduce to compositions of simple operators. Consider the
+expression \texttt{cp.sum(A @ x + b)}, where $A \in \reals^{5 \times 3}$
+and $b \in \reals^5$:
+\begin{itemize}
+\item the matrix multiplication operator $A \in \reals^{5 \times 3}$,
+\item the vector addition operator $+b$ where $b \in \reals^5$,
+\item the sum operator $\ones^T \in \reals^{1 \times 5}$.
+\end{itemize}
+The constant $b$ is incorporated by augmenting the matrix with a column for
+the constant term. The resulting linear operator is
+$\ones^T [A \mid b] \in \reals^{1 \times 4}$:
+\[
+\underbrace{\begin{bmatrix}
+1 & 1 & 1 & 1 & 1
+\end{bmatrix}}_{\ones^T}
+\underbrace{\left[\begin{array}{ccc|c}
+A_{11} & A_{12} & A_{13} & b_1 \\
+A_{21} & A_{22} & A_{23} & b_2 \\
+A_{31} & A_{32} & A_{33} & b_3 \\
+A_{41} & A_{42} & A_{43} & b_4 \\
+A_{51} & A_{52} & A_{53} & b_5
+\end{array}\right]}_{[A \mid b]}
+=
+\begin{blockarray}{cccc}
+x_1 & x_2 & x_3 & 1 \\
+\begin{block}{[ccc|c]}
+\sum_i A_{i1} & \sum_i A_{i2} & \sum_i A_{i3} & \sum_i b_i \\
+\end{block}
+\end{blockarray}
+\]
+
+\paragraph{Multi-variable problems}
+When a problem involves multiple variables, \texttt{CVXPY} concatenates them
+into a single vector and each constraint produces one block-row of the
+global coefficient matrix. For example, with variables $x$ (scalar), $y \in
+\reals^3$, and $z \in \reals^2$, the combined variable vector is
+$[x, y_1, y_2, y_3, z_1, z_2]^T$ and constraints such as
+\texttt{8*x == 28}, \texttt{cp.sum(y) + 5*cp.sum(z) == 58}, and
+\texttt{z == 26} are each converted to the form $Ax + b = 0$ and stacked
+into a single coefficient matrix:
+\[
+\begin{blockarray}{ccccccc}
+x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
+\begin{block}{[cccccc|c]}
+8 & 0 & 0 & 0 & 0 & 0 & -28 \\
+0 & 1 & 1 & 1 & 5 & 5 & -58 \\
+0 & 0 & 0 & 0 & 1 & 0 & -26 \\
+0 & 0 & 0 & 0 & 0 & 1 & -26 \\
+\end{block}
+\end{blockarray}
+\]
+Each row corresponds to one scalar equality; the columns are determined by
+the global variable ordering and the final column holds the constant term.
+The next chapter examines how this coefficient matrix is actually computed.
+
