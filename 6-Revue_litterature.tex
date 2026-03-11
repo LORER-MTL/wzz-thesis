@@ -47,8 +47,7 @@ Modelers naturally think in terms of sets, indices, and algebraic expressions, n
 individual matrix entries. Matrix generators simplified the encoding process but still required
 modelers to translate their mathematical formulations into procedural code that explicitly
 constructs the coefficient matrices. This suggests that the gap between the modeler's
-representation of the problem and the solver's required format hadn't been resolved
-yet~\cite{fourer1978modern}.
+representation of the problem and the solver's required format remained unresolved~\cite{fourer1978modern}.
 
 \paragraph{Algebraic modeling languages}
 In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
@@ -63,7 +62,7 @@ widely used today).
 %%
 %% SECTION 2
 %%
-\section{Related work}
+\section{Modern Modeling Frameworks}
 
 In the 2000s, advances in convex optimization made it practical to solve a much broader class of
 problems efficiently. Solvers such as \texttt{MOSEK} \cite{mosekSolver, aps2025mosek} adopted \emph{conic
@@ -96,7 +95,7 @@ in Python, \texttt{CVXR}~\cite{Fu_2020} in R, and \texttt{Convex.jl}~\cite{udell
 \paragraph{Modern open-source modeling languages}
 At the time of writing, most modeling languages mentioned above continue to be
 developed and have active communities. In the remainder of the section, we focus
-our attention on two in particular: \texttt{JuMP} for the design ideas introduced by
+our attention on two in particular: \texttt{JuMP} for the design principles of
 \texttt{MathOptInterface}, and
 \texttt{CVXPY} because it is the modeling language on which the present work builds.
 
@@ -109,8 +108,6 @@ Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, \te
 moving away from the traditional approach of reducing every problem to a single standard form.
 
 \paragraph{Function-set pairs}
-%TODO potentially show the JuMP model code. But would need to understand better how
-%it interacts with the MOI layer.
 \texttt{MOI} represents each constraint as a \emph{function-set pair}: a mathematical function paired with
 the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as:
 \begin{lstlisting}
@@ -155,7 +152,8 @@ semidefinite reformulations that would otherwise be required.
 
 \texttt{CVXPY} is a domain-specific language for convex optimization embedded in Python.
 It was originally developed by Steven Diamond and Stephen Boyd at Stanford
-University~\cite{diamond2016cvxpy}. Akshay Agrawal later redesigned the
+University~\cite{diamond2016cvxpy}.
+Akshay Agrawal later redesigned the
 rewriting system in \texttt{CVXPY}~\cite{agrawal2018rewriting}, 
 which enabled support for other disciplined
 languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}. The
@@ -163,8 +161,7 @@ project has since grown through contributions from many other developers
 and solver interface maintainers.
 
 \paragraph{Reduction-based rewriting}
-%TODO we should define what canonicalization is before.
-\texttt{CVXPY}'s canonicalization is built on a system of
+\texttt{CVXPY} is built on a system of
 \emph{reductions}~\cite{agrawal2018rewriting}. A reduction is a pair of
 maps: a \emph{forward} map that transforms a problem into an equivalent one,
 and a \emph{backward} map that recovers a solution of the original problem
@@ -174,12 +171,12 @@ user's formulation into solver-ready data.
 
 The chain is solver-aware, so different solvers trigger different output
 formats. Historically, \texttt{CVXPY} distinguished two standard forms. For
-solvers that accept quadratic objectives (\eg \texttt{OSQP},
-\texttt{Gurobi}), the chain produces a quadratic program:
+solvers that accept quadratic objectives such as \texttt{OSQP} and
+\texttt{Gurobi}, the chain produces a quadratic program:
 \begin{equation}
 \begin{array}{ll}
 \text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
-\text{subject to} & Ax \leq b.
+\text{subject to} & l \leq Ax \leq u.
 \end{array}
 \label{eq:cvxpy-qp}
 \end{equation}
@@ -212,17 +209,17 @@ are:
 \item \textbf{DCP verification.} Confirm that the objective is convex and the
   constraints are valid by walking the expression tree and applying DCP
   composition rules.
-\item \textbf{Smith form.} Replace each non-affine subexpression by a fresh
+\item \textbf{Smith form.} Replace each subexpression with a new
   auxiliary variable linked to the original expression by an equality
-  constraint, flattening the tree so that every node involves a single atom
-  applied to affine arguments.
+  constraint.
 \item \textbf{Relaxed Smith form.} Relax the equalities introduced above to
   inequalities wherever the monotonicity of the objective guarantees that the
   inequality will be tight at optimality.
 \item \textbf{Matrix stuffing.} Assemble the resulting affine expressions into
   sparse coefficient matrices before passing them to a solver.
 \end{enumerate}
-The following section traces these steps on two concrete problems.
+The following section examines how these steps---and in particular the final
+matrix-stuffing step---are implemented in practice across different systems.
 
 \paragraph{Other reductions}
 \texttt{CVXPY} also ships reductions beyond the standard canonicalization
@@ -231,243 +228,127 @@ problem into a minimization, and the \texttt{Dgp2Dcp} reduction
 rewrites disciplined geometric programs into equivalent disciplined convex
 programs~\cite{agrawal2019dgp}.
 
-\section{Canonicalization and Coefficient Extraction}
+\section{The Coefficient Extraction Problem}
+\label{sec:extraction-problem}
 
-This section traces the canonicalization steps on two concrete problems---a
-least-squares problem and a semidefinite program---showing how both
-\texttt{CVXPY} and \texttt{JuMP}/\texttt{MOI} handle them.
+\subsection{Framing the problem}
 
-\subsection{Example: least squares}
+Solvers require problem data in a standard form: the constraint matrix~$A$,
+right-hand side~$b$, objective coefficients~$c$, and a cone
+description~$\mathcal{K}$. Modeling languages let users write natural
+mathematical expressions. Something must bridge the gap.
 
-Consider the least-squares problem
+This ``something'' involves two logically distinct operations:
+\begin{enumerate}
+\item \textbf{Reformulation.} Transform the problem into an equivalent
+  standard-form problem by introducing auxiliary variables, epigraph
+  constraints, and conic representations. The previous section described how
+  \texttt{CVXPY}'s reduction chain and \texttt{MOI}'s bridge system each
+  accomplish this.
+\item \textbf{Coefficient extraction.} Extract the numerical coefficient data
+  $(A, b, c)$ from the reformulated---now affine---expressions.
+\end{enumerate}
+The literature has largely treated these as a single pipeline. This section
+examines them separately, focusing on the second operation: how different
+systems actually compute the sparse matrices that solvers consume.
+
+\subsection{How existing systems handle coefficient extraction}
+
+To make the comparison concrete, we trace a single running example through
+each system: the least-squares problem
 \begin{equation}
 \begin{array}{ll}
 \text{minimize} & \|Fx - g\|_2^2,
 \end{array}
 \label{eq:least-squares}
 \end{equation}
-with concrete data
-\[
-F = \begin{pmatrix} 1 & 2 \\ 3 & 4 \\ 5 & 6 \end{pmatrix}, \quad
-g = \begin{pmatrix} 1 \\ 2 \\ 3 \end{pmatrix},
-\]
-so that $F \in \reals^{3 \times 2}$ and $g \in \reals^3$.
-This problem is small enough to trace every step of the canonicalization, yet
-it exercises the key mechanisms of both systems.
+with $F \in \reals^{3 \times 2}$ and $g \in \reals^3$.
 
-In \texttt{CVXPY}, the problem is written as:
-\begin{verbatim}
-import numpy as np, cvxpy as cp
-F = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
-g = np.array([1.0, 2.0, 3.0])
-x = cp.Variable(2)
-prob = cp.Problem(cp.Minimize(cp.sum_squares(F @ x - g)))
-\end{verbatim}
-\paragraph{DCP verification}
-\texttt{CVXPY} builds an expression tree with root \texttt{sum\_squares} and
-leaf $Fx - g$. The DCP rules classify \texttt{sum\_squares} as convex and its
-argument $Fx - g$ as affine; composing a convex function with an affine
-argument preserves convexity, so the problem is DCP-compliant.
+\subsubsection{The eager approach: \texttt{JuMP}/\texttt{MathOptInterface}}
+\label{sec:jump-trace}
 
-\paragraph{Smith form}
-The Smith-form reduction replaces the non-affine atom \texttt{sum\_squares}
-with a fresh auxiliary vector $t \in \reals^3$ and adds the equality
-constraint $t = Fx - g$, so the objective becomes $\|t\|_2^2$. What happens
-next depends on the target solver's capabilities.
+\texttt{JuMP}'s function-in-set architecture, described in
+Section~\ref{sec:RevLitt}, uses operator overloading to eagerly build
+coefficient representations. There is no expression tree and no deferred
+extraction phase---the coefficients \emph{are} the internal representation.
+The following trace shows how this works for the least-squares
+problem~\eqref{eq:least-squares}.
 
-\paragraph{Quadratic objective path}
-For a solver that natively accepts quadratic objectives, no relaxation is
-needed: the Smith-form equality $t = Fx - g$ is kept, and the quadratic
-objective $\|t\|_2^2 = t^T t$ is encoded directly in the $P$~matrix.
-\texttt{CVXPY}'s standard form~\eqref{eq:cvxpy-standard} includes a $P$~matrix
-precisely for this case.
-With $z = (x_1, x_2, t_1, t_2, t_3)$, the QP data is:
-\begin{equation}
-P = \begin{pmatrix}
-  0 & 0 & 0 & 0 & 0 \\
-  0 & 0 & 0 & 0 & 0 \\
-  0 & 0 & 2 & 0 & 0 \\
-  0 & 0 & 0 & 2 & 0 \\
-  0 & 0 & 0 & 0 & 2
-\end{pmatrix}, \quad
-c = 0,
-\label{eq:ls-qp-P}
-\end{equation}
-where $P = \diag(0_{2}, 2 I_3)$, with no need to form $F^T F$.
-The equality constraint $t - Fx = -g$ gives:
-\begin{equation}
-\begin{pmatrix}
-  -1 & -2 & 1 & 0 & 0 \\
-  -3 & -4 & 0 & 1 & 0 \\
-  -5 & -6 & 0 & 0 & 1
-\end{pmatrix} z = \begin{pmatrix} -1 \\ -2 \\ -3 \end{pmatrix}.
-\label{eq:ls-qp-eq}
-\end{equation}
-Direct support for quadratic objectives in conic solvers is a relatively recent
-development; solvers such as \texttt{MOSEK}~\cite{mosekSolver} and
-\texttt{Gurobi}~\cite{gurobi} now accept them natively.
-
-\paragraph{Epigraph reformulation (relaxed Smith form)}
-\label{sec:least-squares-epigraph}
-For solvers limited to conic constraints, such as
-\texttt{ECOS}~\cite{domahidi2013ecos}, the relaxed-Smith-form reduction
-applies. Because the objective is being minimized and $\|{\cdot}\|_2^2$ is
-convex, the equality $s = \|t\|_2^2$ can be relaxed to $\|t\|_2^2 \leq s$
---- at optimality the inequality is tight by monotonicity. The problem
-becomes $\text{minimize } s$ subject to $\|Fx - g\|_2^2 \leq s$, which is equivalent
-to the second-order cone constraint
-$\left\|\begin{smallmatrix} Fx - g \\ \frac{1}{2}(t - 1)
-\end{smallmatrix}\right\|_2 \leq \frac{1}{2}(t + 1)$.
-\texttt{CVXPY} then assembles the constraint into the form
-$\mathcal{A}z + \beta \in \mathcal{K}$ where $z = (x_1, x_2, t)$, and
-$\mathcal{K}$ is a second-order cone. The objective becomes $c^T z$ with
-$c = (0, 0, 1)$, selecting the epigraph variable.
-
-For our example, the solver-ready data is:
-\begin{equation}
-  c = \begin{pmatrix} 0 \\ 0 \\ 1 \end{pmatrix}, \quad
-  \mathcal{A} = \begin{pmatrix}
-    0 & 0 & \frac{1}{2} \\[2pt]
-    0 & 0 & -\frac{1}{2} \\[2pt]
-    1 & 2 & 0 \\
-    3 & 4 & 0 \\
-    5 & 6 & 0
-  \end{pmatrix}, \quad
-  \beta = \begin{pmatrix}
-    \frac{1}{2} \\[2pt] \frac{1}{2} \\[2pt] -1 \\ -2 \\ -3
-  \end{pmatrix},
-  \label{eq:ls-soc-coefficients}
-\end{equation}
-with $\mathcal{K} = \mathcal{Q}^5$ (second-order cone of dimension~5).
-
-The two paths can be contrasted side by side:
-\begin{itemize}
-\item \textbf{QP path:} $z = (x, t) \in \reals^5$,
-  $P = \diag(0_2, 2I_3)$,
-  equality constraint $t = Fx - g$.
-\item \textbf{SOC path:} $z = (x, s) \in \reals^3$,
-  $c = (0, 0, 1)$,
-  SOC constraint
-  $(s, Fx - g) \in \mathcal{Q}^4$.
-\end{itemize}
-The user writes the same four lines of code; \texttt{CVXPY} selects the
-appropriate canonicalization path depending on the target solver.
-
-\paragraph{\texttt{JuMP} formulation}
-In \texttt{JuMP}, the same problem is written as:
+\paragraph{Step 1: Macro expansion}
+The user writes:
 \begin{lstlisting}
 using JuMP, MosekTools
 F = [1 2; 3 4; 5 6]; g = [1, 2, 3]
 model = Model(Mosek.Optimizer)
 @variable(model, x[1:2])
 @objective(model, Min, sum((F * x - g).^2))
-optimize!(model)
 \end{lstlisting}
-\texttt{JuMP} builds a \texttt{ScalarQuadraticFunction} and passes it to the
-solver together with the objective sense. Because \texttt{MOSEK} natively
-supports quadratic objectives, \texttt{MOI} forwards the function directly---no
-decomposition into cones or auxiliary variables is required. If the solver did
-not support quadratic objectives, \texttt{MOI} would activate a bridge to
-rewrite the objective into a second-order cone constraint, performing the same
-epigraph reformulation shown above, but only for that single objective rather
-than the whole problem.
+The \texttt{@objective} macro expands \texttt{sum((F * x - g) .\^{} 2)}
+by evaluating each subexpression eagerly. The product \texttt{F * x} dispatches
+through Julia's linear algebra: each element $r_i = F_{i1} x_1 + F_{i2} x_2
+- g_i$ is built as a \texttt{ScalarAffineFunction} containing the
+coefficients~$F_{i1}$, $F_{i2}$ and the constant~$-g_i$ explicitly.
 
-\subsection{Example: semidefinite programming}
-
-Consider the problem of minimizing the largest eigenvalue of an
-affine matrix family:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize} & \lambdamax(A + xB),
-\end{array}
-\label{eq:lambdamax}
-\end{equation}
-with concrete data
+\paragraph{Step 2: Quadratic function construction}
+Squaring each residual $r_i^2$ triggers \texttt{JuMP}'s multiplication
+dispatch, which collects the quadratic terms into a
+\texttt{ScalarQuadraticFunction}:
 \[
-A = \begin{pmatrix} 4 & 1 \\ 1 & 2 \end{pmatrix}, \quad
-B = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix},
+  r_i^2 = F_{i1}^2 x_1^2 + 2 F_{i1} F_{i2}\, x_1 x_2
+  + F_{i2}^2 x_2^2 - 2g_i(F_{i1} x_1 + F_{i2} x_2) + g_i^2.
 \]
-and decision variable $x \in \reals$.
-This example exercises the semidefinite cone $\symm^n_+$, which requires
-\emph{vectorization}---a step that reveals another dimension of solver-specific
-adaptation.
+Summing over $i = 1, 2, 3$ accumulates all quadratic and linear terms into a
+single \texttt{ScalarQuadraticFunction} representing $\sum_i r_i^2$.
 
-\paragraph{\texttt{CVXPY} path}
-In \texttt{CVXPY}:
-\begin{verbatim}
-import numpy as np, cvxpy as cp
-A = np.array([[4.0, 1.0], [1.0, 2.0]])
-B = np.array([[1.0, 0.0], [0.0, -1.0]])
-x = cp.Variable()
-prob = cp.Problem(cp.Minimize(cp.lambda_max(A + x * B)))
-\end{verbatim}
-\paragraph{DCP verification and Smith form}
-The \texttt{lambda\_max} atom is convex and its argument $A + xB$ is affine,
-so DCP is satisfied. The Smith-form reduction introduces an epigraph
-variable~$t$ and the equality $t = \lambdamax(A + xB)$. The relaxed Smith
-form then replaces this with $\lambdamax(A + xB) \leq t$, which is
-equivalent to the linear matrix inequality $tI - (A + xB) \succeq 0$. The
-problem becomes:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & t \\
-\text{subject to} & tI - (A + xB) \succeq 0,
-\end{array}
-\label{eq:lambdamax-canon}
-\end{equation}
-which is a standard semidefinite program.
-
-Canonicalization maps the matrix constraint into the standard form
-$\mathcal{A}z + \beta \in \mathcal{K}$ with $\mathcal{K} = \symm^2_+$.
-The $2 \times 2$ matrix $tI - (A + xB)$ is vectorized into a vector in
-$\reals^3$ using \emph{scaled lower-triangular} (svec) ordering:
+\paragraph{Step 3: Implicit formation of $F^T\!F$}
+The algebra reveals that by expanding the sum of squares,
+\texttt{JuMP} has implicitly formed the Gram matrix:
 \[
-\text{svec}\!\bigl(tI - (A + xB)\bigr) =
-\begin{pmatrix} t - x - 4 \\ -\sqrt{2} \\ t + x - 2 \end{pmatrix}.
+  \|Fx - g\|_2^2 = x^T\! F^T\!F\, x - 2 g^T\!F\, x + g^T\!g.
 \]
-With $z = (x, t)$, the coefficient data is:
-\begin{equation}
-c = \begin{pmatrix} 0 \\ 1 \end{pmatrix}, \quad
-\mathcal{A} = \begin{pmatrix} -1 & 1 \\ 0 & 0 \\ 1 & 1 \end{pmatrix}, \quad
-\beta = \begin{pmatrix} -4 \\ -\sqrt{2} \\ -2 \end{pmatrix},
-\label{eq:sdp-coefficients}
-\end{equation}
-with $\mathcal{K} = \symm^2_+$ (PSD cone of order~2, vectorized to
-dimension~3).
+The quadratic coefficient matrix stored in the
+\texttt{ScalarQuadraticFunction} is $Q = F^T\!F$, the linear coefficient
+vector is $c = -2F^T\!g$, and the constant is $g^T\!g$. These are the
+actual numerical values, not symbolic expressions.
 
-\paragraph{\texttt{JuMP} formulation}
-In \texttt{JuMP}:
-\begin{lstlisting}
-using JuMP, MosekTools
-A = [4.0 1; 1 2]; B = [1.0 0; 0 -1]
-model = Model(Mosek.Optimizer)
-@variable(model, x)
-@variable(model, t)
-@objective(model, Min, t)
-@constraint(model, Symmetric(t * I - (A + x * B)) in PSDCone())
-optimize!(model)
-\end{lstlisting}
-\texttt{MOI} represents this constraint as a \texttt{VectorAffineFunction} in
-\texttt{PositiveSemidefiniteConeTriangle} and passes it to the solver directly.
-The vectorization convention, however, varies across solvers:
-\texttt{MOSEK} expects scaled lower-triangular (svec) ordering with off-diagonal
-entries scaled by $\sqrt{2}$, while \texttt{SCS} expects the upper triangle
-without scaling. \texttt{MOI} bridges automatically convert between these
-conventions at the individual-constraint level, whereas \texttt{CVXPY} commits to
-one svec convention when assembling the full problem and delegates any further
-adaptation to the solver interface layer.
+\paragraph{Step 4: Solver handoff}
+\texttt{MOSEK} natively supports quadratic objectives, so the
+\texttt{MOI} bridge system finds no transformation is needed. The
+\texttt{ScalarQuadraticFunction}---containing $Q$, $c$, and the
+constant---is forwarded directly to the solver's API.
 
-\subsection{Expression trees and linear operators}
+\paragraph{Consequence}
+Compositions are resolved at expression-build time. There is no separate
+extraction phase because extraction happens incrementally during
+construction. But this means structure is lost: $F^T\!F$ cannot be
+``un-formed.'' A conic solver that could accept $\|Fx - g\|_2$ directly as a
+second-order cone constraint would need to recover $F$ from $F^T\!F$, which
+is not possible in general. When such a reformulation is needed,
+\texttt{MOI} activates a bridge, but the bridge operates on the already-formed
+quadratic representation rather than the original affine expression.
 
-The worked examples above showed the \emph{result} of canonicalization---the
-solver-ready coefficient data. We now examine the \emph{representation} that
-modeling languages use internally to produce those coefficients.
+\subsubsection{The deferred approach: \texttt{CVXPY}}
+\label{sec:cvxpy-extraction}
 
-\texttt{CVXPY}'s canonicalization guarantees that all constraints and the
-objective function are affine functions of the variable~$x$. An affine
-function can be expressed as the composition of linear functions and addition
-of constants. \texttt{CVXPY} represents each affine function as an
-\emph{expression tree}, where each node is a linear function or \emph{atom}.
+\texttt{CVXPY} takes the opposite approach: it builds an expression tree of
+atoms and defers all numerical work until the solver is invoked. The pipeline
+has two phases:
+\begin{enumerate}
+\item DCP-based canonicalization rewrites the tree into conic standard
+  form (the reductions framework described in
+  Section~\ref{sec:RevLitt})~\cite{agrawal2018rewriting}.
+\item \emph{Matrix stuffing} walks the canonicalized tree and extracts
+  $(A, b, c)$ by composing sparse linear maps.
+\end{enumerate}
+This section focuses on the second phase: how \texttt{CVXPY} actually
+computes the coefficient matrices from the canonicalized expression tree.
+
+\paragraph{Expression trees}
+After canonicalization, \texttt{CVXPY} guarantees that all constraints and the
+objective are affine functions of the decision variable~$x$. Each affine
+function is represented as an \emph{expression tree} where every node is a
+linear operation (an \emph{atom}), as illustrated in
+Figure~\ref{fig:expression-tree}.
 
 \begin{figure}[h]
 \centering
@@ -486,7 +367,7 @@ of constants. \texttt{CVXPY} represents each affine function as an
       child {
           node {$-$}
           child {
-            node {\texttt{matmul}}
+            node {\texttt{mul}}
             child { node {\texttt{A}} }
             child { node {\texttt{x}} }
           }
@@ -494,82 +375,294 @@ of constants. \texttt{CVXPY} represents each affine function as an
       }
   }
   child {
-    node {\texttt{matmul}}
+    node {\texttt{mul}}
       child { node {\texttt{C}} }
       child { node {\texttt{y}} }
   };
 \end{tikzpicture}
 }
-\caption{Expression tree for the affine expression \texttt{sum(A @ x - b) + C @ y}.}
+\caption{Expression tree for the affine expression \texttt{sum(A @ x - b) + C @ y}.
+Each internal node is an affine atom; leaves are variables or constants.}
 \label{fig:expression-tree}
 \end{figure}
 
-\paragraph{Column-major vectorization}
-When a modeling language handles matrix variables, it must flatten them into
-vectors to build coefficient matrices. \texttt{CVXPY} uses column-major
-(Fortran) ordering: a matrix variable $X \in \reals^{m \times n}$ is
-vectorized as $(X_{11}, X_{21}, \ldots, X_{m1}, X_{12}, \ldots, X_{mn})^T
-\in \reals^{mn}$. This convention determines the column ordering in all
-coefficient matrices produced during canonicalization.
+When a problem involves matrix variables, \texttt{CVXPY} flattens them into
+vectors using column-major (Fortran) ordering: $X \in \reals^{m \times n}$
+becomes $(X_{11}, X_{21}, \ldots, X_{m1}, X_{12}, \ldots, X_{mn})^T \in
+\reals^{mn}$. This convention determines the column ordering in all
+coefficient matrices.
 
-\paragraph{Composition of linear operators}
-The power of the expression tree representation is that complex affine
-expressions reduce to compositions of simple operators. Consider the
-expression \texttt{cp.sum(A @ x + b)}, where $A \in \reals^{5 \times 3}$
-and $b \in \reals^5$:
+\paragraph{Matrix stuffing via sparse linear map composition}
+The extraction phase traverses each expression tree bottom-up. Each leaf node
+returns its coefficient matrix (the identity for a variable, a constant
+matrix for data), and each internal node composes its children's matrices by
+applying its own linear operator. The composition is carried out via sparse
+matrix multiplication.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    level distance=28mm,
+    level 1/.style={sibling distance=45mm},
+    every node/.style={circle, draw, minimum size=15mm, inner sep=0pt},
+    annotation/.style={rectangle, draw=none, font=\small, text=blue!70!black},
+    arrow/.style={->, thick, blue!70!black}
+]
+
+\node (sum) {\texttt{sum}}
+  child {
+    node (matmul) {\texttt{mul}}
+      child { node (A) {\texttt{A}} }
+      child { node (x) {\texttt{x}} }
+  };
+
+% Annotations showing accumulated coefficient matrices
+\node[annotation, left=12mm of x] (x-coef) {$I$};
+\draw[arrow] (x-coef) -- (x);
+
+\node[annotation, right=18mm of matmul] (matmul-coef) {$A \texttt{ @ } I = A$};
+\draw[arrow] (matmul-coef) -- (matmul);
+
+\node[annotation, right=18mm of sum] (sum-coef) {$\ones^T \texttt{ @ } A = \ones^T A$};
+\draw[arrow] (sum-coef) -- (sum);
+
+\end{tikzpicture}
+\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node
+composes its operator with the child's coefficient matrix via sparse matrix
+multiplication, producing a new intermediate matrix at every step.}
+\label{fig:sparse-matmul-tree}
+\end{figure}
+
+For example, in the expression \texttt{sum(A @ x)}, the traversal first
+returns $I$ at the variable node, multiplies by $A$ at the \texttt{mul}
+node to get $A$, then multiplies by $\ones^T$ at the \texttt{sum} node to
+get $\ones^T A$ (Figure~\ref{fig:sparse-matmul-tree}). Each step performs a
+sparse matrix--matrix product and allocates a new result matrix.
+
+\paragraph{Architecture of the extraction backends}
+Internally, \texttt{CVXPY} represents the canonicalized tree as a list of
+\texttt{LinOp} nodes. The extraction is handled by a
+\texttt{PythonCanonBackend} whose \texttt{build\_matrix} method walks each
+tree and returns a 2D sparse matrix. The central data structure is a
+\texttt{TensorView}: a dictionary mapping each variable to its coefficient
+block (a sparse matrix). A recursive function \texttt{process\_constraint}
+traverses the tree bottom-up, applying the appropriate linear operator at
+each node.
+
+The operations performed during this traversal fall into three categories:
+\begin{enumerate}
+\item \textbf{Pure index operations} (\texttt{reshape}, \texttt{transpose},
+  \texttt{index}, \texttt{promote}, \texttt{broadcast\_to}). These only remap
+  row indices---no arithmetic is performed. Essentially free in terms of
+  floating-point cost.
+\item \textbf{Elementwise operations} (\texttt{neg}, \texttt{mul\_elem},
+  \texttt{div}). These scale existing entries via elementwise multiplication.
+  The sparsity pattern is unchanged.
+\item \textbf{Matrix multiplication operations} (\texttt{mul}, \texttt{rmul},
+  \texttt{sum\_entries}, \texttt{conv}, \texttt{kron}). These build an explicit
+  operator matrix and apply it via general-purpose
+  \texttt{scipy.sparse @ scipy.sparse}. \emph{This is where the cost lives.}
+\end{enumerate}
+
+\paragraph{Detailed example: left multiplication}
+Consider the node \texttt{C @ X} where $C \in \reals^{m \times n}$ is a
+constant and $X \in \reals^{n \times p}$ is the child expression.
+The vectorised form is $\vect(CX) = (I_p \otimes C)\,\vect(X)$, so the
+backend builds the Kronecker product $I_p \otimes C$ via
+\texttt{sp.kron(sp.eye(p), C)}, applies it to the child's coefficient matrix
+via sparse matrix multiplication, and converts the result to CSR. This
+sequence involves three allocations per node: the Kronecker product, the
+matrix product, and the format conversion.
+
+\paragraph{What is already exploited}
+\texttt{CVXPY}'s implementation does exploit some structure. Index operations
+are handled as pure reindexing without forming operator matrices.
+Elementwise operations use \texttt{.multiply()} instead of matrix
+multiplication. The Kronecker structure is partially exploited by using
+\texttt{sp.kron(sp.eye(n), C)} rather than materialising a dense matrix.
+
+\paragraph{What is not exploited}
+Several opportunities for efficiency remain:
 \begin{itemize}
-\item the matrix multiplication operator $A \in \reals^{5 \times 3}$,
-\item the vector addition operator $+b$ where $b \in \reals^5$,
-\item the sum operator $\ones^T \in \reals^{1 \times 5}$.
+\item The Kronecker operator $I_p \otimes C$ is materialised as a general
+  sparse matrix, even though its block-diagonal structure means $C$ could be
+  applied independently to $p$ blocks.
+\item Sparsity patterns are discovered at runtime by \texttt{SciPy}'s sparse
+  arithmetic, even though they are fully determinable from the expression
+  structure at build time.
+\item No pre-allocation of the final output is possible, since each
+  intermediate product has an independently computed sparsity pattern.
+\item General-purpose sparse matrix multiplication is used regardless of the
+  known structure of the operator (diagonal scaling, row selection, Kronecker
+  with identity, \etc).
 \end{itemize}
-The constant $b$ is incorporated by augmenting the matrix with a column for
-the constant term. The resulting linear operator is
-$\ones^T [A \mid b] \in \reals^{1 \times 4}$:
-\[
-\underbrace{\begin{bmatrix}
-1 & 1 & 1 & 1 & 1
-\end{bmatrix}}_{\ones^T}
-\underbrace{\left[\begin{array}{ccc|c}
-A_{11} & A_{12} & A_{13} & b_1 \\
-A_{21} & A_{22} & A_{23} & b_2 \\
-A_{31} & A_{32} & A_{33} & b_3 \\
-A_{41} & A_{42} & A_{43} & b_4 \\
-A_{51} & A_{52} & A_{53} & b_5
-\end{array}\right]}_{[A \mid b]}
-=
-\begin{blockarray}{cccc}
-x_1 & x_2 & x_3 & 1 \\
-\begin{block}{[ccc|c]}
-\sum_i A_{i1} & \sum_i A_{i2} & \sum_i A_{i3} & \sum_i b_i \\
-\end{block}
-\end{blockarray}
-\]
+\texttt{CVXPY} ships two Python backends (SciPy-based and COO-based) as well
+as a legacy C++ backend (\texttt{cvxcore}) that special-cases eighteen
+\texttt{LinOp} types. All three share the same compositional architecture.
 
-\paragraph{Multi-variable problems}
-When a problem involves multiple variables, \texttt{CVXPY} concatenates them
-into a single vector and each constraint produces one block-row of the
-global coefficient matrix. For example, with variables $x$ (scalar), $y \in
-\reals^3$, and $z \in \reals^2$, the combined variable vector is
-$[x, y_1, y_2, y_3, z_1, z_2]^T$ and constraints such as
-\texttt{8*x == 28}, \texttt{cp.sum(y) + 5*cp.sum(z) == 58}, and
-\texttt{z == 26} are each converted to the form $Ax + b = 0$ and stacked
-into a single coefficient matrix:
-\[
-\begin{blockarray}{ccccccc}
-x & y_1 & y_2 & y_3 & z_1 & z_2 & 1 \\
-\begin{block}{[cccccc|c]}
-8 & 0 & 0 & 0 & 0 & 0 & -28 \\
-0 & 1 & 1 & 1 & 5 & 5 & -58 \\
-0 & 0 & 0 & 0 & 1 & 0 & -26 \\
-0 & 0 & 0 & 0 & 0 & 1 & -26 \\
-\end{block}
-\end{blockarray}
-\]
-Each row corresponds to one scalar equality; the columns are determined by
-the global variable ordering and the final column holds the constant term.
-The next chapter examines how this coefficient matrix is actually computed.
+\paragraph{Key advantage of the deferred approach}
+Unlike \texttt{JuMP}'s eager expansion, the deferred approach preserves the
+original problem structure through canonicalization. The expression
+\texttt{norm(F @ x - g)} never forms $F^T\!F$; the matrix~$F$ appears
+directly in the coefficient data. This structural preservation is what
+enables conic reformulations that exploit the original factors.
 
-\subsection{Parameters in optimization problems}
+\subsubsection{The symbolic-graph approach: \texttt{CasADi}}
+\label{sec:casadi-approach}
+
+\texttt{CasADi}~\cite{andersson2019} takes a third approach: it builds a
+symbolic expression DAG (directed acyclic graph) and extracts coefficient
+information via algorithmic differentiation on the graph. For an affine
+expression $f(x) = Ax + b$, the Jacobian $\partial f / \partial x = A$ is
+the coefficient matrix, so \texttt{CasADi}'s AD machinery directly yields
+the extraction result. \texttt{CasADi} exploits the graph structure to
+propagate sparsity symbolically before performing numerical evaluation,
+enabling efficient sparse Jacobian computation.
+
+This approach is relevant because it explicitly connects expression-graph
+processing to Jacobian computation, bridging the modeling and differentiation
+worlds. For linear subexpressions, AD-based Jacobian extraction and
+coefficient extraction are mathematically identical. However, \texttt{CasADi}
+is designed for general nonlinear problems and does not specialise its
+Jacobian computation for the purely affine case.
+
+\subsubsection{The structural-decomposition approach: \texttt{AMPL}}
+\label{sec:ampl-approach}
+
+\texttt{AMPL}~\cite{fourer1990ampl} historically pioneered systematic
+coefficient extraction. Its internal representation is an expression DAG in
+which each node is classified by polynomial degree: constant, linear,
+quadratic, or general nonlinear~\cite{gay2005writing}. Linear and quadratic
+coefficients are extracted directly from the classified nodes by walking the
+DAG, while the nonlinear remainder is retained as an evaluable subgraph for
+AD-based derivative computation. This structural decomposition allows
+\texttt{AMPL} to hand optimised coefficient data to linear and quadratic
+solvers while still supporting fully nonlinear formulations. However,
+\texttt{AMPL}'s extraction uses general-purpose operations for the linear
+and quadratic coefficients rather than structure-aware CSR transformations,
+and its closed-source commercial nature has limited community development of
+specialised alternatives.
+
+\subsection{Unifying abstraction: coefficient extraction as Jacobian computation}
+\label{sec:jacobian-abstraction}
+
+The previous subsections described four different systems, each with its own
+architecture. Despite their differences, a common mathematical structure
+underlies them all: extracting the coefficient matrix~$A$ from an affine
+expression $f(x) = Ax + b$ is equivalent to computing the Jacobian
+$\partial f / \partial x = A$. The Jacobian is constant (independent of~$x$),
+so one computation suffices for all~$x$.
+
+\subsubsection{Why this Jacobian is special}
+\label{sec:jacobian-special}
+
+Three properties distinguish this Jacobian from general Jacobian computation
+in numerical optimisation:
+\begin{enumerate}
+\item[(a)] \textbf{Constant.} Since $f$ is affine, $\partial f / \partial x =
+  A$ is independent of~$x$. One evaluation produces the exact result for all
+  inputs.
+\item[(b)] \textbf{Structurally determined sparsity.} The sparsity pattern
+  of~$A$ is fully determined at expression-build time, before any numerical
+  values are known. Each atom's contribution to the sparsity pattern depends
+  only on dimensions, index sets, and the topology of the expression tree.
+\item[(c)] \textbf{Structured local Jacobians.} The expression is a
+  composition of affine operations, each with a known, structured local
+  Jacobian. These are not arbitrary sparse matrices: they are typically row
+  scalings, permutations, block diagonals, row selections, or Kronecker
+  products with the identity.
+\end{enumerate}
+
+\subsubsection{Connection to the differentiation literature}
+\label{sec:diff-literature}
+
+The coefficient extraction problem can, in principle, be solved by any method
+that computes Jacobians. Existing approaches from the differentiation
+literature each address part of the problem but leave efficiency on the
+table:
+
+\paragraph{Symbolic differentiation}
+For an affine function $f(x) = Ax + b$, symbolic differentiation correctly
+yields $\partial f / \partial x = A$. However, computer algebra systems
+produce symbolic expressions, not the sparse numerical arrays that solvers
+require. The output format does not match the needed representation.
+
+\paragraph{Automatic differentiation}
+Forward- and reverse-mode AD compute Jacobian-vector products ($J v$) or
+vector-Jacobian products ($v^T J$), not the explicit Jacobian matrix.
+Extracting the full sparse matrix requires either $n$ forward passes (one per
+column) or $m$ reverse passes (one per row), or sparse compression via graph
+colouring~\cite{gebremedhin2005coloring}. This is general-purpose machinery
+applied to a special case where the answer is a constant matrix.
+
+\paragraph{Optimal Jacobian accumulation}
+Naumann~\cite{naumann2004optimal, naumann2008optimal} studies the problem of
+efficiently ordering the multiplication of Jacobian factors in a composition
+chain. This is directly relevant: when $f = f_k \circ \cdots \circ f_1$,
+the chain rule gives $J = J_k \cdots J_1$, and the multiplication order
+affects the total cost. However, the optimal Jacobian accumulation literature
+treats each $J_i$ as an arbitrary sparse matrix, without exploiting the
+structured forms (diagonal, permutation, block-diagonal) that arise in
+affine expression trees.
+
+\medskip
+\noindent
+None of these methods exploit all three special properties simultaneously:
+the constancy of the Jacobian, the a priori knowledge of the sparsity
+pattern, and the structured form of each local Jacobian.
+
+\subsubsection{The composition problem}
+\label{sec:composition-problem}
+
+When $f = f_k \circ \cdots \circ f_1$ is a composition of affine maps, the
+overall Jacobian is the matrix product $A_k \cdots A_1$ (the chain rule
+specialised to constant Jacobians). \texttt{CVXPY} computes this product
+during matrix stuffing via repeated sparse matrix--matrix multiplication.
+Two costs arise:
+
+\begin{enumerate}
+\item \textbf{Intermediate matrix allocation.} Each partial product
+  $A_k \cdots A_i$ is materialised as a new sparse matrix. For a tree of
+  depth~$d$, up to $d - 1$ intermediate matrices are created and discarded.
+\item \textbf{General-purpose sparse matrix multiplication.} Each
+  multiplication treats $A_i$ as an arbitrary sparse matrix, invoking
+  \texttt{SciPy}'s general \texttt{csr\_matrix @ csr\_matrix} routine. This
+  routine must discover the output sparsity pattern at runtime, allocate
+  output arrays, and sort indices---overhead that is unnecessary when the
+  structure of~$A_i$ is known in advance.
+\end{enumerate}
+
+\subsection{The research gap}
+\label{sec:research-gap}
+
+No existing implementation exploits all three properties of the affine
+Jacobian simultaneously:
+\begin{enumerate}
+\item[(a)] That local Jacobians are \textbf{structured operations} with
+  known forms (row scaling, selection, block-diagonal multiplication,
+  Kronecker with identity). Each composition step could be a direct
+  transformation of the sparse storage arrays---inserting rows, scaling
+  values, selecting entries---rather than a general-purpose sparse matrix
+  multiplication.
+\item[(b)] That the sparsity pattern of the output is \textbf{determinable
+  before numerical evaluation}. The entire output data structure---row
+  pointers, column indices, number of nonzeros---can be pre-allocated in a
+  single pass over the expression tree, before any floating-point arithmetic
+  occurs.
+\item[(c)] That \textbf{no intermediate matrices need to be materialised}.
+  The composition can be computed as a single pass that writes directly into
+  the pre-allocated output arrays, transforming index and value arrays
+  in-place rather than creating and discarding temporary matrices at each
+  node.
+\end{enumerate}
+This is the gap that the present work fills. The next chapter presents a
+coefficient extraction engine that exploits all three properties: it
+performs direct CSR array transformations for each atom, pre-computes
+sparsity patterns at build time, and writes results directly into
+pre-allocated output arrays without forming intermediate matrices.
+
+\section{Parameters in Optimization Problems}
+\label{sec:parameters}
 
 When a problem contains parameters, \texttt{CVXPY}
 compiles the structure once---sparsity pattern, cone types, variable
@@ -578,4 +671,9 @@ Subsequent solves only require evaluating this mapping and calling the solver,
 skipping the full canonicalization. The \texttt{cvxpygen}
 library~\cite{schaller2022cvxpygen} extends this by generating standalone C code
 embedding the compiled structure, enabling deployment without a Python runtime.
+
+This compile-once, evaluate-many paradigm naturally motivates a two-phase
+engine design: an initialisation phase that determines the sparsity structure,
+and an evaluation phase that fills in numerical values. The next chapter
+adopts precisely this separation.
 

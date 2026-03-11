@@ -1,83 +1,162 @@
-\Chapter{METHODOLOGY}\label{sec:Theme1}
+\Chapter{A LIGHTWEIGHT COEFFICIENT EXTRACTION ENGINE}\label{sec:Theme1}
+
+The previous chapter showed that coefficient extraction in modern modeling
+languages relies on generic sparse matrix multiplication---an approach that
+creates intermediate matrices at every node of the expression tree and
+treats each linear operator as an arbitrary sparse matrix. This chapter
+presents an alternative: a lightweight engine written in C that operates
+directly on CSR index arrays, avoiding intermediate matrices entirely.
 
 %%
-%% SECTION 1: Current approach and its limitations
+%% SECTION 1: Design principles
 %%
-\section{Current approach and its limitations}
+\section{Design principles}
+\label{sec:design-principles}
 
-The previous chapter described expression trees and how \texttt{CVXPY}
-represents affine functions as compositions of linear operators. This section
-examines how \texttt{CVXPY} currently evaluates those trees to produce
-solver-ready coefficient matrices, and why that approach has limitations that
-motivate the present work.
+The engine is guided by three principles, each addressing a specific
+inefficiency identified in the previous chapter's analysis of existing
+systems.
 
-\paragraph{Sparse matrix multiplication}
-\texttt{CVXPY}'s current approach is to convert the linear operator tree into
-a single sparse matrix. The tree is traversed in post-order: each leaf node
-returns its coefficient matrix, and each internal node composes its children's
-matrices via sparse matrix multiplication. For example, in the expression
-\texttt{sum(A @ x)}, the traversal first returns $A$ at the \texttt{matmul}
-node, then multiplies by $\ones^T$ at the \texttt{sum} node, yielding
-$\ones^T A$. The final matrix at the root is returned.
+\paragraph{Principle 1: Direct CSR rewriting}
+Every affine atom transforms the CSR arrays \texttt{(indptr, indices, data)}
+of the child's Jacobian directly, rather than forming an operator matrix and
+composing via sparse matrix multiplication. A \texttt{sum} node merges row
+pointers; a \texttt{left\_matmul} node applies block-diagonal dot products;
+an \texttt{index} node copies row segments. No intermediate sparse matrices
+are formed at any point.
 
-\begin{figure}[h]
-\centering
+\paragraph{Principle 2: Two-phase evaluation}
+Sparsity patterns are computed once at build time (\emph{init phase});
+numerical values are filled at solve time (\emph{eval phase}). The init
+phase traverses the expression tree bottom-up, determining the exact number
+of nonzeros in each Jacobian and allocating all arrays to their final sizes.
+The eval phase traverses the same tree, filling values into pre-allocated
+arrays without any allocation. This separation mirrors the compile-once,
+evaluate-many paradigm used in parametric optimisation
+(Section~\ref{sec:parameters}).
+
+\paragraph{Principle 3: Precomputed index mappings}
+Where rows must be combined, reordered, or selected, a mapping from source
+to destination positions is precomputed during init. At eval time, the
+operation reduces to a single $O(\texttt{nnz})$ scatter loop. The
+\texttt{sum} atom's \texttt{idx\_map} array (Section~\ref{sec:atom-sum}) is
+the prototypical example: rather than performing a sparse matrix
+multiplication $\ones^T J_x$ at every evaluation, the engine scatters the
+child's nonzeros through a fixed map.
+
+\subsection{Architecture overview}
+\label{sec:architecture}
+
+The engine represents each affine expression as a node in a directed acyclic
+graph (DAG). Each node is a C~\texttt{struct} containing:
+\begin{itemize}
+\item the node's \emph{type} (one of the fifteen atoms in
+  Table~\ref{tab:affine-atoms}),
+\item a pair of function pointers---\texttt{jacobian\_init} and
+  \texttt{eval\_jacobian}---that implement the two-phase protocol for that
+  atom type,
+\item pointers to child nodes (one or two, depending on the atom),
+\item the Jacobian in CSR format: arrays \texttt{indptr}, \texttt{indices},
+  and \texttt{data}, plus dimensions,
+\item atom-specific auxiliary data (index maps, constant matrices, axis
+  parameters).
+\end{itemize}
+Function-pointer dispatch on the node type provides polymorphism without
+virtual-table overhead.
+
+When two expressions share a common subexpression, the DAG representation
+allows the shared node's Jacobian to be computed once and reused by both
+parents. The engine tracks whether each node's Jacobian has been evaluated
+via a \texttt{jacobian\_called} flag, avoiding redundant computation.
+
+A \emph{problem container} groups the objective expression and all constraint
+expressions, manages the global variable ordering, and stores the final
+assembled coefficient matrices $(A, b, c)$ that are handed to the solver.
+
+%%
+%% SECTION 2: Worked example
+%%
+\section{Worked example: tracing coefficient extraction}
+\label{sec:worked-example}
+
+To build intuition before the atom-by-atom treatment, we trace the
+least-squares problem $\text{minimize } \|Fx - g\|_2^2$ from
+Chapter~\ref{sec:RevLitt} end-to-end through the engine.
+After canonicalization (DCP verification, Smith form, and relaxed Smith form
+as described in Section~\ref{sec:RevLitt}), the conic reformulation produces
+the equality constraint $t = Fx - g$ linking the auxiliary variable $t$ to
+the original expression. The engine must extract the coefficient matrix for
+this affine expression.
+
+\paragraph{Expression tree after canonicalization}
+The affine expression $Fx - g$ is represented as:
+\begin{center}
 \begin{tikzpicture}[
-    level distance=28mm,
-    level 1/.style={sibling distance=45mm},
-    every node/.style={circle, draw, minimum size=15mm, inner sep=0pt},
-    annotation/.style={rectangle, draw=none, font=\small, text=blue!70!black},
-    arrow/.style={->, thick, blue!70!black}
+    level distance=20mm,
+    level 1/.style={sibling distance=35mm},
+    every node/.style={circle, draw, minimum size=14mm, inner sep=0pt,
+                       font=\small}
 ]
-
-\node (sum) {\texttt{sum}}
+\node {\texttt{add}}
   child {
-    node (matmul) {\texttt{matmul}}
-      child { node (A) {\texttt{A}} }
-      child { node (x) {\texttt{x}} }
-  };
-
-% Annotations showing accumulated coefficient matrices
-\node[annotation, left=12mm of x] (x-coef) {$I$};
-\draw[arrow] (x-coef) -- (x);
-
-\node[annotation, right=18mm of matmul] (matmul-coef) {$A \texttt{ @ } I = A$};
-\draw[arrow] (matmul-coef) -- (matmul);
-
-\node[annotation, right=18mm of sum] (sum-coef) {$\ones^T \texttt{ @ } A = \ones^T A$};
-\draw[arrow] (sum-coef) -- (sum);
-
+    node {\texttt{mul}}
+      child { node {\texttt{F}} }
+      child { node {\texttt{x}} }
+  }
+  child { node {\texttt{neg($g$)}} };
 \end{tikzpicture}
-\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node
-composes its operator with the child's coefficient matrix via sparse matrix
-multiplication.}
-\label{fig:sparse-matmul-tree}
-\end{figure}
+\end{center}
+The \texttt{mul} node represents left multiplication by the constant matrix
+$F \in \reals^{3 \times 2}$, the \texttt{neg} node negates the constant
+$g \in \reals^{3}$, and the \texttt{add} node sums the two children.
 
-\paragraph{Limitations}
-This approach requires storing intermediate sparse matrices at each node
-during traversal. For deep expression trees or large problem dimensions, this
-leads to significant memory overhead. Additionally, sparse matrix
-multiplication is computationally expensive and may produce matrices with more
-nonzeros than the operands, further increasing memory and runtime costs.
+\paragraph{Init phase}
+The engine traverses the tree bottom-up, computing sparsity patterns:
+\begin{enumerate}
+\item \textbf{Variable leaf} ($x$): Jacobian is $I_2$ (identity), so
+  $\texttt{nnz} = 2$, \texttt{indptr} $= [0, 1, 2]$, \texttt{indices}
+  $= [0, 1]$.
+\item \textbf{\texttt{mul} node} ($F \cdot x$): The Jacobian with respect
+  to~$x$ is~$F$ itself, a $3 \times 2$ matrix.
+  Init determines $\texttt{nnz} = 6$ (all entries of $F$ are nonzero) and
+  allocates arrays of the corresponding sizes.
+\item \textbf{Constant leaf} ($-g$): No variable dependence, contributes
+  only to the constant column. Jacobian with respect to~$x$ is the
+  $3 \times 2$ zero matrix.
+\item \textbf{\texttt{add} node}: Takes the union of the children's sparsity
+  patterns. Since the constant $-g$ contributes no variable columns, the
+  output sparsity matches the \texttt{mul} child: $\texttt{nnz} = 6$.
+\end{enumerate}
+After init, every node's CSR arrays are allocated to their exact final sizes.
+No further allocation occurs.
 
-\paragraph{Motivation}
-These limitations are particularly acute in embedded and real-time settings
-where memory budgets are tight and latency requirements are strict. A method
-that avoids forming intermediate matrices entirely---by directly manipulating
-the sparse storage arrays---could achieve the same result with lower overhead.
-The remainder of this chapter develops such a method.
+\paragraph{Eval phase}
+A second bottom-up traversal fills in numerical values:
+\begin{enumerate}
+\item \textbf{Variable leaf}: \texttt{data} $= [1, 1]$ (identity values).
+\item \textbf{\texttt{mul} node}: Applies $F$ to the child's Jacobian via
+  block-diagonal dot products (Section~\ref{sec:atom-leftmatmul}), writing
+  the six entries of $F$ into \texttt{data}.
+\item \textbf{\texttt{add} node}: Sums corresponding entries. The constant
+  offset~$-g$ is added to the constant column of the output.
+\end{enumerate}
 
-%%
-%% SECTION 2: Architecture overview
-%%
-\section{Architecture overview}
-
-% TODO: Describe the SparseDiffEngine architecture:
-% - expr struct: polymorphic node with function-pointer dispatch
-% - DAG structure (shared subexpressions)
-% - problem container: objective + constraints + derivative storage
-% - Two-phase design: init (sparsity) -> eval (values only)
+\paragraph{Result}
+The root node's Jacobian is the coefficient matrix:
+\[
+\begin{blockarray}{ccc}
+x_1 & x_2 & 1 \\
+\begin{block}{[cc|c]}
+1 & 2 & -1 \\
+3 & 4 & -2 \\
+5 & 6 & -3 \\
+\end{block}
+\end{blockarray}
+= [F \mid {-g}],
+\]
+which matches the constraint $t - Fx = -g$ from the canonicalization.
+The entire computation involved no sparse matrix multiplication, no
+intermediate matrix allocation, and no runtime sparsity discovery.
 
 %%
 %% SECTION 3: Affine atoms
@@ -474,25 +553,105 @@ proportional to the total number of nonzeros in the selected rows. The
 operation involves no arithmetic---only \texttt{memcpy} calls---making it
 one of the cheapest atoms in the engine.
 
-%%
-%% SECTION 4: Optimizations
-%%
-\section{Optimizations}
+\medskip
+\noindent
+The preceding atom deep-dives illustrate the common pattern: each atom
+transforms the child's CSR arrays directly, using precomputed index
+mappings to eliminate runtime allocation and sparsity discovery. The
+remaining sections address the system-level concerns that complete the
+engine design.
 
-% TODO:
-% - Affine Jacobian caching: computed once, reused forever
-% - Sparsity-first design: init determines CSR structure, eval only fills values
-% - Precomputed index maps (sum's idx_map[])
+%%
+%% SECTION 4: Memory management
+%%
+\section{Memory management}
+\label{sec:memory-management}
+
+The two-phase design described in Section~\ref{sec:design-principles}
+enables tight control over memory allocation. This section describes the
+four techniques the engine uses to minimise memory overhead.
+
+\paragraph{Exact-size allocation}
+The init phase determines the exact number of nonzeros in every node's
+Jacobian before any numerical computation occurs. All \texttt{malloc} calls
+therefore allocate arrays of exactly the required size---no over-allocation,
+no reallocation, and no amortised-doubling strategies. For a tree with $N$
+nodes, init performs at most $3N$ allocations (one each for \texttt{indptr},
+\texttt{indices}, and \texttt{data} per node), and eval performs zero.
+
+\paragraph{Affine Jacobian caching}
+Nodes whose children are all constants (no variable or parameter
+dependence) produce Jacobians that never change. The engine detects such
+nodes during init and marks them as \emph{cached}: their
+\texttt{eval\_jacobian} is called once, and subsequent evaluations skip them
+entirely. In typical problems, constant subexpressions (data matrices,
+fixed offsets) constitute a significant fraction of the tree, so caching
+eliminates a proportional share of eval-time work.
+
+\paragraph{No Python object overhead}
+Because the engine is implemented in C, there is no \texttt{scipy.sparse}
+object creation, no Python reference counting or garbage collection pressure
+during evaluation, and no format-conversion copies between CSR and CSC.
+Each Jacobian is stored as three raw C arrays and a set of dimension
+fields. The total per-node overhead is a fixed-size \texttt{struct} plus
+the three arrays, compared to the multiple Python objects, type metadata,
+and indirection layers in a \texttt{scipy.sparse.csr\_matrix}.
+
+\paragraph{Memory footprint analysis}
+The engine's total memory consumption for a single expression tree is:
+\[
+  M = \sum_{i=1}^{N} \bigl(
+    (n_i + 1) \cdot \texttt{sizeof(int)}
+    + \texttt{nnz}_i \cdot (\texttt{sizeof(int)} + \texttt{sizeof(double)})
+  \bigr)
+  + N \cdot \texttt{sizeof(expr)},
+\]
+where $n_i$ is the number of rows and $\texttt{nnz}_i$ the number of
+nonzeros in node~$i$'s Jacobian. In \texttt{CVXPY}'s approach, each sparse
+matrix multiplication at node~$i$ temporarily allocates an additional result
+matrix, so the peak memory includes both the child's matrix and the product.
+The engine avoids this by writing directly into the pre-allocated output,
+so peak memory equals the sum above with no temporary overhead.
 
 %%
 %% SECTION 5: Parameter handling
 %%
 \section{Parameter handling}
+\label{sec:param-handling}
 
-% TODO:
-% - Direct re-traversal of expression trees on each parameter update
-%   (NOT the 3D tensor representation)
-% - register_params / update_params lifecycle
-% - Lazy refresh via jacobian_called flag
-% - Contrast with tensor approach: simpler, no extra storage,
-%   leverages the same tree-walking infrastructure
+When a problem contains parameters (symbolic placeholders whose numerical
+values change between solves), the engine must update the coefficient
+matrices without repeating the init phase. The two-phase architecture
+makes this straightforward.
+
+\paragraph{Parameter lifecycle}
+Parameters are registered during problem construction via
+\texttt{register\_params}, which associates each parameter node in the
+expression tree with a pointer to the user-supplied value storage. When
+the user updates parameter values and requests a new solve,
+\texttt{update\_params} copies the new values into the parameter nodes.
+
+\paragraph{Lazy refresh via \texttt{jacobian\_called}}
+Each node carries a Boolean flag \texttt{jacobian\_called}. After
+\texttt{update\_params} is called, the engine resets this flag on every node
+that depends (transitively) on a changed parameter. The subsequent eval
+traversal then recomputes only the affected nodes. Nodes that depend solely
+on constants retain their cached Jacobians and are not revisited.
+
+\paragraph{Direct re-traversal}
+Unlike \texttt{CVXPY}'s tensor-based parametric approach, which stores a
+three-dimensional structure mapping each parameter to its coefficient
+contributions, the engine simply re-traverses the expression tree with the
+new parameter values. This avoids the storage overhead of the tensor
+representation and reuses the same tree-walking infrastructure used for the
+initial evaluation.
+
+\paragraph{Contrast with the tensor approach}
+\texttt{CVXPY}'s \texttt{TensorView} maintains a dictionary of
+dictionaries: for each variable, for each parameter, a separate sparse
+matrix. For problems with $p$ parameters and $v$ variables, this multiplies
+the storage by up to $p \cdot v$. The engine's approach stores only one
+Jacobian per node regardless of the number of parameters. The trade-off is
+that a parameter update requires a full eval traversal rather than a single
+sparse matrix substitution, but since eval is dominated by $O(\texttt{nnz})$
+scatter and copy operations, this cost is modest in practice.
