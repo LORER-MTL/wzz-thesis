@@ -6,12 +6,7 @@
 % la réalisation. En fait, l'introduction présente au lecteur ce
 % qu'il doit savoir pour comprendre la recherche et en connaître la
 % portée.
-\Chapter{INTRODUCTION}\label{sec:Introduction}
-
-%%
-%%  CONCEPTS DE BASE / BASIC CONCEPTS
-%%
-\section{Historical background}
+\Chapter{INTRODUCTION AND BACKGROUND}\label{sec:Introduction}
 
 Solving an optimization problem on a computer requires translating the mathematical formulation
 into a data format that solvers can process. For linear programs, this means constructing the
@@ -47,7 +42,10 @@ the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
 \texttt{MaGen}~\cite{haverly1977magen}, \texttt{GAMMA}~\cite{sperry1977gamma}, and \texttt{DATAFORM}~\cite{ketron1975dataform}
 were among the first matrix generators which were used in various domains.
 
-\subsection{Algebraic modeling languages}
+%%
+%%  ALGEBRAIC MODELING LANGUAGES
+%%
+\section{Algebraic modeling languages}
 Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
 individual matrix entries. Matrix generators simplified the encoding process but still required
 modelers to translate their mathematical formulations into procedural code that explicitly
@@ -62,15 +60,14 @@ languages simplify verification (the model can be inspected as written), modific
 the problem does not require rewriting procedural code), and communication (the formulation serves
 as its own documentation).
 
-\subsubsection{\texttt{GAMS}}
+\subsection{\texttt{GAMS}}
 \texttt{GAMS} (General Algebraic Modeling System) was developed in the early 1980s at the World
 Bank by Alexander Meeraus, Anthony Brooke, and David Kendrick~\cite{brooke1988gams}. Designed
 originally for large-scale economic planning models, \texttt{GAMS} introduced a set-based
 algebraic notation that maps naturally to the indexed summations and constraints common in
 economics and operations research. It was one of the first systems to cleanly separate model
 logic from data, allowing the same formulation to be solved with different datasets.
-\texttt{AIMMS}~\cite{bisschop2006aimms} later extended this paradigm with a graphical
-development environment. The following snippet illustrates \texttt{GAMS}'s distinctive
+The following snippet illustrates \texttt{GAMS}'s distinctive
 set-based indexing on a transport problem:
 {\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
   breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
@@ -85,7 +82,7 @@ sup(i) .. sum(j, x(i,j)) =l= supply(i);
 \end{lstlisting}
 }
 
-\subsubsection{\texttt{AMPL}}
+\subsection{\texttt{AMPL}}
 \texttt{AMPL} (A Mathematical Programming Language) was created by Robert Fourer, David Gay,
 and Brian Kernighan at Bell Labs in the late 1980s~\cite{fourer1990ampl}. Its declarative syntax
 was designed to mirror standard mathematical notation as closely as possible, making formulations
@@ -102,6 +99,27 @@ param demand {PROD} >= 0;
 var x {PROD} >= 0;
 minimize cost: sum {p in PROD} c[p] * x[p];
 subject to meet_demand {p in PROD}: x[p] >= demand[p];
+\end{lstlisting}
+}
+
+\subsection{\texttt{AIMMS}}
+\texttt{AIMMS} (Advanced Interactive Multidimensional Modeling System) was developed by
+Johannes Bisschop at Paragon Decision Technology (now AIMMS
+B.V.)~\cite{bisschop2006aimms}. It extended the algebraic modeling paradigm pioneered by
+\texttt{GAMS} with a graphical integrated development environment, end-user interfaces,
+and a model-driven application framework aimed at deploying optimization models as
+decision-support applications. The following fragment illustrates \texttt{AIMMS}'s
+declaration-based syntax:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+Set Cities { Index: c }
+Parameter Demand { IndexDomain: c }
+Variable  Ship   { IndexDomain: (c1,c2), Range: nonnegative }
+Constraint MeetDemand {
+    IndexDomain: c,
+    Definition:  sum(c1, Ship(c1,c)) >= Demand(c)
+}
 \end{lstlisting}
 }
 
