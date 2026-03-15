@@ -68,9 +68,22 @@ Bank by Alexander Meeraus, Anthony Brooke, and David Kendrick~\cite{brooke1988ga
 originally for large-scale economic planning models, \texttt{GAMS} introduced a set-based
 algebraic notation that maps naturally to the indexed summations and constraints common in
 economics and operations research. It was one of the first systems to cleanly separate model
-logic from data, allowing the same formulation to be solved with different datasets. A third
-major standalone \ac{AML}, \texttt{AIMMS}~\cite{bisschop2006aimms}, later extended this paradigm
-with a graphical development environment and end-user interfaces.
+logic from data, allowing the same formulation to be solved with different datasets.
+\texttt{AIMMS}~\cite{bisschop2006aimms} later extended this paradigm with a graphical
+development environment. The following snippet illustrates \texttt{GAMS}'s distinctive
+set-based indexing on a transport problem:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+Sets  i  supply nodes / s1, s2 /
+      j  demand nodes / d1, d2, d3 /;
+Parameter  supply(i) / s1 50, s2 40 /
+           demand(j) / d1 30, d2 25, d3 35 /;
+Variable   x(i,j)  shipment quantities;
+Equation   sup(i)   enforce supply limits;
+sup(i) .. sum(j, x(i,j)) =l= supply(i);
+\end{lstlisting}
+}
 
 \subsubsection{\texttt{AMPL}}
 \texttt{AMPL} (A Mathematical Programming Language) was created by Robert Fourer, David Gay,
@@ -78,14 +91,19 @@ and Brian Kernighan at Bell Labs in the late 1980s~\cite{fourer1990ampl}. Its de
 was designed to mirror standard mathematical notation as closely as possible, making formulations
 directly readable by domain experts. A key design innovation is the strict separation of
 \emph{model} (the algebraic structure) from \emph{data} (the numerical values), allowing the
-same model file to be instantiated with different datasets.
-
-Internally, \texttt{AMPL}'s compiler parses the model into an expression \ac{DAG} and writes the
-result to a \texttt{.nl} file~\cite{gay2005writing}, a compact binary or text format that
-encodes the expression graph along with coefficient data for linear and quadratic subexpressions.
-Solvers read this file directly, so the \texttt{.nl} format serves as the interface between
-the modeling and solving layers. More recently, the \texttt{AMPL/mp} solver library has been
-open-sourced, broadening community access to \texttt{AMPL}'s reformulation machinery.
+same model file to be instantiated with different datasets. The compiler parses the model into
+an expression \ac{DAG} and writes a compact \texttt{.nl} file~\cite{gay2005writing} that
+solvers read directly. The following model fragment shows this separation:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+set PROD;
+param demand {PROD} >= 0;
+var x {PROD} >= 0;
+minimize cost: sum {p in PROD} c[p] * x[p];
+subject to meet_demand {p in PROD}: x[p] >= demand[p];
+\end{lstlisting}
+}
 
 %%
 %%  CONIC OPTIMIZATION
@@ -209,9 +227,16 @@ developed by Johan Löfberg starting in 2004. It overloads MATLAB's arithmetic o
 natural mathematical expressions. When the user calls \texttt{optimize()}, \texttt{YALMIP}
 analyses the expression graph to automatically detect the problem class---\ac{LP}, \ac{QP},
 \ac{SOCP}, \ac{SDP}, or mixed-integer variant---and dispatches to an appropriate solver.
-Unlike DCP-based tools, \texttt{YALMIP} does not enforce convexity rules at construction time;
-instead, it applies a broader set of reformulation strategies to handle problems that may not
-fit the DCP framework, at the cost of weaker compile-time guarantees.
+Unlike DCP-based tools, it does not enforce convexity rules at construction time, applying
+broader reformulation strategies at the cost of weaker compile-time guarantees.
+{\lstset{language=Matlab,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x = sdpvar(n, 1);
+F = [A*x <= b, x'*x <= 1];
+optimize(F, norm(x, 1));
+\end{lstlisting}
+}
 
 \subsection{\texttt{CasADi}}
 
@@ -220,10 +245,20 @@ optimal control, developed by Joel Andersson, Joris Gillis, and Moritz Diehl. Wr
 with Python and MATLAB interfaces, it builds a symbolic \ac{DAG} of the problem expressions
 and uses \ac{AD} to compute exact derivatives. Its primary targets are \ac{NLP} solvers such
 as \texttt{IPOPT}~\cite{wachter2006ipopt}, making it the tool of choice for model-predictive
-control and trajectory optimisation. For the special case of affine expressions, the Jacobian
+control and trajectory optimisation. For affine expressions the Jacobian
 $\partial f / \partial x = A$ is exactly the coefficient matrix, so \texttt{CasADi}'s AD
-machinery performs coefficient extraction as a by-product of its general differentiation
-pipeline.
+machinery performs coefficient extraction as a by-product.
+{\lstset{language=Python,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x = ca.SX.sym('x', n)
+obj = x.T @ Q @ x
+g   = A @ x - b
+solver = ca.nlpsol('s', 'ipopt',
+                   {'x': x, 'f': obj, 'g': g})
+sol = solver(lbg=0)
+\end{lstlisting}
+}
 
 %%
 %%  DISCIPLINED CONVEX PROGRAMMING
@@ -331,11 +366,21 @@ developed by Michael Grant and Stephen Boyd at Stanford University starting in
 2004~\cite{grant2004disciplined}. Embedded in MATLAB, it uses \texttt{cvx\_begin}/\texttt{cvx\_end}
 blocks to delimit a problem specification, within which MATLAB expressions are intercepted and
 checked against DCP rules. Grant's PhD thesis~\cite{grant2004disciplined} formalised the DCP
-ruleset and proved that any DCP-compliant problem can be reduced to conic standard form. On the
-solver side, \texttt{CVX} targets \texttt{SeDuMi} and \texttt{SDPT3} by default, producing the
-\ac{SDP} data structures these solvers expect. \texttt{CVX} demonstrated that a modeling language
-could both verify convexity and automate the reduction to solver-ready form, establishing the
-template that \texttt{CVXPY} and subsequent DCP tools follow.
+ruleset and proved that any DCP-compliant problem can be reduced to conic standard form,
+establishing the template that \texttt{CVXPY} and subsequent DCP tools follow. On the solver
+side, \texttt{CVX} targets \texttt{SeDuMi} and \texttt{SDPT3} by default, producing the
+\ac{SDP} data structures these solvers expect.
+{\lstset{language=Matlab,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+cvx_begin
+    variable x(n)
+    minimize( norm(A*x - b) )
+    subject to
+        x >= 0
+cvx_end
+\end{lstlisting}
+}
 
 \subsection{\texttt{CVXR}}
 
@@ -344,9 +389,16 @@ computing environment. Developed by Anqi Fu, Balasubramanian Narasimhan, and Ste
 it uses R's S4 object system to overload arithmetic operators on decision variables, building
 an expression tree that is checked against DCP rules. \texttt{CVXR} targets the same solver
 backends as \texttt{CVXPY} (including \texttt{SCS} and \texttt{MOSEK}) and follows the same
-canonicalization-then-extraction pipeline. Its existence in R demonstrates the portability of
-the DCP paradigm: the same composition rules and reduction strategy can be implemented across
-languages with different type systems and user communities.
+canonicalization-then-extraction pipeline.
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x <- Variable(n)
+prob <- Problem(Minimize(norm(A %*% x - b)),
+                list(x >= 0))
+result <- solve(prob)
+\end{lstlisting}
+}
 
 %%
 %% ELEMENTS DE LA PROBLEMATIQUE / PROBLEM STATEMENT
