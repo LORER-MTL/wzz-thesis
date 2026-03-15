@@ -6,232 +6,8 @@
 %%
 %% SECTION 1
 %%
-\section{Historical Background}
-
-Solving an optimization problem on a computer requires translating the mathematical formulation
-into a data format that solvers can process. For linear programs, this means constructing the
-constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$ that
-define the \emph{standard form},
-\begin{equation}
-\begin{array}{ll}
-\mbox{minimize} & c^T x \\
-\mbox{subject to} & Ax \leq b, \\
-& x \geq 0.
-\end{array}
-\end{equation}
-
-\paragraph{Manual encoding}
-In the early days of linear programming, analysts manually computed and encoded each coefficient
-onto punch cards. This process was tedious, error-prone and became impractical as linear
-programming found more and more applications in large-scale industrial
-problems~\cite{fourer1978modern}.
-
-\paragraph{MPS format}
-IBM's Mathematical Programming System (MPS) file format, developed in the 1960s, established a
-standardized file format for representing linear programs~\cite{ibm1976mpsx}. The MPS format uses
-fixed-width fields designed for 80-column punch cards, with sections for rows, columns, and
-coefficients. 
-William Orchard-Hays~\cite{orchard-hays1984history} provides a comprehensive history of these
-early mathematical programming systems, tracing their development from 1952 at RAND Corporation
-through their widespread adoption on mainframe computers in the late 1960s.
-
-\paragraph{Matrix generators}
-To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
-are procedural programs that compute the problem coefficients through explicit loops and output
-the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
-\texttt{MaGen}~\cite{haverly1977magen}, \texttt{GAMMA}~\cite{sperry1977gamma}, and \texttt{DATAFORM}~\cite{ketron1975dataform}
-were among the first matrix generators which were used in various domains.
-
-\paragraph{A modern approach}
-Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
-individual matrix entries. Matrix generators simplified the encoding process but still required
-modelers to translate their mathematical formulations into procedural code that explicitly
-constructs the coefficient matrices. This suggests that the gap between the modeler's
-representation of the problem and the solver's required format remained unresolved~\cite{fourer1978modern}.
-
-\paragraph{Algebraic modeling languages}
-In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
-accept problem descriptions that closely mirror standard mathematical
-notation~\cite{fourer1983modeling}. By working directly with the modeler's representation, these
-languages simplify verification (the model can be inspected as written), modification (changing
-the problem does not require rewriting procedural code), and communication (the formulation serves
-as its own documentation). In the late 1980s and early 1990s, commercial algebraic modeling
-systems such as \texttt{GAMS}~\cite{brooke1988gams}, \texttt{AIMMS}~\cite{bisschop2006aimms} and
-\texttt{AMPL}~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
-widely used today).
-%%
-%% SECTION 2
-%%
-\section{Modern Modeling Frameworks}
-
-In the 2000s, advances in convex optimization made it practical to solve a much broader class of
-problems efficiently. Solvers such as \texttt{MOSEK} \cite{mosekSolver, aps2025mosek} adopted \emph{conic
-optimization} as their interface---a structured subclass of convex optimization with the standard
-form~\cite{boyd2004convex}:
-\begin{equation}
-      \begin{array}{ll}
-        \text{minimize} & c^T x\\
-        \text{subject to} &  b-Ax \in \mathcal K,\\
-      \end{array}
-      \label{eq:conic}
-\end{equation}
-where $\mathcal{K}$ is a closed convex cone. This formulation generalizes linear programming
-(when $\mathcal{K}$ is the nonnegative orthant) to include second-order cone programs
-(SOCPs), semidefinite programs (SDPs) and more.
-
-\paragraph{Embedded modeling languages}
-In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
-programming languages (in contrast with standalone systems like \texttt{AMPL} and \texttt{GAMS}). Examples include
-\texttt{YALMIP}~\cite{lofberg2004yalmip} in MATLAB, \texttt{Pyomo}~\cite{hart2011pyomo} in Python,
-\texttt{JuMP}~\cite{dunning2017jump} in Julia, and \texttt{CasADi}~\cite{andersson2019} in C++.
-
-\paragraph{Disciplined convex programming}
-In addition, there are also \emph{domain specific languages} that implement
-\emph{disciplined convex programming} (DCP), a set of composition rules that can automatically
-verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
-These include \texttt{CVX}~\cite{cvx} in MATLAB, \texttt{CVXPY}~\cite{diamond2016cvxpy, agrawal2018rewriting}
-in Python, \texttt{CVXR}~\cite{Fu_2020} in R, and \texttt{Convex.jl}~\cite{udell2014convex} in Julia.
-
-\paragraph{Modern open-source modeling languages}
-At the time of writing, most modeling languages mentioned above continue to be
-developed and have active communities. In the remainder of the section, we focus
-our attention on two in particular: \texttt{JuMP} for the design principles of
-\texttt{MathOptInterface}, and
-\texttt{CVXPY} because it is the modeling language on which the present work builds.
-
-\subsection{\texttt{JuMP} and \texttt{MathOptInterface}}
-
-\texttt{JuMP} is an algebraic modeling language embedded in Julia, originally developed in 2012 by
-Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
-Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, \texttt{MathOptInterface}
-(\texttt{MOI})~\cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
-moving away from the traditional approach of reducing every problem to a single standard form.
-
-\paragraph{Function-set pairs}
-\texttt{MOI} represents each constraint as a \emph{function-set pair}: a mathematical function paired with
-the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as:
-\begin{lstlisting}
-MOI.add_constraint(model,
-    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(a, x), 0.0),
-    MOI.LessThan(b))
-\end{lstlisting}
-while a second-order cone constraint $t \geq \|x\|_2$ with $n$ variables uses:
-\begin{lstlisting}
-MOI.add_constraint(model,
-    MOI.VectorOfVariables([t; x]),
-    MOI.SecondOrderCone(n)).
-\end{lstlisting}
-\texttt{MOI} therefore preserves the semantic type of each constraint, so solvers that
-accept specific constraint types can receive them directly without unnecessary reformulations.
-
-\paragraph{Bridges}
-When a solver does not natively support a particular function-set pair, \texttt{MOI} applies
-a \emph{bridge}, a composable transformation to an equivalent representation the solver accepts.
-The bridge system maintains a directed hyper-graph of known transformations and finds the shortest
-path to the target solver's supported types, so adding a reformulation once benefits all solvers.
-
-\paragraph{Incremental problem construction}
-Some solvers, notably \texttt{MOSEK}~\cite{mosekSolver} and
-\texttt{HiGHS}~\cite{huangfu2018highs}, allow constraints to be added one at a time
-rather than requiring the entire problem to be submitted at once. \texttt{MOI} supports
-this incremental mode natively, so algorithms that iteratively refine a formulation, such
-as cutting-plane or branch-and-cut methods, can append a constraint between successive
-solves without reconstructing the full problem data.
-
-\paragraph{Extensibility}
-\texttt{MOI} makes it straightforward to support new constraint types: a solver declares
-which function-set pairs it handles, and new bridges can be registered at any time.
-\texttt{Hypatia}~\cite{coey2022solving, coey2022performance}, for example, natively implements over twenty
-specialized cones, including the log-determinant cone, the relative-entropy cone, and
-several spectral matrix cones, all of which are first-class \texttt{MOI} set types.
-\texttt{SCS}~\cite{ocpb:16, odonoghue:21} has similarly begun adding native spectral
-matrix cone support~\cite{cederbergspectralmatrixcones}, bypassing the large
-semidefinite reformulations that would otherwise be required.
-
-\subsection{\texttt{CVXPY}}
-
-\texttt{CVXPY} is a domain-specific language for convex optimization embedded in Python.
-It was originally developed by Steven Diamond and Stephen Boyd at Stanford
-University~\cite{diamond2016cvxpy}.
-Akshay Agrawal later redesigned the
-rewriting system in \texttt{CVXPY}~\cite{agrawal2018rewriting}, 
-which enabled support for other disciplined
-languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}. The
-project has since grown through contributions from many other developers
-and solver interface maintainers.
-
-\paragraph{Reduction-based rewriting}
-\texttt{CVXPY} is built on a system of
-\emph{reductions}~\cite{agrawal2018rewriting}. A reduction is a pair of
-maps: a \emph{forward} map that transforms a problem into an equivalent one,
-and a \emph{backward} map that recovers a solution of the original problem
-from a solution of the transformed one. Reductions compose: the output of one
-becomes the input of the next, forming a \emph{chain} that converts the
-user's formulation into solver-ready data.
-
-The chain is solver-aware, so different solvers trigger different output
-formats. Historically, \texttt{CVXPY} distinguished two standard forms. For
-solvers that accept quadratic objectives such as \texttt{OSQP} and
-\texttt{Gurobi}, the chain produces a quadratic program:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
-\text{subject to} & l \leq Ax \leq u.
-\end{array}
-\label{eq:cvxpy-qp}
-\end{equation}
-For purely conic solvers (\eg \texttt{SCS}), the chain instead produces:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & c^T x \\
-\text{subject to} & Ax + b \in \mathcal{K}.
-\end{array}
-\label{eq:cvxpy-conic}
-\end{equation}
-More recently, a unified interface that combines a quadratic objective with
-conic constraints has become the central solver interface in \texttt{CVXPY}:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
-\text{subject to} & Ax + b \in \mathcal{K}.
-\end{array}
-\label{eq:cvxpy-standard}
-\end{equation}
-In all cases the final output is a set of sparse coefficient matrices; what
-changes between reduction paths is the \emph{structure} of those matrices.
-
-\paragraph{Common reductions}
-The individual reductions that compose a canonicalization chain are well
-established in the convex optimization literature.
-Chu~et~al.~\cite{chu2013codegen} give a concise exposition; the main steps
-are:
-\begin{enumerate}
-\item \textbf{DCP verification.} Confirm that the objective is convex and the
-  constraints are valid by walking the expression tree and applying DCP
-  composition rules.
-\item \textbf{Smith form.} Replace each subexpression with a new
-  auxiliary variable linked to the original expression by an equality
-  constraint.
-\item \textbf{Relaxed Smith form.} Relax the equalities introduced above to
-  inequalities wherever the monotonicity of the objective guarantees that the
-  inequality will be tight at optimality.
-\item \textbf{Matrix stuffing.} Assemble the resulting affine expressions into
-  sparse coefficient matrices before passing them to a solver.
-\end{enumerate}
-The following section examines how these steps---and in particular the final
-matrix-stuffing step---are implemented in practice across different systems.
-
-\paragraph{Other reductions}
-\texttt{CVXPY} also ships reductions beyond the standard canonicalization
-chain. For example, a \emph{flip-objective} reduction converts a maximization
-problem into a minimization, and the \texttt{Dgp2Dcp} reduction
-rewrites disciplined geometric programs into equivalent disciplined convex
-programs~\cite{agrawal2019dgp}.
-
-\section{The Coefficient Extraction Problem}
+\section{A Survey of Extraction Methods}
 \label{sec:extraction-problem}
-
-\subsection{Framing the problem}
 
 Solvers require problem data in a standard form: the constraint matrix~$A$,
 right-hand side~$b$, objective coefficients~$c$, and a cone
@@ -242,17 +18,15 @@ This ``something'' involves two logically distinct operations:
 \begin{enumerate}
 \item \textbf{Reformulation.} Transform the problem into an equivalent
   standard-form problem by introducing auxiliary variables, epigraph
-  constraints, and conic representations. The previous section described how
-  \texttt{CVXPY}'s reduction chain and \texttt{MOI}'s bridge system each
-  accomplish this.
+  constraints, and conic representations. Chapter~\ref{sec:Introduction}
+  described how \texttt{CVXPY}'s reduction chain and \texttt{MOI}'s bridge
+  system each accomplish this.
 \item \textbf{Coefficient extraction.} Extract the numerical coefficient data
   $(A, b, c)$ from the reformulated---now affine---expressions.
 \end{enumerate}
 The literature has largely treated these as a single pipeline. This section
 examines them separately, focusing on the second operation: how different
 systems actually compute the sparse matrices that solvers consume.
-
-\subsection{How existing systems handle coefficient extraction}
 
 To make the comparison concrete, we trace a single running example through
 each system: the least-squares problem
@@ -264,11 +38,11 @@ each system: the least-squares problem
 \end{equation}
 with $F \in \reals^{3 \times 2}$ and $g \in \reals^3$.
 
-\subsubsection{The eager approach: \texttt{JuMP}/\texttt{MathOptInterface}}
+\subsection{\texttt{JuMP} and \texttt{MathOptInterface}}
 \label{sec:jump-trace}
 
 \texttt{JuMP}'s function-in-set architecture, described in
-Section~\ref{sec:RevLitt}, uses operator overloading to eagerly build
+Chapter~\ref{sec:Introduction}, uses operator overloading to eagerly build
 coefficient representations. There is no expression tree and no deferred
 extraction phase---the coefficients \emph{are} the internal representation.
 The following trace shows how this works for the least-squares
@@ -327,7 +101,7 @@ is not possible in general. When such a reformulation is needed,
 \texttt{MOI} activates a bridge, but the bridge operates on the already-formed
 quadratic representation rather than the original affine expression.
 
-\subsubsection{The deferred approach: \texttt{CVXPY}}
+\subsection{\texttt{CVXPY}}
 \label{sec:cvxpy-extraction}
 
 \texttt{CVXPY} takes the opposite approach: it builds an expression tree of
@@ -336,7 +110,7 @@ has two phases:
 \begin{enumerate}
 \item DCP-based canonicalization rewrites the tree into conic standard
   form (the reductions framework described in
-  Section~\ref{sec:RevLitt})~\cite{agrawal2018rewriting}.
+  Chapter~\ref{sec:Introduction})~\cite{agrawal2018rewriting}.
 \item \emph{Matrix stuffing} walks the canonicalized tree and extracts
   $(A, b, c)$ by composing sparse linear maps.
 \end{enumerate}
@@ -507,26 +281,31 @@ original problem structure through canonicalization. The expression
 directly in the coefficient data. This structural preservation is what
 enables conic reformulations that exploit the original factors.
 
-\subsubsection{The symbolic-graph approach: \texttt{CasADi}}
+\subsection{\texttt{CasADi}}
 \label{sec:casadi-approach}
 
-\texttt{CasADi}~\cite{andersson2019} takes a third approach: it builds a
-symbolic expression DAG (directed acyclic graph) and extracts coefficient
-information via algorithmic differentiation on the graph. For an affine
-expression $f(x) = Ax + b$, the Jacobian $\partial f / \partial x = A$ is
-the coefficient matrix, so \texttt{CasADi}'s AD machinery directly yields
-the extraction result. \texttt{CasADi} exploits the graph structure to
-propagate sparsity symbolically before performing numerical evaluation,
-enabling efficient sparse Jacobian computation.
+\texttt{CasADi}~\cite{andersson2019} takes a third approach. It is
+fundamentally a nonlinear programming tool: its primary targets are NLP
+solvers such as \texttt{IPOPT}~\cite{wachter2006ipopt}, with conic
+capabilities (QP, SOCP) available through external backends but not as
+a central design focus. Internally, \texttt{CasADi} builds a symbolic
+expression DAG and extracts derivative information via algorithmic
+differentiation on the graph. For an affine expression $f(x) = Ax + b$,
+the Jacobian $\partial f / \partial x = A$ is the coefficient matrix, so
+AD-based Jacobian extraction and coefficient extraction are mathematically
+identical. Crucially, \texttt{CasADi} propagates sparsity symbolically
+through the graph before performing numerical evaluation, making it a
+genuine hybrid of symbolic and AD-based approaches.
 
-This approach is relevant because it explicitly connects expression-graph
-processing to Jacobian computation, bridging the modeling and differentiation
-worlds. For linear subexpressions, AD-based Jacobian extraction and
-coefficient extraction are mathematically identical. However, \texttt{CasADi}
-is designed for general nonlinear problems and does not specialise its
-Jacobian computation for the purely affine case.
+This is relevant because it explicitly connects expression-graph processing
+to Jacobian computation, bridging the modeling and differentiation worlds.
+However, since \texttt{CasADi} is designed for general nonlinear problems,
+it applies the same AD machinery to affine expressions as to nonlinear
+ones---it has no specialised fast path for the purely affine case where the
+Jacobian is constant and the coefficients could be read off structurally
+rather than computed through differentiation.
 
-\subsubsection{The structural-decomposition approach: \texttt{AMPL}}
+\subsection{\texttt{AMPL}}
 \label{sec:ampl-approach}
 
 \texttt{AMPL}~\cite{fourer1990ampl} historically pioneered systematic
@@ -543,7 +322,10 @@ and quadratic coefficients rather than structure-aware CSR transformations,
 and its closed-source commercial nature has limited community development of
 specialised alternatives.
 
-\subsection{Unifying abstraction: coefficient extraction as Jacobian computation}
+%%
+%% SECTION 3
+%%
+\section{A Jacobian Interpretation}
 \label{sec:jacobian-abstraction}
 
 The previous subsections described four different systems, each with its own
@@ -553,7 +335,7 @@ expression $f(x) = Ax + b$ is equivalent to computing the Jacobian
 $\partial f / \partial x = A$. The Jacobian is constant (independent of~$x$),
 so one computation suffices for all~$x$.
 
-\subsubsection{Why this Jacobian is special}
+\subsection{Properties of the affine Jacobian}
 \label{sec:jacobian-special}
 
 Three properties distinguish this Jacobian from general Jacobian computation
@@ -573,7 +355,7 @@ in numerical optimisation:
   products with the identity.
 \end{enumerate}
 
-\subsubsection{Connection to the differentiation literature}
+\subsection{Connections to automatic differentiation}
 \label{sec:diff-literature}
 
 The coefficient extraction problem can, in principle, be solved by any method
@@ -611,7 +393,7 @@ None of these methods exploit all three special properties simultaneously:
 the constancy of the Jacobian, the a priori knowledge of the sparsity
 pattern, and the structured form of each local Jacobian.
 
-\subsubsection{The composition problem}
+\subsection{The sparse composition bottleneck}
 \label{sec:composition-problem}
 
 When $f = f_k \circ \cdots \circ f_1$ is a composition of affine maps, the
@@ -632,7 +414,10 @@ Two costs arise:
   structure of~$A_i$ is known in advance.
 \end{enumerate}
 
-\subsection{The research gap}
+%%
+%% SECTION 4
+%%
+\section{Summary and Research Gap}
 \label{sec:research-gap}
 
 No existing implementation exploits all three properties of the affine
@@ -661,6 +446,9 @@ performs direct CSR array transformations for each atom, pre-computes
 sparsity patterns at build time, and writes results directly into
 pre-allocated output arrays without forming intermediate matrices.
 
+%%
+%% SECTION 5
+%%
 \section{Parameters in Optimization Problems}
 \label{sec:parameters}
 
