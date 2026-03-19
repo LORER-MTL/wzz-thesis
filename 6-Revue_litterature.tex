@@ -6,6 +6,418 @@
 %%
 %% SECTION 1
 %%
+
+Solving an optimization problem on a computer requires translating the mathematical formulation
+into a data format that solvers can process. For linear programs, this means constructing the
+constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$ that
+define the \emph{standard form},
+\begin{equation}
+\begin{array}{ll}
+\mbox{minimize} & c^T x \\
+\mbox{subject to} & Ax \leq b, \\
+& x \geq 0.
+\end{array}
+\end{equation}
+
+\paragraph{Manual encoding}
+In the early days of linear programming, analysts manually computed and encoded each coefficient
+onto punch cards. This process was tedious, error-prone and became impractical as linear
+programming found more and more applications in large-scale industrial
+problems~\cite{fourer1978modern}.
+
+\paragraph{MPS format}
+IBM's Mathematical Programming System (MPS) file format, developed in the 1960s, established a
+standardized file format for representing linear programs~\cite{ibm1976mpsx}. The MPS format uses
+fixed-width fields designed for 80-column punch cards, with sections for rows, columns, and
+coefficients.
+William Orchard-Hays~\cite{orchard-hays1984history} provides a comprehensive history of these
+early mathematical programming systems, tracing their development from 1952 at RAND Corporation
+through their widespread adoption on mainframe computers in the late 1960s.
+
+\paragraph{Matrix generators}
+To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
+are procedural programs that compute the problem coefficients through explicit loops and output
+the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
+\texttt{MaGen}~\cite{haverly1977magen}, \texttt{GAMMA}~\cite{sperry1977gamma}, and \texttt{DATAFORM}~\cite{ketron1975dataform}
+were among the first matrix generators which were used in various domains.
+
+%%
+%%  ALGEBRAIC MODELING LANGUAGES
+%%
+\section{Algebraic modeling languages}
+Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
+individual matrix entries. Matrix generators simplified the encoding process but still required
+modelers to translate their mathematical formulations into procedural code that explicitly
+constructs the coefficient matrices. This suggests that the gap between the modeler's
+representation of the problem and the solver's required format remained
+unresolved~\cite{fourer1978modern}.
+
+In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
+accept problem descriptions that closely mirror standard mathematical
+notation~\cite{fourer1983modeling}. By working directly with the modeler's representation, these
+languages simplify verification (the model can be inspected as written), modification (changing
+the problem does not require rewriting procedural code), and communication (the formulation serves
+as its own documentation).
+
+% take one example and show how it is written in all languages
+\subsection{\texttt{GAMS}}
+\texttt{GAMS} (General Algebraic Modeling System) was developed in the early 1980s at the World
+Bank by Alexander Meeraus, Anthony Brooke, and David Kendrick~\cite{brooke1988gams}. Designed
+originally for large-scale economic planning models, \texttt{GAMS} introduced a set-based
+algebraic notation that maps naturally to the indexed summations and constraints common in
+economics and operations research. It was one of the first systems to cleanly separate model
+logic from data, allowing the same formulation to be solved with different datasets.
+The following snippet illustrates \texttt{GAMS}'s distinctive
+set-based indexing on a transport problem:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+Sets  i  supply nodes / s1, s2 /
+      j  demand nodes / d1, d2, d3 /;
+Parameter  supply(i) / s1 50, s2 40 /
+           demand(j) / d1 30, d2 25, d3 35 /;
+Variable   x(i,j)  shipment quantities;
+Equation   sup(i)   enforce supply limits;
+sup(i) .. sum(j, x(i,j)) =l= supply(i);
+\end{lstlisting}
+}
+
+\subsection{\texttt{AMPL}}
+\texttt{AMPL} (A Mathematical Programming Language) was created by Robert Fourer, David Gay,
+and Brian Kernighan at Bell Labs in the late 1980s~\cite{fourer1990ampl}. Its declarative syntax
+was designed to mirror standard mathematical notation as closely as possible, making formulations
+directly readable by domain experts. A key design innovation is the strict separation of
+\emph{model} (the algebraic structure) from \emph{data} (the numerical values), allowing the
+same model file to be instantiated with different datasets. The compiler parses the model into
+an expression \ac{DAG} and writes a compact \texttt{.nl} file~\cite{gay2005writing} that
+solvers read directly. The following model fragment shows this separation:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+set PROD;
+param demand {PROD} >= 0;
+var x {PROD} >= 0;
+minimize cost: sum {p in PROD} c[p] * x[p];
+subject to meet_demand {p in PROD}: x[p] >= demand[p];
+\end{lstlisting}
+}
+
+\subsection{\texttt{AIMMS}}
+\texttt{AIMMS} (Advanced Interactive Multidimensional Modeling System) was developed by
+Johannes Bisschop at Paragon Decision Technology (now AIMMS
+B.V.)~\cite{bisschop2006aimms}. It extended the algebraic modeling paradigm pioneered by
+\texttt{GAMS} with a graphical integrated development environment, end-user interfaces,
+and a model-driven application framework aimed at deploying optimization models as
+decision-support applications. The following fragment illustrates \texttt{AIMMS}'s
+declaration-based syntax:
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+Set Cities { Index: c }
+Parameter Demand { IndexDomain: c }
+Variable  Ship   { IndexDomain: (c1,c2), Range: nonnegative }
+Constraint MeetDemand {
+    IndexDomain: c,
+    Definition:  sum(c1, Ship(c1,c)) >= Demand(c)
+}
+\end{lstlisting}
+}
+
+%%
+%%  CONIC OPTIMIZATION
+%%
+\section{Conic optimization}
+
+\paragraph{Interior-point methods}
+The theoretical foundations for conic optimization were laid in the 1980s and 1990s.
+Karmarkar's 1984 polynomial-time interior-point algorithm for linear
+programming~\cite{karmarkar1984new} demonstrated that \acp{LP} could be solved in
+polynomial time by traversing the interior of the feasible region rather than its vertices.
+Nesterov and Nemirovski~\cite{nesterov1994interior} generalised interior-point methods to
+\emph{self-concordant barrier} functions over convex cones, establishing polynomial complexity
+for a broad class of conic programs including \acp{SOCP} and \acp{SDP}. These results made
+conic solvers practical: once the problem data is in the right form, the solver provides
+worst-case polynomial-time guarantees.
+
+\paragraph{Cone types}
+A \emph{conic program} optimises a linear objective over the intersection of an affine subspace
+with a convex cone~$\mathcal{K}$~\cite{boyd2004convex}:
+\begin{equation}
+      \begin{array}{ll}
+        \text{minimize} & c^T x\\
+        \text{subject to} &  b-Ax \in \mathcal K,\\
+      \end{array}
+      \label{eq:conic}
+\end{equation}
+where $\mathcal{K}$ is a closed convex cone. The choice of~$\mathcal{K}$ determines the
+problem class:
+\begin{itemize}
+\item \textbf{Nonnegative orthant} $\reals_+^n = \{x \in \reals^n : x_i \geq 0\}$
+  --- recovers linear programming.
+\item \textbf{Second-order cone} $\mathcal{Q}^n = \{(t, x) \in \reals \times \reals^{n-1}
+  : \|x\|_2 \leq t\}$ --- \acp{SOCP}, which capture quadratic constraints and
+  $\ell_2$-norm objectives.
+\item \textbf{Positive semidefinite cone} $\symm_+^n = \{X \in \symm^n : X \succeq 0\}$
+  --- \acp{SDP}, widely used in control, combinatorial optimisation, and signal processing.
+\item \textbf{Exponential and power cones} --- extend the framework to entropy, geometric,
+  and $p$-norm problems.
+\end{itemize}
+
+\paragraph{Conic form as a universal solver interface}
+Modern conic solvers such as \texttt{MOSEK}~\cite{mosekSolver, aps2025mosek} and
+\texttt{SCS}~\cite{ocpb:16, odonoghue:21} accept problem data directly in the form
+$(A, b, c, \mathcal{K})$. This creates a clean separation of concerns: the \emph{modeling
+layer} is responsible for reformulating the user's problem and extracting the coefficient
+matrices, while the \emph{solver} handles the numerical optimisation. This thesis focuses
+on the modeling-layer side of the interface---specifically, how the sparse matrices $A$, $b$,
+and $c$ are extracted from a canonicalized expression tree.
+
+%%
+%%  EMBEDDED MODELING LANGUAGES
+%%
+\section{Embedded modeling languages}
+
+In the late 2000s and early 2010s, a new generation of modeling languages emerged that are
+\emph{embedded} in general-purpose programming languages, in contrast with standalone systems
+like \texttt{AMPL} and \texttt{GAMS}. By living inside a host language, these tools inherit its
+full ecosystem: data manipulation libraries, scripting capabilities, testing frameworks, and
+package managers. Examples include \texttt{YALMIP}~\cite{lofberg2004yalmip} in MATLAB,
+\texttt{Pyomo}~\cite{hart2011pyomo} in Python, \texttt{CasADi}~\cite{andersson2019} in C++,
+and \texttt{JuMP}~\cite{dunning2017jump} in Julia. This section presents \texttt{JuMP} in
+most detail, as its \texttt{MathOptInterface} abstraction illustrates a particularly
+influential design for communicating structured problem data to solvers, then briefly covers
+\texttt{YALMIP} and \texttt{CasADi}.
+
+\subsection{\texttt{JuMP} and \texttt{MathOptInterface}}
+
+\texttt{JuMP} is an algebraic modeling language embedded in Julia, originally developed in 2012 by
+Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
+Center~\cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, \texttt{MathOptInterface}
+(\texttt{MOI})~\cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
+moving away from the traditional approach of reducing every problem to a single standard form.
+
+\paragraph{Function-set pairs}
+\texttt{MOI} represents each constraint as a \emph{function-set pair}: a mathematical function paired with
+the set it must belong to. For example, a linear inequality $a^T x \leq b$ is encoded as:
+\begin{lstlisting}
+MOI.add_constraint(model,
+    MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(a, x), 0.0),
+    MOI.LessThan(b))
+\end{lstlisting}
+while a second-order cone constraint $t \geq \|x\|_2$ with $n$ variables uses:
+\begin{lstlisting}
+MOI.add_constraint(model,
+    MOI.VectorOfVariables([t; x]),
+    MOI.SecondOrderCone(n)).
+\end{lstlisting}
+\texttt{MOI} therefore preserves the semantic type of each constraint, so solvers that
+accept specific constraint types can receive them directly without unnecessary reformulations.
+
+\paragraph{Bridges}
+When a solver does not natively support a particular function-set pair, \texttt{MOI} applies
+a \emph{bridge}, a composable transformation to an equivalent representation the solver accepts.
+The bridge system maintains a directed hyper-graph of known transformations and finds the shortest
+path to the target solver's supported types, so adding a reformulation once benefits all solvers.
+
+\paragraph{Incremental problem construction}
+Some solvers, notably \texttt{MOSEK}~\cite{mosekSolver} and
+\texttt{HiGHS}~\cite{huangfu2018highs}, allow constraints to be added one at a time
+rather than requiring the entire problem to be submitted at once. \texttt{MOI} supports
+this incremental mode natively, so algorithms that iteratively refine a formulation, such
+as cutting-plane or branch-and-cut methods, can append a constraint between successive
+solves without reconstructing the full problem data.
+
+\paragraph{Extensibility}
+\texttt{MOI} makes it straightforward to support new constraint types: a solver declares
+which function-set pairs it handles, and new bridges can be registered at any time.
+\texttt{Hypatia}~\cite{coey2022solving, coey2022performance}, for example, natively implements over twenty
+specialized cones, including the log-determinant cone, the relative-entropy cone, and
+several spectral matrix cones, all of which are first-class \texttt{MOI} set types.
+\texttt{SCS}~\cite{ocpb:16, odonoghue:21} has similarly begun adding native spectral
+matrix cone support~\cite{cederbergspectralmatrixcones}, bypassing the large
+semidefinite reformulations that would otherwise be required.
+
+\subsection{\texttt{YALMIP}}
+
+\texttt{YALMIP}~\cite{lofberg2004yalmip} is an optimization modeling toolbox for MATLAB,
+developed by Johan Löfberg starting in 2004. It overloads MATLAB's arithmetic operators on
+\emph{sdpvar} decision-variable objects, building an internal expression graph as the user writes
+natural mathematical expressions. When the user calls \texttt{optimize()}, \texttt{YALMIP}
+analyses the expression graph to automatically detect the problem class---\ac{LP}, \ac{QP},
+\ac{SOCP}, \ac{SDP}, or mixed-integer variant---and dispatches to an appropriate solver.
+Unlike DCP-based tools, it does not enforce convexity rules at construction time, applying
+broader reformulation strategies at the cost of weaker compile-time guarantees.
+{\lstset{language=Matlab,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x = sdpvar(n, 1);
+F = [A*x <= b, x'*x <= 1];
+optimize(F, norm(x, 1));
+\end{lstlisting}
+}
+
+\subsection{\texttt{CasADi}}
+
+\texttt{CasADi}~\cite{andersson2019} is an open-source framework for nonlinear optimisation and
+optimal control, developed by Joel Andersson, Joris Gillis, and Moritz Diehl. Written in C++
+with Python and MATLAB interfaces, it builds a symbolic \ac{DAG} of the problem expressions
+and uses \ac{AD} to compute exact derivatives. Its primary targets are \ac{NLP} solvers such
+as \texttt{IPOPT}~\cite{wachter2006ipopt}, making it the tool of choice for model-predictive
+control and trajectory optimisation. For affine expressions the Jacobian
+$\partial f / \partial x = A$ is exactly the coefficient matrix, so \texttt{CasADi}'s AD
+machinery performs coefficient extraction as a by-product.
+{\lstset{language=Python,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x = ca.SX.sym('x', n)
+obj = x.T @ Q @ x
+g   = A @ x - b
+solver = ca.nlpsol('s', 'ipopt',
+                   {'x': x, 'f': obj, 'g': g})
+sol = solver(lbg=0)
+\end{lstlisting}
+}
+
+%%
+%%  DISCIPLINED CONVEX PROGRAMMING
+%%
+\section{Disciplined convex programming}
+
+A complementary approach to embedded modeling is \emph{disciplined convex programming}
+(DCP)~\cite{grant2004disciplined, grant2006disciplined}, a set of composition rules that can
+automatically verify convexity. A DCP language restricts how atoms (elementary functions with
+known curvature) may be combined: for example, a convex function of an affine expression is
+convex, but a convex function of a convex expression is not necessarily so. By enforcing these
+rules at problem construction time, DCP languages guarantee that any accepted formulation is
+convex and can be reduced to conic standard form. Implementations include
+\texttt{CVX}~\cite{cvx} in MATLAB, \texttt{CVXPY}~\cite{diamond2016cvxpy, agrawal2018rewriting}
+in Python, \texttt{CVXR}~\cite{Fu_2020} in R, and
+\texttt{Convex.jl}~\cite{udell2014convex} in Julia. This section presents \texttt{CVXPY} in
+most detail, as it is the system targeted by the coefficient extraction engine developed in
+this thesis, then briefly covers \texttt{CVX} and \texttt{CVXR}.
+\texttt{Convex.jl} follows a similar DCP pipeline in Julia and is not discussed further.
+
+\subsection{\texttt{CVXPY}}
+
+\texttt{CVXPY} is a domain-specific language for convex optimization embedded in Python.
+It was originally developed by Steven Diamond and Stephen Boyd at Stanford
+University~\cite{diamond2016cvxpy}.
+Akshay Agrawal later redesigned the
+rewriting system in \texttt{CVXPY}~\cite{agrawal2018rewriting},
+which enabled support for other disciplined
+languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}. The
+project has since grown through contributions from many other developers
+and solver interface maintainers.
+
+\paragraph{Reduction-based rewriting}
+\texttt{CVXPY} is built on a system of
+\emph{reductions}~\cite{agrawal2018rewriting}. A reduction is a pair of
+maps: a \emph{forward} map that transforms a problem into an equivalent one,
+and a \emph{backward} map that recovers a solution of the original problem
+from a solution of the transformed one. Reductions compose: the output of one
+becomes the input of the next, forming a \emph{chain} that converts the
+user's formulation into solver-ready data.
+
+The chain is solver-aware, so different solvers trigger different output
+formats. Historically, \texttt{CVXPY} distinguished two standard forms. For
+solvers that accept quadratic objectives such as \texttt{OSQP} and
+\texttt{Gurobi}, the chain produces a quadratic program:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
+\text{subject to} & l \leq Ax \leq u.
+\end{array}
+\label{eq:cvxpy-qp}
+\end{equation}
+For purely conic solvers (\eg \texttt{SCS}), the chain instead produces:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize}   & c^T x \\
+\text{subject to} & Ax + b \in \mathcal{K}.
+\end{array}
+\label{eq:cvxpy-conic}
+\end{equation}
+More recently, a unified interface that combines a quadratic objective with
+conic constraints has become the central solver interface in \texttt{CVXPY}:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
+\text{subject to} & Ax + b \in \mathcal{K}.
+\end{array}
+\label{eq:cvxpy-standard}
+\end{equation}
+In all cases the final output is a set of sparse coefficient matrices; what
+changes between reduction paths is the \emph{structure} of those matrices.
+
+\paragraph{Common reductions}
+The individual reductions that compose a canonicalization chain are well
+established in the convex optimization literature.
+Chu~et~al.~\cite{chu2013codegen} give a concise exposition; the main steps
+are:
+\begin{enumerate}
+\item \textbf{DCP verification.} Confirm that the objective is convex and the
+  constraints are valid by walking the expression tree and applying DCP
+  composition rules.
+\item \textbf{Smith form.} Replace each subexpression with a new
+  auxiliary variable linked to the original expression by an equality
+  constraint.
+\item \textbf{Relaxed Smith form.} Relax the equalities introduced above to
+  inequalities wherever the monotonicity of the objective guarantees that the
+  inequality will be tight at optimality.
+\item \textbf{Matrix stuffing.} Assemble the resulting affine expressions into
+  sparse coefficient matrices before passing them to a solver.
+\end{enumerate}
+The following chapter examines how these steps---and in particular the final
+matrix-stuffing step---are implemented in practice across different systems.
+
+\paragraph{Other reductions}
+\texttt{CVXPY} also ships reductions beyond the standard canonicalization
+chain. For example, a \emph{flip-objective} reduction converts a maximization
+problem into a minimization, and the \texttt{Dgp2Dcp} reduction
+rewrites disciplined geometric programs into equivalent disciplined convex
+programs~\cite{agrawal2019dgp}.
+
+\subsection{\texttt{CVX}}
+
+\texttt{CVX}~\cite{cvx} is the original implementation of disciplined convex programming,
+developed by Michael Grant and Stephen Boyd at Stanford University starting in
+2004~\cite{grant2004disciplined}. Embedded in MATLAB, it uses \texttt{cvx\_begin}/\texttt{cvx\_end}
+blocks to delimit a problem specification, within which MATLAB expressions are intercepted and
+checked against DCP rules. Grant's PhD thesis~\cite{grant2004disciplined} formalised the DCP
+ruleset and proved that any DCP-compliant problem can be reduced to conic standard form,
+establishing the template that \texttt{CVXPY} and subsequent DCP tools follow. On the solver
+side, \texttt{CVX} targets \texttt{SeDuMi} and \texttt{SDPT3} by default, producing the
+\ac{SDP} data structures these solvers expect.
+{\lstset{language=Matlab,basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+cvx_begin
+    variable x(n)
+    minimize( norm(A*x - b) )
+    subject to
+        x >= 0
+cvx_end
+\end{lstlisting}
+}
+
+\subsection{\texttt{CVXR}}
+
+\texttt{CVXR}~\cite{Fu_2020} brings disciplined convex programming to the R statistical
+computing environment. Developed by Anqi Fu, Balasubramanian Narasimhan, and Stephen Boyd,
+it uses R's S4 object system to overload arithmetic operators on decision variables, building
+an expression tree that is checked against DCP rules. \texttt{CVXR} targets the same solver
+backends as \texttt{CVXPY} (including \texttt{SCS} and \texttt{MOSEK}) and follows the same
+canonicalization-then-extraction pipeline.
+{\lstset{language={},basicstyle=\small\ttfamily,columns=flexible,
+  breaklines=true,frame=none,xleftmargin=1em,xrightmargin=1em,numbers=none}
+\begin{lstlisting}
+x <- Variable(n)
+prob <- Problem(Minimize(norm(A %*% x - b)),
+                list(x >= 0))
+result <- solve(prob)
+\end{lstlisting}
+}
+
 \section{A Survey of Extraction Methods}
 \label{sec:extraction-problem}
 
@@ -464,4 +876,39 @@ This compile-once, evaluate-many paradigm naturally motivates a two-phase
 engine design: an initialisation phase that determines the sparsity structure,
 and an evaluation phase that fills in numerical values. The next chapter
 adopts precisely this separation.
+
+% people focus on solvers, but the modeling side is also important. 
+% Another good example could be to show examples where CVXPY is the bottleneck.
+% The problem statement step is
+% say that earlier on that matrix stuffing is just a composition of sparse linear operators.
+% it sounds easy but it is actually np-hard.
+% 
+
+
+% get to the point.
+% one approach could be: there are two parts to optimization.
+% people focus on solvers, but the modeling side is also important.
+% but there are cases where the modeling is actually the bottleneck.
+% then give an example of such a case.
+% the part that is slow in cvxpy is called matrix stuffing.
+% matrix stuffing is just a composition of sparse linear operators.
+% in this work, we show how to exploit the structure of these operators
+% to make matrix stuffing more efficient.
+% 
+% modern solvers 
+
+% Many general-purpose solvers for convex optimization use
+% take from spectral cones
+% say that forming the A can be slow.
+% show two examples.
+% 
+
+% think about intro in just paragraphs.
+% conic convex optimization.
+% solvers and modeling languages.
+% mention that its not obvious what to do for matrix stuffing.
+% different modeling languages have different approaches to matrix stuffing.
+% matrix stuffing. mention that it is a composition of sparse linear operators.
+% examples of where it is a bottleneck.
+% objectives and outline of the thesis.
 
