@@ -32,8 +32,7 @@ phase traverses the expression tree bottom-up, determining the exact number
 of nonzeros in each Jacobian and allocating all arrays to their final sizes.
 The eval phase traverses the same tree, filling values into pre-allocated
 arrays without any allocation. This separation mirrors the compile-once,
-evaluate-many paradigm used in parametric optimisation
-(Section~\ref{sec:parameters}).
+evaluate-many paradigm used in parametric optimisation.
 
 \paragraph{Principle 3: Precomputed index mappings}
 Where rows must be combined, reordered, or selected, a mapping from source
