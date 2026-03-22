@@ -17,7 +17,7 @@ and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vect
 and $c \in \reals^n$, and the non-empty closed convex cone $K \subseteq \reals^m$.
 Almost all of optimization practice can be divided into two groups, modeling and 
 solving. The modeler's role is to [...]. 
-The solver's role is to find an optimal solution given an instance of problem data.
+The solver's role is to find an optimal solution given a problem data instance.
 Modeling languages serve as the communication bridge between these two groups.
 When improvements in solvers are made, modeling languages must adapt to allow users
 to benefit from them. Conversely, it is through natural formulations that modelers can 
@@ -33,6 +33,21 @@ Other modeling languages take different approaches to form the problem data, we 
 approaches as \emph{coefficient extraction} and review them in \S\ref{sec:coefficient-extraction}.
 
 \paragraph{Matrix stuffing.}
+After expanding nonlinear functions into their \emph{graph implementations}
+\cite{grant2004graphformulations}, all expressions trees are guaranteed to be affine.
+We review the entire canonicalization process and show a concrete
+example in \S\ref{sec:canonicalization}.
+At this stage, the convex cone $\mathcal{K}$, which is typically a cartesian product
+of \emph{standard cones}, is already computed and known.
+The remaining problem data are the \emph{constraint matrix} $A$
+and the vectors $b$ and $c$.
+The process to compute $b$ is relatively straightforward, for example,
+one can \emph{evaluate} the affine expression tree at the origin.
+The process to obtain $c$ is a special case of the process to obtain $A$.
+For these reasons, we will often refer to matrix stuffing as the explicit task
+of forming $A$.
+We review matrix stuffing and its current implementations in CVXPY 
+in \S\ref{sec:matrix-stuffing}.
 
 \paragraph{Contributions.}
 We make the following contributions:
@@ -46,9 +61,10 @@ All code is open source and available at
 
 \paragraph{Thesis outline.}
 The rest of this thesis is organized as follows.
-\S\ref{sec:RevLitt} reviews the literature on modeling languages,
+In \S\ref{sec:RevLitt} we review the literature on modeling languages,
 canonicalization, and matrix stuffing.
-\S\ref{sec:Theme1} describes our proposed canonicalization engine.
-\S\ref{sec:Theme2} presents benchmark results comparing our method
+In \S\ref{sec:Theme1} we describe our proposed canonicalization engine.
+In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
-\S\ref{sec:Conclusion} summarizes our contributions and discusses future work.
+Finally, in \S\ref{sec:Conclusion} we summarize our contributions and
+discuss future work.
