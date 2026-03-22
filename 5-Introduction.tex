@@ -1,62 +1,54 @@
-% Dans l'introduction, on présente le problème étudié et les buts
-% poursuivis. L'introduction permet de faire connaître le cadre de la
-% recherche et d'en préciser le domaine d'application. Elle fournit
-% les précisions nécessaires en ce qui concerne le contexte de
-% réalisation de la recherche, l'approche envisagée, l'évolution de
-% la réalisation. En fait, l'introduction présente au lecteur ce
-% qu'il doit savoir pour comprendre la recherche et en connaître la
-% portée.
 \Chapter{INTRODUCTION}\label{sec:Introduction}
 
-Many general-purpose solvers for convex
-optimization use a standard form similar to
+Modeling languages for convex optimization such as CVXPY \cite{Diamond2016} and
+YALMIP \cite{Lofberg2004} allow users to formulate optimization problems in a natural
+mathematical syntax. Through a process called \emph{canonicalization}, these high-level 
+problem descriptions are converted to a \emph{standard conic form} used by many
+general-purpose solvers
 \BEQ \label{e:standard-form}
 \begin{array}{ll}
 \mbox{minimize} & c^T x \\
 \mbox{subject to} & Ax + s = b \\
 & s \in K, \\
 \end{array}
-\EEQ 
-where the decision variables are $x \in \reals^n$ and $s \in \reals^{m}$,
-and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vectors $b
-\in \reals^m$ and $c \in \reals^n$, and the nonempty closed convex cone $K
-\subseteq \reals^m$. While manually reformulating convex problems into this standard
-form can be error-prone and tedious, modeling languages such as YALMIP
-\cite{Lofberg2004} and CVXPY \cite{Diamond2016} facilitate the process by taking
-a high-level problem description and transforming it to the standard form
-through a process called \emph{canonicalization}.
+\EEQ
+where $x \in \reals^n$ and $s \in \reals^m$ are the decision variables,
+and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vectors $b \in \reals^m$
+and $c \in \reals^n$, and the non-empty closed convex cone $K \subseteq \reals^m$.
+Almost all of optimization practice can be divided into two groups, modeling and 
+solving. The modeler's role is to [...]. 
+The solver's role is to find an optimal solution given an instance of problem data.
+Modeling languages serve as the communication bridge between these two groups.
+When improvements in solvers are made, modeling languages must adapt to allow users
+to benefit from them. Conversely, it is through natural formulations that modelers can 
+express their needs and help motivate solver improvements.
 
-Modeling languages take different approaches to prepare the problem data for
-the solver \ref{lit-review-on-stuffing}. In the case of CVXPY, the last step of canonicalization,
-where symbolic expression trees are converted to explicit matrices is known as 
-\emph{coefficient extraction} or \emph{matrix stuffing}.
+While the time taken to solve an optimization problem is often dominated by the solver,
+the time taken to \emph{canonicalize} (or \emph{compile}) a problem can also be significant,
+especially for large problems.
+In the case of CVXPY, the \emph{compilation time} largely lies in \emph{matrix stuffing},
+the final step of canonicalization where symbolic expressions trees are converted to 
+explicit numerical matrices.
+Other modeling languages take different approaches to form the problem data, we refer to their
+approaches as \emph{coefficient extraction} and review them in \S\ref{sec:coefficient-extraction}.
 
 \paragraph{Matrix stuffing.}
 
-Most of the optimization community focuses on improving solvers, but the modeling languages
-can also sometimes be the bottleneck.
-Give such an example below.
-
-\paragraph{Problem statement.}
-
-% mention that all modeling languages require forming the problem data.
-% mention that this step is the most expensive part of the modeling side
-% problem statement is to make the coefficient extraction/matrix stuffing
-% more efficient and memory efficient.
-% this has been a long-standing issue in cvxpy development history (link some issues).
-
 \paragraph{Contributions.}
-We have developed a package in C called \texttt{SparseDiffEngine}
-that efficiently computes sparse derivatives of structured expressions.
-We have also implemented a matrix stuffing method in CVXPY that uses
-\texttt{SparseDiffPy}, an Python interface to \texttt{SparseDiffEngine},
-to compute the problem data for convex optimization problems.
+We make the following contributions:
+\begin{enumerate}
+  \item We develop \texttt{SparseDiffEngine}.
+  \item We develop \texttt{SparseDiffPy}.
+  \item We benchmark our methods against existing approaches.
+\end{enumerate}
+All code is open source and available at
+\url{https://github.com/SparseDifferentiation/}.
 
-All the code is open source and can be found at \url{https://github.com/SparseDifferentiation}.
 \paragraph{Thesis outline.}
-
-The rest of this thesis is organized as follows:
-In Chapter~\ref{sec:RevLitt}, we review the literature on modeling languages and matrix stuffing.
-In Chapter~\ref{sec:Theme1}, we describe our proposed method for efficient matrix stuffing.
-In Chapter~\ref{sec:Theme2}, we present the results of our experiments comparing our method to existing approaches.
-Finally, in Chapter~\ref{sec:Conclusion}, we summarize our findings and discuss future work.
+The rest of this thesis is organized as follows.
+\S\ref{sec:RevLitt} reviews the literature on modeling languages,
+canonicalization, and matrix stuffing.
+\S\ref{sec:Theme1} describes our proposed canonicalization engine.
+\S\ref{sec:Theme2} presents benchmark results comparing our method
+to existing approaches.
+\S\ref{sec:Conclusion} summarizes our contributions and discusses future work.
