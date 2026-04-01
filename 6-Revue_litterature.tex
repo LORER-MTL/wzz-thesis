@@ -41,9 +41,6 @@ the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
 \texttt{MaGen}~\cite{haverly1977magen}, \texttt{GAMMA}~\cite{sperry1977gamma}, and \texttt{DATAFORM}~\cite{ketron1975dataform}
 were among the first matrix generators which were used in various domains.
 
-
-
-
 %%
 %%  CANONICALIZATION
 %%
@@ -142,238 +139,11 @@ rewrites disciplined geometric programs into equivalent disciplined convex
 programs~\cite{agrawal2019dgp}.
 
 %%
-%%  SPARSE MATRIX FORMATS
-%%
-\section{Sparse matrix formats}
-\label{sec:sparse-formats}
-
-The coefficient matrices produced by canonicalization are typically large but sparse: only a
-small fraction of the entries are nonzero. Storing and operating on these matrices efficiently
-requires specialised \emph{sparse matrix formats} that record only the nonzero entries and
-their positions. Three formats dominate the optimisation toolchain; they differ in how they
-encode the row and column structure, and this difference has direct consequences for the
-operations that are efficient in each format.
-
-\paragraph{COO (Coordinate)}
-The simplest sparse format stores each nonzero as a triple $(i, j, v)$: row index, column
-index, and value. For a matrix with $\texttt{nnz}$ nonzeros, three arrays of length
-$\texttt{nnz}$ suffice. COO is convenient for incremental construction---appending an entry
-is $O(1)$---but accessing a specific row or column requires scanning the entire list.
-
-\paragraph{CSR (Compressed Sparse Row)}
-CSR groups entries by row. It stores three arrays:
-\begin{itemize}
-\item \texttt{indptr} (length $m + 1$): \texttt{indptr[i]} is the index into \texttt{indices}
-  and \texttt{data} where row~$i$ begins.
-\item \texttt{indices} (length $\texttt{nnz}$): the column index of each nonzero.
-\item \texttt{data} (length $\texttt{nnz}$): the corresponding values.
-\end{itemize}
-Row~$i$ occupies positions \texttt{indptr[i]} through \texttt{indptr[i+1] - 1}. This layout
-makes row slicing, row iteration, and matrix--vector products $y = Ax$ efficient, since each
-row's entries are contiguous in memory.
-
-\paragraph{CSC (Compressed Sparse Column)}
-CSC is the column-oriented analogue of CSR: entries are grouped by column, with an
-\texttt{indptr} array of length $n + 1$ indexing into \texttt{indices} (row indices) and
-\texttt{data}. Column slicing and $y = A^T x$ products are fast. CSC is the default format in
-\texttt{SciPy} and the input format expected by most conic
-solvers~\cite{mosekSolver, ocpb:16}.
-
-\paragraph{Format choice in coefficient extraction}
-During matrix stuffing, the extraction engine builds the constraint matrix~$A$ row by row: each
-constraint contributes one or more rows. CSR is the natural format for this construction pattern,
-since rows can be filled sequentially without touching other rows. A final CSR-to-CSC conversion
-is needed only at the solver interface. The extraction engine developed in this thesis operates
-entirely in CSR during construction and converts to CSC only at the end.
-
-%%
 %%  MATRIX STUFFING
 %%
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
-After canonicalization reduces a convex problem to a collection of affine constraints, the
-final step before invoking a solver is \emph{matrix stuffing}: assembling the numerical
-coefficients of these affine expressions into the sparse matrices $(A, b, c)$ that solvers
-consume. Each canonicalized constraint is an affine function of the decision variable~$x$,
-and the task is to extract its coefficients into the appropriate rows of the constraint
-matrix~$A$ and the right-hand side~$b$.
-
-The operation is conceptually straightforward---read off the coefficients of each affine
-expression---but in practice the expressions are represented as trees of composed linear
-operations, and the coefficients must be extracted by traversing these trees. The cost of
-this traversal depends on how the composition is carried out: naive approaches perform a
-sparse matrix--matrix multiplication at each node, while structure-aware approaches can
-exploit the known form of each operation to avoid unnecessary work.
-
-This section illustrates how \texttt{CVXPY} implements matrix stuffing via
-sparse linear map composition, using expression trees as the central data
-structure.
-\label{sec:cvxpy-extraction}
-
-\paragraph{Expression trees}
-After canonicalization, \texttt{CVXPY} guarantees that all constraints and the
-objective are affine functions of the decision variable~$x$. Each affine
-function is represented as an \emph{expression tree} where every node is a
-linear operation (an \emph{atom}), as illustrated in
-Figure~\ref{fig:expression-tree}.
-
-\begin{figure}[h]
-\centering
-\scalebox{0.55}{
-\begin{tikzpicture}[
-    level distance=22mm,
-    level 1/.style={sibling distance=70mm},
-    level 2/.style={sibling distance=35mm},
-    level 3/.style={sibling distance=20mm},
-    every node/.style={circle, draw, minimum size=18mm, inner sep=0pt}
-]
-
-\node {$+$}
-  child {
-    node {\texttt{sum}}
-      child {
-          node {$-$}
-          child {
-            node {\texttt{mul}}
-            child { node {\texttt{A}} }
-            child { node {\texttt{x}} }
-          }
-          child { node {\texttt{b}} }
-      }
-  }
-  child {
-    node {\texttt{mul}}
-      child { node {\texttt{C}} }
-      child { node {\texttt{y}} }
-  };
-\end{tikzpicture}
-}
-\caption{Expression tree for the affine expression \texttt{sum(A @ x - b) + C @ y}.
-Each internal node is an affine atom; leaves are variables or constants.}
-\label{fig:expression-tree}
-\end{figure}
-
-When a problem involves matrix variables, \texttt{CVXPY} flattens them into
-vectors using column-major (Fortran) ordering: $X \in \reals^{m \times n}$
-becomes $(X_{11}, X_{21}, \ldots, X_{m1}, X_{12}, \ldots, X_{mn})^T \in
-\reals^{mn}$. This convention determines the column ordering in all
-coefficient matrices.
-
-\paragraph{Matrix stuffing via sparse linear map composition}
-The extraction phase traverses each expression tree bottom-up. Each leaf node
-returns its coefficient matrix (the identity for a variable, a constant
-matrix for data), and each internal node composes its children's matrices by
-applying its own linear operator. The composition is carried out via sparse
-matrix multiplication.
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-    level distance=28mm,
-    level 1/.style={sibling distance=45mm},
-    every node/.style={circle, draw, minimum size=15mm, inner sep=0pt},
-    annotation/.style={rectangle, draw=none, font=\small, text=blue!70!black},
-    arrow/.style={->, thick, blue!70!black}
-]
-
-\node (sum) {\texttt{sum}}
-  child {
-    node (matmul) {\texttt{mul}}
-      child { node (A) {\texttt{A}} }
-      child { node (x) {\texttt{x}} }
-  };
-
-% Annotations showing accumulated coefficient matrices
-\node[annotation, left=12mm of x] (x-coef) {$I$};
-\draw[arrow] (x-coef) -- (x);
-
-\node[annotation, right=18mm of matmul] (matmul-coef) {$A \texttt{ @ } I = A$};
-\draw[arrow] (matmul-coef) -- (matmul);
-
-\node[annotation, right=18mm of sum] (sum-coef) {$\ones^T \texttt{ @ } A = \ones^T A$};
-\draw[arrow] (sum-coef) -- (sum);
-
-\end{tikzpicture}
-\caption{Coefficient matrix accumulation for \texttt{sum(A @ x)}. Each node
-composes its operator with the child's coefficient matrix via sparse matrix
-multiplication, producing a new intermediate matrix at every step.}
-\label{fig:sparse-matmul-tree}
-\end{figure}
-
-For example, in the expression \texttt{sum(A @ x)}, the traversal first
-returns $I$ at the variable node, multiplies by $A$ at the \texttt{mul}
-node to get $A$, then multiplies by $\ones^T$ at the \texttt{sum} node to
-get $\ones^T A$ (Figure~\ref{fig:sparse-matmul-tree}). Each step performs a
-sparse matrix--matrix product and allocates a new result matrix.
-
-\paragraph{Architecture of the extraction backends}
-Internally, \texttt{CVXPY} represents the canonicalized tree as a list of
-\texttt{LinOp} nodes. The extraction is handled by a
-\texttt{PythonCanonBackend} whose \texttt{build\_matrix} method walks each
-tree and returns a 2D sparse matrix. The central data structure is a
-\texttt{TensorView}: a dictionary mapping each variable to its coefficient
-block (a sparse matrix). A recursive function \texttt{process\_constraint}
-traverses the tree bottom-up, applying the appropriate linear operator at
-each node.
-
-The operations performed during this traversal fall into three categories:
-\begin{enumerate}
-\item \textbf{Pure index operations} (\texttt{reshape}, \texttt{transpose},
-  \texttt{index}, \texttt{promote}, \texttt{broadcast\_to}). These only remap
-  row indices---no arithmetic is performed. Essentially free in terms of
-  floating-point cost.
-\item \textbf{Elementwise operations} (\texttt{neg}, \texttt{mul\_elem},
-  \texttt{div}). These scale existing entries via elementwise multiplication.
-  The sparsity pattern is unchanged.
-\item \textbf{Matrix multiplication operations} (\texttt{mul}, \texttt{rmul},
-  \texttt{sum\_entries}, \texttt{conv}, \texttt{kron}). These build an explicit
-  operator matrix and apply it via general-purpose
-  \texttt{scipy.sparse @ scipy.sparse}. \emph{This is where the cost lives.}
-\end{enumerate}
-
-\paragraph{Detailed example: left multiplication}
-Consider the node \texttt{C @ X} where $C \in \reals^{m \times n}$ is a
-constant and $X \in \reals^{n \times p}$ is the child expression.
-The vectorised form is $\vect(CX) = (I_p \otimes C)\,\vect(X)$, so the
-backend builds the Kronecker product $I_p \otimes C$ via
-\texttt{sp.kron(sp.eye(p), C)}, applies it to the child's coefficient matrix
-via sparse matrix multiplication, and converts the result to CSR. This
-sequence involves three allocations per node: the Kronecker product, the
-matrix product, and the format conversion.
-
-\paragraph{What is already exploited}
-\texttt{CVXPY}'s implementation does exploit some structure. Index operations
-are handled as pure reindexing without forming operator matrices.
-Elementwise operations use \texttt{.multiply()} instead of matrix
-multiplication. The Kronecker structure is partially exploited by using
-\texttt{sp.kron(sp.eye(n), C)} rather than materialising a dense matrix.
-
-\paragraph{What is not exploited}
-Several opportunities for efficiency remain:
-\begin{itemize}
-\item The Kronecker operator $I_p \otimes C$ is materialised as a general
-  sparse matrix, even though its block-diagonal structure means $C$ could be
-  applied independently to $p$ blocks.
-\item Sparsity patterns are discovered at runtime by \texttt{SciPy}'s sparse
-  arithmetic, even though they are fully determinable from the expression
-  structure at build time.
-\item No pre-allocation of the final output is possible, since each
-  intermediate product has an independently computed sparsity pattern.
-\item General-purpose sparse matrix multiplication is used regardless of the
-  known structure of the operator (diagonal scaling, row selection, Kronecker
-  with identity, \etc).
-\end{itemize}
-\texttt{CVXPY} ships two Python backends (SciPy-based and COO-based) as well
-as a legacy C++ backend (\texttt{cvxcore}) that special-cases eighteen
-\texttt{LinOp} types. All three share the same compositional architecture.
-
-\paragraph{Key advantage of the deferred approach}
-Unlike \texttt{JuMP}'s eager expansion, the deferred approach preserves the
-original problem structure through canonicalization. The expression
-\texttt{norm(F @ x - g)} never forms $F^T\!F$; the matrix~$F$ appears
-directly in the coefficient data. This structural preservation is what
-enables conic reformulations that exploit the original factors.
 
 %%
 %%  COEFFICIENT EXTRACTION
@@ -381,120 +151,11 @@ enables conic reformulations that exploit the original factors.
 \section{Coefficient extraction}
 \label{sec:coefficient-extraction}
 
-Different systems take different approaches to extracting coefficient data
-from optimization formulations. To make the comparison concrete, we trace a
-running example through each system: the least-squares problem
-\begin{equation}
-\begin{array}{ll}
-\text{minimize} & \|Fx - g\|_2^2,
-\end{array}
-\label{eq:least-squares}
-\end{equation}
-with $F \in \reals^{3 \times 2}$ and $g \in \reals^3$.
+\paragraph{\texttt{JuMP} and \texttt{MathOptInterface}.}
 
-\paragraph{\texttt{JuMP} and \texttt{MathOptInterface}}
-\label{sec:jump-trace}
-\texttt{JuMP}~\cite{dunning2017jump, lubin2023jump10recent} is an algebraic modeling language
-embedded in Julia. Its abstraction layer,
-\texttt{MathOptInterface}~\cite{legat2020mathoptinterface}, represents each constraint as a
-\emph{function-set pair}: a mathematical function paired with the set it must belong to. This
-function-in-set architecture uses operator overloading to eagerly build
-coefficient representations. There is no expression tree and no deferred
-extraction phase---the coefficients \emph{are} the internal representation.
-The following trace shows how this works for the least-squares
-problem~\eqref{eq:least-squares}.
+\paragraph{\texttt{CasADi}.}
 
-\textbf{Step 1: Macro expansion.}
-The user writes:
-\begin{lstlisting}
-using JuMP, MosekTools
-F = [1 2; 3 4; 5 6]; g = [1, 2, 3]
-model = Model(Mosek.Optimizer)
-@variable(model, x[1:2])
-@objective(model, Min, sum((F * x - g).^2))
-\end{lstlisting}
-The \texttt{@objective} macro expands \texttt{sum((F * x - g) .\^{} 2)}
-by evaluating each subexpression eagerly. The product \texttt{F * x} dispatches
-through Julia's linear algebra: each element $r_i = F_{i1} x_1 + F_{i2} x_2
-- g_i$ is built as a \texttt{ScalarAffineFunction} containing the
-coefficients~$F_{i1}$, $F_{i2}$ and the constant~$-g_i$ explicitly.
-
-\textbf{Step 2: Quadratic function construction.}
-Squaring each residual $r_i^2$ triggers \texttt{JuMP}'s multiplication
-dispatch, which collects the quadratic terms into a
-\texttt{ScalarQuadraticFunction}:
-\[
-  r_i^2 = F_{i1}^2 x_1^2 + 2 F_{i1} F_{i2}\, x_1 x_2
-  + F_{i2}^2 x_2^2 - 2g_i(F_{i1} x_1 + F_{i2} x_2) + g_i^2.
-\]
-Summing over $i = 1, 2, 3$ accumulates all quadratic and linear terms into a
-single \texttt{ScalarQuadraticFunction} representing $\sum_i r_i^2$.
-
-\textbf{Step 3: Implicit formation of $F^T\!F$.}
-The algebra reveals that by expanding the sum of squares,
-\texttt{JuMP} has implicitly formed the Gram matrix:
-\[
-  \|Fx - g\|_2^2 = x^T\! F^T\!F\, x - 2 g^T\!F\, x + g^T\!g.
-\]
-The quadratic coefficient matrix stored in the
-\texttt{ScalarQuadraticFunction} is $Q = F^T\!F$, the linear coefficient
-vector is $c = -2F^T\!g$, and the constant is $g^T\!g$. These are the
-actual numerical values, not symbolic expressions.
-
-\textbf{Step 4: Solver handoff.}
-\texttt{MOSEK} natively supports quadratic objectives, so the
-\texttt{MOI} bridge system finds no transformation is needed. The
-\texttt{ScalarQuadraticFunction}---containing $Q$, $c$, and the
-constant---is forwarded directly to the solver's API.
-
-\textbf{Consequence.}
-Compositions are resolved at expression-build time. There is no separate
-extraction phase because extraction happens incrementally during
-construction. But this means structure is lost: $F^T\!F$ cannot be
-``un-formed.'' A conic solver that could accept $\|Fx - g\|_2$ directly as a
-second-order cone constraint would need to recover $F$ from $F^T\!F$, which
-is not possible in general. When such a reformulation is needed,
-\texttt{MOI} activates a bridge, but the bridge operates on the already-formed
-quadratic representation rather than the original affine expression.
-
-\paragraph{\texttt{CasADi}}
-\label{sec:casadi-approach}
-\texttt{CasADi}~\cite{andersson2019} takes a third approach. It is
-fundamentally a nonlinear programming tool: its primary targets are NLP
-solvers such as \texttt{IPOPT}~\cite{wachter2006ipopt}, with conic
-capabilities (QP, SOCP) available through external backends but not as
-a central design focus. Internally, \texttt{CasADi} builds a symbolic
-expression DAG and extracts derivative information via algorithmic
-differentiation on the graph. For an affine expression $f(x) = Ax + b$,
-the Jacobian $\partial f / \partial x = A$ is the coefficient matrix, so
-AD-based Jacobian extraction and coefficient extraction are mathematically
-identical. Crucially, \texttt{CasADi} propagates sparsity symbolically
-through the graph before performing numerical evaluation, making it a
-genuine hybrid of symbolic and AD-based approaches.
-
-This is relevant because it explicitly connects expression-graph processing
-to Jacobian computation, bridging the modeling and differentiation worlds.
-However, since \texttt{CasADi} is designed for general nonlinear problems,
-it applies the same AD machinery to affine expressions as to nonlinear
-ones---it has no specialised fast path for the purely affine case where the
-Jacobian is constant and the coefficients could be read off structurally
-rather than computed through differentiation.
-
-\paragraph{\texttt{AMPL}}
-\label{sec:ampl-approach}
-\texttt{AMPL}~\cite{fourer1990ampl} historically pioneered systematic
-coefficient extraction. Its internal representation is an expression DAG in
-which each node is classified by polynomial degree: constant, linear,
-quadratic, or general nonlinear~\cite{gay2005writing}. Linear and quadratic
-coefficients are extracted directly from the classified nodes by walking the
-DAG, while the nonlinear remainder is retained as an evaluable subgraph for
-AD-based derivative computation. This structural decomposition allows
-\texttt{AMPL} to hand optimised coefficient data to linear and quadratic
-solvers while still supporting fully nonlinear formulations. However,
-\texttt{AMPL}'s extraction uses general-purpose operations for the linear
-and quadratic coefficients rather than structure-aware CSR transformations,
-and its closed-source commercial nature has limited community development of
-specialised alternatives.
+\paragraph{\texttt{AMPL}.}
 
 %%
 %%  COMPUTING DERIVATIVES
@@ -502,6 +163,9 @@ specialised alternatives.
 \section{Computing derivatives}
 \label{sec:jacobian-abstraction}
 
+\paragraph{Automatic differentiation.}
+
+\paragraph{Symbolic differentiation.}
 % TODO: rewrite this section
 % Previous content commented out for later revision:
 %
@@ -622,4 +286,40 @@ specialised alternatives.
 % sparsity patterns at build time, and writes results directly into
 % pre-allocated output arrays without forming intermediate matrices.
 
+%%
+%%  SPARSE MATRIX FORMATS
+%%
+\section{Sparse matrix formats}
+\label{sec:sparse-formats}
 
+The coefficient matrices produced by canonicalization are typically large but sparse: only a
+small fraction of the entries are nonzero. Storing and operating on these matrices efficiently
+requires specialised \emph{sparse matrix formats} that record only the nonzero entries and
+their positions. Three formats dominate the optimisation toolchain; they differ in how they
+encode the row and column structure, and this difference has direct consequences for the
+operations that are efficient in each format.
+
+\paragraph{COO (Coordinate)}
+The simplest sparse format stores each nonzero as a triple $(i, j, v)$: row index, column
+index, and value. For a matrix with $\texttt{nnz}$ nonzeros, three arrays of length
+$\texttt{nnz}$ suffice. COO is convenient for incremental construction---appending an entry
+is $O(1)$---but accessing a specific row or column requires scanning the entire list.
+
+\paragraph{CSR (Compressed Sparse Row)}
+CSR groups entries by row. It stores three arrays:
+\begin{itemize}
+\item \texttt{indptr} (length $m + 1$): \texttt{indptr[i]} is the index into \texttt{indices}
+  and \texttt{data} where row~$i$ begins.
+\item \texttt{indices} (length $\texttt{nnz}$): the column index of each nonzero.
+\item \texttt{data} (length $\texttt{nnz}$): the corresponding values.
+\end{itemize}
+Row~$i$ occupies positions \texttt{indptr[i]} through \texttt{indptr[i+1] - 1}. This layout
+makes row slicing, row iteration, and matrix--vector products $y = Ax$ efficient, since each
+row's entries are contiguous in memory.
+
+\paragraph{CSC (Compressed Sparse Column)}
+CSC is the column-oriented analogue of CSR: entries are grouped by column, with an
+\texttt{indptr} array of length $n + 1$ indexing into \texttt{indices} (row indices) and
+\texttt{data}. Column slicing and $y = A^T x$ products are fast. CSC is the default format in
+\texttt{SciPy} and the input format expected by most conic
+solvers~\cite{mosekSolver, ocpb:16}.
