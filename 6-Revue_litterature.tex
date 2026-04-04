@@ -47,96 +47,6 @@ were among the first matrix generators which were used in various domains.
 \section{Canonicalization}
 \label{sec:canonicalization}
 
-\emph{Disciplined convex programming}
-(DCP)~\cite{grant2004disciplined, grant2006disciplined} is a set of composition rules that can
-automatically verify convexity. A DCP language restricts how atoms (elementary functions with
-known curvature) may be combined: for example, a convex function of an affine expression is
-convex, but a convex function of a convex expression is not necessarily so. By enforcing these
-rules at problem construction time, DCP languages guarantee that any accepted formulation is
-convex and can be reduced to conic standard form. The DCP approach was first implemented in
-\texttt{CVX}~\cite{cvx} for MATLAB and has since been adopted by
-\texttt{CVXPY}~\cite{diamond2016cvxpy, agrawal2018rewriting} in Python,
-\texttt{CVXR}~\cite{Fu_2020} in R, and \texttt{Convex.jl}~\cite{udell2014convex} in Julia.
-This section focuses on \texttt{CVXPY}, the system targeted by the coefficient extraction
-engine developed in this thesis.
-
-\texttt{CVXPY} is a domain-specific language for convex optimization embedded in Python.
-It was originally developed by Steven Diamond and Stephen Boyd at Stanford
-University~\cite{diamond2016cvxpy}.
-Akshay Agrawal later redesigned the
-rewriting system in \texttt{CVXPY}~\cite{agrawal2018rewriting},
-which enabled support for other disciplined
-languages~\cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}. The
-project has since grown through contributions from many other developers
-and solver interface maintainers.
-
-\paragraph{Reduction-based rewriting}
-\texttt{CVXPY} is built on a system of
-\emph{reductions}~\cite{agrawal2018rewriting}. A reduction is a pair of
-maps: a \emph{forward} map that transforms a problem into an equivalent one,
-and a \emph{backward} map that recovers a solution of the original problem
-from a solution of the transformed one. Reductions compose: the output of one
-becomes the input of the next, forming a \emph{chain} that converts the
-user's formulation into solver-ready data.
-
-The chain is solver-aware, so different solvers trigger different output
-formats. Historically, \texttt{CVXPY} distinguished two standard forms. For
-solvers that accept quadratic objectives such as \texttt{OSQP} and
-\texttt{Gurobi}, the chain produces a quadratic program:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
-\text{subject to} & l \leq Ax \leq u.
-\end{array}
-\label{eq:cvxpy-qp}
-\end{equation}
-For purely conic solvers (\eg \texttt{SCS}), the chain instead produces:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & c^T x \\
-\text{subject to} & Ax + b \in \mathcal{K}.
-\end{array}
-\label{eq:cvxpy-conic}
-\end{equation}
-More recently, a unified interface that combines a quadratic objective with
-conic constraints has become the central solver interface in \texttt{CVXPY}:
-\begin{equation}
-\begin{array}{ll}
-\text{minimize}   & \tfrac{1}{2}\, x^T P\, x + c^T x \\
-\text{subject to} & Ax + b \in \mathcal{K}.
-\end{array}
-\label{eq:cvxpy-standard}
-\end{equation}
-In all cases the final output is a set of sparse coefficient matrices; what
-changes between reduction paths is the \emph{structure} of those matrices.
-
-\paragraph{Common reductions}
-The individual reductions that compose a canonicalization chain are well
-established in the convex optimization literature.
-Chu~et~al.~\cite{chu2013codegen} give a concise exposition; the main steps
-are:
-\begin{enumerate}
-\item \textbf{DCP verification.} Confirm that the objective is convex and the
-  constraints are valid by walking the expression tree and applying DCP
-  composition rules.
-\item \textbf{Smith form.} Replace each subexpression with a new
-  auxiliary variable linked to the original expression by an equality
-  constraint.
-\item \textbf{Relaxed Smith form.} Relax the equalities introduced above to
-  inequalities wherever the monotonicity of the objective guarantees that the
-  inequality will be tight at optimality.
-\item \textbf{Matrix stuffing.} Assemble the resulting affine expressions into
-  sparse coefficient matrices before passing them to a solver.
-\end{enumerate}
-The following sections examine how these steps---and in particular the final
-matrix-stuffing step---are implemented in practice across different systems.
-
-\paragraph{Other reductions}
-\texttt{CVXPY} also ships reductions beyond the standard canonicalization
-chain. For example, a \emph{flip-objective} reduction converts a maximization
-problem into a minimization, and the \texttt{Dgp2Dcp} reduction
-rewrites disciplined geometric programs into equivalent disciplined convex
-programs~\cite{agrawal2019dgp}.
 
 %%
 %%  MATRIX STUFFING
@@ -164,162 +74,91 @@ programs~\cite{agrawal2019dgp}.
 \label{sec:jacobian-abstraction}
 
 \paragraph{Automatic differentiation.}
-
+\cite{JAX}
+\cite{PyTorch}
+\cite{TensorFlow}
 \paragraph{Symbolic differentiation.}
-% TODO: rewrite this section
-% Previous content commented out for later revision:
-%
-% The previous sections described several different systems, each with its own
-% architecture. Despite their differences, a common mathematical structure
-% underlies them all: extracting the coefficient matrix~$A$ from an affine
-% expression $f(x) = Ax + b$ is equivalent to computing the Jacobian
-% $\partial f / \partial x = A$. The Jacobian is constant (independent of~$x$),
-% so one computation suffices for all~$x$.
-%
-% \subsection{Properties of the affine Jacobian}
-% \label{sec:jacobian-special}
-%
-% Three properties distinguish this Jacobian from general Jacobian computation
-% in numerical optimisation:
-% \begin{enumerate}
-% \item[(a)] \textbf{Constant.} Since $f$ is affine, $\partial f / \partial x =
-%   A$ is independent of~$x$. One evaluation produces the exact result for all
-%   inputs.
-% \item[(b)] \textbf{Structurally determined sparsity.} The sparsity pattern
-%   of~$A$ is fully determined at expression-build time, before any numerical
-%   values are known. Each atom's contribution to the sparsity pattern depends
-%   only on dimensions, index sets, and the topology of the expression tree.
-% \item[(c)] \textbf{Structured local Jacobians.} The expression is a
-%   composition of affine operations, each with a known, structured local
-%   Jacobian. These are not arbitrary sparse matrices: they are typically row
-%   scalings, permutations, block diagonals, row selections, or Kronecker
-%   products with the identity.
-% \end{enumerate}
-%
-% \subsection{Connections to automatic differentiation}
-% \label{sec:diff-literature}
-%
-% The coefficient extraction problem can, in principle, be solved by any method
-% that computes Jacobians. Existing approaches from the differentiation
-% literature each address part of the problem but leave efficiency on the
-% table:
-%
-% \paragraph{Symbolic differentiation}
-% For an affine function $f(x) = Ax + b$, symbolic differentiation correctly
-% yields $\partial f / \partial x = A$. However, computer algebra systems
-% produce symbolic expressions, not the sparse numerical arrays that solvers
-% require. The output format does not match the needed representation.
-%
-% \paragraph{Automatic differentiation}
-% Forward- and reverse-mode AD compute Jacobian-vector products ($J v$) or
-% vector-Jacobian products ($v^T J$), not the explicit Jacobian matrix.
-% Extracting the full sparse matrix requires either $n$ forward passes (one per
-% column) or $m$ reverse passes (one per row), or sparse compression via graph
-% colouring~\cite{gebremedhin2005coloring}. This is general-purpose machinery
-% applied to a special case where the answer is a constant matrix.
-%
-% \paragraph{Optimal Jacobian accumulation}
-% Naumann~\cite{naumann2004optimal, naumann2008optimal} studies the problem of
-% efficiently ordering the multiplication of Jacobian factors in a composition
-% chain. This is directly relevant: when $f = f_k \circ \cdots \circ f_1$,
-% the chain rule gives $J = J_k \cdots J_1$, and the multiplication order
-% affects the total cost. However, the optimal Jacobian accumulation literature
-% treats each $J_i$ as an arbitrary sparse matrix, without exploiting the
-% structured forms (diagonal, permutation, block-diagonal) that arise in
-% affine expression trees.
-%
-% \medskip
-% \noindent
-% None of these methods exploit all three special properties simultaneously:
-% the constancy of the Jacobian, the a priori knowledge of the sparsity
-% pattern, and the structured form of each local Jacobian.
-%
-% \subsection{The sparse composition bottleneck}
-% \label{sec:composition-problem}
-%
-% When $f = f_k \circ \cdots \circ f_1$ is a composition of affine maps, the
-% overall Jacobian is the matrix product $A_k \cdots A_1$ (the chain rule
-% specialised to constant Jacobians). \texttt{CVXPY} computes this product
-% during matrix stuffing via repeated sparse matrix--matrix multiplication.
-% Two costs arise:
-%
-% \begin{enumerate}
-% \item \textbf{Intermediate matrix allocation.} Each partial product
-%   $A_k \cdots A_i$ is materialised as a new sparse matrix. For a tree of
-%   depth~$d$, up to $d - 1$ intermediate matrices are created and discarded.
-% \item \textbf{General-purpose sparse matrix multiplication.} Each
-%   multiplication treats $A_i$ as an arbitrary sparse matrix, invoking
-%   \texttt{SciPy}'s general \texttt{csr\_matrix @ csr\_matrix} routine. This
-%   routine must discover the output sparsity pattern at runtime, allocate
-%   output arrays, and sort indices---overhead that is unnecessary when the
-%   structure of~$A_i$ is known in advance.
-% \end{enumerate}
+\cite{SymPy}
 
-% TODO: revisit summary and research gap
-%
-% \section{Summary and Research Gap}
-% \label{sec:research-gap}
-%
-% No existing implementation exploits all three properties of the affine
-% Jacobian simultaneously:
-% \begin{enumerate}
-% \item[(a)] That local Jacobians are \textbf{structured operations} with
-%   known forms (row scaling, selection, block-diagonal multiplication,
-%   Kronecker with identity). Each composition step could be a direct
-%   transformation of the sparse storage arrays---inserting rows, scaling
-%   values, selecting entries---rather than a general-purpose sparse matrix
-%   multiplication.
-% \item[(b)] That the sparsity pattern of the output is \textbf{determinable
-%   before numerical evaluation}. The entire output data structure---row
-%   pointers, column indices, number of nonzeros---can be pre-allocated in a
-%   single pass over the expression tree, before any floating-point arithmetic
-%   occurs.
-% \item[(c)] That \textbf{no intermediate matrices need to be materialised}.
-%   The composition can be computed as a single pass that writes directly into
-%   the pre-allocated output arrays, transforming index and value arrays
-%   in-place rather than creating and discarding temporary matrices at each
-%   node.
-% \end{enumerate}
-% This is the gap that the present work fills. The next chapter presents a
-% coefficient extraction engine that exploits all three properties: it
-% performs direct CSR array transformations for each atom, pre-computes
-% sparsity patterns at build time, and writes results directly into
-% pre-allocated output arrays without forming intermediate matrices.
+\paragraph{Sparse differentiation.}
 
+\paragraph{Other methods.}
 %%
 %%  SPARSE MATRIX FORMATS
 %%
 \section{Sparse matrix formats}
 \label{sec:sparse-formats}
 
-The coefficient matrices produced by canonicalization are typically large but sparse: only a
-small fraction of the entries are nonzero. Storing and operating on these matrices efficiently
-requires specialised \emph{sparse matrix formats} that record only the nonzero entries and
-their positions. Three formats dominate the optimisation toolchain; they differ in how they
-encode the row and column structure, and this difference has direct consequences for the
-operations that are efficient in each format.
+Matrices that contain many number of zero entries are known as \emph{sparse matrices}.
+The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
+format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
+value array \texttt{vals} of length equal to the number of \emph{nonzero entries} in the matrix.
 
-\paragraph{COO (Coordinate)}
-The simplest sparse format stores each nonzero as a triple $(i, j, v)$: row index, column
-index, and value. For a matrix with $\texttt{nnz}$ nonzeros, three arrays of length
-$\texttt{nnz}$ suffice. COO is convenient for incremental construction---appending an entry
-is $O(1)$---but accessing a specific row or column requires scanning the entire list.
+For example, the matrix
+\begin{equation}\label{eq:sparse-matrix}
+  \begin{bmatrix}
+  0 & 0 & 3.2 & 0\\
+  4.1 & 1.8 & 0 & 2.2\\
+  0 & 2.8 & 0 & 3.4\\
+  \end{bmatrix}
+\end{equation}
+can be represented in coordinate format as
+\begin{lstlisting}[language=C]
+int     rows[] = {0,    1,    1,    1,    2,    2};
+int     cols[] = {2,    0,    1,    3,    1,    3};
+double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
+\end{lstlisting}
 
-\paragraph{CSR (Compressed Sparse Row)}
-CSR groups entries by row. It stores three arrays:
-\begin{itemize}
-\item \texttt{indptr} (length $m + 1$): \texttt{indptr[i]} is the index into \texttt{indices}
-  and \texttt{data} where row~$i$ begins.
-\item \texttt{indices} (length $\texttt{nnz}$): the column index of each nonzero.
-\item \texttt{data} (length $\texttt{nnz}$): the corresponding values.
-\end{itemize}
-Row~$i$ occupies positions \texttt{indptr[i]} through \texttt{indptr[i+1] - 1}. This layout
-makes row slicing, row iteration, and matrix--vector products $y = Ax$ efficient, since each
-row's entries are contiguous in memory.
+where we use zero-based indexing and array declaration notation from the C programming language \cite{Kernighan1988}.
+The coordinate format is the easiest to understand and form, but it is not effective for most
+operations on sparse matrices; the \emph{compressed sparse row} or CSR format is commonly
+used instead.
 
-\paragraph{CSC (Compressed Sparse Column)}
-CSC is the column-oriented analogue of CSR: entries are grouped by column, with an
-\texttt{indptr} array of length $n + 1$ indexing into \texttt{indices} (row indices) and
-\texttt{data}. Column slicing and $y = A^T x$ products are fast. CSC is the default format in
-\texttt{SciPy} and the input format expected by most conic
-solvers~\cite{mosekSolver, ocpb:16}.
+\paragraph{Compressed sparse row format.}
+The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
+a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
+The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
+For example, the matrix in \eqref{eq:sparse-matrix}
+can be represented in CSR format as
+\begin{lstlisting}[language=C]
+int  idxptr[] = {0,    1,                4,         6};
+int    cols[] = {2,    0,    1,    3,    1,    3};
+double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
+\end{lstlisting}
+where we deliberately format \texttt{idxptr} to align with the start of each
+row in the \texttt{cols} arrays.
+% talk about benefits of CSR format. fast row slicing, fast matrix-vector products, etc.
+The benefits of the CSR format are more than compressed storage for the \texttt{idxptr} array
+compared to the \texttt{rows} arrays.
+In the CSR format, accessing a row takes constant time and is very \emph{cache-friendly}
+since the nonzero entries are stored contiguously in memory.
+For this reason, the CSR format is the default for \emph{iterative methods}
+to solve sparse linear systems \cite{saad2003iterative}.
+
+\paragraph{Compressed sparse column format.}
+% talk about CSC as a direct extension of CSR but with column pointers.
+However, one downside of the CSR format is that accessing a column is much more difficult;
+one would need to look at every row to find the nonzero entries in a column.
+An alternative format is the \emph{compressed sparse column} or CSC format, 
+which replaces the \texttt{idxptr} array with a column pointer array and 
+the \texttt{cols} array with a \texttt{rows} index array.
+In contrast to iterative methods, the CSC format is the preferred format for
+\emph{direct methods} to solve sparse linear systems \cite{davis2006direct}.
+
+\paragraph{Other formats.}
+The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
+but many others exist for different specialized use cases.
+The python sparse linear algebra library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
+allows users to form other sparse matrix formats such as the list of lists (LIL) format,
+the dictionary of keys (DOK) format, and the block-sparse row (BSR) format.
+
+\paragraph{Converting between formats.}
+
+
+\paragraph{Resources.}
+Although the work in this thesis does not necessarily revolve around solving sparse
+linear systems, a lot of techniques were inspired by the existing literature in the field.
+In particular, the book by Davis \cite{davis2006direct} is an excellent reference was used extensively throughout
+the development of our methods.
+The book by Duff \cite{Duff1986Direct} is another great reference to learn more about the
+history and developement of sparse matrix algorithms.

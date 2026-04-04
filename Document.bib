@@ -1,31 +1,7 @@
-@article{karmarkar1984new,
-  author  = {Karmarkar, Narendra},
-  title   = {A new polynomial-time algorithm for linear programming},
-  journal = {Combinatorica},
-  volume  = {4},
-  number  = {4},
-  pages   = {373--395},
-  year    = {1984},
-  publisher = {Springer},
-  doi     = {10.1007/BF02579150}
-}
 
-@book{nesterov1994interior,
-  author    = {Nesterov, Yurii and Nemirovskii, Arkadii},
-  title     = {Interior-Point Polynomial Algorithms in Convex Programming},
-  year      = {1994},
-  publisher = {Society for Industrial and Applied Mathematics},
-  address   = {Philadelphia},
-  doi       = {10.1137/1.9781611970791}
-}
-
-@book{boyd2004convex,
-  title={Convex optimization},
-  author={Boyd, Stephen and Vandenberghe, Lieven},
-  year={2004},
-  publisher={Cambridge university press}
-}
-
+###
+Introduction of literature review
+###
 @techreport{marceau1971matrix,
   title = {A Matrix-Generator System for Linear Programming Problems},
   author = {Marceau, Ian and Mason, Thomas W.},
@@ -123,6 +99,9 @@ numpages = {41}
   publisher = {INFORMS}
 }
 
+###
+Coefficient extraction methods
+###
 @book{bisschop2006aimms,
   title={AIMMS optimization modeling},
   author={Bisschop, J.},
@@ -181,6 +160,24 @@ numpages = {41}
   publisher = {Springer Science \& Business Media}
 }
 
+###
+Canonicalization
+###
+@incollection{graphimplementations2008,
+  author    = {Grant, M. and Boyd, S.},
+  editor    = {Vincent Blondel and S. Boyd and Hidenori Kimura},
+  booktitle = {Recent Advances in Learning and Control},
+  title     = {{Graph Implementations for Nonsmooth Convex Programs}},
+  series    = {Lecture Notes in Control and Information Sciences},
+  volume    = {371},
+  publisher = {Springer, London},
+  year      = {2008},
+  doi       = {10.1007/978-1-84800-155-8_7},
+  url       = {https://doi.org/10.1007/978-1-84800-155-8_7}
+}
+###
+Modeling languages
+###
 @misc{cvx,
   author       = {CVX Research, Inc.},
   title        = {{CVX}: Matlab Software for Disciplined Convex Programming, version 2.0},
@@ -420,44 +417,6 @@ numpages = {41}
   note={Describes AMPL's expression DAG and coefficient extraction internals}
 }
 
-@article{naumann2004optimal,
-  author={Naumann, Uwe},
-  title={Optimal accumulation of {J}acobian matrices by elimination methods
-         on the dual computational graph},
-  journal={Mathematical Programming},
-  volume={99},
-  number={3},
-  pages={399--421},
-  year={2004},
-  publisher={Springer},
-  doi={10.1007/s10107-003-0456-9}
-}
-
-@inproceedings{naumann2008optimal,
-  author={Naumann, Uwe},
-  title={Optimal Jacobian accumulation is {NP}-complete},
-  booktitle={Mathematical Programming},
-  volume={112},
-  number={2},
-  pages={427--441},
-  year={2008},
-  publisher={Springer},
-  doi={10.1007/s10107-006-0042-z}
-}
-
-@article{gebremedhin2005coloring,
-  author={Gebremedhin, Assefaw H. and Manne, Fredrik and Pothen, Alex},
-  title={What Color Is Your {J}acobian? {G}raph Coloring for Computing
-         Derivatives},
-  journal={SIAM Review},
-  volume={47},
-  number={4},
-  pages={629--705},
-  year={2005},
-  publisher={SIAM},
-  doi={10.1137/S0036144504444711}
-}
-
 @article{Fu_2020,
    title={CVXR: An R Package for Disciplined Convex Optimization},
    volume={94},
@@ -470,3 +429,75 @@ numpages = {41}
    author={Fu, Anqi and Narasimhan, Balasubramanian and Boyd, Stephen},
    year={2020} 
   }
+
+###
+Sparse Matrix Formats
+###
+
+@book{Kernighan1988,
+  author = {Kernighan, Brian W. and Ritchie, Dennis M.},
+  title = {The C Programming Language},
+  edition = {2nd},
+  publisher = {Prentice Hall},
+  year = {1988},
+  isbn = {978-0131103627}
+}
+
+@book{davis2006direct,
+  author    = {Timothy A. Davis},
+  title     = {Direct Methods for Sparse Linear Systems},
+  publisher = {Society for Industrial and Applied Mathematics},
+  year      = {2006},
+  address   = {Philadelphia, PA},
+  isbn      = {978-0-89871-613-9},
+  doi       = {10.1137/1.9780898718881},
+  url       = {https://epubs.siam.org/doi/book/10.1137/1.9780898718881}
+}
+
+@book{Duff1986Direct,
+  author = {Duff, Iain S. and Erisman, Albert M. and Reid, John K.},
+  title = {Direct Methods for Sparse Matrices},
+  publisher = {Oxford University Press},
+  year = {1986},
+  address = {Oxford, England},
+  isbn = {0-19-853408-6}
+}
+
+@book{saad2003iterative,
+  title={Iterative Methods for Sparse Linear Systems},
+  author={Saad, Yousef},
+  year={2003},
+  publisher={Society for Industrial and Applied Mathematics},
+  address={Philadelphia, PA},
+  edition={2nd},
+  isbn={978-0-898715-34-7},
+  doi={10.1137/1.9780898718003}
+}
+
+@ARTICLE{2020SciPy-NMeth,
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
+            Haberland, Matt and Reddy, Tyler and Cournapeau, David and
+            Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and
+            Bright, Jonathan and {van der Walt}, St{\'e}fan J. and
+            Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and
+            Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and
+            Kern, Robert and Larson, Eric and Carey, C J and
+            Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and
+            {VanderPlas}, Jake and Laxalde, Denis and Perktold, Josef and
+            Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and
+            Harris, Charles R. and Archibald, Anne M. and
+            Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and
+            {van Mulbregt}, Paul and {SciPy 1.0 Contributors}},
+  title   = {{{SciPy} 1.0: Fundamental Algorithms for Scientific
+            Computing in Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  pages   = {261--272},
+  adsurl  = {https://rdcu.be/b08Wh},
+  doi     = {10.1038/s41592-019-0686-2},
+}
+
+###
+Computing derivatives
+###
