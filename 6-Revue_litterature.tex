@@ -63,9 +63,18 @@ were among the first matrix generators which were used in various domains.
 
 \paragraph{\texttt{JuMP} and \texttt{MathOptInterface}.}
 
-\paragraph{\texttt{CasADi}.}
+JuMP is an algebraic modeling language embedded in Julia, originally developed in 2012 by
+Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
+Center \cite{dunning2017jump, lubin2023jump10recent}. Its abstraction layer, MathOptInterface
+(MOI) \cite{legat2020mathoptinterface}, rethinks how a modeling language communicates with solvers,
+moving away from the traditional approach of reducing every problem to a single standard form.
+
+\paragraph{Function-set pairs}
 
 \paragraph{\texttt{AMPL}.}
+
+\cite{fourer1990ampl}
+\paragraph{\texttt{CasADi}.}
 
 %%
 %%  COMPUTING DERIVATIVES
@@ -73,16 +82,28 @@ were among the first matrix generators which were used in various domains.
 \section{Computing derivatives}
 \label{sec:jacobian-abstraction}
 
+Finding the rate of change or the \emph{derivative} of a function at a particular point
+is a fundamental concept in calculus that was discovered by Leibniz and Newton in the late 1600s.
+Since then, the underlying theory hasn't changed much, but throughout the years,
+various methods have been developed to compute derivatives accurately and efficiently.
+The books by Griewank and Walther \cite{griewank2008evaluating} and Naumann \cite{Naumann2011} are excellent references.
+
+\paragraph{Numerical differentiation.}
+\cite{}
 \paragraph{Automatic differentiation.}
-\cite{JAX}
-\cite{PyTorch}
-\cite{TensorFlow}
+Jax \cite{jax2018github}
+Pytorch \cite{pytorch2019}
+Tensorflow \cite{tensorflow2016}
+
+\paragraph{Forward mode AD.}
+\paragraph{Reverse mode AD.}
 \paragraph{Symbolic differentiation.}
-\cite{SymPy}
+Sympy \cite{sympy2017}
 
 \paragraph{Sparse differentiation.}
 
 \paragraph{Other methods.}
+
 %%
 %%  SPARSE MATRIX FORMATS
 %%
@@ -128,8 +149,8 @@ double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
 where we deliberately format \texttt{idxptr} to align with the start of each
 row in the \texttt{cols} arrays.
 % talk about benefits of CSR format. fast row slicing, fast matrix-vector products, etc.
-The benefits of the CSR format are more than compressed storage for the \texttt{idxptr} array
-compared to the \texttt{rows} arrays.
+The benefits of the CSR format are more than a reduced size of the \texttt{idxptr} array
+compared to the \texttt{rows} array.
 In the CSR format, accessing a row takes constant time and is very \emph{cache-friendly}
 since the nonzero entries are stored contiguously in memory.
 For this reason, the CSR format is the default for \emph{iterative methods}
@@ -140,25 +161,28 @@ to solve sparse linear systems \cite{saad2003iterative}.
 However, one downside of the CSR format is that accessing a column is much more difficult;
 one would need to look at every row to find the nonzero entries in a column.
 An alternative format is the \emph{compressed sparse column} or CSC format, 
-which replaces the \texttt{idxptr} array with a column pointer array and 
-the \texttt{cols} array with a \texttt{rows} index array.
+which swaps the role of the \texttt{idxptr} array to refer to column indices instead.
 In contrast to iterative methods, the CSC format is the preferred format for
 \emph{direct methods} to solve sparse linear systems \cite{davis2006direct}.
 
 \paragraph{Other formats.}
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
 but many others exist for different specialized use cases.
-The python sparse linear algebra library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
-allows users to form other sparse matrix formats such as the list of lists (LIL) format,
-the dictionary of keys (DOK) format, and the block-sparse row (BSR) format.
-
-\paragraph{Converting between formats.}
-
+The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
+allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
+the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 
 \paragraph{Resources.}
+% TODO revisit this once we start writing the methodology.
 Although the work in this thesis does not necessarily revolve around solving sparse
-linear systems, a lot of techniques were inspired by the existing literature in the field.
-In particular, the book by Davis \cite{davis2006direct} is an excellent reference was used extensively throughout
+linear systems, a lot of techniques for manipulating sparse matrices we use were inspired by
+the literature.
+In particular, the book by Davis \cite{davis2006direct} was used extensively throughout
 the development of our methods.
 The book by Duff \cite{Duff1986Direct} is another great reference to learn more about the
 history and developement of sparse matrix algorithms.
+% review this paragraph, and maybe cite this:
+Another reference is the review article by the ``gang of four'' (Gill, Murray, Saunders and Wright)
+from the Systems Optimization Laboratory at Stanford University 
+\cite{gill1984sparse} which provides a high-level overview of various applications
+of sparse matrix methods in optimization.
