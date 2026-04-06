@@ -146,6 +146,16 @@ is used in computer algebra systems such as Mathematica \cite{mathematica} and M
 as well as the SymPy library in Python \cite{sympy2017}.
 Unlike its numerical counterpart, symbolic differentiation tools compute derivatives as closed-form
 expressions, which can be simplified and evaluated at any arbitrary point.
+These closed-form expressions are particularly useful for deriving analytic solutions of optimization
+problems, and can be further used in mathematical proofs and analyses.
+
+However, a naive implementation of symbolic differentiation can easily lead to \emph{expression swell},
+where the size of the intermediate expressions grows exponentially with the number of operations,
+making it impractical for certain problems \cite{griewank2008evaluating}.
+Interestingly, when intermediate expressions are stored as \emph{common subexpressions},
+and the expression representation is a \emph{directed acyclic graph} (DAG) instead of a tree,
+symbolic differentiation performs the same set of operations as automatic differentiation
+\cite{Laue2019OnTE}.
 
 \paragraph{Automatic differentiation.}
 
