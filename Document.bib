@@ -698,3 +698,54 @@ keywords = {backpropagation, differentiable programming}
   volume={abs/1904.02990},
   url={https://api.semanticscholar.org/CorpusID:102350450}
 }
+
+@article{Herholz2022SparsitySpecific,
+author = {Herholz, Philipp and Tang, Xuan and Schneider, Teseo and Kamil, Shoaib and Panozzo, Daniele and Sorkine-Hornung, Olga},
+title = {Sparsity-Specific Code Optimization using Expression Trees},
+year = {2022},
+issue_date = {October 2022},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {41},
+number = {5},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3520484},
+doi = {10.1145/3520484},
+abstract = {We introduce a code generator that converts unoptimized C++ code operating on sparse data into vectorized and parallel CPU or GPU kernels. Our approach unrolls the computation into a massive expression graph, performs redundant expression elimination, grouping, and then generates an architecture-specific kernel to solve the same problem, assuming that the sparsity pattern is fixed, which is a common scenario in many applications in computer graphics and scientific computing. We show that our approach scales to large problems and can achieve speedups of two orders of magnitude on CPUs and three orders of magnitude on GPUs, compared to a set of manually optimized CPU baselines. To demonstrate the practical applicability of our approach, we employ it to optimize popular algorithms with applications to physical simulation and interactive mesh deformation.},
+journal = {ACM Trans. Graph.},
+month = may,
+articleno = {175},
+numpages = {19},
+keywords = {Code optimisation, sparse computation}
+}
+
+@article{Gebremedhin2009SparseHessians,
+author = {Gebremedhin, Assefaw H. and Tarafdar, Arijit and Pothen, Alex and Walther, Andrea},
+title = {Efficient Computation of Sparse Hessians Using Coloring and Automatic Differentiation},
+year = {2009},
+issue_date = {Spring 2009},
+publisher = {INFORMS},
+address = {Linthicum, MD, USA},
+volume = {21},
+number = {2},
+issn = {1526-5528},
+url = {https://doi.org/10.1287/ijoc.1080.0286},
+doi = {10.1287/ijoc.1080.0286},
+abstract = {The computation of a sparse Hessian matrix H using automatic differentiation (AD) can be made efficient using the following four-step procedure: (1) Determine the sparsity structure of H, (2) obtain a seed matrix S that defines a column partition of H using a specialized coloring on the adjacency graph of H, (3) compute the compressed Hessian matrix B ≡ HS, and (4) recover the numerical values of the entries of H from B.The coloring variant used in the second step depends on whether the recovery in the fourth step is direct or indirect: a direct method uses star coloring and an indirect method uses acyclic coloring. In an earlier work, we had designed and implemented effective heuristic algorithms for these two NP-hard coloring problems. Recently, we integrated part of the developed software with the AD tool ADOL-C, which has recently acquired a sparsity detection capability. In this paper, we provide a detailed description and analysis of the recovery algorithms and experimentally demonstrate the efficacy of the coloring techniques in the overall process of computing the Hessian of a given function using ADOL-C as an example of an AD tool. We also present new analytical results on star and acyclic coloring of chordal graphs. The experimental results show that sparsity exploitation via coloring yields enormous savings in runtime and makes the computation of Hessians of very large size feasible. The results also show that evaluating a Hessian via an indirect method is often faster than a direct evaluation. This speedup is achieved without compromising numerical accuracy.},
+journal = {INFORMS J. on Computing},
+month = apr,
+pages = {209–223},
+numpages = {15},
+keywords = {acyclic coloring, automatic differentiation, combinatorial scientific computing, sparse Hessian computation, star coloring}
+}
+
+@article{gebremedhin2005color,
+  title={What color is your {J}acobian? {G}raph coloring for computing derivatives},
+  author={Gebremedhin, A. H. and Manne, F. and Pothen, A.},
+  journal={SIAM Review},
+  volume={47},
+  number={4},
+  pages={629--705},
+  year={2005},
+  publisher={SIAM}
+}

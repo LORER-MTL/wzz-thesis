@@ -109,13 +109,14 @@ is a fundamental concept in calculus that was discovered by Leibniz and Newton i
 Since then, although the underlying theory has practically remained the same, various methods have been developed
 to efficiently compute derivatives in different contexts and applications.
 More recently, the rise of machine learning and deep learning brought renewed interest
-in this age-old problem through a new application of derivatives to train neural networks, it is known as the 
-\emph{backward pass} or \emph{backpropagation} \cite{lecun2015deep, Bottou2018Optimization}.
+in this age-old problem through a new application of derivatives in training \emph{neural networks},
+it is known as the \emph{backward pass} or \emph{backpropagation} \cite{lecun2015deep, Bottou2018Optimization}.
 Some theorists will claim that backpropagation is little more than a clever application of the \emph{chain rule}
 \cite{lecun1988theoretical}, but the large scale of modern workloads has led to the development of incredible
 software tools and implementation techniques which are interesting in their own right.
 This section provides an overview of these new tools and techniques, with a particular emphasis on
-\emph{automatic} or \emph{algorithmic differentiation} (AD) \cite{griewank2008evaluating}.
+\emph{algorithmic differentiation} and its applications to computing 
+sparse Jacobians \cite{griewank2008evaluating}.
 
 \paragraph{Numerical differentiation.}
 Other than computing derivatives by hand, the simplest method is to use \emph{numerical differentiation},
@@ -149,29 +150,55 @@ expressions, which can be simplified and evaluated at any arbitrary point.
 These closed-form expressions are particularly useful for deriving analytic solutions of optimization
 problems, and can be further used in mathematical proofs and analyses.
 
-However, a naive implementation of symbolic differentiation can easily lead to \emph{expression swell},
-where the size of the intermediate expressions grows exponentially with the number of operations,
-making it impractical for certain problems \cite{griewank2008evaluating}.
+However, a naive implementation of symbolic differentiation can easily lead to 
+exponentially large symbolic expressions, which is impractical and inefficient for
+many problems \cite{griewank2008evaluating}.
 Interestingly, when intermediate expressions are stored as \emph{common subexpressions},
-and the expression representation is a \emph{directed acyclic graph} (DAG) instead of a tree,
-symbolic differentiation performs the same set of operations as automatic differentiation
+and the expression is represented with a \emph{directed acyclic graph} (DAG) instead of a tree,
+symbolic differentiation performs the same set of operations as \emph{reverse mode differentiation}
 \cite{Laue2019OnTE}.
 
-\paragraph{Automatic differentiation.}
+\paragraph{Algorithmic differentiation.}
+There is a lot of confusion on the terminology surrounding the various methods for computing derivatives;
+\emph{automatic differentiation} and \emph{computational differentiation}
+are often used to describe the field, but we will refer to it as \emph{algorithmic differentiation}
+instead since it emphasizes the \emph{algorithmic} implementation technique rather than a particular method
+(it is also the convention in the book by Griewank and Walther \cite{griewank2008evaluating}).
+In addition, all AD methods require both a \emph{symbolic} phase (to analyze the function to differentiate)
+and a \emph{numerical} phase (to compute the numerical value of the derivative), so it is important to
+distinguish them from purely symbolic or numerical methods.
+
+Fundamentally, AD is a non-standard interpretation of a computer program which evaluates a function
+and augments it with calculations of derivatives \cite{baydin2017ADsurvey}.
+Conceptually, almost all numerical computation can be represented as a composition of elementary functions
+whose derivatives are known, and combining the derivatives of these elementary functions using the chain rule
+will give the derivative of the overall composition \cite{griewank2008evaluating}.
+Practically, AD can be implemented using various techniques such as operator overloading,
+source code transformation, and many other computational techniques \cite{Naumann2011}.
 
 \paragraph{Forward mode AD.}
+The method of propagating tangents forward through the computational graph is known as \emph{forward mode} AD.
 
 \paragraph{Reverse mode AD.}
+The method of propagating adjoints backward through the computational graph is known as \emph{reverse mode} AD.
 
-\paragraph{Sparse differentiation.}
+\paragraph{Jacobian and Hessian computation.}
+
+\paragraph{Graph coloring and Sparse Jacobian computation.}
+
 maybe mention graph coloring here?
+
+\cite{Herholz2022SparsitySpecific} presents a code generator for operations on sparse data.
+
+\cite{Gebremedhin2009SparseHessians} presents a similar method for computing sparse Hessians with graph coloring.
+\cite{gebremedhin2005color} is a survey of graph coloring methods for computing sparse Jacobians and Hessians.
 
 \paragraph{Differentiation packages.}
 Jax \cite{jax2018github}
 Pytorch \cite{pytorch2019}
 Tensorflow \cite{tensorflow2016}
-
-\paragraph{Other methods.}
+mention ADOL-C and CppAD for C++.
+mention AMPL and CasADi for optimization.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on the theory and practice of automatic differentiation.
