@@ -195,6 +195,8 @@ making it the default method for modern machine learning libraries such as Jax \
 Pytorch \cite{pytorch2019}, and Tensorflow \cite{tensorflow2016}.
 
 \paragraph{Advantages of AD.}
+% maybe can also mention that the main difficulty is how to process the evaluation trace backwards
+% and how to store intermediate values efficiently, and how to handle control flow, etc.
 % talk about computational graph and evaluation trace.
 % mention that this means we can differentiate complicated ODEs,
 % and other similar things, numerical computation, loops conditionals, etc.
@@ -228,7 +230,7 @@ in machine learning.
 %%
 
 \section{Sparse matrices}
-\label{sec:sparse-formats}
+\label{sec:sparse-matrices}
 
 Matrices that contain many number of zero entries are known as \emph{sparse matrices}.
 The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
