@@ -87,13 +87,13 @@ moving away from the traditional approach of reducing every problem to a single 
 
 \paragraph{Function-set pairs}
 
-\paragraph{\texttt{AMPL}.}
-
-\cite{fourer1990ampl}
-
 \paragraph{\texttt{CasADi}.}
 
 \cite{andersson2019}
+
+\paragraph{\texttt{AMPL}.}
+
+\cite{fourer1990ampl}
 
 \paragraph{References.}
 
@@ -141,7 +141,7 @@ verifying the correctness of derivative computations (also known as a \emph{deri
 \cite{wolfe1982checking}.
 
 \paragraph{Symbolic differentiation.}
-Mathematical expressions can be manipulated automatically using simple \emph{derivative rules}
+Mathematical expressions can be manipulated automatically using simple derivative rules
 of calculus, such as the product and sum rule. This \emph{symbolic} approach to differentiation
 is used in computer algebra systems such as Mathematica \cite{mathematica} and Maple \cite{maple}
 as well as the SymPy library in Python \cite{sympy2017}.
@@ -161,31 +161,49 @@ symbolic differentiation performs the same set of operations as \emph{reverse mo
 \paragraph{Algorithmic differentiation.}
 There is a lot of confusion on the terminology surrounding the various methods for computing derivatives;
 \emph{automatic differentiation} and \emph{computational differentiation}
-are often used to describe the field, but we will refer to it as \emph{algorithmic differentiation}
-instead since it emphasizes the \emph{algorithmic} implementation technique rather than a particular method
-(it is also the convention in the book by Griewank and Walther \cite{griewank2008evaluating}).
-In addition, all AD methods require both a \emph{symbolic} phase (to analyze the function to differentiate)
-and a \emph{numerical} phase (to compute the numerical value of the derivative), so it is important to
-distinguish them from purely symbolic or numerical methods.
-
-Fundamentally, AD is a non-standard interpretation of a computer program which evaluates a function
-and augments it with calculations of derivatives \cite{baydin2017ADsurvey}.
-Conceptually, almost all numerical computation can be represented as a composition of elementary functions
-whose derivatives are known, and combining the derivatives of these elementary functions using the chain rule
-will give the derivative of the overall composition \cite{griewank2008evaluating}.
-Practically, AD can be implemented using various techniques such as operator overloading,
-source code transformation, and many other computational techniques \cite{Naumann2011}.
+are often used to describe the field, but we will instead refer to it as \emph{algorithmic differentiation}
+since it emphasizes the algorithms behind the different implementations rather than a particular method
+(it is also the convention in the seminal book by Griewank and Walther \cite{griewank2008evaluating}).
+Fundamentally, AD is a non-standard interpretation of a computer program: it augments the \emph{evaluation trace}
+of a function (the sequence of floating point values calculated during the execution) with calculations
+of its derivatives \cite{baydin2017ADsurvey}.
+This trace can be represented as a \emph{computational graph},
+a DAG in which each node corresponds to an elementary operation with known derivatives.
+Combining the derivatives of these operations throughout the graph
+using the chain rule gives the derivative of the overall function \cite{griewank2008evaluating}.
+The computational graph is the central data structure of AD; the various \emph{modes} of AD correspond
+to different ways elementary derivatives are accumulated on this graph.
 
 \paragraph{Forward mode AD.}
 The method of propagating tangents forward through the computational graph is known as \emph{forward mode} AD.
+A single forward pass simultaneously computes the value and derivative of every intermediate variable with respect
+to a single input variable, giving the sensitivity of all outputs to that input.
+The cost of a forward pass is a small constant factor of the cost of evaluating the original function,
+since each elementary operation is augmented with at most a few additional arithmetic operations for the derivatives.
+However, one downside of forward mode AD is that the number of forward passes scales linearly with the number of input
+variables, which is impractical for certain functions (which have many input variables and very few output variables).
 
 \paragraph{Reverse mode AD.}
-The method of propagating adjoints backward through the computational graph is known as \emph{reverse mode} AD.
+In contrast to forward mode, \emph{reverse mode} AD propagates adjoints backward through the computational graph.
+It first requires a forward pass to compute and store the value of every intermediate variable, and it then performs
+a reverse pass to compute the sensitivities of a single output variable with respect to all input variables.
+The cost of a reverse pass is also a small constant factor of the cost of evaluating the original function,
+but the number of passes required now scales linearly with the number of output variables rather than the 
+number of input variables.
+This makes reverse mode AD particularly efficient for computing gradients of scalar-valued functions,
+making it the default method for modern machine learning libraries such as Jax \cite{jax2018github},
+Pytorch \cite{pytorch2019}, and Tensorflow \cite{tensorflow2016}.
+
+\paragraph{Advantages of AD.}
+% talk about computational graph and evaluation trace.
+% mention that this means we can differentiate complicated ODEs,
+% and other similar things, numerical computation, loops conditionals, etc.
+\cite{Naumann2011}.
 
 \paragraph{Jacobian and Hessian computation.}
 
-\paragraph{Graph coloring and Sparse Jacobian computation.}
-
+\paragraph{Sparse Jacobian computation.}
+graph coloring, cross-country elimination, vertex elimination, jacobian accumulation, etc.
 maybe mention graph coloring here?
 
 \cite{Herholz2022SparsitySpecific} presents a code generator for operations on sparse data.
@@ -194,11 +212,9 @@ maybe mention graph coloring here?
 \cite{gebremedhin2005color} is a survey of graph coloring methods for computing sparse Jacobians and Hessians.
 
 \paragraph{Differentiation packages.}
-Jax \cite{jax2018github}
-Pytorch \cite{pytorch2019}
-Tensorflow \cite{tensorflow2016}
 mention ADOL-C and CppAD for C++.
-mention AMPL and CasADi for optimization.
+mention AMPL and CasADi for optimization. and also mention that they were covered above in the coeff extraction
+section.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on the theory and practice of automatic differentiation.
@@ -206,6 +222,7 @@ The book by Naumann \cite{Naumann2011} is another great reference that focuses o
 on the use of operator overloading and source code transformation techniques.
 \cite{baydin2017ADsurvey} is an excellent and relatively up-to-date survey of the various methods for automatic differentiation
 in machine learning.
+
 %%
 %%  SPARSE MATRIX FORMATS
 %%
