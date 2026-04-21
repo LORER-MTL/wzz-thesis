@@ -1,10 +1,10 @@
 \Chapter{INTRODUCTION}\label{sec:Introduction}
 
-Modeling languages for convex optimization such as CVXPY \cite{diamond2016cvxpy} and
+Domain specific modeling languages for convex optimization such as CVXPY \cite{diamond2016cvxpy} and
 YALMIP \cite{lofberg2004yalmip} allow users to formulate optimization problems in a natural
 mathematical syntax. Through a process called \emph{canonicalization}, these high-level 
 problem descriptions are converted to a \emph{standard conic form} used by many
-general-purpose solvers
+general-purpose convex solvers
 \BEQ \label{e:standard-form}
 \begin{array}{ll}
 \mbox{minimize} & c^T x \\
@@ -15,13 +15,14 @@ general-purpose solvers
 where $x \in \reals^n$ and $s \in \reals^m$ are the decision variables,
 and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vectors $b \in \reals^m$
 and $c \in \reals^n$, and the non-empty closed convex cone $K \subseteq \reals^m$.
-Almost all of optimization practice can be divided into two groups, modeling and 
-solving. The modeler's role is to [...]. 
-The solver's role is to find an optimal solution given a problem data instance.
+Almost all of optimization practice can be divided into two groups, \emph{modeling} and 
+\emph{solving}. The modeler's role is to formulate problems based on real-world business
+or engineering applications.
+The solver's role is to find an optimal solution given the data of a problem instance.
 Modeling languages serve as the communication bridge between these two groups.
 When improvements in solvers are made, modeling languages must adapt to allow users
 to benefit from them. Conversely, it is through natural formulations that modelers can 
-express their needs and help motivate solver improvements.
+express their requirements and help motivate solver improvements.
 
 While the time taken to solve an optimization problem is often dominated by the solver,
 the time taken to \emph{canonicalize} (or \emph{compile}) a problem can also be significant,
@@ -29,28 +30,63 @@ especially for large problems.
 In the case of CVXPY, the \emph{compilation time} largely lies in \emph{matrix stuffing},
 the final step of canonicalization where symbolic expressions trees are converted to 
 explicit numerical matrices.
-Other modeling languages take different approaches to form the problem data, we refer to their
-approaches as \emph{coefficient extraction} and review them in \S\ref{sec:coefficient-extraction}.
+Other modeling languages take different approaches to form the problem data, we review these
+\emph{coefficient extraction} approaches in \S\ref{sec:coefficient-extraction}.
+
+\paragraph{Atoms.}
+Modeling languages for convex optimization are built on top of a library of
+functions which can be used to describe problems.
+These functions are known as \emph{atoms} in CVXPY since they are the fundamental
+building blocks of the modeling language \cite{grant2004disciplined}.
+Atoms have known attributes such as curvature (affine, convex, concave), monotonicity 
+(increasing, decreasing, non-monotone), and sign (positive, negative, unknown), which are used
+during canonicalization (we show an example in \S\ref{sec:canonicalization}).
+
+\paragraph{Parameters.}
+The data inputs in a problem instance can either be fixed or varying.
+In CVXPY, varying data are referred to as \emph{parameters} and
+fixed data are referred to as \emph{constants}.
+Parameters are useful for specifying a \emph{family} of problems where the 
+structure is fixed \cite{schaller2022cvxpygen}.
+During canonicalization, CVXPY will form a \emph{parameter map} which maps each parameter to the
+indices of the problem data that depend on it.
+On subsequent iterations, CVXPY can bypass matrix stuffing by updating the parameter values
+and applying the parameter map to get an instance of problem data.
+We describe this mapping in greater detail in \S\ref{sec:matrix-stuffing}.
+
+\paragraph{Expression trees.}
+An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
+The subexpression can either be a variable, a parameter, or another expression.
+Similarly to atoms, expressions can also be classified by curvature, monotonicity, and sign
+which are determined by simple \emph{composition rules} \cite{grant2006disciplined}.
+% define expressions and show an example of an expression tree.
+An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
 
 \paragraph{Matrix stuffing.}
-After expanding nonlinear functions into their \emph{graph implementations}
-\cite{graphimplementations2008}, all expressions trees are guaranteed to be affine.
-We review the entire canonicalization process and show a concrete
-example in \S\ref{sec:canonicalization}.
-At this stage, the convex cone $\mathcal{K}$, which is typically a cartesian product
-of \emph{standard cones}, is already computed and known.
+Although the original user specified problem formulation may contain nonlinearities,
+after conversion to standard form, the \emph{canonicalized problem} will
+only contain affine expressions.
+The convex cone $\mathcal{K}$ (typically a cartesian product
+of \emph{standard cones}) is already computed and known.
 The remaining problem data are the \emph{constraint matrix} $A$
 and the vectors $b$ and $c$.
 The process to compute $b$ is relatively straightforward, for example,
 one can \emph{evaluate} the affine expression tree at the origin.
 The process to obtain $c$ is a special case of the process to obtain $A$.
 For these reasons, we will often refer to matrix stuffing as the explicit task
-of forming $A$.
-We review matrix stuffing and its current implementations in CVXPY 
-in \S\ref{sec:matrix-stuffing}.
+of forming the $A$ matrix.
+We review current CVXPY matrix stuffing approaches in \S\ref{sec:matrix-stuffing}.
 
 \paragraph{Contributions.}
 We make the following contributions:
+% We propose a new method for doing matrix stuffing without relying on a parameter map.
+% Instead we will store the sparse structure of the Jacobian of the affine expression tree, and use this
+% to compute the sparse constant Jacobian of the affine expression tree.
+% we will essentially walk the trees for values only, instead of caching the entire parameter map.
+
+% second contribution is that we use the affine atoms from the sparsediffengine package.
+% and use its python bindings to implement a CVXPY interface.
+% finally, we can mention benchmarks and getting rid of deprecated code in CVXPY (cvxcore).
 \begin{enumerate}
   \item We develop \texttt{SparseDiffEngine}.
   \item We develop \texttt{SparseDiffPy}.
@@ -63,7 +99,7 @@ All code is open source and available at
 The rest of this thesis is organized as follows.
 In \S\ref{sec:RevLitt} we review the literature on modeling languages,
 canonicalization, and matrix stuffing.
-In \S\ref{sec:Theme1} we describe our proposed canonicalization engine.
+In \S\ref{sec:Theme1} we describe a subset of affine atoms of our canonicalization engine.
 In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
 Finally, in \S\ref{sec:Conclusion} we summarize our contributions and

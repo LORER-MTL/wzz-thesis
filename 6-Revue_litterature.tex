@@ -115,7 +115,7 @@ Some theorists will claim that backpropagation is little more than a clever appl
 \cite{lecun1988theoretical}, but the large scale of modern workloads has led to the development of incredible
 software tools and implementation techniques which are interesting in their own right.
 This section provides an overview of these new tools and techniques, with a particular emphasis on
-\emph{algorithmic differentiation} and its applications to computing 
+\emph{algorithmic differentiation} (AD) and its applications to computing 
 sparse Jacobians \cite{griewank2008evaluating}.
 
 \paragraph{Numerical differentiation.}
@@ -203,7 +203,9 @@ Pytorch \cite{pytorch2019}, and Tensorflow \cite{tensorflow2016}.
 \cite{Naumann2011}.
 
 \paragraph{Jacobian and Hessian computation.}
-
+% mention connections to matrix stuffing
+% say that it is kind of obvious in hindsight but hasn't been
+% used to develop matrix stuffing historically.
 \paragraph{Sparse Jacobian computation.}
 graph coloring, cross-country elimination, vertex elimination, jacobian accumulation, etc.
 maybe mention graph coloring here?
@@ -287,12 +289,29 @@ which swaps the role of the \texttt{idxptr} array to refer to column indices ins
 In contrast to iterative methods, the CSC format is the preferred format for
 \emph{direct methods} to solve sparse linear systems \cite{davis2006direct}.
 
+\paragraph{Transpose.}
+% csr format and relation to csc in transpose.
+
+\paragraph{Which format to use?}
+% mention that we use both, for efficiency in some cases, etc.
+
 \paragraph{Other formats.}
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
 but many others exist for different specialized use cases.
 The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
 allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
 the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
+
+\paragraph{Sparse matrix struct in C.}
+A CSR matrix struct in C looks like this.
+\begin{lstlisting}[language=C]
+typedef struct CSR_Matrix {
+    int *p;       /* row pointers, size m+1   */
+    int *i;       /* column indices, size nnz */
+    double *x;    /* values, size nnz         */
+    int m, n, nnz;
+} CSR_Matrix;
+\end{lstlisting}
 
 \paragraph{References.}
 % TODO revisit this once we start writing the methodology.

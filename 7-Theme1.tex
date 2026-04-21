@@ -18,18 +18,8 @@ since it covers the basics of sparse matrices and their data structures.
 \section{Fundamental data structures}
 \label{sec:data-structures}
 
-% TODO should we even mention this?
-A CSR matrix struct in C looks like this.
-%
-\begin{lstlisting}[language=C]
-typedef struct CSR_Matrix {
-    int *p;       /* row pointers, size m+1   */
-    int *i;       /* column indices, size nnz */
-    double *x;    /* values, size nnz         */
-    int m, n, nnz;
-} CSR_Matrix;
-\end{lstlisting}
-%
+% first describe in english what an expression is
+% and what we need. Then show the struct.
 The main data structure in the engine is the expression struct.
 \begin{lstlisting}[language=C]
 typedef struct expr {
@@ -48,7 +38,7 @@ typedef struct expr {
     eval_jacobian_fn eval_jacobian;
 } expr;
 \end{lstlisting}
-%
+
 every expression node has a shape (d1 x d2) and a size (d1*d2),
 and also two pointers to its left and right children.
 It will also have a pointer to its value, which is the output of the forward pass,
@@ -59,32 +49,6 @@ a Jacobian initialization function, and a Jacobian evaluation function.
 \paragraph{Leaf nodes.}
 The two leaf nodes are variables and parameters.
 They are the fundamental building blocks of the expression tree.
-
-\begin{lstlisting}[language=C]
-expr *new_variable(int d1, int d2, int var_id, int n_vars)
-{
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
-    init_expr(node, d1, d2, n_vars, forward,
-             jacobian_init_impl, eval_jacobian, ...);
-    node->var_id = var_id;
-
-    return node;
-}
-\end{lstlisting}
-%
-\begin{lstlisting}[language=C]
-expr *new_parameter(int d1, int d2, int param_id,
-                    int n_vars, const double *values) {
-    parameter_expr *pnode = SP_CALLOC(1, sizeof(parameter_expr));
-    expr *node = &pnode->base;
-    init_expr(node, d1, d2, n_vars, forward,
-              jacobian_init_impl, eval_jacobian, ...);
-    pnode->param_id = param_id;
-    memcpy(node->value, values, node->size * sizeof(double));
-    return node;
-}
-\end{lstlisting}
-%
 
 \section{Atom implementations}
 \label{sec:atom-implementations}
@@ -99,7 +63,7 @@ and then show how it is implemented in the engine.
 \paragraph{Helpers and definitions.}
 We first import the necessary libraries and define basic variables and constants
 which will be used throughout the implementation.
-%
+
 \begin{lstlisting}[language=Python]
 import cvxpy as cp
 import numpy as np
@@ -110,26 +74,23 @@ y = cp.Variable(n2)
 a = cp.Parameter(n1)
 b = cp.Parameter(n2)
 \end{lstlisting}
-%
+
 \paragraph{Addition.}
 The addition atom (also commonly referred to as \texttt{add}) takes two expressions
 and sums them together elementwise.
-The CVXPY code is as follows (we note that Python's operator overloading for \texttt{+}
+The CVXPY code is as follows (note that Python's operator overloading for \texttt{+}
 will automatically form an \texttt{add} atom).
-%
+
 \begin{lstlisting}[language=Python]
 add_expr = cp.add(x, y)
 \end{lstlisting}
-%
+
 In the engine the implementation is as follows.
 \begin{lstlisting}[language=C]
 static void forward(expr *node, const double *u)
-{
-    /* children's forward passes */
+{    /* forward pass for children */
     node->left->forward(node->left, u);
     node->right->forward(node->right, u);
-
-    /* add left and right values */
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = node->left->value[i] + node->right->value[i];
@@ -147,7 +108,7 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
 
     /* fill sparsity pattern  */
-    sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_alloc();
 }
 
 static void eval_jacobian(expr *node)
@@ -157,29 +118,220 @@ static void eval_jacobian(expr *node)
     node->right->eval_jacobian(node->right);
 
     /* sum children's jacobians */
-    sum_csr_fill_values(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_fill_values();
 }
 \end{lstlisting}
 
+\paragraph{Negation.}
+The negation atom takes a single expression and negates it elementwise.
+
 \paragraph{Transpose.}
-%
+The transpose atom takes a single expression and transposes it.
+In CVXPY the code is as follows (it can also be written as \texttt{x.T}).
+
 \begin{lstlisting}[language=Python]
 transpose_expr = cp.transpose(x)
 \end{lstlisting}
-%
-\paragraph{Horizontal stack.}
 
+\begin{lstlisting}[language=C]
+// Forward pass for transpose atom
+static void forward(expr *node, const double *u)
+{
+    /* forward pass for child */
+    node->left->forward(node->left, u);
+
+    /* local forward pass */
+    int d1 = node->d1;
+    int d2 = node->d2;
+    double *X = node->left->value;
+    double *XT = node->value;
+    for (int i = 0; i < d1; ++i)
+    {
+        for (int j = 0; j < d2; ++j)
+        {
+            XT[j * d1 + i] = X[i * d2 + j];
+        }
+    }
+}
+\end{lstlisting}
+explain the Jacobian init and eval for transpose, which is just a permutation of the Jacobian entries.
+
+\paragraph{Horizontal stack.}
+The horizontal stack atom takes two expressions and concatenates them horizontally.
+In CVXPY the code is as follows, and just like \texttt{NumPy}, it requires the input expressions
+to have the same number of rows.
+\begin{lstlisting}[language=Python]
+hstack_expr = cp.hstack([x, y])
+\end{lstlisting}
+
+\begin{lstlisting}[language=C]
+static void forward(expr *node, const double *u)
+{
+    hstack_expr *hnode = (hstack_expr *) node;
+
+    /* children's forward passes */
+    for (int i = 0; i < hnode->n_args; i++)
+    {
+        hnode->args[i]->forward(hnode->args[i], u);
+    }
+
+    /* concatenate values horizontally */
+    int offset = 0;
+    for (int i = 0; i < hnode->n_args; i++)
+    {
+        expr *child = hnode->args[i];
+        memcpy(node->value + offset, child->value, child->size * sizeof(double));
+        offset += child->size;
+    }
+}
+
+static void eval_jacobian(expr *node)
+{
+    hstack_expr *hnode = (hstack_expr *) node;
+    CSR_Matrix *A = node->jacobian;
+    A->nnz = 0;
+
+    for (int i = 0; i < hnode->n_args; i++)
+    {
+        expr *child = hnode->args[i];
+        child->eval_jacobian(child);
+
+        /* copy values */
+        memcpy(A->x + A->nnz, child->jacobian->x,
+               child->jacobian->nnz * sizeof(double));
+        A->nnz += child->jacobian->nnz;
+    }
+}
+\end{lstlisting}
 \paragraph{Vertical stack.}
+The vertical stack atom takes two expressions and concatenates them vertically.
+In CVXPY the code is as follows, and just like \texttt{NumPy}, it requires the input expressions
+to have the same number of columns.
+\begin{lstlisting}[language=Python]
+vstack_expr = cp.vstack([x, y])
+\end{lstlisting}
+
+In the engine the implementation uses the transpose and horizontal stack atoms, since we can write
+\texttt{vstack([x, y]) = transpose(hstack(transpose(x), transpose(y)))}.
+
+More generally, we have the following equivalence:
+\begin{lstlisting}[language=Python]
+vstack([A, B]) == transpose(hstack([transpose(A), transpose(B)]))
+\end{lstlisting}
 
 \paragraph{Indexing.}
 
+\begin{lstlisting}[language=Python]
+index_expr = x[0:3]
+\end{lstlisting}
+
+\begin{lstlisting}[language=C]
+static void forward(expr *node, const double *u)
+{
+    expr *x = node->left;
+    index_expr *idx = (index_expr *) node;
+
+    /* child's forward pass */
+    x->forward(x, u);
+
+    /* gather selected elements */
+    for (int i = 0; i < idx->n_idxs; i++)
+    {
+        node->value[i] = x->value[idx->indices[i]];
+    }
+}
+\end{lstlisting}
+mention that the Jacobian is a subset of the child's Jacobian, and we can fill it in by copying the relevant rows.
+
 \paragraph{Sum.}
 
-\paragraph{Sum over an axis.}
+\begin{lstlisting}[language=Python]
+sum_expr = cp.sum(x)
+\end{lstlisting}
+
+\begin{lstlisting}[language=C]
+static void forward(expr *node, const double *u)
+{
+    /* child's forward pass */
+    x->forward(x, u);
+    sum = 0.0;
+    end = x->d1 * x->d2;
+    /* sum all elements */
+    for (i = 0; i < end; i++)
+    {
+        sum += x->value[i];
+    }
+    node->value[0] = sum;
+}
+\end{lstlisting}
 
 \paragraph{Elementwise multiplication.}
 
+\begin{lstlisting}[language=Python]
+elemwise_mult_expr = cp.multiply(x, y)
+\end{lstlisting}
+
+\begin{lstlisting}[language=C]
+static void forward(expr *node, const double *u)
+{
+    expr *child = node->left;
+    vector_mult_expr *vnode = (vector_mult_expr *) node;
+
+    /* call forward for param_source expr tree (this extra logic is needed
+       in case the parameter is a broadcast or promote node which needs to refresh
+       its values) */
+    if (vnode->base.needs_parameter_refresh)
+    {
+        vnode->param_source->forward(vnode->param_source, NULL);
+        vnode->base.needs_parameter_refresh = false;
+    }
+
+    const double *a = vnode->param_source->value;
+
+    /* child's forward pass */
+    child->forward(child, u);
+
+    /* local forward pass: elementwise multiply by a */
+    for (int i = 0; i < node->size; i++)
+    {
+        node->value[i] = a[i] * child->value[i];
+    }
+}
+
+static void jacobian_init_impl(expr *node)
+{
+    expr *x = node->left;
+
+    /* initialize child jacobian */
+    jacobian_init(x);
+
+    /* same sparsity as child */
+    node->jacobian = new_csr_copy_sparsity(x->jacobian);
+}
+
+static void eval_jacobian(expr *node)
+{
+    expr *x = node->left;
+    const double *a = ((vector_mult_expr *) node)->param_source->value;
+
+    /* evaluate x */
+    x->eval_jacobian(x);
+
+    /* row-wise scale child's jacobian */
+    for (int i = 0; i < node->size; i++)
+    {
+        for (int j = x->jacobian->p[i]; j < x->jacobian->p[i + 1]; j++)
+        {
+            node->jacobian->x[j] = a[i] * x->jacobian->x[j];
+        }
+    }
+}
+\end{lstlisting}
+
 \paragraph{Matrix multiplication.}
 
-\section{Problem class and CVXPY interface}
+\section{Problem class and Parameter updates}
+
+\section{CVXPY interface}
+
 \label{sec:problem-class-and-cvxpy-interface}
