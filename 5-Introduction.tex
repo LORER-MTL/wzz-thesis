@@ -50,9 +50,9 @@ Parameters are useful for specifying a \emph{family} of problems where the
 structure is fixed \cite{schaller2022cvxpygen}.
 During canonicalization, CVXPY will form a \emph{parameter map} which maps each parameter to the
 indices of the problem data that depend on it.
-On subsequent iterations, CVXPY can bypass matrix stuffing by updating the parameter values
-and applying the parameter map to get an instance of problem data.
-We describe this mapping in greater detail in \S\ref{sec:matrix-stuffing}.
+On subsequent solves, CVXPY will only need to update the parameter values
+and apply the parameter map to get an instance of problem data.
+We describe the parameter map and how to compute it in \S\ref{sec:matrix-stuffing}.
 
 \paragraph{Expression trees.}
 An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
@@ -63,6 +63,7 @@ which are determined by simple \emph{composition rules} \cite{grant2006disciplin
 An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
 
 \paragraph{Matrix stuffing.}
+% maybe talk about matrix stuffing with parameters here.
 Although the original user specified problem formulation may contain nonlinearities,
 after conversion to standard form, the \emph{canonicalized problem} will
 only contain affine expressions.
@@ -79,27 +80,24 @@ We review current CVXPY matrix stuffing approaches in \S\ref{sec:matrix-stuffing
 
 \paragraph{Contributions.}
 We make the following contributions:
-% We propose a new method for doing matrix stuffing without relying on a parameter map.
-% Instead we will store the sparse structure of the Jacobian of the affine expression tree, and use this
-% to compute the sparse constant Jacobian of the affine expression tree.
-% we will essentially walk the trees for values only, instead of caching the entire parameter map.
-
-% second contribution is that we use the affine atoms from the sparsediffengine package.
-% and use its python bindings to implement a CVXPY interface.
-% finally, we can mention benchmarks and getting rid of deprecated code in CVXPY (cvxcore).
 \begin{enumerate}
-  \item We develop \texttt{SparseDiffEngine}.
-  \item We develop \texttt{SparseDiffPy}.
-  \item We benchmark our methods against existing approaches.
+  \item We propose an alternative method for matrix stuffing that doesn't rely on a parameter map.
+  Instead, we treat matrix stuffing as a special case of sparse Jacobian evaluation which naturally
+  separates the symbolic structure of the Jacobian from its numerical values.
+  \item We use the affine atoms from the \texttt{SparseDiffengine} package and its Python bindings
+  to implement a backend for CVXPY.
+  \item We benchmark our method against existing approaches and make improvements to CVXPY's codebase
+  by removing a deprecated backend.
 \end{enumerate}
 All code is open source and available at
-\url{https://github.com/SparseDifferentiation/}.
+\url{https://github.com/cvxpy/cvxpy}.
 
 \paragraph{Thesis outline.}
-The rest of this thesis is organized as follows.
-In \S\ref{sec:RevLitt} we review the literature on modeling languages,
-canonicalization, and matrix stuffing.
-In \S\ref{sec:Theme1} we describe a subset of affine atoms of our canonicalization engine.
+The rest of this thesis begin with a review of the literature on modeling languages,
+canonicalization, and matrix stuffing in \S\ref{sec:RevLitt}.
+In \S\ref{sec:Theme1} we describe a set of relevant affine atoms and their implementation
+in a sparse differentiation package.
+% should we have another chapter for the CVXPY interface and problem class and handling parameters?
 In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
 Finally, in \S\ref{sec:Conclusion} we summarize our contributions and
