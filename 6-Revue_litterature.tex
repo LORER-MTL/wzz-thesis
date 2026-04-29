@@ -4,7 +4,7 @@
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
 %%
-%% Into of literature review
+%% Intro of literature review
 %%
 
 Solving an optimization problem on a computer requires translating the mathematical formulation
@@ -42,17 +42,73 @@ the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
 and \texttt{DATAFORM}~\cite{ketron1975dataform}
 were among the first matrix generators which were used in various domains.
 
+\paragraph{A modern approach}
+Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
+individual matrix entries. Matrix generators simplified the encoding process but still required
+modelers to translate their mathematical formulations into procedural code that explicitly
+constructs the coefficient matrices. This suggests that the gap between the modeler's
+representation of the problem and the solver's required format hadn't been resolved
+yet~\cite{fourer1978modern}.
+
+\paragraph{Algebraic modeling languages}
+In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
+accept problem descriptions that closely mirror standard mathematical
+notation~\cite{fourer1983modeling}. By working directly with the modeler's representation, these
+languages simplify verification (the model can be inspected as written), modification (changing
+the problem does not require rewriting procedural code), and communication (the formulation serves
+as its own documentation). In the late 1980s and early 1990s, commercial algebraic modeling
+systems such as GAMS~\cite{brooke1988gams}, AIMMS~\cite{bisschop2006aimms} and
+AMPL~\cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
+widely used today).
+
+\paragraph{Conic standard form}
+In the 2000s, advances in convex optimization made it practical to solve a much broader class of
+problems efficiently. Solvers such as MOSEK \cite{mosekSolver, aps2025mosek} adopted \emph{conic
+optimization} as their interface---a structured subclass of convex optimization with the standard
+form~\cite{boyd2004convex}:
+\begin{equation}
+      \begin{array}{ll}
+        \text{minimize} & c^T x\\
+        \text{subject to} &  b-Ax \in \mathcal K,\\
+      \end{array}
+      \label{eq:conic}
+\end{equation}
+where $\mathcal{K}$ is a closed convex cone. This formulation generalizes linear programming
+(when $\mathcal{K}$ is the nonnegative orthant) to include second-order cone programs
+(SOCPs), semidefinite programs (SDPs) and many more.
+
+\paragraph{Embedded modeling languages}
+In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
+programming languages (in contrast with standalone systems like AMPL and GAMS). Examples include
+YALMIP~\cite{lofberg2004yalmip} in MATLAB, Pyomo~\cite{hart2011pyomo} in Python,
+JuMP~\cite{dunning2017jump} in Julia, and CasADi~\cite{andersson2019} in C++.
+
+\paragraph{Disciplined convex programming}
+In addition, there are domain specific languages that implement \emph{disciplined convex programming} (DCP),
+a set of composition rules that can automatically verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
+These include CVX~\cite{cvx} in MATLAB, CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting}
+in Python, and Convex.jl~\cite{udell2014convex} in Julia.
+
+\paragraph{DCP composition rules.}
+\label{par:dcp-comp}
+The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and for each $i \in \{1, \dots, k\}$ the following holds:
+\begin{itemize}
+    \item $h$ is non-decreasing in argument $i$ and $f_i$ is convex, or
+    \item $h$ is non-increasing in argument $i$ and $f_i$ is concave, or
+    \item $f_i$ is affine.
+\end{itemize}
+The same results hold for concave functions by swapping convex and concave.
+Affine expressions require $h$ and all of its arguments to be affine \cite{grant2004dcp}.
+
+\paragraph{Structure of the chapter}
+
 %%
 %%  CANONICALIZATION
 %%
 \section{Canonicalization}
 \label{sec:canonicalization}
 
-\paragraph{Example.}
-
-\paragraph{Smith form.}
-
-\paragraph{Epigraph implementations.}
+In this section we cover the canonicalization process in CVXPY.
 
 \paragraph{CVXPY.}
 CVXPY is a domain-specific language for convex optimization embedded in Python,
@@ -63,15 +119,389 @@ which enabled support for other disciplined
 languages \cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}, and the
 project has since grown through contributions from many others \cite{dnlp}.
 
+\paragraph{Standard functional form.}
+CVXPY problems are specified in the standard ``functional'' form for convex optimization,
+\begin{equation}\label{eq:functional-standard-form}
+\begin{array}{ll}
+\mbox{minimize} & f_0(x; \theta) \\
+\mbox{subject to} & f_i(x; \theta) \leq 0, \ i=1,\ldots,m_1,\\
+& g_i(x; \theta) = 0, \ i=1,\ldots,m_2,
+\end{array}
+\end{equation}
+with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
+When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it defines a problem family.
+Each function in \eqref{eq:functional-standard-form} is internally represented as an \emph{expression tree} (or \emph{abstract syntax tree}, AST): each parent node is an atomic function (an \emph{atom}), its children are the atom's arguments, and leaf nodes are variables, parameters, or constants.
+Convexity is verified by applying the DCP composition rule (\ref{par:dcp-comp}) to every node of each AST; expressions like $\sqrt{x^2}$ are rejected while the equivalent $|x|$ is accepted.
+
+\paragraph{Signed DCP.}
+In addition to per-argument monotonicities, CVXPY tracks sign information to extend the set of valid compositions.
+Without signed DCP, $f(g(x)) = (|x|)^2$ is invalid since $f(t)=t^2$ is not monotone on $\reals$.
+With signed DCP, it is valid because $f$ is non-decreasing on $\reals_+$ and the image of $g$ lies in $\reals_+$.
+
+\paragraph{Solver standard form.}
+Canonicalization produces a problem in a \emph{solver standard form} expected by the solver.
+Common families include linear programs, quadratic programs, cone programs of the form~\eqref{eq:conic},
+and \emph{conic quadratic programs} which combine a quadratic objective with cone constraints.
+The conic quadratic form is the most general of these, but is not a major generalization of the cone form:
+any conic quadratic program can be reduced to an equivalent cone program by linearizing the quadratic
+objective via the second-order cone, at the cost of one extra variable and one extra constraint.
+We therefore focus on canonicalization to the cone form throughout this thesis.
+
+\paragraph{Parameterized conic programming.}
+A \emph{parameterized cone program} extends \eqref{eq:conic} by letting the data depend on a parameter vector $\theta \in \reals^p$:
+\begin{equation}
+\begin{array}{ll}
+\text{minimize}   & c(\theta)^T x + d(\theta) \\
+\text{subject to} & b(\theta) - A(\theta) x \in \mathcal K.
+\end{array}
+\label{eq:param-cone}
+\end{equation}
+When the maps $c, d, A, b$ are \emph{affine in} $\theta$, this is the \emph{affine-solver-affine} (ASA) form, and the original solution is recovered by an affine map from the solution of the canonicalized problem.
+\emph{Disciplined parameterized programming} (DPP) is a grammar built on top of DCP (\ref{par:dcp-comp}) that disallows products of parameter-dependent expressions, guaranteeing reducibility to ASA form.
+
+For a DPP-compliant problem, the canonicalization map admits a compact representation: there exist sparse tensors $Q \in \reals^{(n+1) \times (p+1)}$ and $\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$ such that, with $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$,
+\begin{equation}
+    \begin{bmatrix} c \\ d \end{bmatrix} = Q \cdot \tilde{\theta},
+\qquad\text{and}\qquad
+    [A \quad b] = \sum_{i=1}^{p+1} \mathcal{R}[:,:,i]\cdot \tilde{\theta}_i,
+\end{equation}
+where $d$ is the parameter-dependent constant offset of the objective. See \cite{agrawal2019dpp} for details.
+
+Canonicalization converts a verified DCP/DPP model into a cone program via a sequence
+of reductions \cite{grant2004dcp,agrawal2018rewriting}.
+The front end verifies convexity by parsing the user specified expression tree.
+Then, reductions---\emph{e.g.}, negating the objective of maximization problems and turning variable
+attributes into explicit constraints---are applied.
+The last symbolic reduction is to expand nonlinear atoms to their epigraph form, resulting in an
+affine expression tree.
+Subsequently, a numerical reduction reduces the affine expression tree into the sparse tensors
+$Q$ and $\mathcal{R}$ defined above.
+Finally, solver-specific transformations are applied to match the form required by the solvers' interfaces.
+At each reduction, the inverse transformations are also recorded, allowing us to map the solution of the
+standard form problem back to the user specified problem.
+
+\paragraph{Example.}
+As an illustrative example, consider the following optimization problem
+\begin{equation}
+    \begin{array}{ll}
+        \text{minimize} & \|Fx-g\|_2 + \mu \|x\|_2\\
+        \text{subject to} & x \succeq 0\\
+    \end{array}
+      \label{eq:example}
+\end{equation}
+with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters $g\in \reals^m$ and $\mu \geq 0$.
+This problem formulation, given by the following CVXPY code, conforms to the DPP grammar:
+
+\begin{lstlisting}[language=Python]
+import cvxpy as cp
+import numpy as np
+F = np.random.randn(m, n)  # fixed problem data
+x = cp.Variable(n)
+g = cp.Parameter(m)
+mu = cp.Parameter(nonneg=True)
+objective = cp.Minimize(cp.norm(F @ x - g) + mu * cp.norm(x))
+prob = cp.Problem(objective, [x >= 0])
+\end{lstlisting}
+
+In the following we describe in greater detail the entire canonicalization procedure for problem~\eqref{eq:example}.
+In the first phase, called \emph{parsing}, the front end builds the AST of each function and verifies the DCP rules~\cite{agrawal2018rewriting}; if a function does not conform, CVXPY raises an error.
+Figure~\ref{fig:dcp-syntax-tree} shows the AST for the running example.
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[t]{0.65\textwidth}
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=40mm},
+   level 2/.style={sibling distance=20mm}]
+  \node { \annotatedop{+}{\|Fx-g\|_2 + \mu\|x\|_2}}
+    child {node {\annotatedop{\|\cdot\|_2}{\|Fx-g\|_2}}
+      child {node {\annotatedop{-}{Fx-g}}
+          child {node {\annotatedop{\texttt{matmul}}{Fx}}
+                child {node {$F$}}
+                child {node[circle, draw] {$x$}} }
+          child {node[draw] {$g$}}
+            }
+        }
+    child {node {\annotatedop{\texttt{mul}}{\mu\|x\|_2}}
+      child {node[draw] {$\mu$}}
+      child {node {\annotatedop{\|\cdot\|_2}{\|x\|_2}}
+            child {node[circle, draw] {$x$}}
+      }
+    };
+\end{tikzpicture}
+\caption{Abstract syntax tree of objective}
+\end{subfigure} % 
+\begin{subfigure}{0.3\textwidth}
+\begin{tikzpicture}
+  \node {\annotatedop{\succeq}{x \succeq 0}}
+    child {node[circle, draw] {$x$}}
+    child {node {$0$}};
+\end{tikzpicture}
+\caption{Abstract syntax tree of constraints}
+\end{subfigure}
+\caption{Users write expressions in Python-code that is immediately parsed into an AST, shown here. DPP verification is then run on the AST to ensure canonicalization will be possible on the problem and to verify convexity. Variables are labeled with a circle, and parameters with a square. Leaf nodes that refer to the same parameter or variable are deduplicated in practice (not shown here).}
+\label{fig:dcp-syntax-tree}
+\end{figure}
+
+\paragraph{Reductions.}
+
+Following the parsing and DPP verification steps, reductions are applied to transform the problem into a cone program.
+In DPP, each atom has a \textit{canonicalization} that replaces nonlinear functions with an epigraph variable and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where $t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters $\theta$, and $\mathcal K$ is a convex cone.
+One illustrative canonicalization replaces the $\|\cdot\|_2$ expressions in the objective with a new epigraph variable $t_i$ and imposes the epigraph constraint in its conic form
+\begin{equation}
+(t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
+\end{equation}
+\paragraph{Expression tree.}
+
+Following the reductions, the problem has been reduced to an equivalent parameterized convex cone program:
+%The DPP in (\ref{eq:example}) will be canonicalized to the cone program
+\begin{equation}\label{eq:graph}
+\begin{array}{ll}
+  \mbox{minimize}  & t_1 + \mu t_2 \\
+  \mbox{subject to}  &
+x \in \reals_+^n \\
+& (t_1, Fx -g) \in \mathcal K_{\mathrm{soc},m+1} \\ 
+& (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\ 
+\end{array}
+\end{equation}
+We represent the constraints and the objective (which is affine after reductions) as expression trees, see Figure~\ref{fig:expr-tree}.
+
+\begin{figure}
+\centering
+\begin{subfigure}[t]{0.45\textwidth}
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=20mm},
+   level 2/.style={sibling distance=15mm}]
+  \node {\annotatedop{+}{t_1+\mu  t_2}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {\annotatedop{\texttt{mul}}{\mu  t_2}}
+      child {node[draw] {$\mu$}}
+      child {node[circle,draw] {$t_2$}}
+    };
+\end{tikzpicture}
+\caption{Expression tree of the objective}
+\end{subfigure} %
+\begin{subfigure}[t]{0.5\textwidth}
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=20mm},
+   level 2/.style={sibling distance=25mm},
+   level 3/.style={sibling distance=15mm}]
+  \node {\annotatedop{\texttt{vstack}}{(x,t_1,Fx-g,t_2,x)}}
+    child {node[circle,draw] {$x$}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {$Fx-g$}
+      child {node {\annotatedop{\texttt{matmul}}{Fx}}
+        child {node {$F$}}
+        child {node[circle,draw] {$x$}}
+        }
+      child {node {\annotatedop{\texttt{neg}}{-g}}
+        child {node[draw] {$g$}}
+        }
+    }
+    child {node[circle, draw] {$t_2$}}
+    child {node[circle, draw] {$x$}};
+\end{tikzpicture}
+\caption{Expression tree of the constraints}
+\end{subfigure}
+\caption{After the application of reductions, the constraints and the objective are affine functions of the variables. As with the AST representation, duplicate leaves are deduplicated in practice, which is not shown here.}
+\label{fig:expr-tree}
+\end{figure}
+
+The final step is to materialize these expression trees as the sparse tensors $Q$ and $\mathcal{R}$ defined above; this step, called \emph{matrix stuffing}, is described in \S\ref{sec:matrix-stuffing}.
+
 \paragraph{References.}
 
 %%
 %%  MATRIX STUFFING
 %%
 
+\newpage
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
+Matrix stuffing materializes the expression trees of the canonicalized problem (\S\ref{sec:canonicalization}) as the sparse tensors $Q$ and $\mathcal{R}$ defined in \S\ref{sec:canonicalization}. This is done by the \emph{canonicalization backend}, which applies a depth-first walk on each tree (Figure~\ref{fig:matrix-stuffing}).
+
+\begin{figure}
+\begin{subfigure}{\textwidth}
+\begin{center}
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=20mm},
+   level 2/.style={sibling distance=15mm},
+    every node/.style={align=center},
+    edge from parent/.style={draw, -latex}]
+  \node {$c = \begin{bmatrix}
+                  1 &
+                  \mu &
+                  \plotzero
+              \end{bmatrix}$}
+    child {node {$\begin{bmatrix}
+                  1 &
+                  \plotzero &
+                  \plotzero
+              \end{bmatrix}$}}
+    child {node {$\begin{bmatrix}
+                  \plotzero &
+                  \mu &
+                  \plotzero
+              \end{bmatrix}$}
+      child {node {$\mu$}}
+      child {node {$\begin{bmatrix}
+                  \plotzero &
+                  1 &
+                  \plotzero
+              \end{bmatrix}$}}
+      };
+\end{tikzpicture}
+\caption{Matrix stuffing of the objective}
+\end{center}
+\end{subfigure}
+\begin{subfigure}{\textwidth}
+\begin{center}
+\begin{tikzpicture}[
+    level distance=2cm,
+    sibling distance=3cm,
+    every node/.style={align=center},
+    edge from parent/.style={draw, -latex}
+]
+% Root matrix
+\node {$\begin{bmatrix}
+    A & b
+\end{bmatrix} = \begin{bmatrix}
+                   \plotzero & \plotzero & -I & \plotzero\\
+                    -1 & \plotzero & \plotzero & \plotzero\\
+                    \plotzero & \plotzero & -F & -g\\
+                    \plotzero & -1 & \plotzero & \plotzero\\
+                    \plotzero & \plotzero & -I & \plotzero\\
+                \end{bmatrix}$}
+    % First level children
+    child {node {$\begin{bmatrix}
+        \plotzero & \plotzero & -I & \plotzero\\
+        \end{bmatrix}$}
+    }
+    child {node {$\begin{bmatrix}
+        -1 & \plotzero & \plotzero & \plotzero\\
+        \end{bmatrix}$}
+    }
+    child {node {$\begin{bmatrix}
+                    \plotzero & \plotzero & -F & -g
+                \end{bmatrix}$}
+        % Second level children
+        child {node {$\begin{bmatrix}
+                    \plotzero & \plotzero & -F & \plotzero
+            \end{bmatrix}$}
+            child {node {$F$}}
+            child {node {$\begin{bmatrix}
+                    \plotzero & \plotzero & -I & \plotzero\\
+            \end{bmatrix}$}}
+        }
+        child {node {$\begin{bmatrix}
+                    \plotzero & \plotzero & \plotzero & -g
+            \end{bmatrix}$}
+            child {node {$g$}}
+            }
+    }
+    child {node {$\begin{bmatrix}
+         \plotzero & -1 & \plotzero & \plotzero\\
+        \end{bmatrix}$}
+    }
+    child {node {$\begin{bmatrix}
+        \plotzero & \plotzero & -I & \plotzero\\
+        \end{bmatrix}$}
+    };
+\end{tikzpicture}
+\caption{Matrix Stuffing tree}
+\end{center}
+\end{subfigure}
+\caption{Matrix stuffing generates a 3D tensor. To depict these 3D tensors here, we leave the parameter values symbolic. Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the operations being applied at each node.}
+\label{fig:matrix-stuffing}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+$
+Q =
+\begin{blockarray}{cccc}
+        & g^T & \mu & 1 \\
+\begin{block}{c[ccc]}
+  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
+  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
+  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+\end{block}
+\end{blockarray}
+\qquad
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
+$
+\caption{Parameter map $Q$ of the augmented objective $[c;\, d]$ for the running example.
+The first $n$ rows index the entries of the gradient $c$ (one per post-canonicalization
+variable: $t_1$, $t_2$, and the $n$-block $x$); the final row indexes the constant offset
+$d$ (zero here, since the canonicalized objective $t_1 + \mu t_2$ has no offset). Columns
+index the global augmented parameter vector $\tilde\theta = (g,\, \mu,\, 1)$. The $g$
+columns are zero because the objective does not depend on $g$, but they are part of
+$\tilde\theta$ globally and the analogous map for the constraints is non-zero in those
+columns. Multiplying $Q$ by $\tilde\theta$ recovers $[c;\, d] = [1,\, \mu,\, 0,\, 0]^T$;
+the leading three entries match the $c$ vector shown in Fig.~\ref{fig:matrix-stuffing}.}
+\label{fig:param-map-c}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+
+\begin{subfigure}{\textwidth}
+\centering
+$
+\mathcal{R}[:,:,g_i] =
+\begin{bmatrix}
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & -e_i      \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+\end{bmatrix}
+\qquad
+\mathcal{R}[:,:,\mu] =
+\begin{bmatrix}
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & \plotzero & \plotzero \\
+\end{bmatrix}
+$
+\caption{Parameter slices. Each $\mathcal{R}[:,:,g_i]$ ($i=1,\ldots,m$) places a single $-1$ in
+the $b$ column at the $i$-th row of the $Fx-g$ block (denoted $-e_i$). $\mathcal{R}[:,:,\mu]=0$
+because $\mu$ does not appear in any constraint.}
+\end{subfigure}
+
+\bigskip
+
+\begin{subfigure}{\textwidth}
+\centering
+$
+\mathcal{R}[:,:,1] =
+\begin{bmatrix}
+  \plotzero & \plotzero & -I        & \plotzero \\
+  -1        & \plotzero & \plotzero & \plotzero \\
+  \plotzero & \plotzero & -F        & \plotzero \\
+  \plotzero & -1        & \plotzero & \plotzero \\
+  \plotzero & \plotzero & -I        & \plotzero \\
+\end{bmatrix}
+$
+\caption{Constant slice. Holds the fixed structure: $-I$ blocks for the variable bound
+and SOC$_2$ rows, $-1$'s for the epigraph variables, and $-F$ for the $Fx$ block.}
+\end{subfigure}
+
+\caption{Parameter map for $[A\,b]$ in the running example. The 3D tensor $R$ has one
+2D slice per entry of $\tilde\theta=(g_1,\ldots,g_m,\mu,1)$, and
+$[A\,b] = \sum_{i=1}^{m+2} \tilde\theta_i\, \mathcal{R}[:,:,i]$. Block-row order matches
+Fig.~\ref{fig:matrix-stuffing}(b): $x\in\reals_+^n$; $t_1$ row of SOC$_1$; $Fx-g$ block
+of SOC$_1$; $t_2$ row of SOC$_2$; $x$ block of SOC$_2$. Block-columns are the
+canonical-form variables $(t_1,\,t_2,\,x)$ followed by the $b$ column. Summing
+$g_i \mathcal{R}[:,:,g_i]$ over $i$ regenerates the $-g$ entry in $b$ shown at the root of
+Fig.~\ref{fig:matrix-stuffing}(b); the $\mu$ slice contributes nothing; the constant
+slice contributes everything else.}
+\label{fig:param-map-Ab}
+\end{figure}
 
 \paragraph{References.}
 
