@@ -84,14 +84,16 @@ YALMIP~\cite{lofberg2004yalmip} in MATLAB, Pyomo~\cite{hart2011pyomo} in Python,
 JuMP~\cite{dunning2017jump} in Julia, and CasADi~\cite{andersson2019} in C++.
 
 \paragraph{Disciplined convex programming}
-In addition, there are domain specific languages that implement \emph{disciplined convex programming} (DCP),
-a set of composition rules that can automatically verify convexity~\cite{grant2004disciplined, grant2006disciplined}.
+In addition, there are domain specific languages that implement \emph{disciplined convex
+programming} (DCP), a set of composition rules that can automatically verify
+convexity~\cite{grant2004disciplined, grant2006disciplined}.
 These include CVX~\cite{cvx} in MATLAB, CVXPY~\cite{diamond2016cvxpy, agrawal2018rewriting}
 in Python, and Convex.jl~\cite{udell2014convex} in Julia.
 
 \paragraph{DCP composition rules.}
 \label{par:dcp-comp}
-The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and for each $i \in \{1, \dots, k\}$ the following holds:
+The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and for each
+$i \in \{1, \dots, k\}$ the following holds:
 \begin{itemize}
     \item $h$ is non-decreasing in argument $i$ and $f_i$ is convex, or
     \item $h$ is non-increasing in argument $i$ and $f_i$ is concave, or
@@ -129,26 +131,36 @@ CVXPY problems are specified in the standard ``functional'' form for convex opti
 \end{array}
 \end{equation}
 with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
-When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it defines a problem family.
-Each function in \eqref{eq:functional-standard-form} is internally represented as an \emph{expression tree} (or \emph{abstract syntax tree}, AST): each parent node is an atomic function (an \emph{atom}), its children are the atom's arguments, and leaf nodes are variables, parameters, or constants.
-Convexity is verified by applying the DCP composition rule (\ref{par:dcp-comp}) to every node of each AST; expressions like $\sqrt{x^2}$ are rejected while the equivalent $|x|$ is accepted.
+When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it
+defines a problem family.
+Each function in \eqref{eq:functional-standard-form} is internally represented as an
+\emph{expression tree} (or \emph{abstract syntax tree}, AST): each parent node is an atomic
+function (an \emph{atom}), its children are the atom's arguments, and leaf nodes are
+variables, parameters, or constants.
+Convexity is verified by applying the DCP composition rule (\ref{par:dcp-comp}) to every node
+of each AST; expressions like $\sqrt{x^2}$ are rejected while the equivalent $|x|$ is accepted.
 
 \paragraph{Signed DCP.}
-In addition to per-argument monotonicities, CVXPY tracks sign information to extend the set of valid compositions.
+In addition to per-argument monotonicities, CVXPY tracks sign information to extend the set of
+valid compositions.
 Without signed DCP, $f(g(x)) = (|x|)^2$ is invalid since $f(t)=t^2$ is not monotone on $\reals$.
-With signed DCP, it is valid because $f$ is non-decreasing on $\reals_+$ and the image of $g$ lies in $\reals_+$.
+With signed DCP, it is valid because $f$ is non-decreasing on $\reals_+$ and the image of $g$
+lies in $\reals_+$.
 
 \paragraph{Solver standard form.}
 Canonicalization produces a problem in a \emph{solver standard form} expected by the solver.
-Common families include linear programs, quadratic programs, cone programs of the form~\eqref{eq:conic},
-and \emph{conic quadratic programs} which combine a quadratic objective with cone constraints.
-The conic quadratic form is the most general of these, but is not a major generalization of the cone form:
-any conic quadratic program can be reduced to an equivalent cone program by linearizing the quadratic
-objective via the second-order cone, at the cost of one extra variable and one extra constraint.
+Common families include linear programs, quadratic programs, cone programs of the
+form~\eqref{eq:conic}, and \emph{conic quadratic programs} which combine a quadratic objective
+with cone constraints.
+The conic quadratic form is the most general of these, but is not a major generalization of the
+cone form: any conic quadratic program can be reduced to an equivalent cone program by
+linearizing the quadratic objective via the second-order cone, at the cost of one extra
+variable and one extra constraint.
 We therefore focus on canonicalization to the cone form throughout this thesis.
 
 \paragraph{Parameterized conic programming.}
-A \emph{parameterized cone program} extends \eqref{eq:conic} by letting the data depend on a parameter vector $\theta \in \reals^p$:
+A \emph{parameterized cone program} extends \eqref{eq:conic} by letting the data depend on a
+parameter vector $\theta \in \reals^p$:
 \begin{equation}
 \begin{array}{ll}
 \text{minimize}   & c(\theta)^T x + d(\theta) \\
@@ -156,17 +168,27 @@ A \emph{parameterized cone program} extends \eqref{eq:conic} by letting the data
 \end{array}
 \label{eq:param-cone}
 \end{equation}
-When the maps $c, d, A, b$ are \emph{affine in} $\theta$, this is the \emph{affine-solver-affine} (ASA) form, and the original solution is recovered by an affine map from the solution of the canonicalized problem.
-\emph{Disciplined parameterized programming} (DPP) is a grammar built on top of DCP (\ref{par:dcp-comp}) that disallows products of parameter-dependent expressions, guaranteeing reducibility to ASA form.
+When the maps $c, d, A, b$ are \emph{affine in} $\theta$, this is the
+\emph{affine-solver-affine} (ASA) form, and the original solution is recovered by an affine
+map from the solution of the canonicalized problem.
+\emph{Disciplined parameterized programming} (DPP) is a grammar built on top of DCP
+(\ref{par:dcp-comp}) that disallows products of parameter-dependent expressions, guaranteeing
+reducibility to ASA form.
 
-For a DPP-compliant problem, the canonicalization map admits a compact representation: there exist sparse tensors $Q \in \reals^{(n+1) \times (p+1)}$ and $\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$ such that, with $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$,
+For a DPP-compliant problem, the canonicalization map admits a compact representation: there
+exist sparse tensors $Q \in \reals^{(n+1) \times (p+1)}$ and
+$\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$ such that, with
+$\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$,
 \begin{equation}
     \begin{bmatrix} c \\ d \end{bmatrix} = Q \cdot \tilde{\theta},
 \qquad\text{and}\qquad
     [A \quad b] = \sum_{i=1}^{p+1} \mathcal{R}[:,:,i]\cdot \tilde{\theta}_i,
 \end{equation}
-where $d$ is the parameter-dependent constant offset of the objective. See \cite{agrawal2019dpp} for details.
+where $d$ is the parameter-dependent constant offset of the objective.
+See \cite{agrawal2019dpp} for details.
 
+\paragraph{Stages of canonicalization.}
+% maybe can call this sequence of reductions.
 Canonicalization converts a verified DCP/DPP model into a cone program via a sequence
 of reductions \cite{grant2004dcp,agrawal2018rewriting}.
 The front end verifies convexity by parsing the user specified expression tree.
@@ -176,9 +198,10 @@ The last symbolic reduction is to expand nonlinear atoms to their epigraph form,
 affine expression tree.
 Subsequently, a numerical reduction reduces the affine expression tree into the sparse tensors
 $Q$ and $\mathcal{R}$ defined above.
-Finally, solver-specific transformations are applied to match the form required by the solvers' interfaces.
-At each reduction, the inverse transformations are also recorded, allowing us to map the solution of the
-standard form problem back to the user specified problem.
+Finally, solver-specific transformations are applied to match the form required by the
+solvers' interfaces.
+At each reduction, the inverse transformations are also recorded, allowing us to map the
+solution of the standard form problem back to the user specified problem.
 
 \paragraph{Example.}
 As an illustrative example, consider the following optimization problem
@@ -189,7 +212,8 @@ As an illustrative example, consider the following optimization problem
     \end{array}
       \label{eq:example}
 \end{equation}
-with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters $g\in \reals^m$ and $\mu \geq 0$.
+with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters
+$g\in \reals^m$ and $\mu \geq 0$.
 This problem formulation, given by the following CVXPY code, conforms to the DPP grammar:
 
 \begin{lstlisting}[language=Python]
@@ -203,8 +227,11 @@ objective = cp.Minimize(cp.norm(F @ x - g) + mu * cp.norm(x))
 prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
 
-In the following we describe in greater detail the entire canonicalization procedure for problem~\eqref{eq:example}.
-In the first phase, called \emph{parsing}, the front end builds the AST of each function and verifies the DCP rules~\cite{agrawal2018rewriting}; if a function does not conform, CVXPY raises an error.
+In the following we describe in greater detail the entire canonicalization procedure for
+problem~\eqref{eq:example}.
+In the first phase, called \emph{parsing}, the front end builds the AST of each function and
+verifies the DCP rules~\cite{agrawal2018rewriting}; if a function does not conform, CVXPY
+raises an error.
 Figure~\ref{fig:dcp-syntax-tree} shows the AST for the running example.
 
 \begin{figure}[ht]
@@ -239,21 +266,31 @@ Figure~\ref{fig:dcp-syntax-tree} shows the AST for the running example.
 \end{tikzpicture}
 \caption{Abstract syntax tree of constraints}
 \end{subfigure}
-\caption{Users write expressions in Python-code that is immediately parsed into an AST, shown here. DPP verification is then run on the AST to ensure canonicalization will be possible on the problem and to verify convexity. Variables are labeled with a circle, and parameters with a square. Leaf nodes that refer to the same parameter or variable are deduplicated in practice (not shown here).}
+\caption{Users write expressions in Python-code that is immediately parsed into an AST, shown
+here. DPP verification is then run on the AST to ensure canonicalization will be possible on
+the problem and to verify convexity. Variables are labeled with a circle, and parameters with
+a square. Leaf nodes that refer to the same parameter or variable are deduplicated in practice
+(not shown here).}
 \label{fig:dcp-syntax-tree}
 \end{figure}
 
 \paragraph{Reductions.}
 
-Following the parsing and DPP verification steps, reductions are applied to transform the problem into a cone program.
-In DPP, each atom has a \textit{canonicalization} that replaces nonlinear functions with an epigraph variable and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where $t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters $\theta$, and $\mathcal K$ is a convex cone.
-One illustrative canonicalization replaces the $\|\cdot\|_2$ expressions in the objective with a new epigraph variable $t_i$ and imposes the epigraph constraint in its conic form
+Following the parsing and DPP verification steps, reductions are applied to transform the
+problem into a cone program.
+In DPP, each atom has a \textit{canonicalization} that replaces nonlinear functions with an
+epigraph variable and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
+$t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
+$\theta$, and $\mathcal K$ is a convex cone.
+One illustrative canonicalization replaces the $\|\cdot\|_2$ expressions in the objective with
+a new epigraph variable $t_i$ and imposes the epigraph constraint in its conic form
 \begin{equation}
 (t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
 \end{equation}
 \paragraph{Expression tree.}
 
-Following the reductions, the problem has been reduced to an equivalent parameterized convex cone program:
+Following the reductions, the problem has been reduced to an equivalent parameterized convex
+cone program:
 %The DPP in (\ref{eq:example}) will be canonicalized to the cone program
 \begin{equation}\label{eq:graph}
 \begin{array}{ll}
@@ -264,7 +301,8 @@ x \in \reals_+^n \\
 & (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\ 
 \end{array}
 \end{equation}
-We represent the constraints and the objective (which is affine after reductions) as expression trees, see Figure~\ref{fig:expr-tree}.
+We represent the constraints and the objective (which is affine after reductions) as
+expression trees, see Figure~\ref{fig:expr-tree}.
 
 \begin{figure}
 \centering
@@ -303,11 +341,15 @@ We represent the constraints and the objective (which is affine after reductions
 \end{tikzpicture}
 \caption{Expression tree of the constraints}
 \end{subfigure}
-\caption{After the application of reductions, the constraints and the objective are affine functions of the variables. As with the AST representation, duplicate leaves are deduplicated in practice, which is not shown here.}
+\caption{After the application of reductions, the constraints and the objective are affine
+functions of the variables. As with the AST representation, duplicate leaves are deduplicated
+in practice, which is not shown here.}
 \label{fig:expr-tree}
 \end{figure}
 
-The final step is to materialize these expression trees as the sparse tensors $Q$ and $\mathcal{R}$ defined above; this step, called \emph{matrix stuffing}, is described in \S\ref{sec:matrix-stuffing}.
+The final step is to materialize these expression trees as the sparse tensors $Q$ and
+$\mathcal{R}$ defined above; this step, called \emph{matrix stuffing}, is described in
+\S\ref{sec:matrix-stuffing}.
 
 \paragraph{References.}
 
@@ -319,7 +361,10 @@ The final step is to materialize these expression trees as the sparse tensors $Q
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
-Matrix stuffing materializes the expression trees of the canonicalized problem (\S\ref{sec:canonicalization}) as the sparse tensors $Q$ and $\mathcal{R}$ defined in \S\ref{sec:canonicalization}. This is done by the \emph{canonicalization backend}, which applies a depth-first walk on each tree (Figure~\ref{fig:matrix-stuffing}).
+Matrix stuffing materializes the expression trees of the canonicalized problem
+(\S\ref{sec:canonicalization}) as the sparse tensors $Q$ and $\mathcal{R}$ defined in
+\S\ref{sec:canonicalization}. This is done by the \emph{canonicalization backend}, which
+applies a depth-first walk on each tree (Figure~\ref{fig:matrix-stuffing}).
 
 \begin{figure}
 \begin{subfigure}{\textwidth}
@@ -412,7 +457,9 @@ Matrix stuffing materializes the expression trees of the canonicalized problem (
 \caption{Matrix Stuffing tree}
 \end{center}
 \end{subfigure}
-\caption{Matrix stuffing generates a 3D tensor. To depict these 3D tensors here, we leave the parameter values symbolic. Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the operations being applied at each node.}
+\caption{Matrix stuffing generates a 3D tensor. To depict these 3D tensors here, we leave the
+parameter values symbolic. Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the
+operations being applied at each node.}
 \label{fig:matrix-stuffing}
 \end{figure}
 
@@ -430,7 +477,8 @@ Q =
 \end{block}
 \end{blockarray}
 \qquad
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
+= \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
 \caption{Parameter map $Q$ of the augmented objective $[c;\, d]$ for the running example.
 The first $n$ rows index the entries of the gradient $c$ (one per post-canonicalization
@@ -539,24 +587,26 @@ moving away from the traditional approach of reducing every problem to a single 
 \section{Computing derivatives}
 \label{sec:computing-derivatives}
 
-Finding the rate of change or the \emph{derivative} of a function at a particular point
-is a fundamental concept in calculus that was discovered by Leibniz and Newton in the late 1600s.
-Since then, although the underlying theory has practically remained the same, various methods have been developed
-to efficiently compute derivatives in different contexts and applications.
-More recently, the rise of machine learning and deep learning brought renewed interest
-in this age-old problem through a new application of derivatives in training \emph{neural networks},
-it is known as the \emph{backward pass} or \emph{backpropagation} \cite{lecun2015deep, Bottou2018Optimization}.
-Some theorists will claim that backpropagation is little more than a clever application of the \emph{chain rule}
-\cite{lecun1988theoretical}, but the large scale of modern workloads has led to the development of incredible
-software tools and implementation techniques which are interesting in their own right.
-This section provides an overview of these new tools and techniques, with a particular emphasis on
-\emph{algorithmic differentiation} (AD) and its applications to computing 
-sparse Jacobians \cite{griewank2008evaluating}.
+Finding the rate of change or the \emph{derivative} of a function at a particular point is a
+fundamental concept in calculus that was discovered by Leibniz and Newton in the late 1600s.
+Since then, although the underlying theory has practically remained the same, various methods
+have been developed to efficiently compute derivatives in different contexts and applications.
+More recently, the rise of machine learning and deep learning brought renewed interest in this
+age-old problem through a new application of derivatives in training \emph{neural networks},
+it is known as the \emph{backward pass} or \emph{backpropagation} \cite{lecun2015deep,
+Bottou2018Optimization}.
+Some theorists will claim that backpropagation is little more than a clever application of the
+\emph{chain rule} \cite{lecun1988theoretical}, but the large scale of modern workloads has led
+to the development of incredible software tools and implementation techniques which are
+interesting in their own right.
+This section provides an overview of these new tools and techniques, with a particular
+emphasis on \emph{algorithmic differentiation} (AD) and its applications to computing sparse
+Jacobians \cite{griewank2008evaluating}.
 
 \paragraph{Numerical differentiation.}
-Other than computing derivatives by hand, the simplest method is to use \emph{numerical differentiation},
-which approximates the derivative of a function at a point by evaluating the function at nearby points 
-using a \emph{finite difference} formula similar to either
+Other than computing derivatives by hand, the simplest method is to use \emph{numerical
+differentiation}, which approximates the derivative of a function at a point by evaluating the
+function at nearby points using a \emph{finite difference} formula similar to either
 \begin{equation}
 f'(x) \approx \frac{f(x + h) - f(x)}{h},
 \end{equation}
@@ -564,70 +614,77 @@ or
 \begin{equation}
 f'(x) \approx \frac{f(x + h) - f(x - h)}{2h},
 \end{equation}
-where $h$ is a small step size. Although this approach is straightforward to implement and can achieve
-reasonable accuracy, there are important downsides to consider.
-First, it requires a linear number of function evaluations with respect to the number of input variables,
-which is expensive for high-dimensional functions.
-Second, it can easily lead to \emph{truncation errors} (when $h$ is too large) or \emph{rounding errors}
-(when $h$ is too small) in the computed derivative if the step size is not carefully chosen
-\cite{chakravarti1961truncation}.
-Despite these downsides, numerical differentiation is still widely used in practice, especially for
-verifying the correctness of derivative computations (also known as a \emph{derivative checker})
-\cite{wolfe1982checking}.
+where $h$ is a small step size. Although this approach is straightforward to implement and
+can achieve reasonable accuracy, there are important downsides to consider.
+First, it requires a linear number of function evaluations with respect to the number of
+input variables, which is expensive for high-dimensional functions.
+Second, it can easily lead to \emph{truncation errors} (when $h$ is too large) or
+\emph{rounding errors} (when $h$ is too small) in the computed derivative if the step size is
+not carefully chosen \cite{chakravarti1961truncation}.
+Despite these downsides, numerical differentiation is still widely used in practice,
+especially for verifying the correctness of derivative computations (also known as a
+\emph{derivative checker}) \cite{wolfe1982checking}.
 
 \paragraph{Symbolic differentiation.}
-Mathematical expressions can be manipulated automatically using simple derivative rules
-of calculus, such as the product and sum rule. This \emph{symbolic} approach to differentiation
-is used in computer algebra systems such as Mathematica \cite{mathematica} and Maple \cite{maple}
-as well as the SymPy library in Python \cite{sympy2017}.
-Unlike its numerical counterpart, symbolic differentiation tools compute derivatives as closed-form
-expressions, which can be simplified and evaluated at any arbitrary point.
-These closed-form expressions are particularly useful for deriving analytic solutions of optimization
-problems, and can be further used in mathematical proofs and analyses.
+Mathematical expressions can be manipulated automatically using simple derivative rules of
+calculus, such as the product and sum rule. This \emph{symbolic} approach to differentiation
+is used in computer algebra systems such as Mathematica \cite{mathematica} and Maple
+\cite{maple} as well as the SymPy library in Python \cite{sympy2017}.
+Unlike its numerical counterpart, symbolic differentiation tools compute derivatives as
+closed-form expressions, which can be simplified and evaluated at any arbitrary point.
+These closed-form expressions are particularly useful for deriving analytic solutions of
+optimization problems, and can be further used in mathematical proofs and analyses.
 
-However, a naive implementation of symbolic differentiation can easily lead to 
-exponentially large symbolic expressions, which is impractical and inefficient for
-many problems \cite{griewank2008evaluating}.
-Interestingly, when intermediate expressions are stored as \emph{common subexpressions},
-and the expression is represented with a \emph{directed acyclic graph} (DAG) instead of a tree,
-symbolic differentiation performs the same set of operations as \emph{reverse mode differentiation}
-\cite{Laue2019OnTE}.
+However, a naive implementation of symbolic differentiation can easily lead to exponentially
+large symbolic expressions, which is impractical and inefficient for many problems
+\cite{griewank2008evaluating}.
+Interestingly, when intermediate expressions are stored as \emph{common subexpressions}, and
+the expression is represented with a \emph{directed acyclic graph} (DAG) instead of a tree,
+symbolic differentiation performs the same set of operations as \emph{reverse mode
+differentiation} \cite{Laue2019OnTE}.
 
 \paragraph{Algorithmic differentiation.}
-There is a lot of confusion on the terminology surrounding the various methods for computing derivatives;
-\emph{automatic differentiation} and \emph{computational differentiation}
-are often used to describe the field, but we will instead refer to it as \emph{algorithmic differentiation}
-since it emphasizes the algorithms behind the different implementations rather than a particular method
-(it is also the convention in the seminal book by Griewank and Walther \cite{griewank2008evaluating}).
-Fundamentally, AD is a non-standard interpretation of a computer program: it augments the \emph{evaluation trace}
-of a function (the sequence of floating point values calculated during the execution) with calculations
-of its derivatives \cite{baydin2017ADsurvey}.
-This trace can be represented as a \emph{computational graph},
-a DAG in which each node corresponds to an elementary operation with known derivatives.
-Combining the derivatives of these operations throughout the graph
-using the chain rule gives the derivative of the overall function \cite{griewank2008evaluating}.
-The computational graph is the central data structure of AD; the various \emph{modes} of AD correspond
-to different ways elementary derivatives are accumulated on this graph.
+There is a lot of confusion on the terminology surrounding the various methods for computing
+derivatives; \emph{automatic differentiation} and \emph{computational differentiation} are
+often used to describe the field, but we will instead refer to it as \emph{algorithmic
+differentiation} since it emphasizes the algorithms behind the different implementations
+rather than a particular method (it is also the convention in the seminal book by Griewank
+and Walther \cite{griewank2008evaluating}).
+Fundamentally, AD is a non-standard interpretation of a computer program: it augments the
+\emph{evaluation trace} of a function (the sequence of floating point values calculated during
+the execution) with calculations of its derivatives \cite{baydin2017ADsurvey}.
+This trace can be represented as a \emph{computational graph}, a DAG in which each node
+corresponds to an elementary operation with known derivatives.
+Combining the derivatives of these operations throughout the graph using the chain rule gives
+the derivative of the overall function \cite{griewank2008evaluating}.
+The computational graph is the central data structure of AD; the various \emph{modes} of AD
+correspond to different ways elementary derivatives are accumulated on this graph.
 
 \paragraph{Forward mode AD.}
-The method of propagating tangents forward through the computational graph is known as \emph{forward mode} AD.
-A single forward pass simultaneously computes the value and derivative of every intermediate variable with respect
-to a single input variable, giving the sensitivity of all outputs to that input.
-The cost of a forward pass is a small constant factor of the cost of evaluating the original function,
-since each elementary operation is augmented with at most a few additional arithmetic operations for the derivatives.
-However, one downside of forward mode AD is that the number of forward passes scales linearly with the number of input
-variables, which is impractical for certain functions (which have many input variables and very few output variables).
+The method of propagating tangents forward through the computational graph is known as
+\emph{forward mode} AD.
+A single forward pass simultaneously computes the value and derivative of every intermediate
+variable with respect to a single input variable, giving the sensitivity of all outputs to
+that input.
+The cost of a forward pass is a small constant factor of the cost of evaluating the original
+function, since each elementary operation is augmented with at most a few additional
+arithmetic operations for the derivatives.
+However, one downside of forward mode AD is that the number of forward passes scales linearly
+with the number of input variables, which is impractical for certain functions (which have
+many input variables and very few output variables).
 
 \paragraph{Reverse mode AD.}
-In contrast to forward mode, \emph{reverse mode} AD propagates adjoints backward through the computational graph.
-It first requires a forward pass to compute and store the value of every intermediate variable, and it then performs
-a reverse pass to compute the sensitivities of a single output variable with respect to all input variables.
-The cost of a reverse pass is also a small constant factor of the cost of evaluating the original function,
-but the number of passes required now scales linearly with the number of output variables rather than the 
-number of input variables.
-This makes reverse mode AD particularly efficient for computing gradients of scalar-valued functions,
-making it the default method for modern machine learning libraries such as Jax \cite{jax2018github},
-Pytorch \cite{pytorch2019}, and Tensorflow \cite{tensorflow2016}.
+In contrast to forward mode, \emph{reverse mode} AD propagates adjoints backward through the
+computational graph.
+It first requires a forward pass to compute and store the value of every intermediate
+variable, and it then performs a reverse pass to compute the sensitivities of a single output
+variable with respect to all input variables.
+The cost of a reverse pass is also a small constant factor of the cost of evaluating the
+original function, but the number of passes required now scales linearly with the number of
+output variables rather than the number of input variables.
+This makes reverse mode AD particularly efficient for computing gradients of scalar-valued
+functions, making it the default method for modern machine learning libraries such as Jax
+\cite{jax2018github}, Pytorch \cite{pytorch2019}, and Tensorflow \cite{tensorflow2016}.
 
 \paragraph{Advantages of AD.}
 % maybe can also mention that the main difficulty is how to process the evaluation trace backwards
@@ -647,20 +704,24 @@ maybe mention graph coloring here?
 
 \cite{Herholz2022SparsitySpecific} presents a code generator for operations on sparse data.
 
-\cite{Gebremedhin2009SparseHessians} presents a similar method for computing sparse Hessians with graph coloring.
-\cite{gebremedhin2005color} is a survey of graph coloring methods for computing sparse Jacobians and Hessians.
+\cite{Gebremedhin2009SparseHessians} presents a similar method for computing sparse Hessians
+with graph coloring.
+\cite{gebremedhin2005color} is a survey of graph coloring methods for computing sparse
+Jacobians and Hessians.
 
 \paragraph{Differentiation packages.}
 mention ADOL-C and CppAD for C++.
-mention AMPL and CasADi for optimization. and also mention that they were covered above in the coeff extraction
-section.
+mention AMPL and CasADi for optimization. and also mention that they were covered above in the
+coeff extraction section.
 
 \paragraph{References.}
-The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on the theory and practice of automatic differentiation.
-The book by Naumann \cite{Naumann2011} is another great reference that focuses on the implementation of AD in software, with a particular emphasis
-on the use of operator overloading and source code transformation techniques.
-\cite{baydin2017ADsurvey} is an excellent and relatively up-to-date survey of the various methods for automatic differentiation
-in machine learning.
+The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on
+the theory and practice of automatic differentiation.
+The book by Naumann \cite{Naumann2011} is another great reference that focuses on the
+implementation of AD in software, with a particular emphasis on the use of operator
+overloading and source code transformation techniques.
+\cite{baydin2017ADsurvey} is an excellent and relatively up-to-date survey of the various
+methods for automatic differentiation in machine learning.
 
 %%
 %%  SPARSE MATRIX FORMATS
@@ -689,7 +750,8 @@ int     cols[] = {2,    0,    1,    3,    1,    3};
 double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
 \end{lstlisting}
 
-where we use zero-based indexing and array declaration notation from the C programming language \cite{Kernighan1988}.
+where we use zero-based indexing and array declaration notation from the C programming
+language \cite{Kernighan1988}.
 The coordinate format is the easiest to understand and form, but it is not effective for most
 operations on sparse matrices; the \emph{compressed sparse row} or CSR format is commonly
 used instead.
