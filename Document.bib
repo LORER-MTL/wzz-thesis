@@ -100,69 +100,21 @@ numpages = {41}
 }
 
 ###
-Coefficient extraction methods
-###
-@book{bisschop2006aimms,
-  title={AIMMS optimization modeling},
-  author={Bisschop, J.},
-  year={2006}
-}
-
-@article{dunning2017jump,
-  title = {{JuMP}: A modeling language for mathematical optimization},
-  author = {Dunning, Iain and Huchette, Joey and Lubin, Miles},
-  journal = {SIAM Review},
-  volume = {59},
-  number = {2},
-  pages = {295--320},
-  year = {2017},
-  publisher = {SIAM}
-}
-
-@misc{lubin2023jump10recent,
-  title={JuMP 1.0: Recent improvements to a modeling language for mathematical optimization}, 
-  author={Miles Lubin and Oscar Dowson and Joaquim Dias Garcia and Joey Huchette and Benoît Legat and Juan Pablo Vielma},
-  year={2023},
-  eprint={2206.03866},
-  archivePrefix={arXiv},
-  primaryClass={cs.PL},
-  url={https://arxiv.org/abs/2206.03866}, 
-}
-
-@misc{legat2020mathoptinterface,
-  title={MathOptInterface: a data structure for mathematical optimization problems}, 
-  author={Benoit Legat and Oscar Dowson and Joaquim Dias Garcia and Miles Lubin},
-  year={2020},
-  eprint={2002.03447},
-  archivePrefix={arXiv},
-  primaryClass={math.OC},
-  url={https://arxiv.org/abs/2002.03447}, 
-}
-
-@article{hart2011pyomo,
-  title = {Pyomo: modeling and solving mathematical programs in {Python}},
-  author = {Hart, William E. and Watson, Jean-Paul and Woodruff, David L.},
-  journal = {Mathematical Programming Computation},
-  volume = {3},
-  number = {3},
-  pages = {219--260},
-  year = {2011},
-  publisher = {Springer}
-}
-
-@book{bynum2021pyomo,
-  title = {Pyomo--Optimization Modeling in {Python}},
-  author = {Bynum, Michael L. and Hackebeil, Gabriel A. and Hart, William E. and Laird, Carl D. 
-  and Nicholson, Bethany L. and Siirola, John D. and Watson, Jean-Paul and Woodruff, David L.},
-  edition = {Third},
-  volume = {67},
-  year = {2021},
-  publisher = {Springer Science \& Business Media}
-}
-
-###
 Canonicalization
 ###
+@book{boyd2004convex,
+  title={Convex optimization},
+  author={Boyd, Stephen and Vandenberghe, Lieven},
+  year={2004},
+  publisher={Cambridge university press}
+}
+
+@article{cederberg2025disciplined,
+  title={Disciplined Nonlinear Programming},
+  author={Cederberg, Daniel and Zhang, William and Nobel, Parth and Boyd, Stephen},
+  year={2025}
+}
+
 @incollection{graphimplementations2008,
   author    = {Grant, M. and Boyd, S.},
   editor    = {Vincent Blondel and S. Boyd and Hidenori Kimura},
@@ -175,6 +127,7 @@ Canonicalization
   doi       = {10.1007/978-1-84800-155-8_7},
   url       = {https://doi.org/10.1007/978-1-84800-155-8_7}
 }
+
 ###
 Modeling languages
 ###
@@ -253,17 +206,6 @@ Modeling languages
   pages   = {42--60},
 }
 
-@article{huangfu2018highs,
-   author  = {Huangfu, Q. and Hall, J. A. J.},
-   title   = {Parallelizing the dual revised simplex method},
-   journal = {Mathematical Programming Computation},
-   volume  = {10},
-   number  = {1},
-   pages   = {119--142},
-   year    = {2018},
-   doi     = {10.1007/s12532-017-0130-5},
-}
-
 @manual{gurobi,
    author = {{Gurobi Optimization, LLC}},
    title  = {Gurobi Optimizer Reference Manual},
@@ -331,63 +273,6 @@ Modeling languages
   doi={10.1109/LCSYS.2022.3173209}
   }
 
-@article{coey2022solving,
-  title={Solving natural conic formulations with {H}ypatia.jl},
-  author={Chris Coey and Lea Kapelevich and Juan Pablo Vielma},
-  year={2022},
-  journal={INFORMS Journal on Computing},
-  publisher={INFORMS},
-  volume={34},
-  number={5},
-  pages={2686--2699},
-  doi={https://doi.org/10.1287/ijoc.2022.1202}
-}
-
-@article{coey2022performance,
-  title={Performance enhancements for a generic conic interior point algorithm},
-  author={Coey, Chris and Kapelevich, Lea and Vielma, Juan Pablo},
-  journal={Mathematical Programming Computation},
-  volume={15},
-  number={1},
-  pages={53--101},
-  year={2022},
-  publisher={Springer Science and Business Media LLC},
-  doi={10.1007/s12532-022-00226-0}
-}
-
-@article{ocpb:16,
-  author       = {Brendan O'Donoghue and Eric Chu and Neal Parikh and Stephen Boyd},
-  title        = {Conic Optimization via Operator Splitting and Homogeneous Self-Dual Embedding},
-  journal      = {Journal of Optimization Theory and Applications},
-  month        = {June},
-  year         = {2016},
-  volume       = {169},
-  number       = {3},
-  pages        = {1042-1068},
-  url          = {http://stanford.edu/~boyd/papers/scs.html},
-}
-
-@article{odonoghue:21,
-  author       = {Brendan O'Donoghue},
-  title        = {Operator Splitting for a Homogeneous Embedding of the Linear Complementarity Problem},
-  journal      = {{SIAM} Journal on Optimization},
-  month        = {August},
-  year         = {2021},
-  volume       = {31},
-  issue        = {3},
-  pages        = {1999-2023},
-}
-
-@misc{cederbergspectralmatrixcones,
-      title={Projections onto Spectral Matrix Cones}, 
-      author={Daniel Cederberg and Stephen Boyd},
-      year={2025},
-      eprint={2511.01089},
-      archivePrefix={arXiv},
-      primaryClass={math.OC},
-      url={https://arxiv.org/abs/2511.01089}, 
-}
-
 @inproceedings{domahidi2013ecos,
   author    = {Domahidi, Alexander and Chu, Eric and Boyd, Stephen},
   title     = {{ECOS}: An {SOCP} Solver for Embedded Systems},
@@ -430,89 +315,50 @@ Modeling languages
    year={2020} 
   }
 
+
 ###
-Sparse Matrix Formats
+Coefficient extraction methods
 ###
-
-@book{Kernighan1988,
-  author = {Kernighan, Brian W. and Ritchie, Dennis M.},
-  title = {The C Programming Language},
-  edition = {2nd},
-  publisher = {Prentice Hall},
-  year = {1988},
-  isbn = {978-0131103627}
+@book{bisschop2006aimms,
+  title={AIMMS optimization modeling},
+  author={Bisschop, J.},
+  year={2006}
 }
 
-@book{davis2006direct,
-  author    = {Timothy A. Davis},
-  title     = {Direct Methods for Sparse Linear Systems},
-  publisher = {Society for Industrial and Applied Mathematics},
-  year      = {2006},
-  address   = {Philadelphia, PA},
-  isbn      = {978-0-89871-613-9},
-  doi       = {10.1137/1.9780898718881},
-  url       = {https://epubs.siam.org/doi/book/10.1137/1.9780898718881}
+@article{dunning2017jump,
+  title = {{JuMP}: A modeling language for mathematical optimization},
+  author = {Dunning, Iain and Huchette, Joey and Lubin, Miles},
+  journal = {SIAM Review},
+  volume = {59},
+  number = {2},
+  pages = {295--320},
+  year = {2017},
+  publisher = {SIAM}
 }
 
-@book{Duff1986Direct,
-  author = {Duff, Iain S. and Erisman, Albert M. and Reid, John K.},
-  title = {Direct Methods for Sparse Matrices},
-  publisher = {Oxford University Press},
-  year = {1986},
-  address = {Oxford, England},
-  isbn = {0-19-853408-6}
+@misc{lubin2023jump10recent,
+  title={JuMP 1.0: Recent improvements to a modeling language for mathematical optimization}, 
+  author={Miles Lubin and Oscar Dowson and Joaquim Dias Garcia and Joey Huchette and Benoît Legat and Juan Pablo Vielma},
+  year={2023},
+  eprint={2206.03866},
+  archivePrefix={arXiv},
+  primaryClass={cs.PL},
+  url={https://arxiv.org/abs/2206.03866}, 
 }
 
-@book{saad2003iterative,
-  title={Iterative Methods for Sparse Linear Systems},
-  author={Saad, Yousef},
-  year={2003},
-  publisher={Society for Industrial and Applied Mathematics},
-  address={Philadelphia, PA},
-  edition={2nd},
-  isbn={978-0-898715-34-7},
-  doi={10.1137/1.9780898718003}
-}
-
-@ARTICLE{2020SciPy-NMeth,
-  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
-            Haberland, Matt and Reddy, Tyler and Cournapeau, David and
-            Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and
-            Bright, Jonathan and {van der Walt}, St{\'e}fan J. and
-            Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and
-            Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and
-            Kern, Robert and Larson, Eric and Carey, C J and
-            Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and
-            {VanderPlas}, Jake and Laxalde, Denis and Perktold, Josef and
-            Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and
-            Harris, Charles R. and Archibald, Anne M. and
-            Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and
-            {van Mulbregt}, Paul and {SciPy 1.0 Contributors}},
-  title   = {{{SciPy} 1.0: Fundamental Algorithms for Scientific
-            Computing in Python}},
-  journal = {Nature Methods},
-  year    = {2020},
-  volume  = {17},
-  pages   = {261--272},
-  adsurl  = {https://rdcu.be/b08Wh},
-  doi     = {10.1038/s41592-019-0686-2},
-}
-
-@article{gill1984sparse,
-  title={Sparse matrix methods in optimization},
-  author={Gill, Philip E and Murray, Walter and Saunders, Michael A and Wright, Margaret H},
-  journal={SIAM Journal on Scientific and Statistical Computing},
-  volume={5},
-  number={3},
-  pages={562--589},
-  year={1984},
-  publisher={SIAM}
+@misc{legat2020mathoptinterface,
+  title={MathOptInterface: a data structure for mathematical optimization problems}, 
+  author={Benoit Legat and Oscar Dowson and Joaquim Dias Garcia and Miles Lubin},
+  year={2020},
+  eprint={2002.03447},
+  archivePrefix={arXiv},
+  primaryClass={math.OC},
+  url={https://arxiv.org/abs/2002.03447}, 
 }
 
 ###
 Computing derivatives
 ###
-
 @article{sympy2017,
   title = {SymPy: symbolic computing in Python},
   author = {Meurer, Aaron and Smith, Christopher P. and Paprocki, Mateusz and \v{C}ert\'{i}k, Ond\v{r}ej and Kirpichev, Sergey B. and Rocklin, Matthew and Kumar, AMiT and Ivanov, Sergiu and Moore, Jason K. and Singh, Sartaj and Rathnayake, Thilina and Vig, Sean and Granger, Brian E. and Muller, Richard P. and Bonazzi, Francesco and Gupta, Harsh and Vats, Shivam and Johansson, Fredrik and Pedregosa, Fabian and Curry, Matthew J. and Terrel, Andy R. and Rou\v{c}ka, \v{S}t\v{e}p\'{a}n and Saboo, Ashutosh and Fernando, Isuru and Kulal, Sumith and Cimrman, Robert and Scopatz, Anthony},
@@ -747,5 +593,83 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   number={4},
   pages={629--705},
   year={2005},
+  publisher={SIAM}
+}
+
+###
+Sparse Matrix Formats
+###
+@book{Kernighan1988,
+  author = {Kernighan, Brian W. and Ritchie, Dennis M.},
+  title = {The C Programming Language},
+  edition = {2nd},
+  publisher = {Prentice Hall},
+  year = {1988},
+  isbn = {978-0131103627}
+}
+
+@book{davis2006direct,
+  author    = {Timothy A. Davis},
+  title     = {Direct Methods for Sparse Linear Systems},
+  publisher = {Society for Industrial and Applied Mathematics},
+  year      = {2006},
+  address   = {Philadelphia, PA},
+  isbn      = {978-0-89871-613-9},
+  doi       = {10.1137/1.9780898718881},
+  url       = {https://epubs.siam.org/doi/book/10.1137/1.9780898718881}
+}
+
+@book{Duff1986Direct,
+  author = {Duff, Iain S. and Erisman, Albert M. and Reid, John K.},
+  title = {Direct Methods for Sparse Matrices},
+  publisher = {Oxford University Press},
+  year = {1986},
+  address = {Oxford, England},
+  isbn = {0-19-853408-6}
+}
+
+@book{saad2003iterative,
+  title={Iterative Methods for Sparse Linear Systems},
+  author={Saad, Yousef},
+  year={2003},
+  publisher={Society for Industrial and Applied Mathematics},
+  address={Philadelphia, PA},
+  edition={2nd},
+  isbn={978-0-898715-34-7},
+  doi={10.1137/1.9780898718003}
+}
+
+@ARTICLE{2020SciPy-NMeth,
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
+            Haberland, Matt and Reddy, Tyler and Cournapeau, David and
+            Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and
+            Bright, Jonathan and {van der Walt}, St{\'e}fan J. and
+            Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and
+            Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and
+            Kern, Robert and Larson, Eric and Carey, C J and
+            Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and
+            {VanderPlas}, Jake and Laxalde, Denis and Perktold, Josef and
+            Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and
+            Harris, Charles R. and Archibald, Anne M. and
+            Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and
+            {van Mulbregt}, Paul and {SciPy 1.0 Contributors}},
+  title   = {{{SciPy} 1.0: Fundamental Algorithms for Scientific
+            Computing in Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  pages   = {261--272},
+  adsurl  = {https://rdcu.be/b08Wh},
+  doi     = {10.1038/s41592-019-0686-2},
+}
+
+@article{gill1984sparse,
+  title={Sparse matrix methods in optimization},
+  author={Gill, Philip E and Murray, Walter and Saunders, Michael A and Wright, Margaret H},
+  journal={SIAM Journal on Scientific and Statistical Computing},
+  volume={5},
+  number={3},
+  pages={562--589},
+  year={1984},
   publisher={SIAM}
 }
