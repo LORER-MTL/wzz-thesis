@@ -41,6 +41,30 @@ Atoms have known attributes such as curvature (affine, convex, concave), monoton
 (increasing, decreasing, non-monotone), and sign (positive, negative, unknown), which are used
 during canonicalization (we show an example in \S\ref{sec:canonicalization}).
 
+\paragraph{Expression trees.}
+An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
+The subexpression can either be a variable, a parameter, or another expression.
+Similarly to atoms, expressions can also be classified by curvature, monotonicity, and sign
+which are determined by simple \emph{composition rules} \cite{grant2006disciplined}.
+% define expressions and show an example of an expression tree.
+An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
+
+\begin{figure}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=20mm},
+    level 2/.style={sibling distance=15mm}]
+  \node {\annotatedop{+}{t_1+\mu t_2}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {\annotatedop{\texttt{mul}}{\mu  t_2}}
+      child {node[draw] {$\mu$}}
+      child {node[circle,draw] {$t_2$}}
+    };
+\end{tikzpicture}
+\caption{Example of expression tree.}
+\label{fig:expr-tree}
+\end{figure}
+
 \paragraph{Parameterized conic form.}
 The data inputs in a problem instance can either be fixed or varying.
 In CVXPY, varying data are referred to as \emph{parameters} and
@@ -55,72 +79,46 @@ by letting the problem data depend on a parameter vector $\theta \in \reals^p$:
 \text{subject to} & b(\theta) - A(\theta) x \in \mathcal K.
 \end{array}
 \EEQ
-When the problem data $c, d, A, b$ are \emph{affine with respect to} $\theta$, we can
-form the matrices $Q \in \reals^{(n+1) \times (p+1)}$ and
-$\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$ where
-the problem data is obtained with
-% convert this to keep the style consistent
+When $c, d, b$ and $A$ are \emph{affine with respect to} $\theta$,
+we can represent the problem data parameter dependence as
 \begin{equation} \label{eq:param-maps}
     \begin{bmatrix} c \\ d \end{bmatrix} = Q \cdot \tilde{\theta},
 \qquad\text{and}\qquad
     [A \quad b] = \sum_{i=1}^{p+1} \mathcal{R}[:,:,i]\cdot \tilde{\theta}_i,
 \end{equation}
-where $d$ is the parameter-dependent constant offset of the objective
-and $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$ (an extended parameter vector).
-
-\paragraph{Parameter maps.}
-During canonicalization, CVXPY will form the objective and constraints 
-\emph{parameter maps} $Q$ and $\mathcal R$.
-On subsequent solves, CVXPY only needs to update the parameter values
-and apply the parameter maps in \eqref{param-maps}.
-The benefits of the parameter maps is that it is completely separate from
-the expression tree representation (which can be expensive when there are many nodes
-in the problem formulation).
-It can be viewed as a way to \emph{cache} parameter dependence in an optimization model.
-% TODO make this a bit more polished, but the idea is there mostly.
-We describe how the parameter map is computed in \S\ref{sec:matrix-stuffing}.
-
-\paragraph{Expression trees.}
-An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
-The subexpression can either be a variable, a parameter, or another expression.
-Similarly to atoms, expressions can also be classified by curvature, monotonicity, and sign
-which are determined by simple \emph{composition rules} \cite{grant2006disciplined}.
-% define expressions and show an example of an expression tree.
-An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
+where $Q \in \reals^{(n+1) \times (p+1)}$, $\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$
+and $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$.
+We refer to $Q$ as the objective \emph{parameter map}, $\mathcal R$ as the constraint parameter map,
+and $\tilde{\theta}$ as the extended parameter vector.
 
 \paragraph{Matrix stuffing.}
-% TODO we need to rewrite this paragraph now. I have some ideas but to revisit later.
-% maybe talk about matrix stuffing with parameters here.
 Although the original user specified problem formulation may contain nonlinearities,
 after conversion to standard form, the \emph{canonicalized problem} will
-only contain affine expressions.
-The convex cone $\mathcal{K}$ (typically a cartesian product
-of \emph{standard cones}) is already computed and known.
-The remaining problem data are the \emph{constraint matrix} $A$
-and the vectors $b$ and $c$.
-The process to compute $b$ is relatively straightforward, for example,
-one can \emph{evaluate} the affine expression tree at the origin.
-The process to obtain $c$ is a special case of the process to obtain $A$.
-For these reasons, we will often refer to matrix stuffing as the explicit task
-of forming the $A$ matrix.
-We review current CVXPY matrix stuffing approaches in \S\ref{sec:matrix-stuffing}.
+only contain affine expressions (with respect to both parameters and variables).
+Concretely, matrix stuffing refers to the task of forming the constraint parameter map,
+as the objective parameter map is a scalar special case of it.
+Once the parameter maps are formed, the parameter dependence of the model is \emph{cached}
+and doesn't rely on the expression tree representation anymore.
+Subsequent problem instances will only need to update $\theta$ and apply the maps
+to get the new problem data.
+We review current CVXPY matrix stuffing approaches and give examples of how the parameter maps
+are formed in \S\ref{sec:matrix-stuffing}.
 
 \paragraph{Contributions.}
 We make the following contributions:
 \begin{enumerate}
-  \item We propose an alternative method for matrix stuffing that doesn't rely on a parameter map.
-  Instead, we treat matrix stuffing as a special case of sparse Jacobian evaluation which naturally
+  \item We propose an alternative method to matrix stuffing that doesn't rely on forming parameter maps.
+  Instead, we treat matrix stuffing as a sparse Jacobian evaluation which naturally
   separates the symbolic structure of the Jacobian from its numerical values.
   \item We use the affine atoms from the \texttt{SparseDiffengine} package and its Python bindings
-  to implement a backend for CVXPY.
-  \item We benchmark our method against existing approaches and make improvements to CVXPY's codebase
-  by removing a deprecated backend.
+  to implement a canonicalization backend for CVXPY.
+  \item We benchmark our method against existing approaches and make improvements to CVXPY's codebase.
 \end{enumerate}
 All code is open source and available at
 \url{https://github.com/cvxpy/cvxpy}.
 
 \paragraph{Thesis outline.}
-The rest of this thesis begin with a review of the literature on modeling languages,
+The rest of this thesis begins with a review of the literature on modeling languages,
 canonicalization, and matrix stuffing in \S\ref{sec:RevLitt}.
 In \S\ref{sec:Theme1} we describe a set of relevant affine atoms and their implementation
 in a sparse differentiation package.
@@ -128,4 +126,4 @@ in a sparse differentiation package.
 In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
 Finally, in \S\ref{sec:Conclusion} we summarize our contributions and
-discuss future work.
+discuss future improvements to the canonicalization backend.
