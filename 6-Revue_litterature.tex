@@ -59,9 +59,8 @@ yet \cite{fourer1978modern}.
 In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
 accept problem descriptions that closely mirror standard mathematical
 notation \cite{fourer1983modeling}. By working directly with the modeler's representation, these
-languages simplify verification (the model can be inspected as written), modification (changing
-the problem does not require rewriting procedural code), and communication (the formulation serves
-as its own documentation). In the late 1980s and early 1990s, commercial algebraic modeling
+languages simplify verification, modification, and communication.
+In the late 1980s and early 1990s, commercial algebraic modeling
 systems such as GAMS \cite{brooke1988gams}, AIMMS \cite{bisschop2006aimms} and
 AMPL \cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
 widely used today).
@@ -100,7 +99,7 @@ are incredibly useful and we review them in \ref{sparse-matrices}.
 \label{sec:canonicalization}
 
 \paragraph{CVXPY.}
-% let's maybe enhance this intro a bit with more substance from the paper
+% TODO let's maybe enhance this intro a bit with more substance from the paper
 CVXPY is a domain-specific language for convex optimization embedded in Python,
 that was originally developed by Steven Diamond and Stephen Boyd at Stanford
 University \cite{diamond2016cvxpy}. Akshay Agrawal later redesigned the
@@ -109,12 +108,9 @@ which enabled support for other disciplined
 languages \cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}, and the
 project has since grown through contributions from many others \cite{cederberg2025disciplined}.
 
-% a general note, don't get too attached to the analogy with compilers.
-% try to sprinkle some mentions here and there, but overall, let's keep the exposition
-% light and direct.
-\paragraph{Standard functional form.}
-When a user specifies a CVXPY problem, it is usually in a standard ``functional'' form,
-\begin{equation}\label{eq:functional-standard-form}
+\paragraph{Functional form.}
+When a user specifies a CVXPY problem, it is usually in a ``functional'' form
+\begin{equation}\label{eq:functional-form}
 \begin{array}{ll}
 \mbox{minimize} & f_0(x; \theta) \\
 \mbox{subject to} & f_i(x; \theta) \leq g_i(x; \theta), \ i=1,\ldots,m_1,\\
@@ -122,25 +118,22 @@ When a user specifies a CVXPY problem, it is usually in a standard ``functional'
 \end{array}
 \end{equation}
 with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
-When $\theta$ is fixed, \eqref{eq:functional-standard-form} is a problem instance, otherwise it
-defines a problem family.
+For a given value of $\theta$ we refer to \eqref{eq:functional-form} as a problem instance,
+otherwise we have a problem family.
 Each function in \eqref{eq:functional-standard-form} is internally represented as an
-\emph{expression tree}.
-The DCP composition rules are applied to functions in \eqref{functional-standard-form}
-to classify their curvature.
-Convex optimization is a special case when $f$ is convex, $g$ is concave,
-and both $h$ and $j$ are affine.
-After applying the composition rules to all functions, CVXPY will verify that the
-problem is convex and raise an error otherwise.
-These restrict the mathematical formulation for certain expressions, for example
-$\sqrt{x^2}$ is not \emph{DCP-compliant} while the equivalent $|x|$ is.
-This is the first step of canonicalization, before any transformation to conic form
-is done,
-CVXPY must first classify all atoms and verify that they conform to the grammar or ruleset
-(which also guarantees that the problem itself is convex).
+expression tree.
 
-\paragraph{DCP composition rules.}
-% I am thinking to move this back into canonicalization.
+\paragraph{Disciplined convex programming.}
+When all $f_i$ are convex, all $g_i$ are concave and all $h_i$ and $j_i$ are both affine,
+the functional form defines a convex optimization problem.
+To verify that the problem is convex, CVXPY uses the DCP composition rules to classify
+the curvature of functions.
+Once all functions are classified, a problem is \emph{DCP-compliant} if its functions
+satisfies the curvatures of a convex problem.
+Otherwise, if certain curvatures are incorrect (\emph{i.e.} $f_0$ is concave) or unknown,
+CVXPY will raise an error and terminate.
+
+\paragraph{Composition rules.}
 The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and for each
 $i \in \{1, \dots, k\}$ the following holds:
 \begin{itemize}
@@ -150,8 +143,20 @@ $i \in \{1, \dots, k\}$ the following holds:
 \end{itemize}
 The same results hold for concave functions by swapping convex and concave.
 Affine expressions require $h$ and all of its arguments to be affine \cite{grant2004disciplined}.
+% maybe can say a word about representation of functions (xqrt{x^2} vs. |x|)
+% and also differentiability and how it is handled?
+% something like although the standard form in boyd requires all functions to be twice differentiable
+% we don't need to make that assumption here.. since \ref{epigraph} handles it naturally.
+
+\paragraph{DPP composition rules.}
+\emph{Disciplined parameterized programming} (DPP) is an extension of DCP which guarantees
+an affine parameter dependence in the problem data. A problem is \emph{DPP-compliant} if it
+satisfies the DPP composition rules. The rules essentially disallows products of expressions
+involving parameters and can be referred to in \cite{agrawal2019dpp}.
 
 \paragraph{Solver standard form.}
+After a problem is verified to be DPP-compliant, CVXPY will convert the functional form 
+problem to a target solver's standard form.
 % TODO will probably need to completely rewrite this.
 % make it specific about CVXPY.
 % also list some supported solvers.
@@ -169,32 +174,51 @@ linearizing the quadratic objective via the second-order cone, at the cost of on
 variable and one extra constraint.
 We will focus on the conic form throughout the thesis.
 
-\paragraph{Parameterized Programming}
-\emph{Disciplined parameterized programming} (DPP) is a grammar built on top of DCP
-that disallows products of parameter-dependent expressions, guaranteeing
-reducibility to ASA form.
-% maybe we can try to put the full rules for completeness.
-% question: do we need to ever mention the ASA form and especially the last A?
-% it might be interesting but not really relevant. do we need to show what the map looks
-% like for an example?
-
-\paragraph{Stages of canonicalization.}
-% maybe can call this sequence of reductions.
+% I should definitely have a paragraph for reductions and talk about it more
+% in detail, but also need to try and remain brief the whole time.
+\paragraph{Reductions.}
 Canonicalization converts a DPP-compliant model into a cone program via a sequence
 of reductions \cite{agrawal2018rewriting}.
-The front end verifies convexity by parsing the user specified expression tree.
-Then, reductions---\emph{e.g.}, negating the objective of maximization problems and turning variable
-attributes into explicit constraints---are applied.
-The last symbolic reduction is to expand nonlinear atoms to their epigraph form, resulting in an
-affine expression tree.
-Subsequently, a numerical reduction reduces the affine expression tree into the sparse matrices
-$Q$ and $\mathcal{R}$ defined in \ref{parameter-map}.
-Finally, solver-specific transformations are applied to match their required form.
-Each reduction also specifies an inverse transformation which allows CVXPY to map the
-solution of the standard form problem back to the user specified problem.
 
-\paragraph{Example.}
-As an illustrative example, consider the following optimization problem
+\paragraph{Maximization problems.}
+A first example of a reduction is one which takes a maximization problem
+and converts it into a minimization problem by flipping the sign of the objective.
+The reverse transformation simply undoes the sign flipping and has no effect on the
+actual solution of the problem.
+In CVXPY, this reduction is conveniently called \texttt{FlipObjective}.
+
+\paragraph{Variable bounds.}
+A second example is variable attributes such as numerical bounds or \texttt{nonneg}.
+During canonicalization, CVXPY will also verify if the target solver supports bounds
+natively. If it does, CVXPY can pass them directly to solvers, otherwise they will
+get converted into explicit constraints.
+The reverse transformation for this reduction is to take the dual values corresponding
+to the explicit constraints ($x\geq 0$) and setting them to be equal to the variable
+bound's dual values.
+In CVXPY, this reduction is part of a greater set of general attribute constraints
+and is called \texttt{CvxAttr2Constr}.
+
+\paragraph{Epigraph transformation.}
+Each convex atom has a \textit{canonicalization} that replaces it with an
+epigraph variable (for concave atoms it is a \emph{hypograph} variable)
+and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
+$t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
+$\theta$, and $\mathcal K$ is a convex cone.
+This process was presented initially in \cite{grant2008graph}
+One illustrative canonicalization replaces the \texttt{norm2} expressions in the objective with
+a new epigraph variable $t_i$ and imposes the epigraph constraint what is known as a \emph{second-order}
+cone
+\begin{equation}
+(t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
+\end{equation}
+
+\paragraph{Nondifferentiability.}
+% I definitely need to talk about differentiability and the epigraph of |x|.
+% I guess it is almost trivial but definitely interesting and of substance for the thesis.
+
+\paragraph{Example of canonicalization.}
+To show a concrete example of canonicalization, we consider a simple fitting with regularization
+problem
 \begin{equation}
     \begin{array}{ll}
         \text{minimize} & \|Fx-g\|_2 + \mu \|x\|_2\\
@@ -204,18 +228,20 @@ As an illustrative example, consider the following optimization problem
 \end{equation}
 with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters
 $g\in \reals^m$ and $\mu \geq 0$.
-This problem formulation, given by the following CVXPY code, conforms to the DPP grammar:
-
+The problem formulation in CVXPY code is
 \begin{lstlisting}[language=Python]
 import cvxpy as cp
 import numpy as np
-F = np.random.randn(m, n)  # fixed problem data
+F = np.random.randn(m, n)
 x = cp.Variable(n)
 g = cp.Parameter(m)
 mu = cp.Parameter(nonneg=True)
 objective = cp.Minimize(cp.norm(F @ x - g) + mu * cp.norm(x))
 prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
+where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
+the data arrays. The expression tree representation of the problem
+is shown in \ref{dcp-syntax-tree}.
 
 \begin{figure}[ht]
 \centering
@@ -249,26 +275,10 @@ prob = cp.Problem(objective, [x >= 0])
 \end{tikzpicture}
 \caption{Abstract syntax tree of constraints}
 \end{subfigure}
-\caption{Users write expressions in Python-code that are automatically stored
-as expression trees. Variables are labeled with a circle, and parameters with
-a square. Leaf nodes that refer to the same parameter or variable are deduplicated in practice
-(not shown here).}
+\caption{Users write functions in Python code that are restricted to be from the modeling language.
+Variables are labeled with a circle, and parameters with a square.}
 \label{fig:dcp-syntax-tree}
 \end{figure}
-
-\paragraph{Epigraph transformation.}
-Each convex atom has a \textit{canonicalization} that replaces it with an
-epigraph variable (for concave atoms it is a \emph{hypograph} variable)
-and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
-$t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
-$\theta$, and $\mathcal K$ is a convex cone.
-This process was presented initially in \cite{grant2008graph}
-One illustrative canonicalization replaces the \texttt{norm2} expressions in the objective with
-a new epigraph variable $t_i$ and imposes the epigraph constraint what is known as a \emph{second-order}
-cone
-\begin{equation}
-(t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
-\end{equation}
 
 \paragraph{Conic form expression tree.}
 After applying the reductions, the problem has been \emph{canonicalized} to
@@ -281,8 +291,11 @@ x \in \reals_+^n \\
 & (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\ 
 \end{array}
 \end{equation}
-where $t_1$ and $t_2$ are new epigraph variables.
-We represent the constraints and the objective as expression trees, see Figure~\ref{fig:expr-tree}.
+where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
+\ref{standard-form} is the product $\reals_+^n \times \in \mathcal K_{\mathrm{soc},m+1}
+\times \mathcal K_{\mathrm{soc},n+1}$. In the next section, we explain how the 
+symbolic affine expression trees in \ref{conic-form-tree} get converted into
+the parameter maps defined in \ref{parameter-maps}.
 
 \begin{figure}
 \centering
@@ -322,12 +335,13 @@ We represent the constraints and the objective as expression trees, see Figure~\
 \caption{Expression tree of the constraints}
 \end{subfigure}
 \caption{After the application of reductions, the constraints and the objective are affine
-functions of the variables. As with the expression tree representation,
-duplicate leaves are deduplicated in practice.}
-\label{fig:expr-tree}
+functions of the variables.}
+\label{fig:conic-form-tree}
 \end{figure}
 
 \paragraph{References.}
+Michael grant's papers and thesis on CVX and DCP are the standard references on verifying convexity
+and canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
 The paper by Chu et al. \cite{chu2013codegen} gives another perspective of canonicalization
 through the \emph{relaxed smith form}, it was used extensively to learn the concept initially.
 The paper by Agrawal et al. \cite{agrawal2018rewriting} on rewriting systems is a great reference
@@ -470,6 +484,7 @@ columns are zero because the objective does not depend on $g$, but they are part
 $\tilde\theta$ globally and the analogous map for the constraints is non-zero in those
 columns. Multiplying $Q$ by $\tilde\theta$ recovers $[c;\, d] = [1,\, \mu,\, 0,\, 0]^T$;
 the leading three entries match the $c$ vector shown in Fig.~\ref{fig:matrix-stuffing}.}
+% simplify this and maybe show $g$ as one entry in the matrix
 \label{fig:param-map-c}
 \end{figure}
 

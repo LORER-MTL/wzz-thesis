@@ -13,7 +13,8 @@ general-purpose convex solvers
 \EEQ
 where $x \in \reals^n$ is the decision variables,
 and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vectors $b \in \reals^m$
-and $c \in \reals^n$, the scalar $d \in \reals$ and the non-empty closed convex cone $K \subseteq \reals^m$.
+and $c \in \reals^n$, the scalar $d \in \reals$ and the non-empty closed convex cone
+$K \subseteq \reals^m$.
 Almost all of optimization practice can be divided into two groups, \emph{modeling} and 
 \emph{solving}. The modeler's role is to formulate problems based on real-world business
 or engineering applications.
@@ -27,7 +28,7 @@ While the time taken to solve an optimization problem is often dominated by the 
 the time taken to \emph{canonicalize} (or \emph{compile}) a problem can also be significant,
 especially for large problems.
 In the case of CVXPY, the \emph{compilation time} largely lies in \emph{matrix stuffing},
-the final step of canonicalization where symbolic expressions trees are converted to 
+the final step of canonicalization where symbolic expression trees are converted to 
 explicit numerical matrices.
 Other modeling languages take different approaches to form the problem data, we review these
 \emph{coefficient extraction} approaches in \S\ref{sec:coefficient-extraction}.
@@ -37,31 +38,29 @@ Modeling languages for convex optimization are built on top of a library of
 functions which can be used to describe problems.
 These functions are known as \emph{atoms} in CVXPY since they are the fundamental
 building blocks of the modeling language \cite{grant2004disciplined}.
-Atoms have known attributes such as curvature (affine, convex, concave), monotonicity 
-(increasing, decreasing, non-monotone), and sign (positive, negative, unknown), which are used
-during canonicalization (we show an example in \S\ref{sec:canonicalization}).
+Atoms have known attributes such as curvature, monotonicity, and sign,
+for example, .
 
 \paragraph{Expression trees.}
 An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
 The subexpression can either be a variable, a parameter, or another expression.
 Similarly to atoms, expressions can also be classified by curvature, monotonicity, and sign
 which are determined by simple \emph{composition rules} \cite{grant2006disciplined}.
-% define expressions and show an example of an expression tree.
 An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
-
 \begin{figure}
 \centering
 \begin{tikzpicture}
   [level 1/.style={sibling distance=20mm},
-    level 2/.style={sibling distance=15mm}]
-  \node {\annotatedop{+}{t_1+\mu t_2}}
+    level 2/.style={sibling distance=15mm},
+    level 3/.style={sibling distance=15mm}]
+  \node {\annotatedop{\texttt{log}}{\texttt{log}(|Ax-b|)}}
     child {node[circle,draw] {$t_1$}}
     child {node {\annotatedop{\texttt{mul}}{\mu  t_2}}
       child {node[draw] {$\mu$}}
       child {node[circle,draw] {$t_2$}}
     };
 \end{tikzpicture}
-\caption{Example of expression tree.}
+\caption{Example of expression tree for the function \texttt{log(|Ax-b|)}.}
 \label{fig:expr-tree}
 \end{figure}
 
@@ -88,8 +87,14 @@ we can represent the problem data parameter dependence as
 \end{equation}
 where $Q \in \reals^{(n+1) \times (p+1)}$, $\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$
 and $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$.
+When $A(\theta)$ is sparse, we also require that its structure or \emph{sparsity pattern}
+must be fixed throughout the different iterations.
 We refer to $Q$ as the objective \emph{parameter map}, $\mathcal R$ as the constraint parameter map,
 and $\tilde{\theta}$ as the extended parameter vector.
+The equation for the constraint map is known as a \emph{tensor} product, a generalization of
+matrix-vector product in higher dimensions.
+This notation is required to output a constraint matrix from a three dimensional
+tensor.
 
 \paragraph{Matrix stuffing.}
 Although the original user specified problem formulation may contain nonlinearities,
@@ -116,13 +121,13 @@ We make the following contributions:
 \end{enumerate}
 All code is open source and available at
 \url{https://github.com/cvxpy/cvxpy}.
+% should mention sparsediffengine as well probably.
 
 \paragraph{Thesis outline.}
 The rest of this thesis begins with a review of the literature on modeling languages,
 canonicalization, and matrix stuffing in \S\ref{sec:RevLitt}.
 In \S\ref{sec:Theme1} we describe a set of relevant affine atoms and their implementation
 in a sparse differentiation package.
-% should we have another chapter for the CVXPY interface and problem class and handling parameters?
 In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
 Finally, in \S\ref{sec:Conclusion} we summarize our contributions and
