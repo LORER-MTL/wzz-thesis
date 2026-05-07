@@ -92,6 +92,16 @@ are incredibly useful and we review them in \ref{sparse-matrices}.
 %The aim of the literature chapter is to be read chronologically, however, certain sections will
 %sometimes cross-reference others in a non-chronological way.
 
+% The sections on matrix stuffing and canonicalization should be read sequentially.
+% as they are closely related. However, they are still different sections
+% because the task of forming the parameter map can be abstracted away from convex/conic
+% optimization and all that stuff.
+% It is just instrumental to know what kind of transformations patterns happen before
+% getting to forming the problem data. In some sense, if someone were to canonicalize
+% a problem by hand (symbolically), they could understand the matrix stuffing section
+% by itself. I am not sure if this snippet is worth considering to add in,
+% but it is something I thought of which justify this separation of the two sections.
+
 %%
 %%  CANONICALIZATION
 %%
@@ -119,7 +129,7 @@ When a user specifies a CVXPY problem, it is usually in a ``functional'' form
 \end{equation}
 with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
 For a given value of $\theta$ we refer to \eqref{eq:functional-form} as a problem instance,
-otherwise we have a problem family.
+otherwise for general values of $\theta$ it defines a problem family.
 Each function in \eqref{eq:functional-standard-form} is internally represented as an
 expression tree.
 
@@ -174,8 +184,6 @@ linearizing the quadratic objective via the second-order cone, at the cost of on
 variable and one extra constraint.
 We will focus on the conic form throughout the thesis.
 
-% I should definitely have a paragraph for reductions and talk about it more
-% in detail, but also need to try and remain brief the whole time.
 \paragraph{Reductions.}
 Canonicalization converts a DPP-compliant model into a cone program via a sequence
 of reductions \cite{agrawal2018rewriting}.
@@ -199,6 +207,7 @@ In CVXPY, this reduction is part of a greater set of general attribute constrain
 and is called \texttt{CvxAttr2Constr}.
 
 \paragraph{Epigraph transformation.}
+% TODO revisit this and maybe rewrite it entirely.
 Each convex atom has a \textit{canonicalization} that replaces it with an
 epigraph variable (for concave atoms it is a \emph{hypograph} variable)
 and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
@@ -334,13 +343,13 @@ the parameter maps defined in \ref{parameter-maps}.
 \end{tikzpicture}
 \caption{Expression tree of the constraints}
 \end{subfigure}
-\caption{After the application of reductions, the constraints and the objective are affine
-functions of the variables.}
+\caption{After the epigraph transformation reduction,
+the constraints and the objective are affine functions of the variables.}
 \label{fig:conic-form-tree}
 \end{figure}
 
 \paragraph{References.}
-Michael grant's papers and thesis on CVX and DCP are the standard references on verifying convexity
+Michael Grant's papers and thesis on CVX and DCP are the standard references on verifying convexity
 and canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
 The paper by Chu et al. \cite{chu2013codegen} gives another perspective of canonicalization
 through the \emph{relaxed smith form}, it was used extensively to learn the concept initially.
@@ -356,10 +365,66 @@ as complementary references for epigraph reformulations and general modeling pri
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
-Matrix stuffing materializes the expression trees of the canonicalized problem
-(\S\ref{sec:canonicalization}) as the sparse tensors $Q$ and $\mathcal{R}$ defined in
-\S\ref{sec:canonicalization}. This is done by the \emph{canonicalization backend}, which
-applies a depth-first walk on each tree (Figure~\ref{fig:matrix-stuffing}).
+In this section, we explain how to form the parameter maps from a set of affine expression
+trees. In doing so, we also cover fundamental data structures and design choices
+of these backends which can later be contrasted with the method proposed
+in \ref{methodology}. Historically, the implementations of matrix stuffing 
+have been referred to as \emph{canonicalization backends},
+and there has been many versions over the years.
+We will focus on \texttt{cvxcore}, one of the original implementations in \texttt{C++},
+and \texttt{SciPy}, an improved Python version which relies on the sparse matrix
+library with the same name.
+
+\paragraph{\texttt{Tensor} object.}
+Mathematically, tensors are a generalization of matrices in three dimensions or
+higher. In the canonicalization backends, this abstraction is also relevant but can
+be made more precise. We consider a \texttt{Tensor} as a three-dimensional
+\emph{sparse} array which represents a sparse linear mapping from a parameter vector
+to the constraint matrix (as shown in \ref{parameter-maps}).
+The three indices are rows for constraints, columns for variables, and parameter
+offsets for parameters.
+
+\paragraph{Recursive walk.}
+Fundamentally, matrix stuffing is relatively simple;
+it requires a single depth-first walk of the affine expression trees,
+where every node applies an linear operation on a \texttt{Tensor}.
+Since the process is recursive, every node of an expression tree
+will have an equivalent \texttt{Tensor}, and the final output
+(the \texttt{Tensor} at the root node)
+will give the constraint parameter map $\mathcal R$.
+% TODO revisit how to write and explain this, or remove this sentence entirely.
+
+\paragraph{Local vs. Global problem data.}
+All modeling languages for optimization must atleast do one thing correctly:
+abstract away the task of placing \emph{local} tensors (or its equivalent)
+at the expression level (where typically a single variable appears)
+towards a \emph{global} tensor at the problem level
+(where many more variables could be present).
+% this might not be very clear, but it is a good start I think.
+In fact, once we are able to compute the local tensor for all expressions
+of interest, getting the global tensor simply comes down to combining the local
+tensors and applying appropriate row and column \emph{offsets}.
+
+\paragraph{Column and parameter offsets.}
+
+\paragraph{Row offsets.}
+
+\paragraph{\texttt{TensorView} object.}
+This is the global tensor with the dictionaries.
+\paragraph{Data structures.}
+% talk about the nested dictionary here.
+
+\paragraph{\texttt{InverseData} for example.}
+% show the dictionary for the example.
+\paragraph{Limitations.}
+% talk about the downside of relying on external sparse matrix libraries.
+
+\paragraph{Linear operator.}
+
+\paragraph{Tensor Representation.}
+% Fundamentally matrices are limited to two dimensions.
+% Here we discuss one choice of representation which
+% stacks slices of the matrices and forms a strided long matrix.
 
 \begin{figure}
 \begin{subfigure}{\textwidth}
@@ -452,8 +517,9 @@ applies a depth-first walk on each tree (Figure~\ref{fig:matrix-stuffing}).
 \caption{Matrix Stuffing tree}
 \end{center}
 \end{subfigure}
-\caption{Matrix stuffing generates a 3D tensor. To depict these 3D tensors here, we leave the
-parameter values symbolic. Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the
+\caption{Matrix stuffing generates a 3D tensor for the constraint map.
+To depict these 3D tensors here, we leave the parameter values symbolic.
+Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the
 operations being applied at each node.}
 \label{fig:matrix-stuffing}
 \end{figure}
