@@ -1,0 +1,604 @@
+\documentclass[10pt,mathserif,aspectratio=169]{beamer}
+\usepackage{graphicx,amsmath,amssymb,tikz,psfrag,verbatim}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{fancyvrb}
+\usepackage{array}
+\usepackage{kotex}
+\usepackage{pstool}
+\usepackage{overpic}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage[normalem]{ulem}
+\usepackage{mdframed}
+\usepackage{longtable}
+\usepackage{subcaption}
+\usepackage{verbatim}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows}
+\pgfplotsset{compat=1.17}
+\usepgfplotslibrary{groupplots}
+\usepgfplotslibrary{external}
+\tikzexternalize[prefix=figures/]
+\usetikzlibrary{calc,patterns,decorations.pathmorphing,decorations.markings,arrows.meta}
+
+\input defs.tex
+\input listing_defs.tex
+
+
+\bibliographystyle{apalike}
+
+% comment out the following three lines to get default beamer fonts
+\usepackage{newtxtext}
+%\usepackage[smallerops,upint]{newtxmath}
+\usepackage{newtxmath}
+%\usepackage{enumitem}
+\renewcommand{\familydefault}{\sfdefault}
+
+
+%% formatting
+
+\mode<presentation>
+{
+\usetheme{default}
+}
+\setbeamertemplate{navigation symbols}{}
+\usecolortheme[rgb={0.13,0.28,0.59}]{structure}
+\setbeamertemplate{itemize subitem}{--}
+\setbeamertemplate{frametitle} {
+  \vspace*{2ex}
+  {\large\bfseries \insertframetitle}
+}
+
+\AtBeginSection[] 
+{ 
+    \begin{frame}
+        \frametitle{Outline} 
+        \tableofcontents[currentsection,currentsubsection]
+    \end{frame} 
+} 
+\title{\large \bfseries A lightweight coefficient extractor in C}
+
+\author{William Zhang}
+
+\date{Thesis Defence, Polytechnique Montreal, Aug 14, 2026}
+
+\begin{document}
+
+\frame{
+\thispagestyle{empty}
+\titlepage
+}
+
+\section{Background}
+
+\begin{frame}{Convex optimization}
+\[
+\begin{array}{ll} 
+\mbox{minimize}  &f_0(x) \\
+\mbox{subject to} &f_i(x) \leq 0, \quad i=1, \ldots, m\\
+&Ax=b
+\end{array}
+\]
+
+\begin{minipage}{0.68\textwidth}
+  \centering
+  \begin{itemize}
+    \item variable $x\in \reals^n$
+    \item equality constraints are linear and $f_0, \ldots, f_m$ are convex 
+    \item why care about convexity?
+    \pause
+  \begin{itemize}
+    \item \textbf{classic answer}: local optimum = global optimum
+    \item \textbf{modern answer}: very actionable because of reliable software
+  \end{itemize}
+  \end{itemize}
+\end{minipage}%
+\vfill
+\end{frame}
+
+\begin{frame}{Disciplined convex programming (DCP)}
+\begin{itemize}
+\item a grammar for specifying convex optimization problems [Grant et al., 2006]
+\item convex and concave functions are constructed by combining a set of \textbf{atoms} 
+\item each atom has known curvature and monotonicity
+\item simple rules specify how atoms can be composed
+\pause
+\item a problem that follows the DCP rules is convex by construction
+\item and can be solved globally and efficiently (\textbf{in theory and in practice})
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}[fragile]{Modeling languages implementing DCP}
+\begin{itemize}
+\item Yalmip (MATLAB), CVX (MATLAB), CVXPY (Python), Convex.jl (Julia), CVXR (R)
+\item classic commercial software like AMPL and GAMS do not implement DCP
+\pause
+\bigskip
+\item two main tasks of DCP-based modeling languages:
+\begin{itemize}
+  \item \textbf{analysis}: verify that a high level problem description follows the DCP rules
+  \item \textbf{synthesis}: build an equivalent problem in standard conic form:
+\[ \label{e:standard-form}
+\begin{array}{ll}
+\mbox{minimize} & c^T x \\
+\mbox{subject to} & Ax + s = b \\
+& s \in K \\
+\end{array}
+\]
+variables $x$ and $s$, and problem data $A, \:
+b, \: c$ and convex cone $K$
+\pause
+\end{itemize}
+\item no more communication between modeling language and solver
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Nonlinear programming (NLP)}
+\[
+\begin{array}{ll}
+\mbox{minimize} & f(x) \\
+\mbox{subject to} & c(x) = 0  \\
+& \ell \leq x \leq u  \\
+\end{array}
+\]
+\begin{itemize}
+\item objective and constraint functions are differentiable but not necessarily convex
+\item includes many NP-hard problems
+\item success depends on initialization, problem formulation, choice of algorithm 
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Theoretical properties}
+\begin{itemize}
+\item NLP solvers have weak guarantees
+\begin{itemize}
+  \item unrealistic to expect global optimality
+  \item might fail to find a local minimizer (or even a feasible point)
+\end{itemize}
+\bigskip
+\item NLP solvers at best guarantee convergence to a KKT point
+\begin{itemize}
+  \item KKT points can be local minima, local maxima, or saddle points
+  \item solvers implement heuristics to steer away from undesirable KKT points
+\end{itemize}
+\bigskip
+\item convergence guarantees typically require constraint qualifications (CQs)
+\begin{itemize}
+  \item most common CQ: linear independence constraint qualification (LICQ)
+  \item we found LICQ to be important in practice 
+\end{itemize}
+\bigskip 
+\pause 
+\item NLP solvers still work very well in many cases (perhaps with a decent initial point)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Modeling languages for NLP}
+\begin{itemize}
+\item  YALMIP (MATLAB), JuMP (Julia), Pyomo (Python), and CasADi (C++)
+\item commercial software like AMPL, GAMS, AIMMS 
+\bigskip
+\pause 
+\item main task of NLP modeling languages:
+\begin{itemize}
+\item provide solvers with derivatives
+\item provide an initial point, if not specified
+\end{itemize}
+\item communication between modeling language and solver in every iteration
+\end{itemize}
+\end{frame}
+
+\section{Modeling language responsibilities}
+
+\begin{frame}{Solver requirements}
+Interior-point methods for optimization all require atleast
+  \begin{itemize}
+    \item an initial point in the domain of the functions
+    \item smoothness (twice differentiable) of the functions
+    \item the derivatives (Jacobian and Hessian) of the functions
+    \pause
+    \item \textbf{Domain is not the same as feasibility}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{When NLP modeling languages struggle: domain example}
+\[
+\mbox{minimize } -\sum_i\log(A_ix - b_i)
+\]
+\begin{itemize}
+\item variable $x$
+\item solution is the analytic center of a polytope
+\item finding an initial point requires solving an LP
+\item existing modeling languages initialize $x$ to the origin
+\item negative values will crash solvers before the first iteration
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A solution}
+We can instead specify the following problem
+  \[
+    \begin{array}{ll} 
+      \mbox{minimize} & -\sum_i\log(y_i) \\
+      \mbox{subject to} & y_i = A_ix - b_i, \text{ for all } i \in \{1, \dots, n\}
+    \end{array}
+  \]
+  \begin{itemize}
+  \item with a new variable $y$ and auxiliary constraint
+  \item initializing $y = \ones$ ensures a \emph{point in domain}
+  \item the constraints are handled with an infeasible-start method
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What DCP modeling languages do}
+The problem is converted to the following conic form
+\[
+  \begin{array}{ll} 
+    \mbox{minimize } & -\sum_it_i \\
+    \mbox{subject to} & (t_i, \ones, A_ix - b_i) \in \mathcal K_{exp}
+    \text{ for all } i \in \{1, \dots, n\}
+  \end{array}
+\]
+  \begin{itemize}
+  \item where $\mathcal K_{exp}$ is an \emph{exponential cone} and $t$ is a new variable
+  \item initialization in the domain of $K_{exp}$ is done easily
+  \pause
+  \item this is also true for \textbf{all standard convex cones}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{When NLP modeling languages struggle: smooth derivatives}
+\[
+\mbox{minimize } \|Ax - b\|_2^2 + \lambda \|x\|_1
+\]
+\begin{itemize}
+\item variable $x$, regularization parameter $\lambda > 0$
+\item convex problem (lasso) so should be solved gracefully
+\item the solution occurs at a point of nondifferentiability
+\item objective is treated as a black box and ``derivatives'' are supplied to the solver
+\item ignoring nondifferentiability might cause solvers to struggle
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{When NLP modeling languages struggle: smooth derivatives}
+output from Ipopt [Wächter and Biegler, 2006] when interfacing it using Casadi:
+
+\footnotesize
+\begin{mdframed}[
+  linewidth=0.4pt,
+  innerleftmargin=4pt,
+  innerrightmargin=4pt,
+  innertopmargin=4pt,
+  innerbottommargin=4pt
+]
+\begin{verbatim}
+This is Ipopt version 3.14.11, running with linear solver MUMPS 5.4.1.
+
+...
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  1.1126107e+01 0.00e+00 1.71e+00  -1.7 1.29e+08  -7.8 1.00e+00 1.32e-23f 77
+  11  1.3152054e+10 0.00e+00 1.71e+00  -1.7 4.09e+08  -8.3 1.00e+00 1.00e+00w  1
+  12  3.5423855e+10 0.00e+00 1.66e+00  -1.7 1.13e+09  -8.8 1.00e+00 1.00e+00w  1
+  13  1.4112259e+11 0.00e+00 1.58e+00  -1.7 3.39e+09  -9.2 1.00e+00 1.00e+00w  1
+Cannot call restoration phase at point that is almost feasible (violation 0.000000e+00).
+Abort in line search due to no other fall back.
+
+Number of Iterations....: 13
+
+EXIT: Error in step computation!
+\end{verbatim}
+\end{mdframed}
+\end{frame}
+
+\begin{frame}{What DCP modeling languages do}
+The problem can get rid of $|x|$ by the equivalent transformation to
+\[
+  \begin{array}{ll} 
+    \mbox{minimize } & \|Ax - b\|_2^2 + \lambda \sum_it_i \\
+    \mbox{subject to} & -t \leq x \leq t
+  \end{array}
+\]
+  \begin{itemize}
+  \item where $t$ is a new variable
+  \item first move $|x|$ to the constraints as $|x| \leq t$
+  \item equivalent because of monotonicity
+  \item all functions are now twice differentiable
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{How NLP modeling languages compute derivatives}
+\begin{itemize}
+  \item automatic differentiation of the provided functions
+  \item sparsity is handled through graph coloring
+  \item hessian is often expensive and difficult to compute
+  \item an approximation can be used instead (L-BFGS)
+  \pause
+  \item can still be the \textbf{bottleneck} for certain problems
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What DCP modeling languages do}
+\begin{itemize}
+  \item Nothing.
+  \pause
+  \item the problem data $A, b, c$ of the conic form are already the derivatives of interest
+  \item can insert them directly in the Hessian of the KKT matrix
+  \item all standard convex cones have barrier functions with \textbf{analytic derivatives}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Who is responsible?}
+\begin{itemize}
+  \item the solver
+  \pause
+  \item no, it's the user
+  \pause
+  \item also no, it should be the modeling language
+\end{itemize}
+\end{frame}
+
+\section{Disciplined nonlinear programming}
+
+\begin{frame}{Disciplined nonlinear programming (DNLP)}
+\begin{itemize}
+\item a new grammar for specifying nonlinear programs
+\item smooth functions can be freely mixed with nonsmooth functions
+\item rules governing how nonsmooth functions can appear
+\item smooth in the interior of their domain
+\pause
+\end{itemize}
+\bigskip
+\centering
+\begin{minipage}{0.7\textwidth}
+\begin{mdframed}[
+  linewidth=0.4pt,
+  innerleftmargin=8pt,
+  innerrightmargin=8pt,
+  innertopmargin=4pt,
+  innerbottommargin=4pt
+]
+a DNLP-compliant problem can be transformed to a form that 
+  \begin{itemize}
+  \item only involves smooth functions
+  \item does not introduce LICQ violations in the transformation
+\end{itemize}
+\end{mdframed}
+\end{minipage}
+\end{frame}
+
+\begin{frame}{Atoms}
+in DNLP, users represent functions as \textbf{expressions} built from \textbf{atoms}
+with known attributes
+\vfill 
+\begin{itemize}
+\item atoms are divided into three categories:
+\begin{itemize}
+\item \textbf{smooth} 
+\item \textbf{nonsmooth convex}
+\item \textbf{nonsmooth concave} 
+\end{itemize}
+\bigskip
+\item atoms have known monotonicity in each of its arguments (increasing or decreasing)
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{A few atoms}
+\begin{table}
+\centering
+\tiny 
+\renewcommand{\arraystretch}{1.2} % increase row height
+\setlength{\tabcolsep}{2pt} % adjust column spacing
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.8cm}
+>{\raggedright\arraybackslash}p{7.2cm}
+>{\raggedright\arraybackslash}p{2.5cm}
+%>{\raggedright\arraybackslash}p{2cm}
+}
+\toprule
+\textbf{Atom} & \textbf{Definition} & \textbf{Domain} \\
+\midrule
+\multicolumn{3}{c}{\scriptsize{\textbf{Smooth, nonconvex and nonconcave}}} \\
+\midrule
+\verb|multiply| & $\phi(x, y) = x y$ &  \\ 
+\verb|quad_form| & $\phi(x) = x^T Q x$ \qquad where $Q \in \symm^n$ & \\
+\verb|sin| & $\phi(x) = \sin x$ &  \\ 
+\verb|sigmoid| & $\phi(x) = \frac{1}{1 + e^{-x}}$ & \\ 
+\midrule
+\multicolumn{3}{c}{\scriptsize{\textbf{Smooth, convex or concave}}} \\
+\midrule
+\verb|log| & $\phi(x) = \log x$ & $x > 0$ \\
+\verb|sqrt| & $\phi(x) = \sqrt{x}$ & $x \geq 0$ \\ 
+\midrule
+\multicolumn{3}{c}{\scriptsize{\textbf{Nonsmooth, convex}}} \\
+\midrule    
+\verb|abs| & $\phi(x) = |x|$ &  \\ 
+\verb|max| & $\phi(x) = \max \{x_1, x_2, \ldots, x_n\}$ &  \\ 
+\verb|norm1| & $\phi(x) = \|x \|_1$ &  \\  
+\midrule
+\multicolumn{3}{c}{\scriptsize{\textbf{Nonsmooth, concave}}} \\
+\midrule
+\verb|min| & $\phi(x) = \min \{x_1, x_2, \ldots, x_n\}$ &  \\ 
+\verb|sum_smallest| & $\phi(x; k) = \sum_{i=n-k+1}^k x_{[i]}$ where $k \in \{1, \ldots, n\}$ & \\ 
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}{Expressions}
+expressions (and subexpressions) are classified as 
+\begin{itemize}
+\item \textbf{smooth} 
+\item \textbf{linearizable-convex} (L-convex) 
+\item \textbf{linearizable-concave} (L-concave)
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}[fragile]{Classification of expressions}
+an expression $f(x) = \phi(g(x))$ (with $\phi:\reals \to \reals$ an atom and
+$g:\reals^n \to \reals$ a subexpression)
+\vfill
+\begin{itemize}
+\item is \textbf{smooth} if $\phi$ is a smooth atom and $g(x)$ is a smooth expression
+\bigskip
+\item is \textbf{L-convex} if  $\phi$ is a smooth or nonsmooth convex atom and 
+\begin{itemize}
+\item $g(x)$ is a smooth expression, or
+\item $g(x)$ is L-convex and $\phi$ is increasing, or
+\item $g(x)$ is L-concave and $\phi$ is decreasing
+\end{itemize}
+\bigskip
+\item \textbf{example:} $f(x) = |x^T Q x + c|$ represented by \verb|abs(quad_form(x, Q) + c)| is L-convex
+\end{itemize}
+\vfill
+similar definition for L-concave expressions and expressions with $g:\reals^n \to \reals^m$
+\end{frame}
+
+\begin{frame}{Objectives and constraints}
+a problem is a \textbf{disciplined nonlinear program} (DNLP problem) if:
+\vskip 1em
+\begin{itemize}
+\item \textbf{objective}: minimize an L-convex expression (or maximize an L-concave expression)
+\item \textbf{equality constraints}: both left and right-hand sides are smooth expressions
+\item \textbf{inequality constraints ($\leq$)}: left-hand side is L-convex and right-hand side is L-concave
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Connection to DCP}
+DNLP is closely related to convex optimization and DCP
+\bigskip
+\begin{itemize}
+\item a DNLP problem is one that is DCP if all its smooth atoms
+are treated as affine
+%\medskip
+\item an L-convex expression is one that is convex if all its smooth atoms are linearized \\
+(or treated as affine)
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Dealing with limited domain atoms}
+We take the same approach as the analytic center example
+  \begin{itemize}
+  \item the expression $\phi(Ax-b)$ becomes $\phi(y)$ with a new constraint
+  \item we always ensure that $y$ is initialized in the domain of $\phi$
+  \item for nonsmooth atoms, we also initialize the epigraph variable
+  to something reasonable
+  \item variables with bounds are also always satisfied
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Dealing with nonsmooth atoms}
+\begin{itemize}
+\item a DNLP problem is equivalent to a problem where any
+\begin{itemize}
+\item nonsmooth convex atom $\phi$ appears in a constraint of the form $\phi(x) \leq t$
+\item nonsmooth concave atom $\phi$ appears in a constraint of the form $\phi(x) \geq t$
+\end{itemize}
+\pause
+\item these constraints can be formulated using smooth functions [Grant and Boyd, 2008]
+\begin{itemize}
+  \item the reformulations do not introduce LICQ violations
+\end{itemize}
+\item $|x| \leq t$ can be reformulated as $-t \leq x \leq t$
+\pause
+\item other nonsmooth atoms, such as the Huber atom
+\begin{minipage}{0.45\textwidth}
+\[
+\phi(x) = \begin{cases}
+x^2 & |x| \leq M \\
+2M|x| - M^2 & |x| > M
+\end{cases}
+\]
+have more complex reformulations
+\end{minipage}%
+\hfill
+\begin{minipage}{0.45\textwidth}
+\centering
+\tikzset{external/export=false}
+\begin{tikzpicture}[scale=0.8]
+\begin{axis}[
+  axis lines=middle,
+  xlabel={$x$},
+  ylabel={$\phi(x)$},
+  xlabel style={at={(1,0)}, anchor=west},
+  ylabel style={at={(-0.1,0.6)}, anchor=south},
+  xmin=-1.8, xmax=1.8,
+  ymin=-0.2, ymax=2.5,
+  xtick={-0.7,0.7},
+  xticklabels={$-M$,$M$},
+  ytick={0,0.49},
+  yticklabels={$0$,{}},
+  extra y ticks={0.6},
+  extra y tick labels={$M^2$},
+  extra y tick style={tick style={draw=none}},
+  samples=100,
+  domain=-1.8:1.8,
+  width=5.5cm,
+  height=4.5cm
+]
+\addplot[blue, thick, domain=-1.8:-0.7] {1.4*abs(x) - 0.49};
+\addplot[blue, thick, domain=-0.7:0.7] {x^2};
+\addplot[blue, thick, domain=0.7:1.8] {1.4*abs(x) - 0.49};
+\addplot[blue, dotted, thick, domain=-1.8:-0.7] {x^2};
+\addplot[blue, dotted, thick, domain=0.7:1.8] {x^2};
+\end{axis}
+\end{tikzpicture}
+\end{minipage}
+\end{itemize}  
+\end{frame}
+
+\begin{frame}{Our approach to computing derivatives}
+\centering
+\url{https://github.com/SparseDifferentiation/SparseDiffPy}
+\bigskip
+\begin{itemize}
+\item initially used CVXPY's \texttt{grad} functionality
+\item developed a C package for sparse differentiation with Python bindings
+\item every atom implements its own forward, jacobian and hessian
+\item our goal is still to not be the bottleneck (spend less time than in the solver)
+\end{itemize}
+\end{frame}
+
+\section{Example}
+
+\begin{frame}{A DNLP extension of CVXPY}
+\centering
+\url{https://github.com/cvxgrp/DNLP}
+\bigskip
+\begin{itemize}
+\item extends CVXPY with DNLP functionality
+\item supported solvers:
+\begin{itemize}
+  \item IPOPT (open-source, interior-point method)  
+  \item Uno [Vanaret and Leyffer, 2025] (open-source, IPM and SQP)
+  \item KNITRO (commercial, many algorithms)
+  \item COPT
+\end{itemize}
+\item integrated in CVXPY and will be released in v1.9
+\end{itemize}
+\vfill
+\end{frame}
+
+\section{Conclusions}
+
+\begin{frame}{Conclusions}
+\begin{itemize}
+  \item DNLP is a new grammar for specifying nonlinear programs
+  \begin{itemize}
+    \item no rules if all functions are smooth
+    \item mitigates solver failures caused by nonsmoothness
+  \end{itemize}
+  \item our DNLP-extension of CVXPY makes it easy to use NLP solvers
+  \begin{itemize}
+    \item enables high level, human readable problem descriptions
+    \item automatically generates smooth reformulations of nonsmooth atoms
+    \item ideal for teaching and research
+  \end{itemize}
+  \item we welcome ideas for applications and collaborations
+\end{itemize}
+\vfill
+\end{frame}
+\end{document}
