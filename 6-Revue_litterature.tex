@@ -349,7 +349,7 @@ the constraints and the objective are affine functions of the variables.}
 \end{figure}
 
 \paragraph{References.}
-Michael Grant's papers and thesis on CVX and DCP are the standard references on verifying convexity
+Michael Grant's papers and PhD thesis on CVX and DCP are the standard references on verifying convexity
 and canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
 The paper by Chu et al. \cite{chu2013codegen} gives another perspective of canonicalization
 through the \emph{relaxed smith form}, it was used extensively to learn the concept initially.
@@ -376,18 +376,18 @@ and \texttt{SciPy}, an improved Python version which relies on the sparse matrix
 library with the same name.
 
 \paragraph{\texttt{Tensor} object.}
-Mathematically, tensors are a generalization of matrices in three dimensions or
-higher. In the canonicalization backends, this abstraction is also relevant but can
+In physics, tensors are defined as [...].
+In the canonicalization backends, this abstraction is also relevant but can
 be made more precise. We consider a \texttt{Tensor} as a three-dimensional
-\emph{sparse} array which represents a sparse linear mapping from a parameter vector
+array which represents a sparse linear mapping from a parameter vector
 to the constraint matrix (as shown in \ref{parameter-maps}).
-The three indices are rows for constraints, columns for variables, and parameter
-offsets for parameters.
+The three indices of a \texttt{Tensor} are rows for constraints,
+columns for variables, and parameter offsets for parameters.
 
 \paragraph{Recursive walk.}
 Fundamentally, matrix stuffing is relatively simple;
-it requires a single depth-first walk of the affine expression trees,
-where every node applies an linear operation on a \texttt{Tensor}.
+it requires a single depth-first walk of a set of affine expression trees,
+where each tree represent a potentially vector-value constraint.
 Since the process is recursive, every node of an expression tree
 will have an equivalent \texttt{Tensor}, and the final output
 (the \texttt{Tensor} at the root node)
@@ -406,20 +406,39 @@ of interest, getting the global tensor simply comes down to combining the local
 tensors and applying appropriate row and column \emph{offsets}.
 
 \paragraph{Column and parameter offsets.}
+Every variable is associated with an offset which indicates its index
+in the global variable vector. In expressions which involve only a subset
+of variables, we must make use of these offsets to correctly place
+the problem data.
+We also clarify that a single variable can have multiple entries or values,
+therefore when we say number of variables, we refer to the number of variable
+objects not the number of entries of the variable (which we refer to as its \emph{size})
+% can also mention that otherwise we call this the size of the variable.
+% TODO rewrite this last sentence or remove since it could be obvious.
 
 \paragraph{Row offsets.}
+When an optimization model contains multiple constraints (this refers to constraint
+objects), we must also be able to correctly place the problem data.
+The offsets for constraints are used to keep track of the \emph{ordering} of the constraints.
+They are also used to correctly place the problem data but on a different axis
+than variables.
+% row offsets are not strictly necessary as long as this ordering of constraints is consistent.
+% since we can simply have a counter which keeps track of the cumulative size of the constraints
+% encountered so far.
+% this can be contrasted to variables where multiple variables can appear in a single expression.
+% but you cannot have multiple constraints in a single expression because an expression must
+% only be associated to one constraint.
 
 \paragraph{\texttt{TensorView} object.}
-This is the global tensor with the dictionaries.
-\paragraph{Data structures.}
-% talk about the nested dictionary here.
+The fundamental data structure in the backend is a so-called \texttt{TensorView},
+which is a nested dictionary of the following form
+
+% maybe show some python style type hints?
+The reasoning behind this data structure is to be able to index into both the
+different variables and parameters to get their problem data contributions at the same time.
 
 \paragraph{\texttt{InverseData} for example.}
 % show the dictionary for the example.
-\paragraph{Limitations.}
-% talk about the downside of relying on external sparse matrix libraries.
-
-\paragraph{Linear operator.}
 
 \paragraph{Tensor Representation.}
 % Fundamentally matrices are limited to two dimensions.
