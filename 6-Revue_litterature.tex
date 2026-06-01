@@ -68,7 +68,7 @@ widely used today).
 \paragraph{Embedded modeling languages}
 In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
 programming languages (in contrast with standalone systems like AMPL and GAMS). Examples include
-YALMIP \cite{lofberg2004yalmip} in MATLAB, Pyomo \cite{hart2011pyomo} in Python,
+YALMIP \cite{lofberg2004yalmip} in MATLAB, Pyomo \cite{hart2011pyomo, bynum2021pyomo} in Python,
 JuMP \cite{dunning2017jump} in Julia, and CasADi \cite{andersson2019} in C++.
 
 \paragraph{Disciplined convex programming}
@@ -82,13 +82,13 @@ in Python, and Convex.jl~\cite{udell2014convex} in Julia.
 The sections on canonicalization and matrix stuffing will be about CVXPY, the Python implementation
 of DCP. The reasons are twofold: it is the most updated implementation which still has an active
 community and the work of this thesis aims to be integrated in CVXPY.
-In section \ref{coeff-extraction}, we present the embedded modeling language JuMP and one of
+In section \ref{sec:coefficient-extraction}, we present the embedded modeling language JuMP and one of
 the original algebraic languages AMPL. In doing so, we also compare the differences with approaches
 taken in CVXPY.
 Both modeling languages treat the conic problem data as a form a sparse Jacobian computation so
-we review approaches on computing derivatives in \ref{computing-derivatives}. % TODO verify if this is true
+we review approaches on computing derivatives in \ref{sec:computing-derivatives}. % TODO verify if this is true
 Finally, all modeling languages use sparse matrix formats to store the problem data matrices, they
-are incredibly useful and we review them in \ref{sparse-matrices}.
+are incredibly useful and we review them in \ref{sec:sparse-matrices}.
 %The aim of the literature chapter is to be read chronologically, however, certain sections will
 %sometimes cross-reference others in a non-chronological way.
 
@@ -130,7 +130,7 @@ When a user specifies a CVXPY problem, it is usually in a ``functional'' form
 with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
 For a given value of $\theta$ we refer to \eqref{eq:functional-form} as a problem instance,
 otherwise for general values of $\theta$ it defines a problem family.
-Each function in \eqref{eq:functional-standard-form} is internally represented as an
+Each function in \eqref{eq:functional-form} is internally represented as an
 expression tree.
 
 \paragraph{Disciplined convex programming.}
@@ -139,7 +139,7 @@ the functional form defines a convex optimization problem.
 To verify that the problem is convex, CVXPY uses the DCP composition rules to classify
 the curvature of functions.
 Once all functions are classified, a problem is \emph{DCP-compliant} if its functions
-satisfies the curvatures of a convex problem.
+satisfy the curvatures of a convex problem.
 Otherwise, if certain curvatures are incorrect (\emph{i.e.} $f_0$ is concave) or unknown,
 CVXPY will raise an error and terminate.
 
@@ -161,7 +161,7 @@ Affine expressions require $h$ and all of its arguments to be affine \cite{grant
 \paragraph{DPP composition rules.}
 \emph{Disciplined parameterized programming} (DPP) is an extension of DCP which guarantees
 an affine parameter dependence in the problem data. A problem is \emph{DPP-compliant} if it
-satisfies the DPP composition rules. The rules essentially disallows products of expressions
+satisfies the DPP composition rules. The rules essentially disallow products of expressions
 involving parameters and can be referred to in \cite{agrawal2019dpp}.
 
 \paragraph{Solver standard form.}
@@ -213,10 +213,10 @@ epigraph variable (for concave atoms it is a \emph{hypograph} variable)
 and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
 $t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
 $\theta$, and $\mathcal K$ is a convex cone.
-This process was presented initially in \cite{grant2008graph}
+This process was presented initially in \cite{grant2008graph}.
 One illustrative canonicalization replaces the \texttt{norm2} expressions in the objective with
-a new epigraph variable $t_i$ and imposes the epigraph constraint what is known as a \emph{second-order}
-cone
+a new epigraph variable $t_i$ and imposes the epigraph constraint known as a \emph{second-order}
+cone constraint
 \begin{equation}
 (t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
 \end{equation}
@@ -250,7 +250,7 @@ prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
 where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
 the data arrays. The expression tree representation of the problem
-is shown in \ref{dcp-syntax-tree}.
+is shown in \ref{fig:dcp-syntax-tree}.
 
 \begin{figure}[ht]
 \centering
@@ -301,10 +301,10 @@ x \in \reals_+^n \\
 \end{array}
 \end{equation}
 where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
-\ref{standard-form} is the product $\reals_+^n \times \in \mathcal K_{\mathrm{soc},m+1}
-\times \mathcal K_{\mathrm{soc},n+1}$. In the next section, we explain how the 
-symbolic affine expression trees in \ref{conic-form-tree} get converted into
-the parameter maps defined in \ref{parameter-maps}.
+\ref{e:standard-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
+\times \mathcal K_{\mathrm{soc},n+1}$. In the next section, we explain how the
+symbolic affine expression trees in \ref{fig:conic-form-tree} get converted into
+the parameter maps defined in \ref{eq:param-maps}.
 
 \begin{figure}
 \centering
@@ -368,7 +368,7 @@ as complementary references for epigraph reformulations and general modeling pri
 In this section, we explain how to form the parameter maps from a set of affine expression
 trees. In doing so, we also cover fundamental data structures and design choices
 of these backends which can later be contrasted with the method proposed
-in \ref{methodology}. Historically, the implementations of matrix stuffing 
+in \ref{sec:Theme1}. Historically, the implementations of matrix stuffing
 have been referred to as \emph{canonicalization backends},
 and there has been many versions over the years.
 We will focus on \texttt{cvxcore}, one of the original implementations in \texttt{C++},
@@ -380,14 +380,14 @@ In physics, tensors are defined as [...].
 In the canonicalization backends, this abstraction is also relevant but can
 be made more precise. We consider a \texttt{Tensor} as a three-dimensional
 array which represents a sparse linear mapping from a parameter vector
-to the constraint matrix (as shown in \ref{parameter-maps}).
+to the constraint matrix (as shown in \ref{eq:param-maps}).
 The three indices of a \texttt{Tensor} are rows for constraints,
 columns for variables, and parameter offsets for parameters.
 
 \paragraph{Recursive walk.}
 Fundamentally, matrix stuffing is relatively simple;
 it requires a single depth-first walk of a set of affine expression trees,
-where each tree represent a potentially vector-value constraint.
+where each tree represents a potentially vector-valued constraint.
 Since the process is recursive, every node of an expression tree
 will have an equivalent \texttt{Tensor}, and the final output
 (the \texttt{Tensor} at the root node)
@@ -395,7 +395,7 @@ will give the constraint parameter map $\mathcal R$.
 % TODO revisit how to write and explain this, or remove this sentence entirely.
 
 \paragraph{Local vs. Global problem data.}
-All modeling languages for optimization must atleast do one thing correctly:
+All modeling languages for optimization must at least do one thing correctly:
 abstract away the task of placing \emph{local} tensors (or its equivalent)
 at the expression level (where typically a single variable appears)
 towards a \emph{global} tensor at the problem level
@@ -412,7 +412,7 @@ of variables, we must make use of these offsets to correctly place
 the problem data.
 We also clarify that a single variable can have multiple entries or values,
 therefore when we say number of variables, we refer to the number of variable
-objects not the number of entries of the variable (which we refer to as its \emph{size})
+objects not the number of entries of the variable (which we refer to as its \emph{size}).
 % can also mention that otherwise we call this the size of the variable.
 % TODO rewrite this last sentence or remove since it could be obvious.
 
@@ -538,7 +538,7 @@ different variables and parameters to get their problem data contributions at th
 \end{subfigure}
 \caption{Matrix stuffing generates a 3D tensor for the constraint map.
 To depict these 3D tensors here, we leave the parameter values symbolic.
-Contrast this Figure with Fig.~\ref{fig:expr-tree}, which shows the
+Contrast this Figure with Fig.~\ref{fig:conic-form-tree}, which shows the
 operations being applied at each node.}
 \label{fig:matrix-stuffing}
 \end{figure}
@@ -895,7 +895,7 @@ the literature.
 In particular, the book by Davis \cite{davis2006direct} was used extensively throughout
 the development of our methods.
 The book by Duff \cite{Duff1986Direct} is another great reference to learn more about the
-history and developement of sparse matrix algorithms.
+history and development of sparse matrix algorithms.
 % review this paragraph, and maybe cite this:
 Another reference is the review article by the ``gang of four'' (Gill, Murray, Saunders and Wright)
 from the Systems Optimization Laboratory at Stanford University 

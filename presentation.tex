@@ -21,6 +21,7 @@
 \usepgfplotslibrary{external}
 \tikzexternalize[prefix=figures/]
 \usetikzlibrary{calc,patterns,decorations.pathmorphing,decorations.markings,arrows.meta}
+\usetikzlibrary{overlay-beamer-styles} % provides the `alt=<n>{..}{..}` overlay key
 
 \input defs.tex
 \input listing_defs.tex
@@ -57,11 +58,11 @@
         \tableofcontents[currentsection,currentsubsection]
     \end{frame} 
 } 
-\title{\large \bfseries A lightweight coefficient extractor in C}
+\title{\large \bfseries A lightweight canonicalization engine in C}
 
 \author{William Zhang}
 
-\date{Thesis Defence, Polytechnique Montreal, Aug 14, 2026}
+\date{Master's Thesis Defence, Polytechnique Montreal, Aug. 14, 2026}
 
 \begin{document}
 
@@ -85,520 +86,600 @@
   \centering
   \begin{itemize}
     \item variable $x\in \reals^n$
-    \item equality constraints are linear and $f_0, \ldots, f_m$ are convex 
-    \item why care about convexity?
-    \pause
-  \begin{itemize}
-    \item \textbf{classic answer}: local optimum = global optimum
-    \item \textbf{modern answer}: very actionable because of reliable software
-  \end{itemize}
+    \item equality constraints are linear and $f_0, \ldots, f_m$ are convex
   \end{itemize}
 \end{minipage}%
 \vfill
 \end{frame}
 
-\begin{frame}{Disciplined convex programming (DCP)}
+\begin{frame}{A concrete example: regularized regression}
 \begin{itemize}
-\item a grammar for specifying convex optimization problems [Grant et al., 2006]
-\item convex and concave functions are constructed by combining a set of \textbf{atoms} 
-\item each atom has known curvature and monotonicity
-\item simple rules specify how atoms can be composed
-\pause
-\item a problem that follows the DCP rules is convex by construction
-\item and can be solved globally and efficiently (\textbf{in theory and in practice})
+\item we want to fit a model to noisy measurements
+\item data: a feature matrix $F \in \reals^{m\times n}$ and observations $g \in \reals^m$ (from experiments, sensors, \ldots)
+\item unknown: model coefficients $x \in \reals^n$
+\end{itemize}
+\[
+\mbox{minimize}\quad \|Fx - g\|_2 \;+\; \mu\,\|x\|_2
+\]
+\begin{itemize}
+\item first term fits the data; second term regularizes ($\mu \ge 0$ trades off fit vs.\ size)
+\item $\mu$ is a hyperparameter --- often swept over many values (motivates fast re-solves)
 \end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}[fragile]{Modeling languages implementing DCP}
+\begin{frame}[fragile]{CVXPY}
 \begin{itemize}
-\item Yalmip (MATLAB), CVX (MATLAB), CVXPY (Python), Convex.jl (Julia), CVXR (R)
-\item classic commercial software like AMPL and GAMS do not implement DCP
-\pause
-\bigskip
-\item two main tasks of DCP-based modeling languages:
+\item a \textbf{modeling language} for convex optimization, embedded in Python
+\item the user describes a problem in natural mathematical form
+\end{itemize}
+
+\begin{lstlisting}[language=mypython]
+import cvxpy as cp
+
+x   = cp.Variable(n)
+obj = cp.norm(F @ x - g, 2) + mu * cp.norm(x, 2)
+prob = cp.Problem(cp.Minimize(obj))
+prob.solve()
+\end{lstlisting}
+
 \begin{itemize}
-  \item \textbf{analysis}: verify that a high level problem description follows the DCP rules
-  \item \textbf{synthesis}: build an equivalent problem in standard conic form:
-\[ \label{e:standard-form}
-\begin{array}{ll}
-\mbox{minimize} & c^T x \\
-\mbox{subject to} & Ax + s = b \\
-& s \in K \\
-\end{array}
-\]
-variables $x$ and $s$, and problem data $A, \:
-b, \: c$ and convex cone $K$
-\pause
+\item \texttt{prob.solve()} dispatches to a numerical \textbf{solver} (SCS, ECOS, MOSEK, Clarabel, \ldots)
+\item CVXPY is \textbf{solver-agnostic} --- the same model runs on any of them
 \end{itemize}
-\item no more communication between modeling language and solver
-\end{itemize}
+\vfill
 \end{frame}
 
-\begin{frame}{Nonlinear programming (NLP)}
+\begin{frame}{Expression trees}
+\tikzset{external/export=false}
+CVXPY stores a problem as a tree of \textbf{atoms}; leaves are \textbf{variables} (circles) and \textbf{data/parameters} (boxes).
+\begin{center}
+$\|Fx - g\|_2 + \mu\|x\|_2$
+\vspace{1ex}
+
+\begin{tikzpicture}[
+  every node/.style={align=center},
+  level distance=12mm,
+  level 1/.style={sibling distance=46mm},
+  level 2/.style={sibling distance=24mm},
+  level 3/.style={sibling distance=18mm},
+  level 4/.style={sibling distance=12mm},
+  edge from parent/.style={draw, -latex}]
+  \node {$+$}
+    child {node {$\|\cdot\|_2$}
+      child {node {$-$}
+        child {node {$\times$}
+          child {node[draw] {$F$}}
+          child {node[circle, draw] {$x$}}}
+        child {node[draw] {$g$}}}}
+    child {node {$\times$}
+      child {node[draw] {$\mu$}}
+      child {node {$\|\cdot\|_2$}
+        child {node[circle, draw] {$x$}}}};
+\end{tikzpicture}
+\end{center}
+\vfill
+\end{frame}
+
+\begin{frame}{Standard conic form}
 \[
 \begin{array}{ll}
-\mbox{minimize} & f(x) \\
-\mbox{subject to} & c(x) = 0  \\
-& \ell \leq x \leq u  \\
+\mbox{minimize}   & c^T x + d \\
+\mbox{subject to} & b - Ax \in \mathcal{K}
 \end{array}
 \]
 \begin{itemize}
-\item objective and constraint functions are differentiable but not necessarily convex
-\item includes many NP-hard problems
-\item success depends on initialization, problem formulation, choice of algorithm 
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Theoretical properties}
-\begin{itemize}
-\item NLP solvers have weak guarantees
-\begin{itemize}
-  \item unrealistic to expect global optimality
-  \item might fail to find a local minimizer (or even a feasible point)
-\end{itemize}
-\bigskip
-\item NLP solvers at best guarantee convergence to a KKT point
-\begin{itemize}
-  \item KKT points can be local minima, local maxima, or saddle points
-  \item solvers implement heuristics to steer away from undesirable KKT points
-\end{itemize}
-\bigskip
-\item convergence guarantees typically require constraint qualifications (CQs)
-\begin{itemize}
-  \item most common CQ: linear independence constraint qualification (LICQ)
-  \item we found LICQ to be important in practice 
-\end{itemize}
-\bigskip 
-\pause 
-\item NLP solvers still work very well in many cases (perhaps with a decent initial point)
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Modeling languages for NLP}
-\begin{itemize}
-\item  YALMIP (MATLAB), JuMP (Julia), Pyomo (Python), and CasADi (C++)
-\item commercial software like AMPL, GAMS, AIMMS 
-\bigskip
-\pause 
-\item main task of NLP modeling languages:
-\begin{itemize}
-\item provide solvers with derivatives
-\item provide an initial point, if not specified
-\end{itemize}
-\item communication between modeling language and solver in every iteration
-\end{itemize}
-\end{frame}
-
-\section{Modeling language responsibilities}
-
-\begin{frame}{Solver requirements}
-Interior-point methods for optimization all require atleast
-  \begin{itemize}
-    \item an initial point in the domain of the functions
-    \item smoothness (twice differentiable) of the functions
-    \item the derivatives (Jacobian and Hessian) of the functions
-    \pause
-    \item \textbf{Domain is not the same as feasibility}
-    \end{itemize}
-\end{frame}
-
-\begin{frame}{When NLP modeling languages struggle: domain example}
-\[
-\mbox{minimize } -\sum_i\log(A_ix - b_i)
-\]
-\begin{itemize}
-\item variable $x$
-\item solution is the analytic center of a polytope
-\item finding an initial point requires solving an LP
-\item existing modeling languages initialize $x$ to the origin
-\item negative values will crash solvers before the first iteration
-\end{itemize}
-\end{frame}
-
-\begin{frame}{A solution}
-We can instead specify the following problem
-  \[
-    \begin{array}{ll} 
-      \mbox{minimize} & -\sum_i\log(y_i) \\
-      \mbox{subject to} & y_i = A_ix - b_i, \text{ for all } i \in \{1, \dots, n\}
-    \end{array}
-  \]
-  \begin{itemize}
-  \item with a new variable $y$ and auxiliary constraint
-  \item initializing $y = \ones$ ensures a \emph{point in domain}
-  \item the constraints are handled with an infeasible-start method
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{What DCP modeling languages do}
-The problem is converted to the following conic form
-\[
-  \begin{array}{ll} 
-    \mbox{minimize } & -\sum_it_i \\
-    \mbox{subject to} & (t_i, \ones, A_ix - b_i) \in \mathcal K_{exp}
-    \text{ for all } i \in \{1, \dots, n\}
-  \end{array}
-\]
-  \begin{itemize}
-  \item where $\mathcal K_{exp}$ is an \emph{exponential cone} and $t$ is a new variable
-  \item initialization in the domain of $K_{exp}$ is done easily
-  \pause
-  \item this is also true for \textbf{all standard convex cones}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{When NLP modeling languages struggle: smooth derivatives}
-\[
-\mbox{minimize } \|Ax - b\|_2^2 + \lambda \|x\|_1
-\]
-\begin{itemize}
-\item variable $x$, regularization parameter $\lambda > 0$
-\item convex problem (lasso) so should be solved gracefully
-\item the solution occurs at a point of nondifferentiability
-\item objective is treated as a black box and ``derivatives'' are supplied to the solver
-\item ignoring nondifferentiability might cause solvers to struggle
-\end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]{When NLP modeling languages struggle: smooth derivatives}
-output from Ipopt [Wächter and Biegler, 2006] when interfacing it using Casadi:
-
-\footnotesize
-\begin{mdframed}[
-  linewidth=0.4pt,
-  innerleftmargin=4pt,
-  innerrightmargin=4pt,
-  innertopmargin=4pt,
-  innerbottommargin=4pt
-]
-\begin{verbatim}
-This is Ipopt version 3.14.11, running with linear solver MUMPS 5.4.1.
-
-...
-
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  10  1.1126107e+01 0.00e+00 1.71e+00  -1.7 1.29e+08  -7.8 1.00e+00 1.32e-23f 77
-  11  1.3152054e+10 0.00e+00 1.71e+00  -1.7 4.09e+08  -8.3 1.00e+00 1.00e+00w  1
-  12  3.5423855e+10 0.00e+00 1.66e+00  -1.7 1.13e+09  -8.8 1.00e+00 1.00e+00w  1
-  13  1.4112259e+11 0.00e+00 1.58e+00  -1.7 3.39e+09  -9.2 1.00e+00 1.00e+00w  1
-Cannot call restoration phase at point that is almost feasible (violation 0.000000e+00).
-Abort in line search due to no other fall back.
-
-Number of Iterations....: 13
-
-EXIT: Error in step computation!
-\end{verbatim}
-\end{mdframed}
-\end{frame}
-
-\begin{frame}{What DCP modeling languages do}
-The problem can get rid of $|x|$ by the equivalent transformation to
-\[
-  \begin{array}{ll} 
-    \mbox{minimize } & \|Ax - b\|_2^2 + \lambda \sum_it_i \\
-    \mbox{subject to} & -t \leq x \leq t
-  \end{array}
-\]
-  \begin{itemize}
-  \item where $t$ is a new variable
-  \item first move $|x|$ to the constraints as $|x| \leq t$
-  \item equivalent because of monotonicity
-  \item all functions are now twice differentiable
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{How NLP modeling languages compute derivatives}
-\begin{itemize}
-  \item automatic differentiation of the provided functions
-  \item sparsity is handled through graph coloring
-  \item hessian is often expensive and difficult to compute
-  \item an approximation can be used instead (L-BFGS)
-  \pause
-  \item can still be the \textbf{bottleneck} for certain problems
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{What DCP modeling languages do}
-\begin{itemize}
-  \item Nothing.
-  \pause
-  \item the problem data $A, b, c$ of the conic form are already the derivatives of interest
-  \item can insert them directly in the Hessian of the KKT matrix
-  \item all standard convex cones have barrier functions with \textbf{analytic derivatives}
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Who is responsible?}
-\begin{itemize}
-  \item the solver
-  \pause
-  \item no, it's the user
-  \pause
-  \item also no, it should be the modeling language
-\end{itemize}
-\end{frame}
-
-\section{Disciplined nonlinear programming}
-
-\begin{frame}{Disciplined nonlinear programming (DNLP)}
-\begin{itemize}
-\item a new grammar for specifying nonlinear programs
-\item smooth functions can be freely mixed with nonsmooth functions
-\item rules governing how nonsmooth functions can appear
-\item smooth in the interior of their domain
+\item decision variable $x \in \reals^n$
+\item problem data $A \in \reals^{m \times n}$, $b \in \reals^m$, $c \in \reals^n$, $d \in \reals$
+\item $\mathcal{K} \subseteq \reals^m$ is a non-empty closed convex cone (\eg\ $\reals_+^m$, second-order, PSD)
 \pause
+\item nearly every convex problem can be cast in this form
+\item modern conic solvers (SCS, ECOS, MOSEK, Clarabel, \ldots) all consume this representation
 \end{itemize}
-\bigskip
+\vfill
+\end{frame}
+
+\begin{frame}{From conic form to problem data}
+\begin{itemize}
+\item the conic form is still a set of \textbf{affine expression trees} over the variables
+\item the solver needs \textbf{explicit problem data}: matrices and vectors $A, b, c$ (and $P$ for quadratics)
+\item \emph{matrix stuffing}: walk those trees and emit this data
+\pause
+\item this step has a real cost --- especially for \textbf{repeated solves} over a family of instances
+  (\eg\ MPC, hyperparameter sweeps, online learning), where it is paid again and again
+\pause
+\item \textbf{this thesis:} we focus on this computational step --- converting a set of affine
+  expression trees (the conic form) into explicit problem data --- with support for fast
+  \textbf{parametric re-solves}
+\end{itemize}
+\vfill
+\end{frame}
+
+\section{Canonicalization}
+
+\begin{frame}[fragile]{Parameters in CVXPY}
+\begin{itemize}
+\item \textbf{parameterized problems are CVXPY's central use case} --- and the central concern of this thesis
+\item \texttt{cp.Parameter} --- a symbolic value that changes between solves
+\item structure of the problem stays fixed; only data values move
+\end{itemize}
+
+\begin{lstlisting}[language=mypython]
+A = cp.Parameter((m, n))
+b = cp.Parameter(m)
+lam = cp.Parameter(nonneg=True)
+prob = cp.Problem(cp.Minimize(
+    cp.norm(A @ x - b, 2) + lam * cp.norm(x, 1)))
+
+for lam_val in np.logspace(-3, 1, 50):
+    lam.value = lam_val
+    prob.solve()                # <-- want this to be fast
+\end{lstlisting}
+
+\begin{itemize}
+\item use cases: model-predictive control, LASSO regularization sweeps, online learning
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Matrix stuffing}
+\begin{itemize}
+\item start simple: \textbf{constants and variables only} (no parameters yet)
+\item after reductions: a tree of affine atoms over variables
+\item walk the tree, accumulate each leaf's contribution into the right entry of $A$, $b$, $c$
+\item every nonzero of $A$ corresponds to a (constraint row, variable column) pair touched by the walk
+\pause
+\item this is the basic flow --- and the current backend re-runs it on every solve
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Matrix stuffing: a worked example}
+\tikzset{external/export=false}    % overlays must re-render each slide
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
 \centering
-\begin{minipage}{0.7\textwidth}
-\begin{mdframed}[
-  linewidth=0.4pt,
-  innerleftmargin=8pt,
-  innerrightmargin=8pt,
-  innertopmargin=4pt,
-  innerbottommargin=4pt
-]
-a DNLP-compliant problem can be transformed to a form that 
+$x + 3y$ \quad with $x, y, z \in \reals^2$
+\vspace{3ex}
+
+\begin{tikzpicture}[
+  every node/.style={align=center},
+  level 1/.style={sibling distance=24mm},
+  level 2/.style={sibling distance=14mm},
+  edge from parent/.style={draw, -latex},
+  active/.style={draw, fill=structure!25, text=black},
+  dim/.style={text=black!35}]
+  \node[dim, alt=<6>{active}{}] {$+$}
+    child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
+    child {node[dim, alt=<5>{active}{}] {$\times$}
+      child {node[draw, dim, alt=<3>{active}{}] {$3$}}
+      child {node[circle, draw, dim, alt=<4>{active}{}] {$y$}}
+    };
+\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+row block of $A$
+\vspace{2ex}
+\begin{itemize}\setlength\itemsep{1.2ex}
+  \item<2-> $x:\ \begin{bmatrix} I & \plotzero & \plotzero \end{bmatrix}$
+  \item<3-> $3:\ \begin{bmatrix} \plotzero & \plotzero & \plotzero \end{bmatrix}$ \;(constant)
+  \item<4-> $y:\ \begin{bmatrix} \plotzero & I & \plotzero \end{bmatrix}$
+  \item<5-> $3y:\ \begin{bmatrix} \plotzero & 3I & \plotzero \end{bmatrix}$
+  \item<6-> $x{+}3y:\ \begin{bmatrix} I & 3I & \plotzero \end{bmatrix}$
+\end{itemize}
+\onslide<6->{\vspace{1ex}\centering each block is $2\times2$; the $z$ block stays $0$. This is row block~1 of $A$.}
+\end{column}
+\end{columns}
+\vfill
+\end{frame}
+
+\begin{frame}{Stacking constraints}
+\tikzset{external/export=false}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\centering
+$-7x + 2z$ \quad with $x, y, z \in \reals^2$
+\vspace{3ex}
+
+\begin{tikzpicture}[
+  every node/.style={align=center},
+  level 1/.style={sibling distance=26mm},
+  level 2/.style={sibling distance=12mm},
+  edge from parent/.style={draw, -latex},
+  active/.style={draw, fill=structure!25, text=black},
+  dim/.style={text=black!35}]
+  \node[dim, alt=<4>{active}{}] {$+$}
+    child {node[dim, alt=<2>{active}{}] {$\times$}
+      child {node[draw, dim, alt=<2>{active}{}] {$-7$}}
+      child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
+    }
+    child {node[dim, alt=<3>{active}{}] {$\times$}
+      child {node[draw, dim, alt=<3>{active}{}] {$2$}}
+      child {node[circle, draw, dim, alt=<3>{active}{}] {$z$}}
+    };
+\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+row block of $A$
+\vspace{2ex}
+\begin{itemize}\setlength\itemsep{1.2ex}
+  \item<2-> $-7x:\ \begin{bmatrix} -7I & \plotzero & \plotzero \end{bmatrix}$
+  \item<3-> $2z:\ \begin{bmatrix} \plotzero & \plotzero & 2I \end{bmatrix}$
+  \item<4-> $-7x{+}2z:\ \begin{bmatrix} -7I & \plotzero & 2I \end{bmatrix}$
+\end{itemize}
+\onslide<5->{
+\vspace{2ex}
+\centering stacking both constraints:
+\[
+A = \begin{bmatrix} I & 3I & \plotzero \\ -7I & \plotzero & 2I \end{bmatrix} \in \reals^{4\times6}
+\]}
+\end{column}
+\end{columns}
+\vfill
+\end{frame}
+
+\begin{frame}{Variable offsets}
+\begin{itemize}
+\item the backend stacks all variables into one vector $u$
+\item each variable has a unique \textbf{id}; \texttt{id\_to\_col} maps it to a \textbf{column offset}
+\item a variable of size $n$ occupies $n$ consecutive columns of $A$
+\end{itemize}
+\vspace{1ex}
+\[
+x \in \reals^2,\quad y \in \reals^3 \qquad\Rightarrow\qquad
+u = \big[\,\underbrace{x_1\ x_2}_{\text{cols }1\text{--}2}\ \ \underbrace{y_1\ y_2\ y_3}_{\text{cols }3\text{--}5}\,\big]^\top \in \reals^5
+\]
+\[
+\texttt{id\_to\_col} = \{\, \mathrm{id}(x)\!: 0,\ \ \mathrm{id}(y)\!: 2 \,\}
+\]
+\begin{itemize}
+\item so $A$ has $5$ columns (\texttt{var\_length}); a final column holds the constant $b$
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Building the coefficient blocks}
+\tikzset{external/export=false}
+\begin{columns}[T]
+\begin{column}{0.42\textwidth}
+\centering
+$x + y_{[:2]} + 5$\\[0.5ex]
+{\footnotesize $x\in\reals^2,\ y\in\reals^3$}
+\vspace{2ex}
+
+\begin{tikzpicture}[
+  every node/.style={align=center},
+  level 1/.style={sibling distance=20mm},
+  level 2/.style={sibling distance=11mm},
+  edge from parent/.style={draw, -latex},
+  active/.style={draw, fill=structure!25, text=black},
+  dim/.style={text=black!35}]
+  \node[dim, alt=<7>{active}{}] {$+$}
+    child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
+    child {node[dim, alt=<4>{active}{}] {index\\${[:2]}$}
+      child {node[circle, draw, dim, alt=<3>{active}{}] {$y$}}}
+    child {node[dim, alt=<6>{active}{}] {promote}
+      child {node[draw, dim, alt=<5>{active}{}] {$5$}}};
+\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.58\textwidth}
+each node holds $\{\text{var id} \mapsto \texttt{scipy.sparse}\}$
+\vspace{1ex}
+\begin{itemize}\setlength\itemsep{0.7ex}\small
+  \item<2-> $x:\ \{\, x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right] \}$
+  \item<3-> $y:\ \{\, y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\\0&0&1\end{smallmatrix}\right] \}$
+  \item<4-> $y_{[:2]}:\ \{\, y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right] \}$ \;{\footnotesize (rows $0,1$)}
+  \item<5-> $5:\ \{\, {-1} \mapsto [\,5\,] \}$
+  \item<6-> promote:\ $\{\, {-1} \mapsto \left[\begin{smallmatrix}5\\5\end{smallmatrix}\right] \}$ \;{\footnotesize (repeat row)}
+  \item<7-> $+:\ \big\{\begin{array}{@{}l@{}}
+        x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right],\ \
+        y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right],\\[1.2ex]
+        {-1} \mapsto \left[\begin{smallmatrix}5\\5\end{smallmatrix}\right]\end{array}\big\}$
+\end{itemize}
+\end{column}
+\end{columns}
+\vfill
+{\footnotesize \texttt{scipy.sparse}: variable $\to$ \texttt{eye\_array} (CSC); \texttt{index} selects rows; \texttt{promote} repeats a row; \texttt{sum} merges per-variable keys. Constant id $=-1$.}
+\end{frame}
+
+\begin{frame}{Assembling $[A\ b]$}
+\texttt{id\_to\_col} places each variable's block at its column offset; the constant fills the last column:
+\vspace{1ex}
+\begin{itemize}\setlength\itemsep{1ex}
+\item<1-> $\{x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right]\} \to$ columns $1$--$2$;\quad
+        $\{y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right]\} \to$ columns $3$--$5$
+\item<2->
+\[
+[A\ b] = \left[\begin{array}{cc|ccc|c}
+1 & 0 & 1 & 0 & 0 & 5\\
+0 & 1 & 0 & 1 & 0 & 5
+\end{array}\right] \in \reals^{2\times 6}
+\]
+\item<3-> the $y_3$ column is all zeros --- $y_{[:2]}$ never touched it
+\end{itemize}
+\vfill
+{\footnotesize CVXPY: \texttt{flatten\_tensor} collapses $(\text{row},\text{col})$ into one sparse $[A\,b]$; \texttt{id\_to\_col}$[-1]=\texttt{var\_length}$ reserves the constant column.}
+\end{frame}
+
+\begin{frame}{TODO}
+\vfill
+\begin{center}\large\emph{(to be filled in)}\end{center}
+\vfill
+\end{frame}
+
+\section{A lightweight C engine}
+
+\begin{frame}{The key insight}
+\begin{itemize}
+\item for any parameterized problem, under mild conditions the \textbf{sparsity pattern} of $A(\theta)$ is fixed across the family
+\item only the \textbf{numerical values} of the nonzeros change with $\theta$
+\pause
+\item reframe matrix stuffing as \textbf{sparse Jacobian evaluation}:
   \begin{itemize}
-  \item only involves smooth functions
-  \item does not introduce LICQ violations in the transformation
+    \item symbolic phase: compute the sparsity pattern of $\partial A / \partial \theta$ once
+    \item numeric phase: refill values on every solve
+  \end{itemize}
+\item no restriction on how parameters enter the problem
 \end{itemize}
-\end{mdframed}
-\end{minipage}
+\vfill
 \end{frame}
 
-\begin{frame}{Atoms}
-in DNLP, users represent functions as \textbf{expressions} built from \textbf{atoms}
-with known attributes
-\vfill 
+\begin{frame}{Two-phase design}
+\textbf{Init phase} (run once per problem family):
 \begin{itemize}
-\item atoms are divided into three categories:
+\item allocate one \texttt{expr} struct per tree node
+\item traverse the tree to compute sparsity patterns
+\item allocate Jacobians as CSR matrices
+\end{itemize}
+\vspace{1ex}
+\textbf{Eval phase} (run on every solve, with new $\theta$):
 \begin{itemize}
-\item \textbf{smooth} 
-\item \textbf{nonsmooth convex}
-\item \textbf{nonsmooth concave} 
+\item walk the tree, fill numerical values into pre-allocated buffers
+\item stuff the resulting $A$, $b$, $c$ into the solver
 \end{itemize}
-\bigskip
-\item atoms have known monotonicity in each of its arguments (increasing or decreasing)
-\end{itemize}
+\pause
+\vspace{1ex}
+Cost model: init is $O(\text{tree size})$ once; eval is $O(\text{nnz}(A))$ per solve.
+\vfill
 \end{frame}
 
-\begin{frame}[fragile]{A few atoms}
-\begin{table}
-\centering
-\tiny 
-\renewcommand{\arraystretch}{1.2} % increase row height
-\setlength{\tabcolsep}{2pt} % adjust column spacing
-\begin{tabular}{>{\raggedright\arraybackslash}p{2.8cm}
->{\raggedright\arraybackslash}p{7.2cm}
->{\raggedright\arraybackslash}p{2.5cm}
-%>{\raggedright\arraybackslash}p{2cm}
-}
+\begin{frame}{The two phases on our example}
+replace the constant $3$ with a parameter $\theta$: \quad $x + \theta y$, \; $x,y,z \in \reals^2$
+\vspace{2ex}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\textbf{Init} (once per problem family)
+\begin{itemize}
+\item walk the tree, record \emph{which} blocks are nonzero
+\item pattern: blocks $x, y$ \;($z$ empty)
+\item allocate the CSR matrix $\begin{bmatrix} \bullet & \bullet & \plotzero \end{bmatrix}$
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{Eval} (every solve, new $\theta$)
+\begin{itemize}
+\item refill values into the fixed pattern
+\item $\theta{=}3:\ \begin{bmatrix} I & 3I & \plotzero \end{bmatrix}$
+\item $\theta{=}7:\ \begin{bmatrix} I & 7I & \plotzero \end{bmatrix}$
+\item structure never recomputed
+\end{itemize}
+\end{column}
+\end{columns}
+\pause
+\vspace{2ex}
+the current backend redoes the \textbf{whole} left column on every solve; the engine pays it once.
+\par\smallskip
+\footnotesize (quadratic objectives add a matrix $P$, built the same way from second-order coefficients.)
+\end{frame}
+
+\begin{frame}[fragile]{The \texttt{expr} struct}
+\begin{lstlisting}[language=C]
+typedef struct expr {
+    int    d1, d2, size;    /* shape (d1 x d2) */
+    int    n_vars;
+    int    var_id;          /* offset, or NOT_A_VARIABLE */
+
+    struct expr *left, *right;
+
+    double     *value;      /* forward-pass output */
+    CSR_Matrix *jacobian;   /* size x n_vars sparse */
+
+    forward_fn       forward;
+    jacobian_init_fn jacobian_init_impl;
+    eval_jacobian_fn eval_jacobian;
+} expr;
+\end{lstlisting}
+\vfill
+\end{frame}
+
+\begin{frame}{The atom contract}
+Every atom implements three functions:
+\vspace{1ex}
+\begin{center}
+\begin{tabular}{ll}
 \toprule
-\textbf{Atom} & \textbf{Definition} & \textbf{Domain} \\
+\textbf{Function} & \textbf{Phase / Purpose} \\
 \midrule
-\multicolumn{3}{c}{\scriptsize{\textbf{Smooth, nonconvex and nonconcave}}} \\
-\midrule
-\verb|multiply| & $\phi(x, y) = x y$ &  \\ 
-\verb|quad_form| & $\phi(x) = x^T Q x$ \qquad where $Q \in \symm^n$ & \\
-\verb|sin| & $\phi(x) = \sin x$ &  \\ 
-\verb|sigmoid| & $\phi(x) = \frac{1}{1 + e^{-x}}$ & \\ 
-\midrule
-\multicolumn{3}{c}{\scriptsize{\textbf{Smooth, convex or concave}}} \\
-\midrule
-\verb|log| & $\phi(x) = \log x$ & $x > 0$ \\
-\verb|sqrt| & $\phi(x) = \sqrt{x}$ & $x \geq 0$ \\ 
-\midrule
-\multicolumn{3}{c}{\scriptsize{\textbf{Nonsmooth, convex}}} \\
-\midrule    
-\verb|abs| & $\phi(x) = |x|$ &  \\ 
-\verb|max| & $\phi(x) = \max \{x_1, x_2, \ldots, x_n\}$ &  \\ 
-\verb|norm1| & $\phi(x) = \|x \|_1$ &  \\  
-\midrule
-\multicolumn{3}{c}{\scriptsize{\textbf{Nonsmooth, concave}}} \\
-\midrule
-\verb|min| & $\phi(x) = \min \{x_1, x_2, \ldots, x_n\}$ &  \\ 
-\verb|sum_smallest| & $\phi(x; k) = \sum_{i=n-k+1}^k x_{[i]}$ where $k \in \{1, \ldots, n\}$ & \\ 
+\texttt{forward}            & numeric: compute the atom's output value \\
+\texttt{jacobian\_init}     & symbolic: allocate sparsity pattern of the Jacobian \\
+\texttt{eval\_jacobian}     & numeric: fill Jacobian values from children \\
 \bottomrule
 \end{tabular}
-\end{table}
-\end{frame}
-
-\begin{frame}{Expressions}
-expressions (and subexpressions) are classified as 
+\end{center}
+\vspace{1ex}
 \begin{itemize}
-\item \textbf{smooth} 
-\item \textbf{linearizable-convex} (L-convex) 
-\item \textbf{linearizable-concave} (L-concave)
+\item \texttt{jacobian\_init} is called \textbf{once} during the init phase
+\item \texttt{eval\_jacobian} is called on \textbf{every} solve
 \end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}[fragile]{Classification of expressions}
-an expression $f(x) = \phi(g(x))$ (with $\phi:\reals \to \reals$ an atom and
-$g:\reals^n \to \reals$ a subexpression)
-\vfill
+\begin{frame}{Atom example: elementwise multiply}
 \begin{itemize}
-\item is \textbf{smooth} if $\phi$ is a smooth atom and $g(x)$ is a smooth expression
-\bigskip
-\item is \textbf{L-convex} if  $\phi$ is a smooth or nonsmooth convex atom and 
-\begin{itemize}
-\item $g(x)$ is a smooth expression, or
-\item $g(x)$ is L-convex and $\phi$ is increasing, or
-\item $g(x)$ is L-concave and $\phi$ is decreasing
-\end{itemize}
-\bigskip
-\item \textbf{example:} $f(x) = |x^T Q x + c|$ represented by \verb|abs(quad_form(x, Q) + c)| is L-convex
-\end{itemize}
-\vfill
-similar definition for L-concave expressions and expressions with $g:\reals^n \to \reals^m$
-\end{frame}
-
-\begin{frame}{Objectives and constraints}
-a problem is a \textbf{disciplined nonlinear program} (DNLP problem) if:
-\vskip 1em
-\begin{itemize}
-\item \textbf{objective}: minimize an L-convex expression (or maximize an L-concave expression)
-\item \textbf{equality constraints}: both left and right-hand sides are smooth expressions
-\item \textbf{inequality constraints ($\leq$)}: left-hand side is L-convex and right-hand side is L-concave
+\item operation: $z = a \odot b$ (elementwise product of two expressions)
+\item Jacobian: $\partial z / \partial x = \mathrm{diag}(a) \, \partial b / \partial x + \mathrm{diag}(b) \, \partial a / \partial x$
+\pause
+\item \texttt{jacobian\_init}: union of the sparsity patterns of $\partial a / \partial x$ and $\partial b / \partial x$
+\item \texttt{eval\_jacobian}: scale child Jacobian rows by the current values of $a$ and $b$
+\pause
+\item key observation: the sparsity union is computed \textbf{once}; per-solve work is just row scaling
+\item this is where \textbf{parameter values} enter without changing structure
 \end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Connection to DCP}
-DNLP is closely related to convex optimization and DCP
-\bigskip
+\begin{frame}{Atom example: matrix multiplication}
 \begin{itemize}
-\item a DNLP problem is one that is DCP if all its smooth atoms
-are treated as affine
-%\medskip
-\item an L-convex expression is one that is convex if all its smooth atoms are linearized \\
-(or treated as affine)
+\item operation: $z = A \cdot y$ (where $A$ is a constant or parameter, $y$ is an expression)
+\item Jacobian: $\partial z / \partial x = A \cdot \partial y / \partial x$
+\pause
+\item \texttt{jacobian\_init}: sparsity pattern of $A \cdot J_y$ derived from the sparsity of $A$ and $J_y$
+\item \texttt{eval\_jacobian}: sparse-sparse multiply, writing into pre-allocated CSR buffers
+\item the structural pattern --- which entries are nonzero --- is fixed once $A$'s sparsity is known
 \end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Dealing with limited domain atoms}
-We take the same approach as the analytic center example
+\begin{frame}{Assembling $A$}
+\begin{itemize}
+\item each constraint contributes a row block of $A$
+\item after \texttt{eval\_jacobian} runs on every node, the root Jacobians \emph{are} the rows of $A$
+\item we copy them into a flat CSR buffer in the layout the solver expects
+\pause
+\item the column structure of $A$ is computed once; row values are refilled per solve
+\item no Python in the hot path; no allocation in the eval phase
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{What ``lightweight'' means}
+\begin{itemize}
+\item pure C; no Python in the inner loop
+\item no symbolic graph mutation between solves
+\item CSR storage throughout; cache-friendly traversals
+\item no general-purpose AD framework (no JAX, no Autograd) --- we only implement the atoms we need
+\pause
+\item contrast with today's backend:
   \begin{itemize}
-  \item the expression $\phi(Ax-b)$ becomes $\phi(y)$ with a new constraint
-  \item we always ensure that $y$ is initialized in the domain of $\phi$
-  \item for nonsmooth atoms, we also initialize the epigraph variable
-  to something reasonable
-  \item variables with bounds are also always satisfied
+    \item no 3D parameter tensor in memory
+    \item sparsity computed once, not on every solve
+    \item no restriction on how parameters enter
   \end{itemize}
+\end{itemize}
+\vfill
 \end{frame}
 
-\begin{frame}{Dealing with nonsmooth atoms}
+\section{Results}
+
+\begin{frame}{Benchmark setup}
 \begin{itemize}
-\item a DNLP problem is equivalent to a problem where any
-\begin{itemize}
-\item nonsmooth convex atom $\phi$ appears in a constraint of the form $\phi(x) \leq t$
-\item nonsmooth concave atom $\phi$ appears in a constraint of the form $\phi(x) \geq t$
+\item hardware: laptop (TODO: spec)
+\item software: CVXPY pinned (TODO: version)
+\item baselines:
+  \begin{itemize}
+    \item CVXPY DPP path (default)
+    \item CVXPY \texttt{ignore\_dpp=True}
+    \item our C engine
+  \end{itemize}
+\item metrics:
+  \begin{itemize}
+    \item cold-start time (first solve)
+    \item warm-restart time (subsequent solves, new $\theta$)
+    \item peak memory
+  \end{itemize}
 \end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Problem suite}
+\begin{itemize}
+\item \textbf{standard benchmarks}
+  \begin{itemize}
+    \item LASSO, portfolio optimization, model-predictive control
+    \item representative of real-world use cases
+  \end{itemize}
+\item \textbf{stress tests}
+  \begin{itemize}
+    \item large sparse problems, deep expression trees
+    \item designed to expose canonicalization overhead
+  \end{itemize}
+\item \textbf{least squares}
+  \begin{itemize}
+    \item bread-and-butter case; well-understood baseline
+  \end{itemize}
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}{Hypotheses (no numbers yet)}
+\begin{itemize}
+\item \textbf{cold-start time:} comparable to ignore\_DPP (no caching benefit on first solve)
+\item \textbf{warm-restart time:} approaches the DPP path's amortized cost, without the DPP rule restriction
+\item \textbf{peak memory:} below DPP, because no 3D parameter tensor is materialized
 \pause
-\item these constraints can be formulated using smooth functions [Grant and Boyd, 2008]
-\begin{itemize}
-  \item the reformulations do not introduce LICQ violations
+\item \textbf{break-even:} after $\sim 2$--$3$ solves on the same problem family, our engine should beat ignore\_DPP
 \end{itemize}
-\item $|x| \leq t$ can be reformulated as $-t \leq x \leq t$
-\pause
-\item other nonsmooth atoms, such as the Huber atom
-\begin{minipage}{0.45\textwidth}
-\[
-\phi(x) = \begin{cases}
-x^2 & |x| \leq M \\
-2M|x| - M^2 & |x| > M
-\end{cases}
-\]
-have more complex reformulations
-\end{minipage}%
-\hfill
-\begin{minipage}{0.45\textwidth}
-\centering
-\tikzset{external/export=false}
-\begin{tikzpicture}[scale=0.8]
-\begin{axis}[
-  axis lines=middle,
-  xlabel={$x$},
-  ylabel={$\phi(x)$},
-  xlabel style={at={(1,0)}, anchor=west},
-  ylabel style={at={(-0.1,0.6)}, anchor=south},
-  xmin=-1.8, xmax=1.8,
-  ymin=-0.2, ymax=2.5,
-  xtick={-0.7,0.7},
-  xticklabels={$-M$,$M$},
-  ytick={0,0.49},
-  yticklabels={$0$,{}},
-  extra y ticks={0.6},
-  extra y tick labels={$M^2$},
-  extra y tick style={tick style={draw=none}},
-  samples=100,
-  domain=-1.8:1.8,
-  width=5.5cm,
-  height=4.5cm
-]
-\addplot[blue, thick, domain=-1.8:-0.7] {1.4*abs(x) - 0.49};
-\addplot[blue, thick, domain=-0.7:0.7] {x^2};
-\addplot[blue, thick, domain=0.7:1.8] {1.4*abs(x) - 0.49};
-\addplot[blue, dotted, thick, domain=-1.8:-0.7] {x^2};
-\addplot[blue, dotted, thick, domain=0.7:1.8] {x^2};
-\end{axis}
-\end{tikzpicture}
-\end{minipage}
-\end{itemize}  
+\vfill
 \end{frame}
 
-\begin{frame}{Our approach to computing derivatives}
-\centering
-\url{https://github.com/SparseDifferentiation/SparseDiffPy}
-\bigskip
+\begin{frame}{Results}
+\begin{center}
+\large TODO: insert benchmark plots + tables here
+\end{center}
+\vspace{2ex}
 \begin{itemize}
-\item initially used CVXPY's \texttt{grad} functionality
-\item developed a C package for sparse differentiation with Python bindings
-\item every atom implements its own forward, jacobian and hessian
-\item our goal is still to not be the bottleneck (spend less time than in the solver)
-\end{itemize}
-\end{frame}
-
-\section{Example}
-
-\begin{frame}{A DNLP extension of CVXPY}
-\centering
-\url{https://github.com/cvxgrp/DNLP}
-\bigskip
-\begin{itemize}
-\item extends CVXPY with DNLP functionality
-\item supported solvers:
-\begin{itemize}
-  \item IPOPT (open-source, interior-point method)  
-  \item Uno [Vanaret and Leyffer, 2025] (open-source, IPM and SQP)
-  \item KNITRO (commercial, many algorithms)
-  \item COPT
-\end{itemize}
-\item integrated in CVXPY and will be released in v1.9
+\item runtime comparison (cold + warm)
+\item memory comparison
+\item scaling with problem size
 \end{itemize}
 \vfill
 \end{frame}
 
 \section{Conclusions}
 
-\begin{frame}{Conclusions}
+\begin{frame}{Summary}
 \begin{itemize}
-  \item DNLP is a new grammar for specifying nonlinear programs
+\item reframed CVXPY matrix stuffing as \textbf{sparse Jacobian evaluation}
+\item built a lightweight \textbf{C engine} that:
   \begin{itemize}
-    \item no rules if all functions are smooth
-    \item mitigates solver failures caused by nonsmoothness
+    \item computes sparsity once per problem family
+    \item refills values per solve
+    \item avoids the 3D parameter tensor of the DPP path
   \end{itemize}
-  \item our DNLP-extension of CVXPY makes it easy to use NLP solvers
-  \begin{itemize}
-    \item enables high level, human readable problem descriptions
-    \item automatically generates smooth reformulations of nonsmooth atoms
-    \item ideal for teaching and research
-  \end{itemize}
-  \item we welcome ideas for applications and collaborations
+\item works for parameterized problems \textbf{without the DPP rule restriction}
+\pause
+\item (pending) benchmark wins over ignore\_DPP, competitive with DPP
 \end{itemize}
 \vfill
 \end{frame}
+
+\begin{frame}{Limitations and future work}
+\textbf{Limitations}
+\begin{itemize}
+\item partial atom coverage --- not yet a drop-in replacement for CVXPY
+\item C library, not yet integrated as a CVXPY backend
+\item single-threaded; no GPU
+\end{itemize}
+\vspace{1ex}
+\textbf{Future work}
+\begin{itemize}
+\item expand atom library to cover all of CVXPY's standard atoms
+\item ship as a Python-importable CVXPY backend
+\item explore non-DPP parameterizations where sparsity is still stable
+\end{itemize}
+\vfill
+\end{frame}
+
+\begin{frame}
+\vspace{2cm}
+\begin{center}
+{\Large \textbf{Thank you}} \\[2ex]
+{\large Questions?}
+\end{center}
+\vfill
+\end{frame}
+
 \end{document}
