@@ -163,13 +163,16 @@ Affine expressions require $h$ and all of its arguments to be affine \cite{grant
 an affine parameter dependence in the problem data. A problem is \emph{DPP-compliant} if it
 satisfies the DPP composition rules. The rules essentially disallow products of expressions
 involving parameters and can be referred to in \cite{agrawal2019dpp}.
+DPP-compliance is what makes the parameter maps of \S\ref{sec:matrix-stuffing} well defined:
+because the problem data depend affinely on $\theta$, the dependence can be captured once as the
+tensor $\mathcal R$ and reused across solves.
+When a problem violates the DPP rules---or when the user opts out by passing \texttt{ignore\_dpp=True}---CVXPY
+abandons this caching and instead treats parameters as ordinary constants, re-canonicalizing the
+problem from scratch on every solve.
 
 \paragraph{Solver standard form.}
-After a problem is verified to be DPP-compliant, CVXPY will convert the functional form 
+After a problem is verified to be DPP-compliant, CVXPY will convert the functional form
 problem to a target solver's standard form.
-% TODO will probably need to completely rewrite this.
-% make it specific about CVXPY.
-% also list some supported solvers.
 CVXPY supports solvers for quadratic programming
 % maybe show the standard form for it?
  (such as OSQP and HiGHS), conic programming
@@ -222,8 +225,13 @@ cone constraint
 \end{equation}
 
 \paragraph{Nondifferentiability.}
-% I definitely need to talk about differentiability and the epigraph of |x|.
-% I guess it is almost trivial but definitely interesting and of substance for the thesis.
+A subtle benefit of the epigraph transformation is that it removes any need for the user's atoms
+to be differentiable. The textbook conic standard form \cite{boyd2004convex} is often stated for
+twice-differentiable functions, but canonicalization never differentiates an atom: each atom is
+simply replaced by its epigraph variable and a cone constraint. The absolute value $|x|$ is the
+canonical example---it is nondifferentiable at the origin, yet its epigraph
+$\{(x, t) : |x| \le t\}$ is exactly the pair of linear inequalities $-t \le x \le t$.
+Convexity, not smoothness, is what canonicalization requires.
 
 \paragraph{Example of canonicalization.}
 To show a concrete example of canonicalization, we consider a simple fitting with regularization
@@ -376,9 +384,8 @@ and \texttt{SciPy}, an improved Python version which relies on the sparse matrix
 library with the same name.
 
 \paragraph{\texttt{Tensor} object.}
-In physics, tensors are defined as [...].
-In the canonicalization backends, this abstraction is also relevant but can
-be made more precise. We consider a \texttt{Tensor} as a three-dimensional
+The word \emph{tensor} is borrowed loosely here; we do not require the multilinear machinery
+of physics or differential geometry. We consider a \texttt{Tensor} as a three-dimensional
 array which represents a sparse linear mapping from a parameter vector
 to the constraint matrix (as shown in \ref{eq:param-maps}).
 The three indices of a \texttt{Tensor} are rows for constraints,
@@ -392,7 +399,6 @@ Since the process is recursive, every node of an expression tree
 will have an equivalent \texttt{Tensor}, and the final output
 (the \texttt{Tensor} at the root node)
 will give the constraint parameter map $\mathcal R$.
-% TODO revisit how to write and explain this, or remove this sentence entirely.
 
 \paragraph{Local vs. Global problem data.}
 All modeling languages for optimization must at least do one thing correctly:
@@ -430,15 +436,12 @@ than variables.
 % only be associated to one constraint.
 
 \paragraph{\texttt{TensorView} object.}
-The fundamental data structure in the backend is a so-called \texttt{TensorView},
-which is a nested dictionary of the following form
-
-% maybe show some python style type hints?
-The reasoning behind this data structure is to be able to index into both the
-different variables and parameters to get their problem data contributions at the same time.
-
-\paragraph{\texttt{InverseData} for example.}
-% show the dictionary for the example.
+The fundamental data structure in the backend is a so-called \texttt{TensorView}, a nested mapping
+that indexes a tensor by both variable and parameter offsets at once. This lets the recursive walk
+accumulate, for each node, the problem-data contribution of every (variable, parameter) pair it
+touches, which is exactly what the local-to-global assembly requires. We do not dwell on its
+internals here, since the method we propose in \ref{sec:Theme1} dispenses with this representation
+entirely.
 
 \paragraph{Tensor Representation.}
 % Fundamentally matrices are limited to two dimensions.

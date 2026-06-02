@@ -329,9 +329,104 @@ static void eval_jacobian(expr *node)
 \end{lstlisting}
 
 \paragraph{Matrix multiplication.}
+The matrix multiplication atom takes a constant (or parameter) matrix $A \in \reals^{m\times k}$
+and an expression $x$ whose value lies in $\reals^{k}$, and produces $Ax \in \reals^{m}$.
+Because the canonicalized problem is affine in the variables, one operand of every \texttt{matmul}
+is always data; we take it to be the left operand $A$ and the variable-bearing expression to be the
+right child.
+\begin{lstlisting}[language=Python]
+matmul_expr = F @ x
+\end{lstlisting}
+
+The forward pass is an ordinary sparse matrix--vector product.
+\begin{lstlisting}[language=C]
+static void forward(expr *node, const double *u)
+{
+    matmul_expr *mnode = (matmul_expr *) node;
+    expr *x = node->right;
+    const CSR_Matrix *A = mnode->coeff;   /* constant m x k matrix */
+
+    /* child's forward pass */
+    x->forward(x, u);
+
+    /* y = A x */
+    csr_matvec(A, x->value, node->value);
+}
+\end{lstlisting}
+
+For the Jacobian, note that if $x$ has Jacobian $J_x \in \reals^{k \times n_{\mathrm{vars}}}$,
+then $y = Ax$ has Jacobian $J_y = A J_x$, a sparse matrix--matrix product.
+The sparsity pattern of $J_y$ depends only on the patterns of $A$ and $J_x$, so we compute it once
+during initialization and reuse it on every solve, filling only its numerical values during
+evaluation.
+\begin{lstlisting}[language=C]
+static void jacobian_init_impl(expr *node)
+{
+    matmul_expr *mnode = (matmul_expr *) node;
+    expr *x = node->right;
+
+    /* initialize child jacobian */
+    jacobian_init(x);
+
+    /* symbolic product A * J_x: allocates J_y and fills its sparsity pattern */
+    node->jacobian = csr_matmat_symbolic(mnode->coeff, x->jacobian);
+}
+
+static void eval_jacobian(expr *node)
+{
+    matmul_expr *mnode = (matmul_expr *) node;
+    expr *x = node->right;
+
+    /* evaluate child jacobian */
+    x->eval_jacobian(x);
+
+    /* numeric product A * J_x into the pre-allocated pattern */
+    csr_matmat_numeric(mnode->coeff, x->jacobian, node->jacobian);
+}
+\end{lstlisting}
+The split between \texttt{csr\_matmat\_symbolic} and \texttt{csr\_matmat\_numeric} is the heart of
+the two-phase design: the symbolic product is run once per problem family, while only the numeric
+product is repeated when parameters change.
 
 \section{Problem class and Parameter updates}
+The atoms of the previous section compute the Jacobian of a single expression; a \texttt{Problem}
+ties together the full set of constraint expression trees and assembles their root Jacobians into
+the global problem data $[A\ b]$ and objective data $[c\ d]$.
+
+At construction time, the problem performs the one-time \emph{initialization} phase. It walks each
+expression tree once, calling \texttt{jacobian\_init} bottom-up so that every node allocates its
+Jacobian and fixes its sparsity pattern. Because the pattern of an affine expression does not depend
+on the numerical values of its parameters, this walk is performed exactly once for a given problem
+family. The root Jacobians are then concatenated into the global CSR buffer for $A$ using the
+constraint row offsets of \S\ref{sec:matrix-stuffing}, which fixes the sparsity pattern of the
+problem data as a whole.
+
+\paragraph{Parameter updates.}
+A subsequent \emph{evaluation} phase runs on every solve. Given new parameter values $\theta$, the
+problem refreshes the leaf parameter values and calls \texttt{eval\_jacobian} bottom-up, filling in
+the numerical entries of each pre-allocated Jacobian without touching its sparsity pattern. The
+forward pass supplies the constant column $b$, and the updated root Jacobians are copied into the
+global buffer. A parameter update therefore costs only a forward pass and a numeric Jacobian
+evaluation---no allocation, no symbolic work, and no graph mutation.
+
+This is precisely the saving that distinguishes our method from the \texttt{ignore\_dpp} path
+of \S\ref{sec:canonicalization}. That path is general---it places no DPP restriction on how
+parameters enter---but it pays the full cost of re-deriving the symbolic structure on every change
+of $\theta$. Our two-phase design keeps the same generality while paying that symbolic cost only
+once, recovering the amortized re-solve speed of the cached DPP path without ever materializing the
+three-dimensional parameter tensor.
 
 \section{CVXPY interface}
-
 \label{sec:problem-class-and-cvxpy-interface}
+To make the engine usable from CVXPY, we expose the \texttt{Problem} class and the atom constructors
+through a thin set of Python bindings. The engine then acts as a \emph{canonicalization backend}: it
+occupies the same place in the pipeline as \texttt{cvxcore} and the \texttt{SciPy} backend
+of \S\ref{sec:matrix-stuffing}, consuming the canonicalized affine expression trees produced by the
+reductions and returning the problem data $(A, b, c, d)$.
+
+Concretely, CVXPY hands the backend its canonicalized expression trees; the binding mirrors each
+CVXPY atom onto its engine counterpart to build the C expression trees, runs the initialization
+phase once, and stores the resulting handle on the problem. On the first solve, and on every
+subsequent solve with new parameter values, CVXPY calls into the evaluation phase to obtain the
+updated data, which is then forwarded to the cone solver. Because the binding only forwards pointers
+to pre-allocated buffers, no problem data is copied between Python and C in the inner loop.

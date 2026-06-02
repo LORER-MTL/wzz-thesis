@@ -109,12 +109,29 @@ to get the new problem data.
 We review current CVXPY matrix stuffing approaches and give examples of how the parameter maps
 are formed in \S\ref{sec:matrix-stuffing}.
 
+\paragraph{Caching versus recompilation.}
+Once a problem is parameterized, there are two broad strategies for handling repeated solves.
+The default approach in CVXPY, enabled by the DPP composition rules, forms the parameter maps
+once and \emph{caches} them; subsequent solves merely apply the maps to a new $\theta$.
+This is fast to re-solve but requires the problem to be DPP-compliant and stores the large
+three-dimensional tensor $\mathcal R$ in memory.
+The alternative, selected in CVXPY with \texttt{ignore\_dpp=True}, skips the parameter maps
+entirely: parameters are treated as ordinary constants and the problem is re-canonicalized from
+scratch on every solve.
+This removes the DPP restriction and the tensor, but pays the full matrix-stuffing cost each time.
+Our method occupies the middle ground: like the \texttt{ignore\_dpp} path it forms no parameter
+tensor and imposes no DPP restriction, but it caches the \emph{sparsity pattern} of the problem
+data once and only refills the numerical values on each solve, recovering the amortized speed of
+the DPP path.
+
 \paragraph{Contributions.}
 We make the following contributions:
 \begin{enumerate}
   \item We propose an alternative method to matrix stuffing that doesn't rely on forming parameter maps.
   Instead, we treat matrix stuffing as a sparse Jacobian evaluation which naturally
   separates the symbolic structure of the Jacobian from its numerical values.
+  This generalizes the \texttt{ignore\_dpp} path---it applies to the same broad class of problems---while
+  caching the sparsity pattern rather than re-deriving it on every solve.
   \item We use the affine atoms from the \texttt{SparseDiffengine} package and its Python bindings
   to implement a canonicalization backend for CVXPY.
   \item We benchmark our method against existing approaches and make improvements to CVXPY's codebase.

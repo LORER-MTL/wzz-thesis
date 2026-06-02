@@ -1,22 +1,75 @@
 \Chapter{Benchmark results}\label{sec:Theme2}
 
-% TODO: Benchmarks and comparisons
-% - Performance comparison with CVXPY's sparse matmul approach
-% - Memory usage comparison
-% - Scaling behavior with problem size
-% - Real-world problem instances
+In this chapter we evaluate the engine of \S\ref{sec:Theme1} against CVXPY's existing
+canonicalization paths. The central question is the cost of repeatedly forming the problem data for
+a parameterized problem family, which is exactly the regime our two-phase design targets.
 
 \section{Benchmark Setup}
+
+\paragraph{Baselines.}
+We compare three ways of forming the problem data:
+\begin{itemize}
+  \item the \textbf{DPP path} (CVXPY's default), which builds the parameter tensor once and applies
+  it on each solve;
+  \item the \textbf{\texttt{ignore\_dpp} path}, which re-canonicalizes from scratch on every solve
+  and places no restriction on how parameters enter;
+  \item \textbf{our C engine}, which fixes the sparsity pattern once and refills numerical values on
+  each solve.
+\end{itemize}
+
+\paragraph{Metrics.}
+For each method and problem we report the \emph{cold-start} time (the first solve, including any
+one-time setup), the \emph{warm-restart} time (a subsequent solve with new parameter values
+$\theta$), and the \emph{peak memory}. From the cold- and warm-restart times we also report the
+\emph{break-even} point: the number of solves on the same problem family after which our engine's
+cumulative time falls below that of the \texttt{ignore\_dpp} path. All experiments pin a single
+CVXPY version and run on a fixed machine; full hardware and software details accompany the results.
 
 \subsection{Example}
 
 % show a CVXPY code snippet, then show that the backend can be
 % basically toggled on and off for different backends
+Switching between the three methods requires no change to the problem formulation: the DPP and
+\texttt{ignore\_dpp} paths are selected through CVXPY's \texttt{solve} arguments, and our engine is
+selected by choosing it as the canonicalization backend (\S\ref{sec:problem-class-and-cvxpy-interface}).
+This lets us benchmark the identical problem object across all three methods.
 
 \subsection{Runtime and Memory Usage}
+% TODO(data): replace the placeholder once benchmark numbers are available.
+\begin{table}[ht]
+\centering
+\fbox{\parbox[c][3cm][c]{0.75\textwidth}{\centering\textit{[table pending:
+cold-start, warm-restart, and peak memory per method]}}}
+\caption{Cold-start time, warm-restart time, and peak memory for the DPP path, the
+\texttt{ignore\_dpp} path, and our engine.}
+\label{tab:runtime-memory}
+\end{table}
 
 \section{Results on Standard Benchmarks}
+We evaluate on representative real-world problems---LASSO, portfolio optimization, and
+model-predictive control---each instantiated as a parameter family and solved repeatedly.
+% TODO(data): insert runtime/memory plots once available.
+\begin{figure}[ht]
+\centering
+\fbox{\parbox[c][4cm][c]{0.75\textwidth}{\centering\textit{[plot pending:
+warm-restart time and break-even across standard benchmarks]}}}
+\caption{Warm-restart time and break-even point on the standard benchmark suite.}
+\label{fig:standard-benchmarks}
+\end{figure}
 
 \section{Results on Stress Test Problems}
+These problems---large sparse instances and deep expression trees---are designed to expose
+canonicalization overhead, where the gap between forming and merely refilling the problem data is
+largest.
+% TODO(data): insert scaling plots once available.
+\begin{figure}[ht]
+\centering
+\fbox{\parbox[c][4cm][c]{0.75\textwidth}{\centering\textit{[plot pending:
+scaling of warm-restart time with problem size]}}}
+\caption{Scaling of warm-restart time and peak memory with problem size on the stress-test suite.}
+\label{fig:stress-tests}
+\end{figure}
 
 \subsection{Least Squares Problems}
+As a well-understood baseline we include plain least squares, the bread-and-butter case, to confirm
+the engine's behavior on a problem whose structure is simple and familiar.
