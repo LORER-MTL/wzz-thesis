@@ -60,7 +60,7 @@
 } 
 \title{\large \bfseries A lightweight canonicalization engine in C}
 
-\author{William Zhang}
+\author{William Zijie Zhang}
 
 \date{Master's Thesis Defence, Polytechnique Montreal, Aug. 14, 2026}
 
@@ -74,165 +74,195 @@
 \section{Background}
 
 \begin{frame}{Convex optimization}
-\[
-\begin{array}{ll} 
+\begin{equation}\label{e:convex}
+\begin{array}{ll}
 \mbox{minimize}  &f_0(x) \\
 \mbox{subject to} &f_i(x) \leq 0, \quad i=1, \ldots, m\\
 &Ax=b
 \end{array}
-\]
+\end{equation}
 
 \begin{minipage}{0.68\textwidth}
   \centering
   \begin{itemize}
     \item variable $x\in \reals^n$
     \item equality constraints are linear and $f_0, \ldots, f_m$ are convex
+    \item can be solved globally and efficiently (both in theory and practice)
   \end{itemize}
 \end{minipage}%
 \vfill
 \end{frame}
 
-\begin{frame}{A concrete example: regularized regression}
+\begin{frame}{Functional form}
+The user writes the problem in a general functional form:
+\begin{equation}\label{e:functional}
+\begin{array}{ll}
+\mbox{minimize}   & f_0(x_1, \ldots, x_k) \\
+\mbox{subject to} & f_i(x_1, \ldots, x_k) \leq g_i(x_1, \ldots, x_k), \quad i=1,\ldots,m_1\\
+                  & h_i(x_1, \ldots, x_k) = j_i(x_1, \ldots, x_k), \quad i=1,\ldots,m_2
+\end{array}
+\end{equation}
+\begin{columns}[T]
+\begin{column}{0.58\textwidth}
 \begin{itemize}
-\item we want to fit a model to noisy measurements
-\item data: a feature matrix $F \in \reals^{m\times n}$ and observations $g \in \reals^m$ (from experiments, sensors, \ldots)
-\item unknown: model coefficients $x \in \reals^n$
+  \item encompasses any optimization problem
+  \item potentially many variables of different sizes $x_1, \ldots, x_k$
+  \item the functions are \emph{expression trees} built from a library of \emph{atoms}
 \end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+\centering\footnotesize example
 \[
-\mbox{minimize}\quad \|Fx - g\|_2 \;+\; \mu\,\|x\|_2
+\begin{array}{ll}
+\mbox{minimize}   & \|Fx - g\|_2 + \mu\|x\|_2 \\
+\mbox{subject to} & x \succeq 0
+\end{array}
 \]
-\begin{itemize}
-\item first term fits the data; second term regularizes ($\mu \ge 0$ trades off fit vs.\ size)
-\item $\mu$ is a hyperparameter --- often swept over many values (motivates fast re-solves)
-\end{itemize}
-\vfill
-\end{frame}
-
-\begin{frame}[fragile]{CVXPY}
-\begin{itemize}
-\item a \textbf{modeling language} for convex optimization, embedded in Python
-\item the user describes a problem in natural mathematical form
-\end{itemize}
-
-\begin{lstlisting}[language=mypython]
-import cvxpy as cp
-
-x   = cp.Variable(n)
-obj = cp.norm(F @ x - g, 2) + mu * cp.norm(x, 2)
-prob = cp.Problem(cp.Minimize(obj))
-prob.solve()
-\end{lstlisting}
-
-\begin{itemize}
-\item \texttt{prob.solve()} dispatches to a numerical \textbf{solver} (SCS, ECOS, MOSEK, Clarabel, \ldots)
-\item CVXPY is \textbf{solver-agnostic} --- the same model runs on any of them
-\end{itemize}
+\end{column}
+\end{columns}
 \vfill
 \end{frame}
 
 \begin{frame}{Expression trees}
 \tikzset{external/export=false}
-CVXPY stores a problem as a tree of \textbf{atoms}; leaves are \textbf{variables} (circles) and \textbf{data/parameters} (boxes).
+Internally the functional form is stored as \textbf{expression trees} --- one per objective and
+constraint. Atoms are the nodes; variables, constants, and parameters are the leaves.
 \begin{center}
-$\|Fx - g\|_2 + \mu\|x\|_2$
-\vspace{1ex}
-
-\begin{tikzpicture}[
-  every node/.style={align=center},
-  level distance=12mm,
-  level 1/.style={sibling distance=46mm},
-  level 2/.style={sibling distance=24mm},
-  level 3/.style={sibling distance=18mm},
-  level 4/.style={sibling distance=12mm},
-  edge from parent/.style={draw, -latex}]
-  \node {$+$}
-    child {node {$\|\cdot\|_2$}
-      child {node {$-$}
-        child {node {$\times$}
-          child {node[draw] {$F$}}
-          child {node[circle, draw] {$x$}}}
-        child {node[draw] {$g$}}}}
-    child {node {$\times$}
-      child {node[draw] {$\mu$}}
-      child {node {$\|\cdot\|_2$}
-        child {node[circle, draw] {$x$}}}};
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=30mm},
+   level 2/.style={sibling distance=18mm}]
+  \node {\annotatedop{\|\cdot\|_2}{\|Fx-g\|_2}}
+    child {node {\annotatedop{-}{Fx-g}}
+        child {node {\annotatedop{\texttt{matmul}}{Fx}}
+              child {node[draw] {$F$}}
+              child {node[circle, draw] {$x$}} }
+        child {node[draw] {$g$}} };
 \end{tikzpicture}
 \end{center}
+{\footnotesize variables in circles, data/parameters in boxes --- here, the $\|Fx-g\|_2$ term of the example objective.}
+\end{frame}
+
+\begin{frame}{Disciplined convex programming (DCP)}
+\begin{itemize}
+\item a grammar for specifying convex optimization problems [Grant et al., 2006]
+\item convex and concave functions are constructed by combining a set of \textbf{atoms}
+\item each atom has known curvature and monotonicity
+\item simple rules specify how atoms can be composed
+\item a problem that follows the DCP rules is convex-by-construction
+\end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Standard conic form}
+\begin{frame}{Modeling languages implementing DCP}
+\begin{itemize}
+\item Yalmip (MATLAB), CVX (MATLAB), CVXPY (Python), Convex.jl (Julia), CVXR (R)
+\item classic commercial software like AMPL and GAMS do not implement DCP
+\pause
+\bigskip
+\item two main tasks of DCP-based modeling languages:
+\begin{itemize}
+  \item \textbf{analysis}: verify that a high level problem description follows the DCP rules
+  \item \textbf{synthesis}: rewrite it into an equivalent conic standard form:
+\end{itemize}
+\end{itemize}
 \[
 \begin{array}{ll}
-\mbox{minimize}   & c^T x + d \\
+\mbox{minimize}   & c^\top x + d \\
 \mbox{subject to} & b - Ax \in \mathcal{K}
 \end{array}
 \]
+\centering{\footnotesize problem data $A, b, c, d$; \;$\mathcal K$ a product of standard cones}
+\end{frame}
+
+\begin{frame}{Functional conic form}
+Canonicalization first rewrites the problem into a \emph{functional} conic form:
+\begin{equation}\label{e:funcconic}
+\begin{array}{ll}
+\mbox{minimize}   & f_0(x_1, \ldots, x_k) \\
+\mbox{subject to} & g_i(x_1, \ldots, x_k) \in \mathcal{K}_i, \quad i=1,\ldots,m
+\end{array}
+\end{equation}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
 \begin{itemize}
-\item decision variable $x \in \reals^n$
-\item problem data $A \in \reals^{m \times n}$, $b \in \reals^m$, $c \in \reals^n$, $d \in \reals$
-\item $\mathcal{K} \subseteq \reals^m$ is a non-empty closed convex cone (\eg\ $\reals_+^m$, second-order, PSD)
-\pause
-\item nearly every convex problem can be cast in this form
-\item modern conic solvers (SCS, ECOS, MOSEK, Clarabel, \ldots) all consume this representation
+  \item $f_0$ and every $g_i$ are now affine
+  \item each $\mathcal K_i$ is a standard cone
+  \item nonsmooth atoms are replaced by epigraph variables and cone constraints
+  [Grant \& Boyd, 2008]
 \end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\centering\footnotesize least squares becomes:
+\[
+\begin{array}{ll}
+\mbox{minimize} & t_1 + \mu\, t_2\\
+\mbox{s.t.} & x \in \reals_+^n\\
+            & (t_1,\, Fx - g) \in \mathcal K_{\mathrm{soc}}\\
+            & (t_2,\, x) \in \mathcal K_{\mathrm{soc}}
+\end{array}
+\]
+\end{column}
+\end{columns}
 \vfill
 \end{frame}
 
-\begin{frame}{From conic form to problem data}
-\begin{itemize}
-\item the conic form is still a set of \textbf{affine expression trees} over the variables
-\item the solver needs \textbf{explicit problem data}: matrices and vectors $A, b, c$ (and $P$ for quadratics)
-\item \emph{matrix stuffing}: walk those trees and emit this data
-\pause
-\item this step has a real cost --- especially for \textbf{repeated solves} over a family of instances
-  (\eg\ MPC, hyperparameter sweeps, online learning), where it is paid again and again
-\pause
-\item \textbf{this thesis:} we focus on this computational step --- converting a set of affine
-  expression trees (the conic form) into explicit problem data --- with support for fast
-  \textbf{parametric re-solves}
+\begin{frame}{Quadratic conic standard form}
+The backend materializes \eqref{e:funcconic} into the numeric conic standard form:
+\begin{equation}\label{e:quadconic}
+\begin{array}{ll}
+\mbox{minimize}   & \tfrac12 x^\top P x + c^\top x + d \\
+\mbox{subject to} & b - A x \in \mathcal{K}
+\end{array}
+\end{equation}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\begin{itemize}\small
+\item data $P \succeq 0,\ A, b, c, d$; \;$\mathcal K$ a product of standard cones
+\item generalizes both QP ($P\neq0$, $\mathcal K=\reals^m_+$) and conic programs ($P=0$)
+\item solvers: OSQP, HiGHS (QP); ECOS (conic); MOSEK, Clarabel (conic-quadratic)
 \end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\centering\footnotesize least squares \eqref{e:funcconic}, $u = [\,x;\ t_1;\ t_2\,]$ ($P=0$):
+\[
+\min\; c^\top u, \quad b - A u \in \mathcal{K}
+\]
+{\scriptsize
+\[
+c = \begin{bmatrix} 0\\ 1\\ \mu \end{bmatrix},\;
+A = \begin{bmatrix} -I & 0 & 0\\ 0 & -1 & 0\\ -F & 0 & 0\\ 0 & 0 & -1\\ -I & 0 & 0 \end{bmatrix},\;
+b = \begin{bmatrix} 0\\ 0\\ -g\\ 0\\ 0 \end{bmatrix}
+\]
+\[
+\mathcal K = \reals^n_+ \times \mathcal K_{\mathrm{soc}} \times \mathcal K_{\mathrm{soc}}
+\]
+}
+\end{column}
+\end{columns}
 \vfill
+{\scriptsize a squared objective $\|Fx-g\|_2^2$ would instead populate $P$, with no epigraph variable $t_1$.}
+\end{frame}
+
+\begin{frame}{Summary}
+We have introduced four standard forms: the convex optimization standard form \eqref{e:convex},
+the user's functional form \eqref{e:functional}, the functional conic form \eqref{e:funcconic},
+and the numeric conic standard form \eqref{e:quadconic}.
+\bigskip
+
+A DCP modeling language works in two stages:
+\begin{itemize}
+\item the \emph{frontend} takes the functional form \eqref{e:functional}, uses DCP to verify it is
+      convex \eqref{e:convex}, and rewrites it into the functional conic form \eqref{e:funcconic}
+\item the \emph{backend} materializes \eqref{e:funcconic} into the numeric data \eqref{e:quadconic}
+      the solver consumes
+\end{itemize}
+\pause
+\bigskip
+This thesis focuses on the \emph{canonicalization backend} for large-scale
+and parametrized problems.
 \end{frame}
 
 \section{Canonicalization}
-
-\begin{frame}[fragile]{Parameters in CVXPY}
-\begin{itemize}
-\item \textbf{parameterized problems are CVXPY's central use case} --- and the central concern of this thesis
-\item \texttt{cp.Parameter} --- a symbolic value that changes between solves
-\item structure of the problem stays fixed; only data values move
-\end{itemize}
-
-\begin{lstlisting}[language=mypython]
-A = cp.Parameter((m, n))
-b = cp.Parameter(m)
-lam = cp.Parameter(nonneg=True)
-prob = cp.Problem(cp.Minimize(
-    cp.norm(A @ x - b, 2) + lam * cp.norm(x, 1)))
-
-for lam_val in np.logspace(-3, 1, 50):
-    lam.value = lam_val
-    prob.solve()                # <-- want this to be fast
-\end{lstlisting}
-
-\begin{itemize}
-\item use cases: model-predictive control, LASSO regularization sweeps, online learning
-\end{itemize}
-\vfill
-\end{frame}
-
-\begin{frame}{Matrix stuffing}
-\begin{itemize}
-\item start simple: \textbf{constants and variables only} (no parameters yet)
-\item after reductions: a tree of affine atoms over variables
-\item walk the tree, accumulate each leaf's contribution into the right entry of $A$, $b$, $c$
-\item every nonzero of $A$ corresponds to a (constraint row, variable column) pair touched by the walk
-\pause
-\item this is the basic flow --- and the current backend re-runs it on every solve
-\end{itemize}
-\vfill
-\end{frame}
 
 \begin{frame}{Matrix stuffing: a worked example}
 \tikzset{external/export=false}    % overlays must re-render each slide
