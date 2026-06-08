@@ -4,42 +4,12 @@
 %%  SYNTHESE DES TRAVAUX / SUMMARY OF WORKS
 %%
 \section{Summary of Works}
-This thesis reframed CVXPY's matrix stuffing as a \emph{sparse Jacobian evaluation}.
-Rather than building the three-dimensional parameter tensor of the DPP path
-(\S\ref{sec:matrix-stuffing}), we observed that the problem data of a parameterized cone program
-is an affine function of the variables whose sparsity pattern is fixed across a problem family.
-This observation separates canonicalization into two phases: a one-time \emph{initialization} that
-fixes the sparsity pattern, and a per-solve \emph{evaluation} that refills only the numerical
-values.
-
-We implemented this idea as a lightweight engine in C, the \texttt{SparseDiffEngine}, building up a
-subset of affine atoms---addition, negation, transpose, stacking, indexing, summation, elementwise
-multiplication, and matrix multiplication---each satisfying a three-function contract of forward
-pass, Jacobian initialization, and Jacobian evaluation (\S\ref{sec:Theme1}). A \texttt{Problem}
-class assembles the root Jacobians into the global problem data, and a thin set of Python bindings
-lets the engine act as a canonicalization backend for CVXPY. The result computes the problem
-sparsity once per family and refills values per solve, so it handles parameterized problems
-\emph{without} the DPP rule restriction and without materializing the parameter tensor.
-
 %%
 %%  LIMITATIONS
 %%
 \section{Limitations}\label{sec:Limitations}
-The engine is not yet a drop-in replacement for CVXPY's existing backends. Its atom coverage is
-partial: it implements the affine atoms needed for the problems studied here, but not the full set
-of CVXPY's standard atoms. It is currently a standalone C library exercised through Python bindings
-rather than a fully integrated backend, and its execution is single-threaded with no GPU support.
-Finally, the saving relies on the sparsity pattern being stable across a problem family; problems
-whose structure changes between solves fall outside the cases the two-phase design is designed to
-accelerate.
 
 %%
 %%  AMELIORATIONS FUTURES / FUTURE RESEARCH
 %%
 \section{Future Research}
-The most immediate direction is to expand the atom library to cover all of CVXPY's standard atoms,
-making the engine a complete drop-in backend, and to ship it as a Python-importable canonicalization
-backend selected through CVXPY's usual interface. Beyond coverage, the two-phase design invites
-exploration of non-DPP parameterizations where the sparsity pattern is nonetheless stable---a class
-strictly larger than the DPP-compliant problems---and of parallel or GPU-accelerated evaluation,
-since the per-solve numeric phase is a fixed sequence of sparse kernels over a static structure.

@@ -139,7 +139,6 @@ constraint. Atoms are the nodes; variables, constants, and parameters are the le
         child {node[draw] {$g$}} };
 \end{tikzpicture}
 \end{center}
-{\footnotesize variables in circles, data/parameters in boxes --- here, the $\|Fx-g\|_2$ term of the example objective.}
 \end{frame}
 
 \begin{frame}{Disciplined convex programming (DCP)}
@@ -254,7 +253,6 @@ A DCP modeling language works in two stages:
 \item the \emph{frontend} takes the functional form \eqref{e:functional}, uses DCP to verify it is
       convex \eqref{e:convex}, and rewrites it into the functional conic form \eqref{e:funcconic}
 \item the \emph{backend} materializes \eqref{e:funcconic} into the numeric data \eqref{e:quadconic}
-      the solver consumes
 \end{itemize}
 \pause
 \bigskip
