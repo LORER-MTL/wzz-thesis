@@ -1,19 +1,13 @@
 \Chapter{A lightweight canonicalization engine}\label{sec:Theme1}
 
-In this chapter we present a minimal implementation of a subset of affine atoms in the
-\texttt{SparseDiffEngine} package, and show how they can be used to compute the sparse
-constant Jacobian of a set of affine expressions.
-At this point, we are given a \emph{canonicalized} problem in standard form,
-after the canonicalization process described in \S\ref{sec:canonicalization}.
-The content of this chapter has many similarities to \S\ref{sec:matrix-stuffing},
-since both serve the same purpose of forming the problem data.
-The structure of the chapter is as follows: in \S\ref{sec:data-structures} we describe
-basic data structures in the engine which will be used throughout the atom
-implementations described in \S\ref{sec:atom-implementations}, and finally, 
-in \S\ref{sec:problem-class-and-cvxpy-interface} we present a high level
-problem class interface which can easily be used in CVXPY.
-We also recommend reading \S\ref{sec:sparse-matrices} before reading this chapter,
-since it covers the basics of sparse matrices and their data structures.
+This chapter presents a minimal implementation of a subset of affine atoms in the
+\texttt{SparseDiffEngine} package, and shows how they compute the sparse constant Jacobian of a set
+of affine expressions. We start from a \emph{canonicalized} problem in standard form, produced by
+the canonicalization of \S\ref{sec:canonicalization}. The goal is the same as in
+\S\ref{sec:matrix-stuffing}: form the problem data. \S\ref{sec:data-structures} describes the data
+structures, \S\ref{sec:atom-implementations} the atom implementations, and
+\S\ref{sec:problem-class-and-cvxpy-interface} the problem class and its CVXPY interface. We assume
+the sparse-matrix background of \S\ref{sec:sparse-matrices}.
 
 \section{Fundamental data structures}
 \label{sec:data-structures}
@@ -26,66 +20,46 @@ typedef struct expr {
     int    d1, d2, size;   /* shape (d1 x d2) and size = d1*d2 */
     int    n_vars;         /* total number of variables         */
     int    var_id;         /* offset into u, or NOT_A_VARIABLE  */
- 
+
     struct expr *left;     /* left child  (NULL for leaves)     */
     struct expr *right;    /* right child (NULL for leaves)     */
- 
+
     double     *value;     /* forward-pass output, size entries */
     CSR_Matrix *jacobian;  /* size x n_vars sparse Jacobian     */
- 
+
     forward_fn       forward;
     jacobian_init_fn jacobian_init_impl;
     eval_jacobian_fn eval_jacobian;
 } expr;
 \end{lstlisting}
 
-every expression node has a shape (d1 x d2) and a size (d1*d2),
-and also two pointers to its left and right children.
-It will also have a pointer to its value, which is the output of the forward pass,
-and a pointer to its Jacobian, which is a CSR matrix.
-Every expression must also implement three functions: a forward function,
-a Jacobian initialization function, and a Jacobian evaluation function.
+Each node carries a \texttt{value}, the output of its forward pass, and a sparse Jacobian in CSR
+form. Each node also implements three functions: \texttt{forward}, \texttt{jacobian\_init}, and
+\texttt{eval\_jacobian}.
 
 \paragraph{Leaf nodes.}
-The two leaf nodes are variables and parameters.
-They are the fundamental building blocks of the expression tree.
+The leaves are variables and parameters.
 
 \section{Atom implementations}
 \label{sec:atom-implementations}
-We will now show the implementation of atoms in the engine.
-The semantics of an atom is as follows, it takes one or two expressions
-as input, and produces an output expression corresponding to the result of the operation.
-Every atom implementation below will first show the basic CVXPY code,
-and then show how it is implemented in the engine.
-% show basic CVXPY code
-% then show what they do in the diffengine.
-% can show a simple forward and jacobian init/vals implementation.
-\paragraph{Helpers and definitions.}
-We first import the necessary libraries and define basic variables and constants
-which will be used throughout the implementation.
-
-\begin{lstlisting}[language=Python]
-import cvxpy as cp
-import numpy as np
-import scipy.sparse as sp
-
-x = cp.Variable(n1)
-y = cp.Variable(n2)
-a = cp.Parameter(n1)
-b = cp.Parameter(n2)
-\end{lstlisting}
+An atom takes one or two expression operands and produces an expression. Each atom implements the
+three functions: \texttt{forward} computes the value, \texttt{jacobian\_init} fixes the Jacobian's
+sparsity pattern once, and \texttt{eval\_jacobian} fills its values on each solve. We give the full
+C implementation of one atom, \texttt{add}, to establish the pattern, and describe the rest in
+prose, each anchored by its CVXPY expression. Throughout, \texttt{x} and \texttt{y} denote
+variables, \texttt{a} and \texttt{b} parameters, and \texttt{F} a constant matrix, all of compatible
+shape.
 
 \paragraph{Addition.}
-The addition atom (also commonly referred to as \texttt{add}) takes two expressions
-and sums them together elementwise.
-The CVXPY code is as follows (note that Python's operator overloading for \texttt{+}
-will automatically form an \texttt{add} atom).
-
+The addition atom sums two expressions elementwise.
 \begin{lstlisting}[language=Python]
 add_expr = cp.add(x, y)
 \end{lstlisting}
 
-In the engine the implementation is as follows.
+The implementation below is the template every other atom follows. The forward pass evaluates the
+children and sums their values. \texttt{jacobian\_init} allocates the output Jacobian, whose number
+of nonzeros is at most the sum of the children's, and fixes its pattern. \texttt{eval\_jacobian}
+sums the children's Jacobians into it.
 \begin{lstlisting}[language=C]
 static void forward(expr *node, const double *u)
 {    /* forward pass for children */
@@ -123,310 +97,128 @@ static void eval_jacobian(expr *node)
 \end{lstlisting}
 
 \paragraph{Negation.}
-The negation atom takes a single expression and negates it elementwise.
+The negation atom negates an expression elementwise. The forward pass flips the sign of each value.
+The Jacobian has the child's pattern, so \texttt{jacobian\_init} copies it and \texttt{eval\_jacobian}
+negates its values.
 
 \paragraph{Transpose.}
-The transpose atom takes a single expression and transposes it.
-In CVXPY the code is as follows (it can also be written as \texttt{x.T}).
-
+The transpose atom transposes an expression.
 \begin{lstlisting}[language=Python]
 transpose_expr = cp.transpose(x)
 \end{lstlisting}
 
-\begin{lstlisting}[language=C]
-// Forward pass for transpose atom
-static void forward(expr *node, const double *u)
-{
-    /* forward pass for child */
-    node->left->forward(node->left, u);
-
-    /* local forward pass */
-    int d1 = node->d1;
-    int d2 = node->d2;
-    double *X = node->left->value;
-    double *XT = node->value;
-    for (int i = 0; i < d1; ++i)
-    {
-        for (int j = 0; j < d2; ++j)
-        {
-            XT[j * d1 + i] = X[i * d2 + j];
-        }
-    }
-}
-\end{lstlisting}
-explain the Jacobian init and eval for transpose, which is just a permutation of the Jacobian entries.
+The forward pass writes the transpose into the row-major output buffer. Transposing only relabels
+the output entries, so the Jacobian is a fixed row permutation of the child's: \texttt{jacobian\_init}
+records the permutation, and \texttt{eval\_jacobian} copies the child's values into the permuted rows.
 
 \paragraph{Horizontal stack.}
-The horizontal stack atom takes two expressions and concatenates them horizontally.
-In CVXPY the code is as follows, and just like \texttt{NumPy}, it requires the input expressions
-to have the same number of rows.
+The horizontal stack atom concatenates expressions of equal row count side by side.
 \begin{lstlisting}[language=Python]
 hstack_expr = cp.hstack([x, y])
 \end{lstlisting}
 
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{
-    hstack_expr *hnode = (hstack_expr *) node;
+The forward pass concatenates the arguments' values. The Jacobian stacks the arguments' Jacobian
+rows: \texttt{jacobian\_init} lays out the combined pattern, and \texttt{eval\_jacobian} copies each
+argument's values contiguously into place.
 
-    /* children's forward passes */
-    for (int i = 0; i < hnode->n_args; i++)
-    {
-        hnode->args[i]->forward(hnode->args[i], u);
-    }
-
-    /* concatenate values horizontally */
-    int offset = 0;
-    for (int i = 0; i < hnode->n_args; i++)
-    {
-        expr *child = hnode->args[i];
-        memcpy(node->value + offset, child->value, child->size * sizeof(double));
-        offset += child->size;
-    }
-}
-
-static void eval_jacobian(expr *node)
-{
-    hstack_expr *hnode = (hstack_expr *) node;
-    CSR_Matrix *A = node->jacobian;
-    A->nnz = 0;
-
-    for (int i = 0; i < hnode->n_args; i++)
-    {
-        expr *child = hnode->args[i];
-        child->eval_jacobian(child);
-
-        /* copy values */
-        memcpy(A->x + A->nnz, child->jacobian->x,
-               child->jacobian->nnz * sizeof(double));
-        A->nnz += child->jacobian->nnz;
-    }
-}
-\end{lstlisting}
 \paragraph{Vertical stack.}
-The vertical stack atom takes two expressions and concatenates them vertically.
-In CVXPY the code is as follows, and just like \texttt{NumPy}, it requires the input expressions
-to have the same number of columns.
+The vertical stack atom concatenates expressions of equal column count.
 \begin{lstlisting}[language=Python]
 vstack_expr = cp.vstack([x, y])
 \end{lstlisting}
 
-In the engine the implementation uses the transpose and horizontal stack atoms, since we can write
-\texttt{vstack([x, y]) = transpose(hstack(transpose(x), transpose(y)))}.
-
-More generally, we have the following equivalence:
-\begin{lstlisting}[language=Python]
-vstack([A, B]) == transpose(hstack([transpose(A), transpose(B)]))
-\end{lstlisting}
+It needs no new code. The engine uses the identity
+\texttt{vstack([A, B]) = transpose(hstack([transpose(A), transpose(B)]))}, inheriting the forward
+and Jacobian behaviour of transpose and hstack.
 
 \paragraph{Indexing.}
-
+The indexing atom selects a subset of an expression's entries.
 \begin{lstlisting}[language=Python]
 index_expr = x[0:3]
 \end{lstlisting}
 
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{
-    expr *x = node->left;
-    index_expr *idx = (index_expr *) node;
-
-    /* child's forward pass */
-    x->forward(x, u);
-
-    /* gather selected elements */
-    for (int i = 0; i < idx->n_idxs; i++)
-    {
-        node->value[i] = x->value[idx->indices[i]];
-    }
-}
-\end{lstlisting}
-mention that the Jacobian is a subset of the child's Jacobian, and we can fill it in by copying the relevant rows.
+The forward pass gathers the selected entries. The Jacobian is the corresponding subset of the
+child's rows: \texttt{jacobian\_init} records which rows are selected, and \texttt{eval\_jacobian}
+copies their values.
 
 \paragraph{Sum.}
-
+The sum atom reduces all entries of an expression to a scalar.
 \begin{lstlisting}[language=Python]
 sum_expr = cp.sum(x)
 \end{lstlisting}
 
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{
-    /* child's forward pass */
-    x->forward(x, u);
-    sum = 0.0;
-    end = x->d1 * x->d2;
-    /* sum all elements */
-    for (i = 0; i < end; i++)
-    {
-        sum += x->value[i];
-    }
-    node->value[0] = sum;
-}
-\end{lstlisting}
+The forward pass accumulates the child's values into a scalar. The Jacobian is the column-wise sum
+of the child's Jacobian, a single row: \texttt{jacobian\_init} fixes its pattern, and
+\texttt{eval\_jacobian} accumulates the child's values into it.
 
 \paragraph{Elementwise multiplication.}
-
+The elementwise multiplication atom scales an expression entrywise by data \texttt{a}, constant or
+parameter.
 \begin{lstlisting}[language=Python]
-elemwise_mult_expr = cp.multiply(x, y)
+elemwise_mult_expr = cp.multiply(x, a)
 \end{lstlisting}
 
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{
-    expr *child = node->left;
-    vector_mult_expr *vnode = (vector_mult_expr *) node;
-
-    /* call forward for param_source expr tree (this extra logic is needed
-       in case the parameter is a broadcast or promote node which needs to refresh
-       its values) */
-    if (vnode->base.needs_parameter_refresh)
-    {
-        vnode->param_source->forward(vnode->param_source, NULL);
-        vnode->base.needs_parameter_refresh = false;
-    }
-
-    const double *a = vnode->param_source->value;
-
-    /* child's forward pass */
-    child->forward(child, u);
-
-    /* local forward pass: elementwise multiply by a */
-    for (int i = 0; i < node->size; i++)
-    {
-        node->value[i] = a[i] * child->value[i];
-    }
-}
-
-static void jacobian_init_impl(expr *node)
-{
-    expr *x = node->left;
-
-    /* initialize child jacobian */
-    jacobian_init(x);
-
-    /* same sparsity as child */
-    node->jacobian = new_csr_copy_sparsity(x->jacobian);
-}
-
-static void eval_jacobian(expr *node)
-{
-    expr *x = node->left;
-    const double *a = ((vector_mult_expr *) node)->param_source->value;
-
-    /* evaluate x */
-    x->eval_jacobian(x);
-
-    /* row-wise scale child's jacobian */
-    for (int i = 0; i < node->size; i++)
-    {
-        for (int j = x->jacobian->p[i]; j < x->jacobian->p[i + 1]; j++)
-        {
-            node->jacobian->x[j] = a[i] * x->jacobian->x[j];
-        }
-    }
-}
-\end{lstlisting}
+The forward pass multiplies the child's values by \texttt{a}, refreshing \texttt{a} first if it is a
+parameter. Scaling row $i$ by $a_i$ leaves the child's pattern unchanged, so \texttt{jacobian\_init}
+copies it and \texttt{eval\_jacobian} scales each entry of row $i$ by $a_i$. A change in \texttt{a}
+is absorbed entirely at evaluation.
 
 \paragraph{Matrix multiplication.}
-The matrix multiplication atom takes a constant (or parameter) matrix $A \in \reals^{m\times k}$
-and an expression $x$ whose value lies in $\reals^{k}$, and produces $Ax \in \reals^{m}$.
-Because the canonicalized problem is affine in the variables, one operand of every \texttt{matmul}
-is always data; we take it to be the left operand $A$ and the variable-bearing expression to be the
-right child.
+The matrix multiplication atom takes a constant matrix $A \in \reals^{m\times k}$ and an expression
+$x$ with $x \in \reals^{k}$, and produces $Ax \in \reals^{m}$. The canonicalized problem is affine,
+so one operand is always data; we take it to be the left operand $A$, with the variable-bearing
+expression as the right child.
 \begin{lstlisting}[language=Python]
-matmul_expr = F @ x
+matmul_expr = A @ x
 \end{lstlisting}
 
-The forward pass is an ordinary sparse matrix--vector product.
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{
-    matmul_expr *mnode = (matmul_expr *) node;
-    expr *x = node->right;
-    const CSR_Matrix *A = mnode->coeff;   /* constant m x k matrix */
+The forward pass computes the sparse matrix--vector product $y = Ax$. If $x$ has Jacobian
+$J_x \in \reals^{k \times n_{\mathrm{vars}}}$, then $y$ has Jacobian $J_y = A J_x$, a sparse
+matrix--matrix product. Its pattern depends only on the patterns of $A$ and $J_x$.
 
-    /* child's forward pass */
-    x->forward(x, u);
+This is the one atom where the two-phase split does real work. We factor the product into a
+\emph{symbolic} routine, which allocates $J_y$ and fills its pattern from the patterns of $A$ and
+$J_x$, and a \emph{numeric} routine, which fills the values into that pattern. \texttt{jacobian\_init}
+runs the symbolic routine once; \texttt{eval\_jacobian} runs only the numeric routine on each solve.
+The symbolic step is the expensive part of a sparse matrix--matrix product, and it is hoisted out of
+the per-solve path.
 
-    /* y = A x */
-    csr_matvec(A, x->value, node->value);
-}
-\end{lstlisting}
+\section{Problem class}
+The atoms compute the Jacobian of a single expression. A \texttt{Problem} ties together the full set
+of constraint expression trees and assembles their root Jacobians into the global problem data
+$[A\ b]$ and objective data $[c\ d]$.
 
-For the Jacobian, note that if $x$ has Jacobian $J_x \in \reals^{k \times n_{\mathrm{vars}}}$,
-then $y = Ax$ has Jacobian $J_y = A J_x$, a sparse matrix--matrix product.
-The sparsity pattern of $J_y$ depends only on the patterns of $A$ and $J_x$, so we compute it once
-during initialization and reuse it on every solve, filling only its numerical values during
-evaluation.
-\begin{lstlisting}[language=C]
-static void jacobian_init_impl(expr *node)
-{
-    matmul_expr *mnode = (matmul_expr *) node;
-    expr *x = node->right;
-
-    /* initialize child jacobian */
-    jacobian_init(x);
-
-    /* symbolic product A * J_x: allocates J_y and fills its sparsity pattern */
-    node->jacobian = csr_matmat_symbolic(mnode->coeff, x->jacobian);
-}
-
-static void eval_jacobian(expr *node)
-{
-    matmul_expr *mnode = (matmul_expr *) node;
-    expr *x = node->right;
-
-    /* evaluate child jacobian */
-    x->eval_jacobian(x);
-
-    /* numeric product A * J_x into the pre-allocated pattern */
-    csr_matmat_numeric(mnode->coeff, x->jacobian, node->jacobian);
-}
-\end{lstlisting}
-The split between \texttt{csr\_matmat\_symbolic} and \texttt{csr\_matmat\_numeric} is the heart of
-the two-phase design: the symbolic product is run once per problem family, while only the numeric
-product is repeated when parameters change.
-
-\section{Problem class and Parameter updates}
-The atoms of the previous section compute the Jacobian of a single expression; a \texttt{Problem}
-ties together the full set of constraint expression trees and assembles their root Jacobians into
-the global problem data $[A\ b]$ and objective data $[c\ d]$.
-
-At construction time, the problem performs the one-time \emph{initialization} phase. It walks each
-expression tree once, calling \texttt{jacobian\_init} bottom-up so that every node allocates its
-Jacobian and fixes its sparsity pattern. Because the pattern of an affine expression does not depend
-on the numerical values of its parameters, this walk is performed exactly once for a given problem
-family. The root Jacobians are then concatenated into the global CSR buffer for $A$ using the
-constraint row offsets of \S\ref{sec:matrix-stuffing}, which fixes the sparsity pattern of the
+At construction the problem runs the one-time \emph{initialization} phase. It walks each expression
+tree once, calling \texttt{jacobian\_init} bottom-up so every node allocates its Jacobian and fixes
+its pattern. The pattern of an affine expression is independent of its parameter values, so this
+walk runs once per problem family. The root Jacobians are concatenated into the global CSR buffer
+for $A$ using the constraint row offsets of \S\ref{sec:matrix-stuffing}, fixing the pattern of the
 problem data as a whole.
 
-\paragraph{Parameter updates.}
-A subsequent \emph{evaluation} phase runs on every solve. Given new parameter values $\theta$, the
-problem refreshes the leaf parameter values and calls \texttt{eval\_jacobian} bottom-up, filling in
-the numerical entries of each pre-allocated Jacobian without touching its sparsity pattern. The
-forward pass supplies the constant column $b$, and the updated root Jacobians are copied into the
-global buffer. A parameter update therefore costs only a forward pass and a numeric Jacobian
-evaluation---no allocation, no symbolic work, and no graph mutation.
+\section{Parameter updates}
+The \emph{evaluation} phase runs on every solve. Given new parameter values $\theta$, the problem
+refreshes the leaf parameters and calls \texttt{eval\_jacobian} bottom-up, filling the values of
+each pre-allocated Jacobian without touching its pattern. The forward pass supplies the constant
+column $b$, and the root Jacobians are copied into the global buffer. A parameter update therefore
+costs only a forward pass and a numeric Jacobian evaluation: no allocation, no symbolic work, no
+graph mutation.
 
-This is precisely the saving that distinguishes our method from the \texttt{ignore\_dpp} path
-of \S\ref{sec:canonicalization}. That path is general---it places no DPP restriction on how
-parameters enter---but it pays the full cost of re-deriving the symbolic structure on every change
-of $\theta$. Our two-phase design keeps the same generality while paying that symbolic cost only
-once, recovering the amortized re-solve speed of the cached DPP path without ever materializing the
+This is the saving over the \texttt{ignore\_dpp} path of \S\ref{sec:canonicalization}. That path is
+general --- it places no DPP restriction on how parameters enter --- but re-derives the symbolic
+structure on every change of $\theta$. Our two-phase design keeps that generality while paying the
+symbolic cost once, recovering the re-solve speed of the cached DPP path without materializing the
 three-dimensional parameter tensor.
 
 \section{CVXPY interface}
 \label{sec:problem-class-and-cvxpy-interface}
-To make the engine usable from CVXPY, we expose the \texttt{Problem} class and the atom constructors
-through a thin set of Python bindings. The engine then acts as a \emph{canonicalization backend}: it
-occupies the same place in the pipeline as \texttt{cvxcore} and the \texttt{SciPy} backend
-of \S\ref{sec:matrix-stuffing}, consuming the canonicalized affine expression trees produced by the
-reductions and returning the problem data $(A, b, c, d)$.
+We expose the \texttt{Problem} class and the atom constructors through a thin set of Python bindings.
+The engine then acts as a \emph{canonicalization backend}, occupying the place of \texttt{cvxcore}
+and the \texttt{SciPy} backend of \S\ref{sec:matrix-stuffing}: it consumes the canonicalized affine
+expression trees from the reductions and returns the problem data $(A, b, c, d)$.
 
-Concretely, CVXPY hands the backend its canonicalized expression trees; the binding mirrors each
-CVXPY atom onto its engine counterpart to build the C expression trees, runs the initialization
-phase once, and stores the resulting handle on the problem. On the first solve, and on every
-subsequent solve with new parameter values, CVXPY calls into the evaluation phase to obtain the
-updated data, which is then forwarded to the cone solver. Because the binding only forwards pointers
-to pre-allocated buffers, no problem data is copied between Python and C in the inner loop.
+CVXPY hands the backend its canonicalized expression trees. The binding mirrors each CVXPY atom onto
+its engine counterpart, builds the C expression trees, runs the initialization phase once, and
+stores the handle on the problem. On each solve with new parameter values, CVXPY calls the
+evaluation phase to obtain the updated data, which is forwarded to the cone solver. The binding
+forwards only pointers to pre-allocated buffers, so no problem data is copied between Python and C
+in the inner loop.
