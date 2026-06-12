@@ -6,101 +6,48 @@
 %%
 %% Intro of literature review
 %%
+\paragraph{History and background}
+Since the early days of linear programming (LP), practitioners have needed to translate
+mathematical formulations into data that solvers can process.
+At first, this meant encoding each coefficient of the problem matrices by hand, a tedious and
+error-prone process~\cite{fourer1978modern}.
+\emph{Matrix generators} emerged in the late 1960s to automate this task, computing the
+coefficients through explicit loops and writing them out in solver-readable formats like
+MPS~\cite{marceau1971matrix, ibm1976mpsx}.
 
-% Don't be too fixated on the history. But try to give a brief account of one.
-% I think we should focus on giving a history of AMLs and DSLs from the paper
-% by Fourer. I like the "structure of the chapter" paragraph, so try to
-% give a brief history before it that makes sense when it concludes with the paragraph.
+Still, a gap remained: modelers think in terms of sets, indices, and algebraic expressions,
+while procedural code constructs the coefficient matrices entry by entry.
+This mismatch made models difficult to verify, modify, and
+communicate \cite{fourer1983modeling}.
+\emph{Algebraic modeling languages} such as GAMS \cite{brooke1988gams} and
+AMPL \cite{fourer1990ampl} closed this gap by accepting problem descriptions that closely
+follow the math.
 
-Solving an optimization problem on a computer requires translating the mathematical formulation
-into a data format that solvers can process. For linear programs, this means constructing the
-constraint matrix $A$, the right-hand side vector $b$, and the objective coefficients $c$ that
-define the \emph{standard form},
-\begin{equation}
-\begin{array}{ll}
-\mbox{minimize} & c^T x \\
-\mbox{subject to} & Ax \leq b, \\
-& x \geq 0.
-\end{array}
-\end{equation}
-
-\paragraph{Manual encoding}
-In the early days of linear programming, analysts manually computed and encoded each coefficient
-onto punch cards. This process was tedious, error-prone and became impractical as linear
-programming found more and more applications in large-scale industrial
-problems~\cite{fourer1978modern}.
-
-\paragraph{MPS format}
-IBM's Mathematical Programming System (MPS) file format, developed in the 1960s, established a
-standardized file format for representing linear programs \cite{ibm1976mpsx}. The MPS format uses
-fixed-width fields designed for 80-column punch cards, with sections for rows, columns, and
-coefficients.
-William Orchard-Hays \cite{orchard-hays1984history} provides a comprehensive history of these
-early mathematical programming systems, tracing their development from 1952 at RAND Corporation
-through their widespread adoption on mainframe computers in the late 1960s.
-
-\paragraph{Matrix generators}
-To automate the creation of MPS files, \emph{matrix generators} emerged in the late 1960s; they
-are procedural programs that compute the problem coefficients through explicit loops and output
-the results in MPS format~\cite{marceau1971matrix}. Commercial systems such as
-\texttt{MaGen} \cite{haverly1977magen}, \texttt{GAMMA} \cite{sperry1977gamma},
-and \texttt{DATAFORM} \cite{ketron1975dataform}
-were among the first matrix generators which were used in various domains.
-
-\paragraph{A modern approach}
-Modelers naturally think in terms of sets, indices, and algebraic expressions, not in terms of
-individual matrix entries. Matrix generators simplified the encoding process but still required
-modelers to translate their mathematical formulations into procedural code that explicitly
-constructs the coefficient matrices. This suggests that the gap between the modeler's
-representation of the problem and the solver's required format hadn't been resolved
-yet \cite{fourer1978modern}.
-
-\paragraph{Algebraic modeling languages}
-In the late 1970s, \emph{algebraic modeling languages} emerged as formal languages designed to
-accept problem descriptions that closely mirror standard mathematical
-notation \cite{fourer1983modeling}. By working directly with the modeler's representation, these
-languages simplify verification, modification, and communication.
-In the late 1980s and early 1990s, commercial algebraic modeling
-systems such as GAMS \cite{brooke1988gams}, AIMMS \cite{bisschop2006aimms} and
-AMPL \cite{fourer1990ampl} became widely adopted in both academia and industry (and they are still
-widely used today).
-
-\paragraph{Embedded modeling languages}
-In the late 2000s and early 2010s, modeling languages emerged that are embedded in general-purpose
-programming languages (in contrast with standalone systems like AMPL and GAMS). Examples include
-YALMIP \cite{lofberg2004yalmip} in MATLAB, Pyomo \cite{hart2011pyomo, bynum2021pyomo} in Python,
-JuMP \cite{dunning2017jump} in Julia, and CasADi \cite{andersson2019} in C++.
-
-\paragraph{Disciplined convex programming}
-In addition, there are domain specific languages that implement \emph{disciplined convex
-programming} (DCP), a set of composition rules that can automatically verify
-convexity \cite{grant2004disciplined, grant2006disciplined}.
-These include CVX \cite{cvx} in MATLAB, CVXPY \cite{diamond2016cvxpy, agrawal2018rewriting}
-in Python, and Convex.jl~\cite{udell2014convex} in Julia.
+More recently, modeling languages embedded in general-purpose programming languages have
+gained popularity, such as Pyomo \cite{bynum2021pyomo} in Python, JuMP \cite{dunning2017jump}
+in Julia, and CasADi \cite{andersson2019} in C++.
+Other domain-specific modeling languages specialized for convex optimization \cite{boyd2004convex}
+are built on \emph{disciplined convex programming} (DCP), a set of composition rules under which
+the convexity of a problem can be verified
+automatically \cite{grant2004disciplined, grant2006disciplined}.
+These DCP-based languages include CVX \cite{cvx} in MATLAB,
+CVXPY \cite{diamond2016cvxpy} in Python, and Convex.jl \cite{udell2014convex} in Julia.
 
 \paragraph{Structure of the chapter}
-The sections on canonicalization and matrix stuffing will be about CVXPY, the Python implementation
-of DCP. The reasons are twofold: it is the most updated implementation which still has an active
-community and the work of this thesis aims to be integrated in CVXPY.
-In section \ref{sec:coefficient-extraction}, we present the embedded modeling language JuMP and one of
-the original algebraic languages AMPL. In doing so, we also compare the differences with approaches
-taken in CVXPY.
-Both modeling languages treat the conic problem data as a form a sparse Jacobian computation so
-we review approaches on computing derivatives in \ref{sec:computing-derivatives}. % TODO verify if this is true
-Finally, all modeling languages use sparse matrix formats to store the problem data matrices, they
-are incredibly useful and we review them in \ref{sec:sparse-matrices}.
-%The aim of the literature chapter is to be read chronologically, however, certain sections will
-%sometimes cross-reference others in a non-chronological way.
+The first two sections focus on CVXPY: it is the most actively maintained DCP implementation,
+and the work of this thesis aims to be integrated into it.
+\S\ref{sec:canonicalization} covers the frontend of canonicalization, which rewrites the
+user's functional form into a functional conic form of purely affine and quadratic expressions.
+\S\ref{sec:matrix-stuffing} covers its backend, \emph{matrix stuffing}, which assembles
+the problem data from this functional conic form.
 
-% The sections on matrix stuffing and canonicalization should be read sequentially.
-% as they are closely related. However, they are still different sections
-% because the task of forming the parameter map can be abstracted away from convex/conic
-% optimization and all that stuff.
-% It is just instrumental to know what kind of transformations patterns happen before
-% getting to forming the problem data. In some sense, if someone were to canonicalize
-% a problem by hand (symbolically), they could understand the matrix stuffing section
-% by itself. I am not sure if this snippet is worth considering to add in,
-% but it is something I thought of which justify this separation of the two sections.
+\S\ref{sec:coefficient-extraction} presents the embedded modeling languages JuMP and
+CasADi as well as the algebraic language AMPL, and compares how each one extracts the
+problem data coefficients with the approach taken in CVXPY.
+Since these languages treat coefficient extraction as a sparse Jacobian computation,
+\S\ref{sec:computing-derivatives} reviews methods for computing sparse derivatives.
+Finally, \S\ref{sec:sparse-matrices} covers the sparse matrix formats used to store the
+problem data, along with some useful algorithms for manipulating them.
 
 %%
 %%  CANONICALIZATION
@@ -153,52 +100,25 @@ $i \in \{1, \dots, k\}$ the following holds:
 \end{itemize}
 The same results hold for concave functions by swapping convex and concave.
 Affine expressions require $h$ and all of its arguments to be affine \cite{grant2004disciplined}.
-% maybe can say a word about representation of functions (xqrt{x^2} vs. |x|)
-% and also differentiability and how it is handled?
-% something like although the standard form in boyd requires all functions to be twice differentiable
-% we don't need to make that assumption here.. since \ref{epigraph} handles it naturally.
-
-\paragraph{DPP composition rules.}
-\emph{Disciplined parameterized programming} (DPP) is an extension of DCP which guarantees
-an affine parameter dependence in the problem data. A problem is \emph{DPP-compliant} if it
-satisfies the DPP composition rules. The rules essentially disallow products of expressions
-involving parameters and can be referred to in \cite{agrawal2019dpp}.
-DPP-compliance is what makes the parameter maps of \S\ref{sec:matrix-stuffing} well defined:
-because the problem data depend affinely on $\theta$, the dependence can be captured once as the
-tensor $\mathcal R$ and reused across solves.
-When a problem violates the DPP rules---or when the user opts out by passing \texttt{ignore\_dpp=True}---CVXPY
-abandons this caching and instead treats parameters as ordinary constants, re-canonicalizing the
-problem from scratch on every solve.
 
 \paragraph{Solver standard form.}
-After a problem is verified to be DPP-compliant, CVXPY will convert the functional form
-problem to a target solver's standard form.
-CVXPY supports solvers for quadratic programming
-% maybe show the standard form for it?
- (such as OSQP and HiGHS), conic programming
-(such as ECOS), and conic quadratic programming (such as Mosek and Clarabel).
-% although we don't talk about quadratic objectives in this thesis, we want to note
-% the following: it is not a major generalization (but algorithmically it can be tremendously
-% better). And there are ways to go about supporting this (through computing the hessian),
-% and maybe I can start pointing to future work.
-The conic quadratic form is the most general of these, but is not a major generalization of the
-cone form: any conic quadratic program can be reduced to an equivalent cone program by
-linearizing the quadratic objective via the second-order cone, at the cost of one extra
-variable and one extra constraint.
-We will focus on the conic form throughout the thesis.
+After a problem is verified to be DCP-compliant, CVXPY's remaining task is to convert
+the functional form to the conic standard form.
+CVXPY's chosen standard form is the conic quadratic form
+% insert here.
+which generalizes interfaces to both quadratic programming (QP) solvers such as OSQP or QPALM
+and conic programming solvers such as ECOS and MOSEK.
 
 \paragraph{Reductions.}
-Canonicalization converts a DPP-compliant model into a cone program via a sequence
-of reductions \cite{agrawal2018rewriting}.
+The canonicalization process from functional to solver form is done via
+a sequence of \emph{reductions} \cite{agrawal2018rewriting}.
 
-\paragraph{Maximization problems.}
 A first example of a reduction is one which takes a maximization problem
 and converts it into a minimization problem by flipping the sign of the objective.
 The reverse transformation simply undoes the sign flipping and has no effect on the
 actual solution of the problem.
 In CVXPY, this reduction is conveniently called \texttt{FlipObjective}.
 
-\paragraph{Variable bounds.}
 A second example is variable attributes such as numerical bounds or \texttt{nonneg}.
 During canonicalization, CVXPY will also verify if the target solver supports bounds
 natively. If it does, CVXPY can pass them directly to solvers, otherwise they will
@@ -210,28 +130,17 @@ In CVXPY, this reduction is part of a greater set of general attribute constrain
 and is called \texttt{CvxAttr2Constr}.
 
 \paragraph{Epigraph transformation.}
-% TODO revisit this and maybe rewrite it entirely.
 Each convex atom has a \textit{canonicalization} that replaces it with an
 epigraph variable (for concave atoms it is a \emph{hypograph} variable)
 and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
 $t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
-$\theta$, and $\mathcal K$ is a convex cone.
-This process was presented initially in \cite{grant2008graph}.
+$\theta$, and $\mathcal K$ is a convex cone \cite{grant2008graph}.
 One illustrative canonicalization replaces the \texttt{norm2} expressions in the objective with
 a new epigraph variable $t_i$ and imposes the epigraph constraint known as a \emph{second-order}
 cone constraint
 \begin{equation}
 (t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
 \end{equation}
-
-\paragraph{Nondifferentiability.}
-A subtle benefit of the epigraph transformation is that it removes any need for the user's atoms
-to be differentiable. The textbook conic standard form \cite{boyd2004convex} is often stated for
-twice-differentiable functions, but canonicalization never differentiates an atom: each atom is
-simply replaced by its epigraph variable and a cone constraint. The absolute value $|x|$ is the
-canonical example---it is nondifferentiable at the origin, yet its epigraph
-$\{(x, t) : |x| \le t\}$ is exactly the pair of linear inequalities $-t \le x \le t$.
-Convexity, not smoothness, is what canonicalization requires.
 
 \paragraph{Example of canonicalization.}
 To show a concrete example of canonicalization, we consider a simple fitting with regularization
@@ -292,11 +201,12 @@ is shown in \ref{fig:dcp-syntax-tree}.
 \end{tikzpicture}
 \caption{Abstract syntax tree of constraints}
 \end{subfigure}
-\caption{Users write functions in Python code that are restricted to be from the modeling language.
+\caption{Users write functions in Python code that are restricted to the atom library.
 Variables are labeled with a circle, and parameters with a square.}
 \label{fig:dcp-syntax-tree}
 \end{figure}
 
+% here I should maybe introduce a "functional conic form"
 \paragraph{Conic form expression tree.}
 After applying the reductions, the problem has been \emph{canonicalized} to
 \begin{equation}\label{eq:graph}
@@ -373,16 +283,62 @@ as complementary references for epigraph reformulations and general modeling pri
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
-In this section, we explain how to form the parameter maps from a set of affine expression
-trees. In doing so, we also cover fundamental data structures and design choices
-of these backends which can later be contrasted with the method proposed
-in \ref{sec:Theme1}. Historically, the implementations of matrix stuffing
-have been referred to as \emph{canonicalization backends},
-and there has been many versions over the years.
+In this section, we explain how CVXPY forms the problem data from a set of affine expression
+trees.
+We first present the two compilation paths offered by CVXPY, which differ in how parameters
+are treated, and then cover fundamental data structures and design choices of the
+implementations, which can later be contrasted with the method proposed in \ref{sec:Theme1}.
+Historically, the implementations of matrix stuffing have been referred to as
+\emph{canonicalization backends}, and there has been many versions over the years.
 We will focus on \texttt{cvxcore}, one of the original implementations in \texttt{C++},
 and \texttt{SciPy}, an improved Python version which relies on the sparse matrix
 library with the same name.
 
+% VERIFICATION NOTES (claude, 2026-06-11) -- all file:line refs are in the local clone at
+% ~/Documents/cvxpy (commit e6c2a125e); same paths on github.com/cvxpy/cvxpy.
+% - Path selection: cvxpy/reductions/solvers/solving_chain.py:209-219 --
+%     if ignore_dpp or not problem.is_dpp(dpp_context):
+%         if ignore_dpp: reductions = [EvalParams()] + reductions
+%         elif not enforce_dpp: warnings.warn(...); reductions = [EvalParams()] + reductions
+%   i.e. ignore_dpp=True and the non-DPP fallback insert the same EvalParams reduction.
+% - EvalParams: cvxpy/reductions/eval_params.py:24 -- "Replaces symbolic parameters with
+%   their constant values" (walks objective/constraints, swaps Parameter -> Constant).
+% - DPP caching: cvxpy/problems/problem.py:656-712 -- cached ParamConeProg takes a "fast
+%   path, bypasses application of reductions"; safe_to_cache is False if any EvalParams is in
+%   the chain, so the ignore_dpp path re-runs the full reduction chain on every solve.
+% - Parameter map storage: cvxpy/reductions/dcp2cone/cone_matrix_stuffing.py:123-133 --
+%   ParamConeProg docstring: "The constant offsets d and b are the last column of c and A";
+%   A is a 2D sparse matrix with one row per entry of [A b] and one column per entry of
+%   (theta, 1). Application: cvxpy/cvxcore/python/canonInterface.py:184-251
+%   (get_matrix_from_tensor) -- literally `problem_data_tensor @ param_vec`, then a reshape
+%   and a split of the last column into (A, b).
+% - "may speed up compilation": problem.py:451-453 (solve docstring for ignore_dpp).
+\paragraph{Two compilation paths.}
+When a problem contains parameters, CVXPY offers two options.
+If the problem complies with the disciplined parameterized programming (DPP) ruleset, a mild
+restriction on how parameters may enter expressions, CVXPY compiles the problem once and
+caches the parameter maps of \eqref{eq:param-maps}: the constraint map $\mathcal R$ is stored
+as a sparse matrix with one row per entry of $[A \;\, b]$ and one column per entry of
+$\tilde\theta$, so that re-solving for new parameter values only requires a matrix-vector
+product with $\tilde\theta$ followed by a reshape \cite{agrawal2019dpp}.
+Subsequent solves bypass the reduction chain entirely and reuse the cached maps.
+The second option, selected by passing \texttt{ignore\_dpp=True} (and also used as a fallback
+when a parameterized problem is not DPP-compliant), prepends a reduction called
+\texttt{EvalParams} which replaces every parameter node in the expression trees by a constant
+holding its current value.
+Canonicalization then proceeds on a parameter-free problem, but the entire reduction chain
+must be re-run every time a parameter changes.
+This general path, which trades fast re-solves for unrestricted parameter expressions and a
+cheaper first compilation, is the focus of this thesis (\ref{sec:Theme1}).
+
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - The three indices: cvxpy/lin_ops/canon_backend.py:34-66, TensorRepresentation dataclass --
+%   "Sparse representation of a 3D Tensor. Semantically similar to COO format, with one extra
+%   dimension. Here, 'row' is axis 0, 'col' axis 1, and 'parameter_offset' axis 2." Fields:
+%   data, row, col, parameter_offset (four flat arrays).
+% - ignore_dpp degenerate case: after EvalParams there are no parameter nodes, so the only
+%   slice left is the constant offset (param_size_plus_one == 1); the stuffed output is the
+%   numeric [A b] directly.
 \paragraph{\texttt{Tensor} object.}
 The word \emph{tensor} is borrowed loosely here; we do not require the multilinear machinery
 of physics or differential geometry. We consider a \texttt{Tensor} as a three-dimensional
@@ -390,63 +346,39 @@ array which represents a sparse linear mapping from a parameter vector
 to the constraint matrix (as shown in \ref{eq:param-maps}).
 The three indices of a \texttt{Tensor} are rows for constraints,
 columns for variables, and parameter offsets for parameters.
+Under the \texttt{ignore\_dpp} path the parameter dimension is trivial: since all parameters
+have been evaluated to constants, the tensor has a single slice corresponding to the constant
+entry of $\tilde\theta$, and matrix stuffing reduces to forming the numerical data
+$[A \;\, b]$ directly.
 
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - Tree representation: cvxpy/lin_ops/lin_op.py:24-113 -- LinOp nodes carry (type, shape,
+%   args, data); 26 operation types are defined as constants (MUL, RMUL, MUL_ELEM, DIV, SUM,
+%   NEG, INDEX, TRANSPOSE, SUM_ENTRIES, TRACE, RESHAPE, DIAG_VEC, DIAG_MAT, UPPER_TRI, CONV,
+%   KRON_R, KRON_L, HSTACK, VSTACK, PROMOTE, + leaf types VARIABLE/consts/PARAM/NO_OP).
+% - Leaves: canon_backend.py:148-165 (process_constraint) -- "variable" returns an identity
+%   tensor (get_variable_tensor, line 803: sp.eye(n) keyed by the variable id), constants
+%   return a tensor in the constant column, "param" returns slices per parameter entry.
+% - Internal nodes: canon_backend.py:166-193 -- func = self.get_func(lin_op.type); for each
+%   child: arg_coeff = self.process_constraint(arg, ...); arg_res = func(lin_op, arg_coeff);
+%   res += arg_res. The dispatch table get_func (lines 247-281) maps ~20 type names to one
+%   method each (sum, mul, neg, index, transpose, hstack, vstack, ...).
 \paragraph{Recursive walk.}
 Fundamentally, matrix stuffing is relatively simple;
 it requires a single depth-first walk of a set of affine expression trees,
 where each tree represents a potentially vector-valued constraint.
+At the leaves of a tree, a variable maps to an identity matrix placed in the columns assigned
+to that variable, a constant maps to entries in the constant column, and a parameter maps to
+entries in its slices of the parameter dimension.
+Every internal node is one of roughly twenty-five linear operations (addition, negation,
+indexing, transpose, stacking, matrix multiplication, and so on), and each operation
+implements a recursive method which takes the already-stuffed \texttt{Tensor}s of its
+children --- arbitrary in number and sparsity --- applies its linear operation to each of
+them, and accumulates the results by addition.
 Since the process is recursive, every node of an expression tree
 will have an equivalent \texttt{Tensor}, and the final output
 (the \texttt{Tensor} at the root node)
 will give the constraint parameter map $\mathcal R$.
-
-\paragraph{Local vs. Global problem data.}
-All modeling languages for optimization must at least do one thing correctly:
-abstract away the task of placing \emph{local} tensors (or its equivalent)
-at the expression level (where typically a single variable appears)
-towards a \emph{global} tensor at the problem level
-(where many more variables could be present).
-% this might not be very clear, but it is a good start I think.
-In fact, once we are able to compute the local tensor for all expressions
-of interest, getting the global tensor simply comes down to combining the local
-tensors and applying appropriate row and column \emph{offsets}.
-
-\paragraph{Column and parameter offsets.}
-Every variable is associated with an offset which indicates its index
-in the global variable vector. In expressions which involve only a subset
-of variables, we must make use of these offsets to correctly place
-the problem data.
-We also clarify that a single variable can have multiple entries or values,
-therefore when we say number of variables, we refer to the number of variable
-objects not the number of entries of the variable (which we refer to as its \emph{size}).
-% can also mention that otherwise we call this the size of the variable.
-% TODO rewrite this last sentence or remove since it could be obvious.
-
-\paragraph{Row offsets.}
-When an optimization model contains multiple constraints (this refers to constraint
-objects), we must also be able to correctly place the problem data.
-The offsets for constraints are used to keep track of the \emph{ordering} of the constraints.
-They are also used to correctly place the problem data but on a different axis
-than variables.
-% row offsets are not strictly necessary as long as this ordering of constraints is consistent.
-% since we can simply have a counter which keeps track of the cumulative size of the constraints
-% encountered so far.
-% this can be contrasted to variables where multiple variables can appear in a single expression.
-% but you cannot have multiple constraints in a single expression because an expression must
-% only be associated to one constraint.
-
-\paragraph{\texttt{TensorView} object.}
-The fundamental data structure in the backend is a so-called \texttt{TensorView}, a nested mapping
-that indexes a tensor by both variable and parameter offsets at once. This lets the recursive walk
-accumulate, for each node, the problem-data contribution of every (variable, parameter) pair it
-touches, which is exactly what the local-to-global assembly requires. We do not dwell on its
-internals here, since the method we propose in \ref{sec:Theme1} dispenses with this representation
-entirely.
-
-\paragraph{Tensor Representation.}
-% Fundamentally matrices are limited to two dimensions.
-% Here we discuss one choice of representation which
-% stacks slices of the matrices and forms a strided long matrix.
 
 \begin{figure}
 \begin{subfigure}{\textwidth}
@@ -539,10 +471,9 @@ entirely.
 \caption{Matrix Stuffing tree}
 \end{center}
 \end{subfigure}
-\caption{Matrix stuffing generates a 3D tensor for the constraint map.
-To depict these 3D tensors here, we leave the parameter values symbolic.
-Contrast this Figure with Fig.~\ref{fig:conic-form-tree}, which shows the
-operations being applied at each node.}
+\caption{Matrix stuffing of problem \eqref{eq:example} by a recursive walk of the conic-form
+expression trees of \ref{fig:conic-form-tree}: each node's matrix is obtained by applying a
+linear operation to the matrices of its children.}
 \label{fig:matrix-stuffing}
 \end{figure}
 
@@ -563,102 +494,215 @@ Q =
 \begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
 = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
-\caption{Parameter map $Q$ of the augmented objective $[c;\, d]$.
-The first $n$ rows index the entries of the gradient $c$ (one per post-canonicalization
-variable: $t_1$, $t_2$, and the $n$-block $x$); the final row indexes the constant offset
-$d$ (zero here, since the canonicalized objective has no offset). Columns
-index the global augmented parameter vector $\tilde\theta = (g,\, \mu,\, 1)$. The $g$
-columns are zero because the objective does not depend on $g$, but they are part of
-$\tilde\theta$ globally and the analogous map for the constraints is non-zero in those
-columns. Multiplying $Q$ by $\tilde\theta$ recovers $[c;\, d] = [1,\, \mu,\, 0,\, 0]^T$;
-the leading three entries match the $c$ vector shown in Fig.~\ref{fig:matrix-stuffing}.}
+\caption{The objective parameter map $Q$ of problem \eqref{eq:example}, formed and cached by
+the DPP path: multiplying $Q$ with the extended parameter vector $\tilde\theta$ recovers the
+objective data $(c, d)$ for the current parameter values.}
 % simplify this and maybe show $g$ as one entry in the matrix
 \label{fig:param-map-c}
 \end{figure}
 
-\begin{figure}[ht]
-\centering
-
-\begin{subfigure}{\textwidth}
-\centering
-$
-\mathcal{R}[:,:,g_i] =
-\begin{bmatrix}
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & -e_i      \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-\end{bmatrix}
-\qquad
-\mathcal{R}[:,:,\mu] =
-\begin{bmatrix}
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & \plotzero & \plotzero \\
-\end{bmatrix}
-$
-\caption{Parameter slices. Each $\mathcal{R}[:,:,g_i]$ ($i=1,\ldots,m$) places a single $-1$ in
-the $b$ column at the $i$-th row of the $Fx-g$ block (denoted $-e_i$). $\mathcal{R}[:,:,\mu]=0$
-because $\mu$ does not appear in any constraint.}
-\end{subfigure}
-
-\bigskip
-
-\begin{subfigure}{\textwidth}
-\centering
-$
-\mathcal{R}[:,:,1] =
-\begin{bmatrix}
-  \plotzero & \plotzero & -I        & \plotzero \\
-  -1        & \plotzero & \plotzero & \plotzero \\
-  \plotzero & \plotzero & -F        & \plotzero \\
-  \plotzero & -1        & \plotzero & \plotzero \\
-  \plotzero & \plotzero & -I        & \plotzero \\
-\end{bmatrix}
-$
-\caption{Constant slice. Holds the fixed structure: $-I$ blocks for the variable bound
-and SOC$_2$ rows, $-1$'s for the epigraph variables, and $-F$ for the $Fx$ block.}
-\end{subfigure}
-
-\caption{Parameter map for $[A\,b]$ in the running example. The 3D tensor $R$ has one
-2D slice per entry of $\tilde\theta=(g_1,\ldots,g_m,\mu,1)$. Block-row order matches
-Fig.~\ref{fig:matrix-stuffing}(b): $x\in\reals_+^n$; $t_1$ row of SOC$_1$; $Fx-g$ block
-of SOC$_1$; $t_2$ row of SOC$_2$; $x$ block of SOC$_2$. Block-columns are the
-canonical-form variables $(t_1,\,t_2,\,x)$ followed by the $b$ column. Summing
-$g_i \mathcal{R}[:,:,g_i]$ over $i$ generates the $-g$ entry in $b$ shown at the root of
-Fig.~\ref{fig:matrix-stuffing}(b); the $\mu$ slice contributes nothing; the constant
-slice contributes everything else.}
-\label{fig:param-map-Ab}
-\end{figure}
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - Class hierarchy: cvxpy/lin_ops/canon_backend.py -- CanonBackend (abstract, line 69) ->
+%   PythonCanonBackend -> ScipyCanonBackend; plus RustCanonBackend. cvxcore lives in
+%   cvxpy/cvxcore/src/ (LinOp.hpp mirrors the Python LinOp: type_, shape_, args_, data;
+%   ProblemData.hpp stores TensorV/TensorI/TensorJ -- triplet arrays keyed by parameter id).
+% - cvxcore deprecation: cvxpy/cvxcore/README.md -- "cvxcore is officially deprecated and may
+%   undergo API-breaking changes without notice."
+% - SciPy backend storage: get_variable_tensor (canon_backend.py:803) returns
+%   {variable_id: {CONSTANT_ID: [sp.eye(n, format="csr")]}} -- nested dicts of CSR slices;
+%   TensorRepresentation (lines 34-66) is the COO-like form with a parameter_offset axis.
+% - Assembly: build_matrix (canon_backend.py:132-146) walks each constraint with a running
+%   row_offset, concatenates the per-constraint TensorRepresentations, and reshape_tensors
+%   (lines 552-557) emits one CSC matrix of shape (rows*(n+1), p+1); canonInterface then
+%   splits the last column: A = M[:, :-1], b = M[:, -1] (canonInterface.py:184-251).
+% - Backend selection: cvxpy/settings.py:180 DEFAULT_CANON_BACKEND = CPP_CANON_BACKEND;
+%   overridable per solve via the canon_backend argument or the CVXPY_DEFAULT_CANON_BACKEND
+%   environment variable (canonInterface.py:277-320).
+% - Re-checked against current master (2026-06-11): CPP is still the default (settings.py:211,
+%   except on emscripten where SCIPY is used) and the cvxcore README still says "officially
+%   deprecated". Master also has a newer COO backend ("3D COO sparse tensor backend: O(nnz)
+%   operations for large parameters") not mentioned in the prose -- the local clone
+%   (e6c2a125e, 2023-07-09) predates it.
+\paragraph{Canonicalization backends.}
+In \texttt{cvxcore}, the expression trees built in Python are first mirrored into equivalent
+C++ objects, and the recursive walk is performed in C++, where each node's \texttt{Tensor} is
+stored as triplet arrays (the coordinate format of \ref{sec:sparse-matrices}) for every
+parameter slice.
+The \texttt{SciPy} backend is a more recent pure Python implementation of the same walk; it
+stores each node's \texttt{Tensor} as a dictionary mapping variables to lists of sparse
+matrix slices, one per parameter entry.
+In both backends, each constraint tree is processed independently with a running row offset,
+and the per-constraint results are concatenated into a single sparse matrix whose rows index
+the entries of $[A \;\, b]$ and whose columns index the entries of $\tilde\theta$ --- the
+flattened constraint parameter map of \eqref{eq:param-maps}, which degenerates to the single
+column $[A \;\, b]$ on the \texttt{ignore\_dpp} path.
+The backend can be selected on a per-solve basis; \texttt{cvxcore} remains the default at the
+time of writing despite being officially deprecated in favor of the Python implementations.
+% NOTE: the handling of quadratic objectives (the P tensor in ParamConeProg/ParamQuadProg) is
+% deliberately left out here, to be covered later.
 
 \paragraph{References.}
-% mention cvxpy source code, the cvxcore source, and the python backends.
+The canonicalization backends are largely undocumented in the literature; the CVXPY and
+\texttt{cvxcore} source code are the primary references for this section, together with the
+rewriting system paper \cite{agrawal2018rewriting}.
+The DPP ruleset and the cached parameter maps were introduced in the paper on differentiable
+convex optimization layers \cite{agrawal2019dpp}.
 % unironically can mention claude which was used to understand and explain the previous codebase.
+
 %%
 %%  COEFFICIENT EXTRACTION
 %%
 \section{Coefficient extraction}
 \label{sec:coefficient-extraction}
 
+Matrix stuffing is CVXPY's particular answer to a task that every modeling language must
+perform: converting a symbolic model into the numerical problem data consumed by a solver.
+In this section, we review how three other modeling systems approach this \emph{coefficient
+extraction} task and contrast their designs with CVXPY.
+
 \paragraph{\texttt{JuMP}.}
-JuMP is an algebraic modeling language embedded in Julia, originally developed in 2012 by
-Iain Dunning, Joey Huchette, and Miles Lubin at the MIT Operations Research
-Center \cite{dunning2017jump, lubin2023jump10recent}.
-It is now being developed and maintained full-time by Oscar Dowson.
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - History: first commit 2012-10-10 by Dunning
+%   (github.com/jump-dev/JuMP.jl/commit/688b732c), but the paper says "Following JuMP's first
+%   release in 2013" (arxiv.org/abs/1508.01982, sec 1); Huchette's first commit is 2013.
+%   -> reworded to "development started in 2012 ... first released in 2013".
+% - Dowson: governance page (jump.dev/pages/governance/) lists him as core contributor +
+%   steering committee; no public source says "full-time" -> softened the claim.
+% - No DCP check: jump.dev/JuMP.jl/stable/should_i_use/ states "JuMP does not support
+%   disciplined convex programming (DCP)"; paper sec 5 contrasts with CVX's derivative-free
+%   conic approach.
+% - Term lists: GenericAffExpr{C,V} holds constant::C + terms::OrderedDict{V,C},
+%   github.com/jump-dev/JuMP.jl/blob/a57cb499/src/aff_expr.jl#L139-L142; macros rewrite via
+%   MutableArithmetics in src/macros.jl (_rewrite_expression).
+% - Blowup: paper sec 3 -- naive overloading of a d-term *quadratic* sum costs O(d^4) vs
+%   O(d^2) for the macro-generated loop; for purely affine sums it is O(d^2) vs O(d).
+JuMP is an algebraic modeling language embedded in Julia whose development started in 2012 at
+the MIT Operations Research Center by Iain Dunning, Joey Huchette, and Miles Lubin, with a
+first public release in 2013 \cite{dunning2017jump, lubin2023jump10recent}.
+It is now maintained by a team of core contributors, with Oscar Dowson as its most active
+maintainer.
+Unlike CVXPY, JuMP performs no convexity verification; it belongs to the derivative-based
+modeling paradigm, where the user is responsible for the properties of the formulation.
+Coefficient extraction in JuMP is \emph{eager}: the \texttt{@constraint} and
+\texttt{@objective} macros rewrite the user's code at parse time into loops that build each
+affine expression as a sparse list of terms (an ordered dictionary mapping variables to
+coefficients).
+This macro rewriting avoids the asymptotic blowup of naive operator overloading, where summing
+$d$ terms with repeated calls to \texttt{+} copies partial sums of growing size.
+As a consequence, the problem data is scalarized one constraint at a time while the model is
+being built, whereas CVXPY retains whole expression trees until solve time.
 
-\paragraph{\texttt{MathOptInterface}}
-\paragraph{\texttt{CasADi}.}
-
-\cite{andersson2019}
+\paragraph{\texttt{MathOptInterface}.}
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - Standard form: jump.dev/MathOptInterface.jl/stable/manual/standard_form/ and paper
+%   abstract (arxiv.org/abs/2002.03447): "combining pre-defined functions and sets".
+% - Advertised pairs: supports_constraint(model, ::Type{F}, ::Type{S}) in src/constraints.jl;
+%   paper sec 3 ("solvers can advertise which constraints they support") and its YALMIP
+%   critique in sec 2.1 (single form forces extra slack variables).
+% - Bridges: paper sec 5.1 -- "a shortest path problem through a directed hyper-graph";
+%   implemented with Bellman-Ford in src/Bridges/graph.jl and lazy_bridge_optimizer.jl
+%   ("solves a shortest hyper-path problem") -> changed "graph" to "hypergraph".
+% - Just-in-time: paper sec 5.1 -- "we compute C(n) in a just-in-time fashion whenever the
+%   first constraint of type n is added to the model".
+% - CSC at copy time: Utilities.MatrixOfConstraints + MutableSparseMatrixCSC
+%   (colptr/rowval/nzval); e.g. SCS.jl wrapper hands A.nzval/A.rowval/A.colptr to the C
+%   solver (github.com/jump-dev/SCS.jl, src/MOI_wrapper/MOI_wrapper.jl).
+JuMP communicates with solvers through MathOptInterface (MOI), an abstraction layer whose
+standard form is to minimize $f_0(x)$ subject to constraints $f_i(x) \in S_i$, where the
+functions $f_i$ and sets $S_i$ are drawn from predefined lists \cite{legat2020mathoptinterface}.
+There is deliberately no single canonical form: each solver advertises the function-set pairs
+it supports natively, and unsupported constraints are rewritten by \emph{bridges}, local
+transformations selected per constraint type by a shortest-path search over a hypergraph of
+possible reformulations.
+Bridges play the same role as CVXPY's reductions, but they are chosen just-in-time as
+constraints are added to the model, rather than applied as a global pass over the whole problem.
+The constraint matrix only materializes inside the solver wrapper: when the model is copied to
+the solver, the affine terms of all constraints are stuffed into a single sparse matrix in
+compressed sparse column (CSC) format.
 
 \paragraph{\texttt{AMPL}.}
+% VERIFICATION NOTES (claude, 2026-06-11):
+% - Affiliations: 1990 paper title page (ampl.com/_archive/first-website/REFS/amplmod.pdf)
+%   lists Gay & Kernighan at AT&T Bell Labs but Fourer at Northwestern -> fixed wording.
+% - Matrix generators: 1990 paper sec 1 -- "This arrangement is often costly and error-prone".
+% - Translator/presolve/.nl: "Hooking Your Solver to AMPL" (ampl.com, Gay 1997) sec 1 --
+%   "AMPL's solve command causes AMPL to instantiate the current problem"; "Before invoking a
+%   solver, AMPL normally writes a file named stub.nl"; presolve discussed in sec on
+%   objconst/fixed variables.
+% - Linear/nonlinear split & Polish prefix: "Writing .nl Files" (ampl.github.io/nlwrite.pdf)
+%   secs 3-4 -- "Expression graphs are expressed in Polish prefix notation"; C segment holds
+%   the nonlinear part, J segment the linear part, k segment the cumulative Jacobian column
+%   counts.
+% - CSC is opt-in: Hooking, "Columnwise treatment" -- the reader fills A_vals/A_rownos/
+%   A_colstarts only if the solver allocates A_vals; default is rowwise cgrad linked lists
+%   -> added "if the solver requests it".
+% - Reverse AD: Gay 1991 (ampl.com/REFS/autodiff.pdf) sec 2 -- "Backward AD is particularly
+%   well suited to computing the first derivatives" -> added gay1991automatic citation.
+AMPL is one of the original standalone algebraic modeling languages, developed by Robert
+Fourer, David Gay, and Brian Kernighan at Bell Laboratories and Northwestern
+University \cite{fourer1990ampl} to replace the error-prone matrix generators that
+practitioners previously wrote by hand \cite{fourer1983modeling}.
+An AMPL model is purely symbolic, with variables and constraints indexed over sets; the AMPL
+translator instantiates the model with data, applies a presolve, and writes the problem
+instance to a \texttt{.nl} file that is read by the solver \cite{gay2005writing}.
+The file splits each constraint into a linear part, stored as sparse coefficient lists along
+with the Jacobian sparsity pattern, and a nonlinear part, stored as an expression graph in
+Polish prefix notation.
+Inside the solver process, the AMPL Solver Library (ASL) reads the file, exposes the linear
+coefficients (in CSC format if the solver requests it), and evaluates the nonlinear Jacobian
+entries with reverse mode algorithmic differentiation (AD) on the expression
+graphs \cite{gay1997hooking, gay1991automatic}.
 
-\cite{fourer1990ampl}
+\paragraph{\texttt{CasADi}.}
+% VERIFICATION NOTES (claude, 2026-06-11):
+% All against the paper PDF (cdn.syscop.de/publications/Andersson2019.pdf):
+% - "built around AD": sec 1.2-1.3 -- "CasADi started out as a tool for algorithmic
+%   differentiation (AD)"; "The key property of the symbolic core is a state-of-the-art
+%   implementation of AD".
+% - SX/MX + sparsity: secs 2.2-2.3 -- "CasADi uses the compressed column storage (CCS)
+%   format" (CCS = CSC); "symbolic matrices are always sparse in CasADi".
+% - Derivative callbacks: sec 4 -- "The role of CasADi is to extract information about
+%   structure and generate the required derivative information"; function names nlp_grad_f,
+%   nlp_jac_g, nlp_hess_l in casadi/interfaces/ipopt/ipopt_interface.cpp (GitHub).
+%   ("never forms a coefficient matrix" is an inference from sec 4, not a literal quote.)
+% - Bitvectors + coloring: sec 2.6 -- "up to 64 rows or columns can be calculated in a single
+%   sparsity propagation sweep"; greedy distance-2 (star) coloring per Gebremedhin et al.
+% - QP extraction: sec 4.2 -- "AD is used to reformulate the problem in form (9),
+%   automatically identifying the sparse matrices H and A as well as the vectors g, a and
+%   abar". Softened "Only for QPs" since SQP-type plugins also build QP subproblem matrices
+%   internally by linearization (sec 4.1).
+CasADi is a software framework for nonlinear optimization and optimal control built
+around algorithmic differentiation \cite{andersson2019}.
+Expressions are stored in two graph types, scalar-valued \texttt{SX} nodes and matrix-valued
+\texttt{MX} nodes, and every matrix in the framework is sparse in CSC format.
+CasADi takes coefficient extraction to its logical extreme: for nonlinear programs it never
+forms a coefficient matrix at all, and instead differentiates the expression graph to generate
+callback functions for the objective gradient, the sparse constraint Jacobian, and the Hessian
+of the Lagrangian.
+The sparsity patterns of these matrices are detected by propagating bitvectors through the
+graph, and their values are recovered in few AD sweeps using the graph coloring techniques
+covered in \ref{sec:computing-derivatives}.
+For quadratic programs, however, CasADi does extract explicit matrices, differentiating the
+symbolic objective and constraints to identify the data $H$, $A$ and their sparsity patterns.
+
+\paragraph{Comparison.}
+Despite their different designs, these systems share a common thread: preparing the problem
+data amounts to computing the sparse Jacobian of the constraint functions with respect to the
+variables.
+JuMP accumulates it eagerly, one scalarized constraint at a time; AMPL writes it to a file and
+defers the nonlinear entries to AD inside the solver; CasADi only generates functions that
+evaluate it; and CVXPY stuffs it from canonicalized affine trees, with the additional map from
+parameters to problem data.
+This connection motivates the next section, which reviews how derivatives are computed
+efficiently.
 
 \paragraph{References.}
+The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
+design of JuMP's solver abstraction layer and its bridge system.
+David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the authoritative
+description of the \texttt{.nl} format and the AMPL solver interface.
+Finally, the CasADi paper \cite{andersson2019} is a self-contained reference covering its
+expression graphs, AD implementation, and solver interfaces.
 
 %%
 %%  COMPUTING DERIVATIVES

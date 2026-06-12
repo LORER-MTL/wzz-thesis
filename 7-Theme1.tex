@@ -203,7 +203,7 @@ column $b$, and the root Jacobians are copied into the global buffer. A paramete
 costs only a forward pass and a numeric Jacobian evaluation: no allocation, no symbolic work, no
 graph mutation.
 
-This is the saving over the \texttt{ignore\_dpp} path of \S\ref{sec:canonicalization}. That path is
+This is the saving over the \texttt{ignore\_dpp} path of \S\ref{sec:matrix-stuffing}. That path is
 general --- it places no DPP restriction on how parameters enter --- but re-derives the symbolic
 structure on every change of $\theta$. Our two-phase design keeps that generality while paying the
 symbolic cost once, recovering the re-solve speed of the cached DPP path without materializing the
