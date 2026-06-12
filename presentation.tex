@@ -13,6 +13,7 @@
 \usepackage{mdframed}
 \usepackage{longtable}
 \usepackage{subcaption}
+\usepackage{blkarray}
 \usepackage{verbatim}
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{arrows}
@@ -432,9 +433,57 @@ each node holds $\{\text{var id} \mapsto \texttt{scipy.sparse}\}$
 {\footnotesize CVXPY: \texttt{flatten\_tensor} collapses $(\text{row},\text{col})$ into one sparse $[A\,b]$; \texttt{id\_to\_col}$[-1]=\texttt{var\_length}$ reserves the constant column.}
 \end{frame}
 
-\begin{frame}{TODO}
+\begin{frame}{Parameters, path 1: \texttt{ignore\_dpp}}
+\begin{itemize}\setlength\itemsep{1.5ex}
+\item prepends a reduction called \texttt{EvalParams}: every parameter node in the expression
+      trees is replaced by a \textbf{constant} holding its current value
+\item canonicalization then runs on a parameter-free problem
+\end{itemize}
+\vspace{2ex}
+\[
+\min\; t_1 + \mu\, t_2
+\;\xrightarrow{\ \texttt{EvalParams}:\ (\mu,\, g)\,\leftarrow\,(2.5,\ \hat g)\ }\;
+\min\; t_1 + 2.5\, t_2
+\qquad\Rightarrow\qquad
+c = \begin{bmatrix} \plotzero\\ 1\\ 2.5 \end{bmatrix}
+\]
+\pause
+\vspace{1ex}
+\begin{itemize}
+\item the numeric data drop out directly --- but the \textbf{full reduction chain re-runs}
+      every time a parameter changes
+\end{itemize}
 \vfill
-\begin{center}\large\emph{(to be filled in)}\end{center}
+\end{frame}
+
+\begin{frame}{Parameters, path 2: the DPP parameter map}
+\begin{itemize}\setlength\itemsep{1.5ex}
+\item if the problem follows the DPP ruleset, CVXPY compiles \textbf{once} and caches a linear
+      map from parameters to problem data
+\item for the objective: $[c;\, d] = Q\,\tilde\theta$ with $\tilde\theta = (g, \mu, 1)$
+\end{itemize}
+\vspace{2ex}
+\[
+Q =
+\begin{blockarray}{cccc}
+        & g^\top & \mu & 1 \\
+\begin{block}{c[ccc]}
+  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
+  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
+  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+\end{block}
+\end{blockarray}
+\qquad
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
+= \begin{bmatrix} \plotzero\\ 1\\ \mu\\ \plotzero \end{bmatrix}
+\]
+\pause
+\vspace{1ex}
+\begin{itemize}
+\item re-solve = one sparse matvec, the reduction chain is bypassed entirely
+\item but: requires DPP compliance, and the cached map must be stored
+\end{itemize}
 \vfill
 \end{frame}
 

@@ -55,15 +55,26 @@ problem data, along with some useful algorithms for manipulating them.
 \section{Canonicalization}
 \label{sec:canonicalization}
 
-\paragraph{CVXPY.}
-% TODO let's maybe enhance this intro a bit with more substance from the paper
-CVXPY is a domain-specific language for convex optimization embedded in Python,
-that was originally developed by Steven Diamond and Stephen Boyd at Stanford
-University \cite{diamond2016cvxpy}. Akshay Agrawal later redesigned the
-rewriting system in CVXPY \cite{agrawal2018rewriting}, 
-which enabled support for other disciplined
-languages \cite{agrawal2019dgp, agrawal2020dqcp, agrawal2019dpp}, and the
-project has since grown through contributions from many others \cite{cederberg2025disciplined}.
+CVXPY is a DCP-based modeling language embedded in Python \cite{diamond2016cvxpy},
+which began in 2013 as an implementation of the modeling principles of CVX \cite{cvx}.
+Three fundamental design decisions differed from CVX at the beginning.
+The first is modularity: a few core data structures are shared by separate components for
+verification, canonicalization, matrix stuffing, and solver interfaces.
+The second is the expression tree as the central data structure, which is formed
+automatically from user code through Python's operator overloading.
+The third is support for parameters: since canonicalization never looks at the values of
+constants, much of the compilation work can be reused when a problem is solved repeatedly.
+
+These ideas matured with version 1.0, where Akshay Agrawal redesigned canonicalization as
+a general reduction-based rewriting system \cite{agrawal2018rewriting}.
+The new design enabled the addition of other disciplined
+grammars \cite{agrawal2019dgp, agrawal2020dqcp, cederberg2025disciplined}, and the early
+parameter support grew into disciplined parameterized programming (DPP), a restricted grammar
+under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
+
+The open source project has since grown through contributions from many other enthusiastic
+developers; a recent paper surveys the new canonicalization and modeling features
+introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 \paragraph{Functional form.}
 When a user specifies a CVXPY problem, it is usually in a ``functional'' form
@@ -103,11 +114,32 @@ Affine expressions require $h$ and all of its arguments to be affine \cite{grant
 
 \paragraph{Solver standard form.}
 After a problem is verified to be DCP-compliant, CVXPY's remaining task is to convert
-the functional form to the conic standard form.
-CVXPY's chosen standard form is the conic quadratic form
-% insert here.
-which generalizes interfaces to both quadratic programming (QP) solvers such as OSQP or QPALM
-and conic programming solvers such as ECOS and MOSEK.
+the functional form into a solver-friendly standard form.
+CVXPY's chosen standard form is the \emph{conic quadratic} form
+\begin{equation}\label{eq:cqp-form}
+\begin{array}{ll}
+\mbox{minimize}   & \tfrac{1}{2} x^T P x + c^T x + d \\
+\mbox{subject to} & b - Ax \in \mathcal K,
+\end{array}
+\end{equation}
+which extends the linear conic form \eqref{e:standard-form} with a quadratic objective
+term $P \in \symm^n_+$.
+The cone $\mathcal K$ is a product of the zero cone, the nonnegative cone, the second-order
+cone, the power cone, the exponential cone, and the cone of positive semidefinite matrices.
+Historically, CVXPY maintained two separate canonicalization pathways: one targeting cone
+programs (where $P = 0$) and one targeting quadratic programs (where $\mathcal K$ is a product
+of only the zero and nonnegative cones).
+Motivated by modern solvers that accept conic constraints together with a quadratic objective,
+such as Clarabel \cite{clarabel}, the two pathways were recently unified into the single
+form \eqref{eq:cqp-form} \cite{zhang2026cvxpy}; QP solvers such as
+OSQP \cite{stellato2020osqp} and conic solvers such as ECOS \cite{domahidi2013ecos} and
+MOSEK \cite{mosekSolver} consume its special cases.
+Strictly speaking, the quadratic objective adds no generality: it can be linearized at the
+cost of one extra variable and one second-order cone constraint of dimension one plus the rank
+of $P$, and users may still request this linear-objective canonicalization.
+Keeping the quadratic objective is nevertheless useful algorithmically, and matrix stuffing
+must then also extract the coefficients of $P$; we defer the treatment of quadratic
+objectives to \S\ref{sec:Theme1}.
 
 \paragraph{Reductions.}
 The canonicalization process from functional to solver form is done via
@@ -206,7 +238,6 @@ Variables are labeled with a circle, and parameters with a square.}
 \label{fig:dcp-syntax-tree}
 \end{figure}
 
-% here I should maybe introduce a "functional conic form"
 \paragraph{Conic form expression tree.}
 After applying the reductions, the problem has been \emph{canonicalized} to
 \begin{equation}\label{eq:graph}
@@ -214,14 +245,20 @@ After applying the reductions, the problem has been \emph{canonicalized} to
   \mbox{minimize}  & t_1 + \mu t_2 \\
   \mbox{subject to}  &
 x \in \reals_+^n \\
-& (t_1, Fx -g) \in \mathcal K_{\mathrm{soc},m+1} \\ 
-& (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\ 
+& (t_1, Fx -g) \in \mathcal K_{\mathrm{soc},m+1} \\
+& (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\
 \end{array}
 \end{equation}
 where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
 \ref{e:standard-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
-\times \mathcal K_{\mathrm{soc},n+1}$. In the next section, we explain how the
-symbolic affine expression trees in \ref{fig:conic-form-tree} get converted into
+\times \mathcal K_{\mathrm{soc},n+1}$.
+We refer to a problem in the shape of \eqref{eq:graph} as being in \emph{functional conic
+form}: every constraint is the membership of a function in a cone, and these functions (along
+with the objective) are now \emph{biaffine} --- affine in the variables for fixed parameters,
+and affine in the parameters for fixed variables.
+The expression trees of \ref{fig:conic-form-tree} are accordingly trees of biaffine operators.
+In the next section, we explain how these
+symbolic trees get converted into
 the parameter maps defined in \ref{eq:param-maps}.
 
 \begin{figure}
@@ -328,6 +365,7 @@ when a parameterized problem is not DPP-compliant), prepends a reduction called
 holding its current value.
 Canonicalization then proceeds on a parameter-free problem, but the entire reduction chain
 must be re-run every time a parameter changes.
+Figure \ref{fig:param-map-c} contrasts the two paths on the objective of our running example.
 This general path, which trades fast re-solves for unrestricted parameter expressions and a
 cheaper first compilation, is the focus of this thesis (\ref{sec:Theme1}).
 
@@ -478,6 +516,7 @@ linear operation to the matrices of its children.}
 \end{figure}
 
 \begin{figure}[ht]
+\begin{subfigure}{\textwidth}
 \centering
 $
 Q =
@@ -494,10 +533,30 @@ Q =
 \begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
 = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
-\caption{The objective parameter map $Q$ of problem \eqref{eq:example}, formed and cached by
-the DPP path: multiplying $Q$ with the extended parameter vector $\tilde\theta$ recovers the
-objective data $(c, d)$ for the current parameter values.}
-% simplify this and maybe show $g$ as one entry in the matrix
+\caption{DPP path: the objective parameter map $Q$ is formed and cached; each re-solve recovers
+the objective data $(c, d)$ by multiplying $Q$ with the extended parameter vector
+$\tilde\theta = (g, \mu, 1)$.}
+\label{fig:param-map-dpp}
+\end{subfigure}
+\vspace{3ex}
+
+\begin{subfigure}{\textwidth}
+\centering
+$
+\|Fx - g\|_2 + \mu \|x\|_2
+\;\xrightarrow{\ \texttt{EvalParams}:\ (\mu,\, g)\,\leftarrow\,(2.5,\ \hat g)\ }\;
+\|Fx - \hat g\|_2 + 2.5\,\|x\|_2
+\qquad\Rightarrow\qquad
+c = \begin{bmatrix}1\\ 2.5\\ \plotzero\end{bmatrix}
+$
+\caption{\texttt{ignore\_dpp} path: \texttt{EvalParams} replaces the parameter nodes by
+constants holding their current values; canonicalizing the resulting constant-data problem
+yields the numeric $c$ directly, but the whole chain re-runs whenever a parameter changes.}
+\label{fig:param-map-evalparams}
+\end{subfigure}
+\caption{The two compilation paths on the objective of problem \eqref{eq:example}: the DPP path
+caches the parameter map $Q$ once and re-solves with a matrix-vector product, while the
+\texttt{ignore\_dpp} path evaluates the parameters up front and re-canonicalizes from scratch.}
 \label{fig:param-map-c}
 \end{figure}
 
@@ -520,18 +579,24 @@ objective data $(c, d)$ for the current parameter values.}
 %   environment variable (canonInterface.py:277-320).
 % - Re-checked against current master (2026-06-11): CPP is still the default (settings.py:211,
 %   except on emscripten where SCIPY is used) and the cvxcore README still says "officially
-%   deprecated". Master also has a newer COO backend ("3D COO sparse tensor backend: O(nnz)
-%   operations for large parameters") not mentioned in the prose -- the local clone
-%   (e6c2a125e, 2023-07-09) predates it.
+%   deprecated". The newer stacked-slices / COO backends are now covered in the prose below.
 \paragraph{Canonicalization backends.}
 In \texttt{cvxcore}, the expression trees built in Python are first mirrored into equivalent
 C++ objects, and the recursive walk is performed in C++, where each node's \texttt{Tensor} is
 stored as triplet arrays (the coordinate format of \ref{sec:sparse-matrices}) for every
 parameter slice.
 The \texttt{SciPy} backend is a more recent pure Python implementation of the same walk; it
-stores each node's \texttt{Tensor} as a dictionary mapping variables to lists of sparse
-matrix slices, one per parameter entry.
-In both backends, each constraint tree is processed independently with a running row offset,
+initially stored each node's \texttt{Tensor} as a dictionary mapping variables to lists of
+sparse matrix slices, one per parameter entry, which incurs a Python loop over the slices at
+every node.
+A \emph{stacked-slices} reorganization removes most of these loops: the slices $Q_i$ of a
+tensor are concatenated vertically into a single sparse matrix $\mathcal S(Q)$, and a linear
+operation $L$ is applied to all slices at once through the Kronecker identity
+$\mathcal S(LQ) = (I_{p+1} \otimes L)\, \mathcal S(Q)$ \cite{zhang2026cvxpy}.
+A further variant replaces the \texttt{SciPy} matrices with a custom N-dimensional sparse
+coordinate representation, which is more memory-efficient for problems with many parameters
+and is the default for DPP problems with more than $1000$ parameter entries.
+In all backends, each constraint tree is processed independently with a running row offset,
 and the per-constraint results are concatenated into a single sparse matrix whose rows index
 the entries of $[A \;\, b]$ and whose columns index the entries of $\tilde\theta$ --- the
 flattened constraint parameter map of \eqref{eq:param-maps}, which degenerates to the single
