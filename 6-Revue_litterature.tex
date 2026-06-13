@@ -65,7 +65,7 @@ automatically from user code through Python's operator overloading.
 The third is support for parameters: since canonicalization never looks at the values of
 constants, much of the compilation work can be reused when a problem is solved repeatedly.
 
-These ideas matured with version 1.0, where Akshay Agrawal redesigned canonicalization as
+These ideas matured with version 1.0, which redesigned canonicalization as
 a general reduction-based rewriting system \cite{agrawal2018rewriting}.
 The new design enabled the addition of other disciplined
 grammars \cite{agrawal2019dgp, agrawal2020dqcp, cederberg2025disciplined}, and the early
@@ -75,35 +75,44 @@ under which canonicalized programs can be updated efficiently \cite{agrawal2019d
 The open source project has since grown through contributions from many other enthusiastic
 developers; a recent paper surveys the new canonicalization and modeling features
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
+% we could mention that the exposition in the thesis for canonicalization
+% is inspired from there and that it is slightly different with more of a focus
+% on the non-DPP path.
 
 \paragraph{Functional form.}
-When a user specifies a CVXPY problem, it is usually in a ``functional'' form
+A user most naturally expresses a CVXPY problem in \emph{functional} form,
 \begin{equation}\label{eq:functional-form}
 \begin{array}{ll}
-\mbox{minimize} & f_0(x; \theta) \\
-\mbox{subject to} & f_i(x; \theta) \leq g_i(x; \theta), \ i=1,\ldots,m_1,\\
-& h_i(x; \theta) = j_i(x; \theta), \ i=1,\ldots,m_2,
+\mbox{minimize}   & f_0(x; \theta) \\
+\mbox{subject to} & f_i(x; \theta) \leq g_i(x; \theta), \quad i=1,\ldots,m_1,\\
+                  & h_i(x; \theta) = j_i(x; \theta), \quad i=1,\ldots,m_2,
 \end{array}
 \end{equation}
-with variable $x \in \reals^n$ and parameter vector $\theta\in\reals^p$ \cite{boyd2004convex}.
-For a given value of $\theta$ we refer to \eqref{eq:functional-form} as a problem instance,
-otherwise for general values of $\theta$ it defines a problem family.
-Each function in \eqref{eq:functional-form} is internally represented as an
-expression tree.
+where the optimization variables $x_1,\ldots,x_k$ are collected into a single
+vector $x \in \reals^n$, and likewise the parameters $\theta_1,\ldots,\theta_l$
+into $\theta \in \reals^p$ \cite{boyd2004convex}.
+We call \eqref{eq:functional-form} a problem \emph{instance} when $\theta$ is
+fixed to a numerical value, and a problem \emph{family} when $\theta$ is left
+symbolic. Internally, CVXPY represents each function in \eqref{eq:functional-form}
+as an expression tree.
 
 \paragraph{Disciplined convex programming.}
-When all $f_i$ are convex, all $g_i$ are concave and all $h_i$ and $j_i$ are both affine,
-the functional form defines a convex optimization problem.
-To verify that the problem is convex, CVXPY uses the DCP composition rules to classify
-the curvature of functions.
-Once all functions are classified, a problem is \emph{DCP-compliant} if its functions
-satisfy the curvatures of a convex problem.
-Otherwise, if certain curvatures are incorrect (\emph{i.e.} $f_0$ is concave) or unknown,
-CVXPY will raise an error and terminate.
+When $f_0$ and all $f_i$ are convex, all $g_i$ are concave, and all $h_i$ and $j_i$ are
+affine, the functional form defines a convex optimization problem.
+To certify convexity, CVXPY uses the DCP composition rules to classify
+the curvature of each function.
+Once all functions are classified, a problem is \emph{DCP-compliant} if the objective and
+each constraint have curvatures compatible with a convex problem: a convex objective,
+convex $\leq$ concave inequalities, and affine equalities.
+
+Otherwise, if a curvature is incompatible (\emph{e.g.}\ $f_0$ is concave) or cannot be
+determined, CVXPY raises an error and terminates.
+Because these rules are only sufficient for convexity, a problem that is genuinely convex
+but not expressed in a recognized form may still be rejected.
 
 \paragraph{Composition rules.}
-The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and for each
-$i \in \{1, \dots, k\}$ the following holds:
+The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and, for each
+argument $i \in \{1, \dots, k\}$, one of the following holds:
 \begin{itemize}
     \item $h$ is non-decreasing in argument $i$ and $f_i$ is convex, or
     \item $h$ is non-increasing in argument $i$ and $f_i$ is concave, or
@@ -112,33 +121,40 @@ $i \in \{1, \dots, k\}$ the following holds:
 The same results hold for concave functions by swapping convex and concave.
 Affine expressions require $h$ and all of its arguments to be affine \cite{grant2004disciplined}.
 
-\paragraph{Solver standard form.}
-After a problem is verified to be DCP-compliant, CVXPY's remaining task is to convert
-the functional form into a solver-friendly standard form.
-CVXPY's chosen standard form is the \emph{conic quadratic} form
-\begin{equation}\label{eq:cqp-form}
+\paragraph{Functional conic form.}
+The goal of canonicalization is to rewrite the verified functional form
+\eqref{eq:functional-form} into an equivalent \emph{functional conic form}
+\begin{equation}\label{eq:conic-form}
 \begin{array}{ll}
-\mbox{minimize}   & \tfrac{1}{2} x^T P x + c^T x + d \\
-\mbox{subject to} & b - Ax \in \mathcal K,
+\mbox{minimize}   & f_0(x; \theta) \\
+\mbox{subject to} & \ell_i(x; \theta) \in \mathcal K_i, \quad i = 1,\ldots,m,
 \end{array}
 \end{equation}
-which extends the linear conic form \eqref{e:standard-form} with a quadratic objective
-term $P \in \symm^n_+$.
-The cone $\mathcal K$ is a product of the zero cone, the nonnegative cone, the second-order
-cone, the power cone, the exponential cone, and the cone of positive semidefinite matrices.
+where the objective $f_0$ is affine or quadratic, each constraint function $\ell_i$ is affine, and
+each $\mathcal K_i$ is a convex cone from a fixed catalogue: the zero, nonnegative, second-order,
+power, exponential, and positive semidefinite cones.
+As in the functional form, the functions are affine in the parameters, and these functions are
+still held \emph{symbolically}, as expression trees rather than numerical data.
+The two forms differ only in that the nonlinearities of \eqref{eq:functional-form} have been
+absorbed into cone memberships, leaving affine constraints and an at most quadratic objective.
+This section concerns precisely this conversion; materializing the symbolic functions of
+\eqref{eq:conic-form} into the numerical problem data of a solver standard form --- the conic
+form \eqref{e:standard-form} of the introduction, augmented with a quadratic objective term when
+present --- is the task of matrix stuffing (\S\ref{sec:matrix-stuffing}).
+
+\paragraph{Unified pathway.}
 Historically, CVXPY maintained two separate canonicalization pathways: one targeting cone
-programs (where $P = 0$) and one targeting quadratic programs (where $\mathcal K$ is a product
-of only the zero and nonnegative cones).
+programs, with an affine objective and general cones, and one targeting quadratic programs, with
+a quadratic objective but only the zero and nonnegative cones.
 Motivated by modern solvers that accept conic constraints together with a quadratic objective,
 such as Clarabel \cite{clarabel}, the two pathways were recently unified into the single
-form \eqref{eq:cqp-form} \cite{zhang2026cvxpy}; QP solvers such as
+form \eqref{eq:conic-form} \cite{zhang2026cvxpy}; QP solvers such as
 OSQP \cite{stellato2020osqp} and conic solvers such as ECOS \cite{domahidi2013ecos} and
 MOSEK \cite{mosekSolver} consume its special cases.
-Strictly speaking, the quadratic objective adds no generality: it can be linearized at the
-cost of one extra variable and one second-order cone constraint of dimension one plus the rank
-of $P$, and users may still request this linear-objective canonicalization.
+A quadratic objective adds no generality: it can be linearized at the cost of one extra variable
+and a second-order cone constraint, and users may request that fully affine form.
 Keeping the quadratic objective is nevertheless useful algorithmically, and matrix stuffing
-must then also extract the coefficients of $P$; we defer the treatment of quadratic
+must then also extract its coefficients; we defer the treatment of quadratic
 objectives to \S\ref{sec:Theme1}.
 
 \paragraph{Reductions.}
@@ -252,10 +268,8 @@ x \in \reals_+^n \\
 where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
 \ref{e:standard-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
 \times \mathcal K_{\mathrm{soc},n+1}$.
-We refer to a problem in the shape of \eqref{eq:graph} as being in \emph{functional conic
-form}: every constraint is the membership of a function in a cone, and these functions (along
-with the objective) are now \emph{biaffine} --- affine in the variables for fixed parameters,
-and affine in the parameters for fixed variables.
+Problem \eqref{eq:graph} is now in the functional conic form introduced above: every constraint
+is a cone membership, and the objective and constraint expressions are biaffine.
 The expression trees of \ref{fig:conic-form-tree} are accordingly trees of biaffine operators.
 In the next section, we explain how these
 symbolic trees get converted into
