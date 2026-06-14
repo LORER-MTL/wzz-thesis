@@ -9,11 +9,138 @@ structures, \S\ref{sec:atom-implementations} the atom implementations, and
 \S\ref{sec:problem-class-and-cvxpy-interface} the problem class and its CVXPY interface. We assume
 the sparse-matrix background of \S\ref{sec:sparse-matrices}.
 
-% TODO
-% maybe continue showing expression trees
-% but now show that first we want to keep the parameter nodes
-% then we also want to show two trees, one which for the structure (sparsity)
-% and one for the values.
+\section{Keeping parameters, splitting the walk}
+\label{sec:two-phase}
+Matrix stuffing already walked the objective tree of our running example. Figure
+\ref{fig:matrix-stuffing} annotated each node of the canonicalized objective $t_1 + \mu t_2$ of
+\eqref{eq:graph} with the row of $c$ it produces, ending in
+$c = \begin{bmatrix}1 & \mu & \plotzero\end{bmatrix}$ at the root. The engine walks the very same
+tree of \ref{fig:conic-form-tree}, but it differs from matrix stuffing in two ways.
+
+First, it keeps the parameter. The \texttt{ignore\_dpp} path of \S\ref{sec:matrix-stuffing} begins
+with \texttt{EvalParams}, which deletes the parameter leaf $\mu$ and replaces it by a constant
+holding its current value (\ref{fig:param-map-evalparams}); the walk that follows is parameter-free
+and must be redone from scratch whenever $\mu$ changes. We instead leave $\mu$ in place as a leaf
+node, so the tree that produces $c$ is fixed once and reused across solves.
+
+Second, it splits the single walk into two passes over that fixed tree, shown in
+\ref{fig:obj-two-phase}. A \emph{structural} pass fixes the sparsity pattern of every node's
+Jacobian from the patterns of its children, independent of the value of $\mu$
+(\ref{fig:obj-structure}). A \emph{value} pass then fills the numbers into that fixed pattern,
+reading $\mu$'s current value at the leaf (\ref{fig:obj-values}). The structural pass runs once per
+problem family; only the value pass repeats on each solve, whereas matrix stuffing fuses the two and
+recomputes both on every change of $\mu$. These passes are the \texttt{jacobian\_init} and
+\texttt{eval\_jacobian} functions that the rest of the chapter develops atom by atom.
+
+On this objective the saving is admittedly hard to see: the structural pass over $t_1 + \mu t_2$ is
+trivial, and one could fairly object that re-evaluating so small a tree from scratch costs nothing.
+The split earns its keep where the structural work is both expensive and shared across solves. The
+clearest case in our running example is the constraint tree of \ref{fig:matrix-stuffing}, which
+contains the product $Fx$ (\ref{fig:con-two-phase}). The Jacobian of $Fx$ is a sparse
+matrix--matrix product handled by the matrix multiplication atom of \S\ref{sec:atom-implementations},
+and its $-F$ block has a sparsity \emph{pattern} that is the costly part to derive and is independent
+of any parameter value. Because the parameter $g$ enters the same constraint, the
+\texttt{ignore\_dpp} path re-derives this block from scratch each time $g$ changes, while the engine
+fixes its pattern once in the structural pass (\ref{fig:con-structure}) and only refills values
+(\ref{fig:con-values}). The per-solve cost this removes, negligible for the scalar objective but
+substantial for problems with large sparse products solved repeatedly, is quantified in
+\S\ref{sec:Theme2}.
+
+Like \texttt{cvxcore}, which mirrors the Python expression trees into equivalent C++ objects, the
+engine mirrors each CVXPY atom onto a C counterpart and rebuilds the canonicalized trees as the C
+\texttt{expr} trees of \S\ref{sec:data-structures}; both passes then run entirely in C.
+
+\begin{figure}[ht]
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=34mm},
+   level 2/.style={sibling distance=24mm},
+   every node/.style={align=center},
+   edge from parent/.style={draw, -latex}]
+  \node {$\begin{bmatrix} \bullet & \bullet & \plotzero \end{bmatrix}$}
+    child {node {$\begin{bmatrix} \bullet & \plotzero & \plotzero \end{bmatrix}$}}
+    child {node {$\begin{bmatrix} \plotzero & \bullet & \plotzero \end{bmatrix}$}
+      child {node[draw] {$\mu$}}
+      child {node {$\begin{bmatrix} \plotzero & \bullet & \plotzero \end{bmatrix}$}}
+      };
+\end{tikzpicture}
+\caption{Structural pass: a bullet marks a structural nonzero.}
+\label{fig:obj-structure}
+\end{subfigure}
+\vspace{3ex}
+
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=34mm},
+   level 2/.style={sibling distance=24mm},
+   every node/.style={align=center},
+   edge from parent/.style={draw, -latex}]
+  \node {$\begin{bmatrix} 1 & 2.5 & \end{bmatrix}$}
+    child {node {$\begin{bmatrix} 1 & & \end{bmatrix}$}}
+    child {node {$\begin{bmatrix} & 2.5 & \end{bmatrix}$}
+      child {node[draw] {$2.5$}}
+      child {node {$\begin{bmatrix} & 1 & \end{bmatrix}$}}
+      };
+\end{tikzpicture}
+\caption{Value pass: entries refilled here for $\mu = 2.5$.}
+\label{fig:obj-values}
+\end{subfigure}
+\caption{The engine's two passes over the objective tree of \ref{fig:conic-form-tree}, with the
+parameter leaf $\mu$ kept across both.}
+\label{fig:obj-two-phase}
+\end{figure}
+
+\begin{figure}[ht]
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=48mm},
+   level 2/.style={sibling distance=26mm},
+   every node/.style={align=center},
+   edge from parent/.style={draw, -latex}]
+  \node {$\begin{bmatrix} \plotzero & \plotzero & -F & -g \end{bmatrix}$}
+    child {node {$\begin{bmatrix} \plotzero & \plotzero & -F & \plotzero \end{bmatrix}$}
+      child {node {$F$}}
+      child {node {$\begin{bmatrix} \plotzero & \plotzero & -I & \plotzero \end{bmatrix}$}}
+    }
+    child {node {$\begin{bmatrix} \plotzero & \plotzero & \plotzero & -g \end{bmatrix}$}
+      child {node[draw] {$g$}}
+    };
+\end{tikzpicture}
+\caption{Structural pass: the matmul block $-F$ inherits the pattern of $F$ and is independent of
+$g$.}
+\label{fig:con-structure}
+\end{subfigure}
+\vspace{3ex}
+
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=48mm},
+   level 2/.style={sibling distance=26mm},
+   every node/.style={align=center},
+   edge from parent/.style={draw, -latex}]
+  \node {$\begin{bmatrix} & & -F & -\hat g \end{bmatrix}$}
+    child {node {$\begin{bmatrix} & & -F & \end{bmatrix}$}
+      child {node {$F$}}
+      child {node {$\begin{bmatrix} & & -I & \end{bmatrix}$}}
+    }
+    child {node {$\begin{bmatrix} & & & -\hat g \end{bmatrix}$}
+      child {node[draw] {$\hat g$}}
+    };
+\end{tikzpicture}
+\caption{Value pass: only the values are written into that pattern, here for $g = \hat g$. Between
+solves only the parameter block $-\hat g$ changes; the matmul block $-F$ is untouched.}
+\label{fig:con-values}
+\end{subfigure}
+\caption{The two passes on the $Fx - g$ subtree of the constraint tree of \ref{fig:matrix-stuffing}.
+The constant $F$ enters through the matmul atom, whose block $-F$ has a sparsity pattern fixed once;
+across solves only the parameter $g$ changes.}
+\label{fig:con-two-phase}
+\end{figure}
+
 \section{Fundamental data structures}
 \label{sec:data-structures}
 

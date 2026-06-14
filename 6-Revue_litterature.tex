@@ -19,26 +19,28 @@ Still, a gap remained: modelers think in terms of sets, indices, and algebraic e
 while procedural code constructs the coefficient matrices entry by entry.
 This mismatch made models difficult to verify, modify, and
 communicate \cite{fourer1983modeling}.
-\emph{Algebraic modeling languages} such as GAMS \cite{brooke1988gams} and
-AMPL \cite{fourer1990ampl} closed this gap by accepting problem descriptions that closely
-follow the math.
+\emph{Algebraic modeling languages} such as AMPL \cite{fourer1990ampl},
+AIMMS \cite{bisschop2006aimms} and GAMS \cite{brooke1988gams} closed this gap by accepting
+problem descriptions that closely follow the math.
+For a fuller account of the early history of modeling languages, see
+\cite{orchard-hays1984history}.
 
 More recently, modeling languages embedded in general-purpose programming languages have
-gained popularity, such as Pyomo \cite{bynum2021pyomo} in Python, JuMP \cite{dunning2017jump}
-in Julia, and CasADi \cite{andersson2019} in C++.
+gained popularity, such as Pyomo \cite{bynum2021pyomo, hart2011pyomo} in Python,
+JuMP \cite{dunning2017jump} in Julia, and CasADi \cite{andersson2019} in C++.
 Other domain-specific modeling languages specialized for convex optimization \cite{boyd2004convex}
 are built on \emph{disciplined convex programming} (DCP), a set of composition rules under which
 the convexity of a problem can be verified
 automatically \cite{grant2004disciplined, grant2006disciplined}.
-These DCP-based languages include CVX \cite{cvx} in MATLAB,
+These DCP-based languages include CVX \cite{cvx} in MATLAB, CVXR \cite{Fu_2020} in R,
 CVXPY \cite{diamond2016cvxpy} in Python, and Convex.jl \cite{udell2014convex} in Julia.
 
 \paragraph{Structure of the chapter}
 The first two sections focus on CVXPY: it is the most actively maintained DCP implementation,
 and the work of this thesis aims to be integrated into it.
-\S\ref{sec:canonicalization} covers the frontend of canonicalization, which rewrites the
+\S\ref{sec:canonicalization} covers the \emph{frontend} of canonicalization, which rewrites the
 user's functional form into a functional conic form of purely affine and quadratic expressions.
-\S\ref{sec:matrix-stuffing} covers its backend, \emph{matrix stuffing}, which assembles
+\S\ref{sec:matrix-stuffing} covers its \emph{backend}, \emph{matrix stuffing}, which assembles
 the problem data from this functional conic form.
 
 \S\ref{sec:coefficient-extraction} presents the embedded modeling languages JuMP and
@@ -111,84 +113,73 @@ Because these rules are only sufficient for convexity, a problem that is genuine
 but not expressed in a recognized form may still be rejected.
 
 \paragraph{Composition rules.}
-The expression $h(f_1(x), f_2(x), \dots, f_k(x))$ is convex when $h$ is convex and, for each
-argument $i \in \{1, \dots, k\}$, one of the following holds:
+The composition $\phi(f_1(x), f_2(x), \dots, f_k(x))$ of an atom $\phi$ with subexpressions $f_i$
+is convex when $\phi$ is convex and, for each argument $i \in \{1, \dots, k\}$, one of the
+following holds:
 \begin{itemize}
-    \item $h$ is non-decreasing in argument $i$ and $f_i$ is convex, or
-    \item $h$ is non-increasing in argument $i$ and $f_i$ is concave, or
+    \item $\phi$ is non-decreasing in argument $i$ and $f_i$ is convex, or
+    \item $\phi$ is non-increasing in argument $i$ and $f_i$ is concave, or
     \item $f_i$ is affine.
 \end{itemize}
 The same results hold for concave functions by swapping convex and concave.
-Affine expressions require $h$ and all of its arguments to be affine \cite{grant2004disciplined}.
+Affine expressions require $\phi$ and all of its arguments to be affine \cite{grant2004disciplined}.
 
 \paragraph{Functional conic form.}
-The goal of canonicalization is to rewrite the verified functional form
-\eqref{eq:functional-form} into an equivalent \emph{functional conic form}
+Once a problem is verified to be DCP-compliant, the frontend of canonicalization
+rewrites its functional form \eqref{eq:functional-form} into an equivalent \emph{functional conic form}
 \begin{equation}\label{eq:conic-form}
 \begin{array}{ll}
 \mbox{minimize}   & f_0(x; \theta) \\
 \mbox{subject to} & \ell_i(x; \theta) \in \mathcal K_i, \quad i = 1,\ldots,m,
 \end{array}
 \end{equation}
-where the objective $f_0$ is affine or quadratic, each constraint function $\ell_i$ is affine, and
-each $\mathcal K_i$ is a convex cone from a fixed catalogue: the zero, nonnegative, second-order,
-power, exponential, and positive semidefinite cones.
-As in the functional form, the functions are affine in the parameters, and these functions are
-still held \emph{symbolically}, as expression trees rather than numerical data.
-The two forms differ only in that the nonlinearities of \eqref{eq:functional-form} have been
-absorbed into cone memberships, leaving affine constraints and an at most quadratic objective.
-This section concerns precisely this conversion; materializing the symbolic functions of
-\eqref{eq:conic-form} into the numerical problem data of a solver standard form --- the conic
-form \eqref{e:standard-form} of the introduction, augmented with a quadratic objective term when
-present --- is the task of matrix stuffing (\S\ref{sec:matrix-stuffing}).
-
-\paragraph{Unified pathway.}
-Historically, CVXPY maintained two separate canonicalization pathways: one targeting cone
-programs, with an affine objective and general cones, and one targeting quadratic programs, with
-a quadratic objective but only the zero and nonnegative cones.
-Motivated by modern solvers that accept conic constraints together with a quadratic objective,
-such as Clarabel \cite{clarabel}, the two pathways were recently unified into the single
-form \eqref{eq:conic-form} \cite{zhang2026cvxpy}; QP solvers such as
-OSQP \cite{stellato2020osqp} and conic solvers such as ECOS \cite{domahidi2013ecos} and
-MOSEK \cite{mosekSolver} consume its special cases.
-A quadratic objective adds no generality: it can be linearized at the cost of one extra variable
-and a second-order cone constraint, and users may request that fully affine form.
-Keeping the quadratic objective is nevertheless useful algorithmically, and matrix stuffing
-must then also extract its coefficients; we defer the treatment of quadratic
-objectives to \S\ref{sec:Theme1}.
+where $f_0$ is affine or quadratic, each $\ell_i$ is affine, and each $\mathcal{K}_i$ is one of
+the standard convex cones: the zero, nonnegative, second-order, power, exponential, and positive
+semidefinite cones.
 
 \paragraph{Reductions.}
-The canonicalization process from functional to solver form is done via
-a sequence of \emph{reductions} \cite{agrawal2018rewriting}.
+This rewriting is carried out as a sequence of \emph{reductions}. Each reduction provides an
+\texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
+step that recovers a solution of the original problem from a solution of the rewritten one
+\cite{agrawal2018rewriting}.
 
-A first example of a reduction is one which takes a maximization problem
-and converts it into a minimization problem by flipping the sign of the objective.
-The reverse transformation simply undoes the sign flipping and has no effect on the
-actual solution of the problem.
-In CVXPY, this reduction is conveniently called \texttt{FlipObjective}.
+A first example is \texttt{FlipObjective}, which turns a maximization problem
+into a minimization one by
+flipping the sign of the objective; its \texttt{retrieve} step simply flips the sign back.
 
-A second example is variable attributes such as numerical bounds or \texttt{nonneg}.
-During canonicalization, CVXPY will also verify if the target solver supports bounds
-natively. If it does, CVXPY can pass them directly to solvers, otherwise they will
-get converted into explicit constraints.
-The reverse transformation for this reduction is to take the dual values corresponding
-to the explicit constraints ($x\geq 0$) and setting them to be equal to the variable
-bound's dual values.
-In CVXPY, this reduction is part of a greater set of general attribute constraints
-and is called \texttt{CvxAttr2Constr}.
+A second example, \texttt{CvxAttr2Constr}, handles variable attributes such as
+\texttt{nonneg} or bounds.
+When the target solver supports them natively, CVXPY passes them directly to the solver;
+otherwise it rewrites them as explicit constraints, and the \texttt{retrieve} step copies those
+constraints' dual values back onto the variable bounds.
 
-\paragraph{Epigraph transformation.}
-Each convex atom has a \textit{canonicalization} that replaces it with an
-epigraph variable (for concave atoms it is a \emph{hypograph} variable)
-and auxiliary constraints of the form $f(x, t, \theta) \in \mathcal K$ where
-$t$ is the epigraph variable, $f$ is affine in the variables $(x, t)$ for fixed parameters
-$\theta$, and $\mathcal K$ is a convex cone \cite{grant2008graph}.
-One illustrative canonicalization replaces the \texttt{norm2} expressions in the objective with
-a new epigraph variable $t_i$ and imposes the epigraph constraint known as a \emph{second-order}
-cone constraint
+\paragraph{Conic reformulation.}
+The main reduction, \texttt{Dcp2Cone}, rewrites every nonlinear atom into conic constraints.
+It first rewrites the problem into \emph{Smith form}, replacing each nonlinear atom with a new
+variable coupled to it by an equality constraint; every atom then acts only on affine arguments
+\cite{smith1996}.
+For example, $\|Fx - g\|_2$ is replaced by a new variable $t$ with $t = \|Fx - g\|_2$, leaving the
+norm applied to the affine argument $Fx - g$.
+For a convex atom $\phi$, the Smith form gives an auxiliary variable $t$ with the equality
+constraint $\phi(x) = t$. The DCP rules allow a convex atom only where its value is minimized or
+upper-bounded, so the solver always prefers $t$ as small as possible. Relaxing the equality to the
+inequality $\phi(x) \le t$ is therefore \emph{lossless}: at an optimum $t$ is driven down until
+$\phi(x) = t$.
+The pair $(x, t)$ then lies in the \emph{epigraph} $\{(x, t) : \phi(x) \le t\}$ of $\phi$, so $t$
+is called an \emph{epigraph variable}.
+A concave atom instead uses the reversed inequality $\phi(x) \ge t$, placing $(x, t)$ in the
+\emph{hypograph} of $\phi$ and making $t$ a \emph{hypograph variable}.
+
+Each epigraph inequality is then expressed as the membership of an affine function of $(x, t)$ in a
+convex cone \cite{grant2008graph}. For
+instance, the inequality $\|x\|_2 \le t$ is exactly the second-order cone constraint
 \begin{equation}
-(t_i, z_i) \in \mathcal K_{\mathrm{soc}}.
+(t, x) \in \mathcal K_{\mathrm{soc}}.
 \end{equation}
+The absolute value $|x|$ is another example: although nonsmooth at the origin, its epigraph
+$|x| \le t$ is simply the pair of affine inequalities $-t \le x \le t$. The reformulation therefore
+guarantees that all functions are affine and lie in convex cones, exactly the
+functional conic form of \eqref{eq:conic-form}.
 
 \paragraph{Example of canonicalization.}
 To show a concrete example of canonicalization, we consider a simple fitting with regularization
@@ -215,7 +206,7 @@ prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
 where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
 the data arrays. The expression tree representation of the problem
-is shown in \ref{fig:dcp-syntax-tree}.
+is shown in \ref{fig:dcp-expression-tree}.
 
 \begin{figure}[ht]
 \centering
@@ -239,7 +230,7 @@ is shown in \ref{fig:dcp-syntax-tree}.
       }
     };
 \end{tikzpicture}
-\caption{Abstract syntax tree of objective}
+\caption{Expression tree of the objective}
 \end{subfigure} % 
 \begin{subfigure}{0.3\textwidth}
 \begin{tikzpicture}
@@ -247,11 +238,11 @@ is shown in \ref{fig:dcp-syntax-tree}.
     child {node[circle, draw] {$x$}}
     child {node {$0$}};
 \end{tikzpicture}
-\caption{Abstract syntax tree of constraints}
+\caption{Expression tree of the constraints}
 \end{subfigure}
 \caption{Users write functions in Python code that are restricted to the atom library.
 Variables are labeled with a circle, and parameters with a square.}
-\label{fig:dcp-syntax-tree}
+\label{fig:dcp-expression-tree}
 \end{figure}
 
 \paragraph{Conic form expression tree.}
@@ -344,6 +335,19 @@ Historically, the implementations of matrix stuffing have been referred to as
 We will focus on \texttt{cvxcore}, one of the original implementations in \texttt{C++},
 and \texttt{SciPy}, an improved Python version which relies on the sparse matrix
 library with the same name.
+
+% TODO: moved here from the canonicalization frontend -- decide whether this "Unified pathway"
+% paragraph is worth keeping. It is background on the cone/QP merge; may be tangential to the
+% matrix-stuffing contribution.
+\paragraph{Unified pathway.}
+Historically, CVXPY maintained two separate canonicalization pathways: one targeting cone
+programs, with an affine objective and general cones, and one targeting quadratic programs, with
+a quadratic objective but only the zero and nonnegative cones.
+Motivated by modern solvers that accept conic constraints together with a quadratic objective,
+such as Clarabel \cite{clarabel}, the two pathways were recently unified into the single
+form \eqref{eq:conic-form} \cite{zhang2026cvxpy}; QP solvers such as
+OSQP \cite{stellato2020osqp} and conic solvers such as ECOS \cite{domahidi2013ecos} and
+MOSEK \cite{mosekSolver} consume its special cases.
 
 % VERIFICATION NOTES (claude, 2026-06-11) -- all file:line refs are in the local clone at
 % ~/Documents/cvxpy (commit e6c2a125e); same paths on github.com/cvxpy/cvxpy.
@@ -556,16 +560,24 @@ $\tilde\theta = (g, \mu, 1)$.}
 
 \begin{subfigure}{\textwidth}
 \centering
-$
-\|Fx - g\|_2 + \mu \|x\|_2
-\;\xrightarrow{\ \texttt{EvalParams}:\ (\mu,\, g)\,\leftarrow\,(2.5,\ \hat g)\ }\;
-\|Fx - \hat g\|_2 + 2.5\,\|x\|_2
-\qquad\Rightarrow\qquad
-c = \begin{bmatrix}1\\ 2.5\\ \plotzero\end{bmatrix}
-$
-\caption{\texttt{ignore\_dpp} path: \texttt{EvalParams} replaces the parameter nodes by
-constants holding their current values; canonicalizing the resulting constant-data problem
-yields the numeric $c$ directly, but the whole chain re-runs whenever a parameter changes.}
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=34mm},
+   level 2/.style={sibling distance=22mm}]
+  \node {\annotatedop{+}{t_1 + 2.5\,t_2}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {\annotatedop{\texttt{mul}}{2.5\,t_2}}
+      child {node {$2.5$}}
+      child {node[circle,draw] {$t_2$}}
+    };
+\end{tikzpicture}
+
+\vspace{1ex}
+$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
+\caption{\texttt{ignore\_dpp} path: \texttt{EvalParams} evaluates the parameters in the functional
+form, before canonicalization, so the canonicalized objective tree carries the constant $2.5$ in
+place of the parameter leaf $\mu$ that the general path keeps (\ref{fig:conic-form-tree}).
+Canonicalizing this constant-data tree yields the numeric $c$ directly, but the whole chain re-runs
+whenever a parameter changes.}
 \label{fig:param-map-evalparams}
 \end{subfigure}
 \caption{The two compilation paths on the objective of problem \eqref{eq:example}: the DPP path
