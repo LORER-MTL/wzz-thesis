@@ -9,20 +9,21 @@
 \paragraph{History and background}
 Since the early days of linear programming (LP), practitioners have needed to translate
 mathematical formulations into data that solvers can process.
-At first, this meant encoding each coefficient of the problem matrices by hand, a tedious and
-error-prone process~\cite{fourer1978modern}.
-\emph{Matrix generators} emerged in the late 1960s to automate this task, computing the
-coefficients through explicit loops and writing them out in solver-readable formats like
+At first, this meant encoding each coefficient of the problem matrices by hand, a process
+that is both tedious and error-prone~\cite{fourer1978modern}.
+\emph{Matrix generators} were introduced in the late 1960s to automate this task: they compute the
+coefficients through explicit loops and write them out in solver-readable formats like
 MPS~\cite{marceau1971matrix, ibm1976mpsx}.
 
-Still, a gap remained: modelers think in terms of sets, indices, and algebraic expressions,
+Despite matrix generators removing most of the manual labor, a gap remained.
+Modelers naturally think in terms of sets, indices, and algebraic expressions,
 while procedural code constructs the coefficient matrices entry by entry.
-This mismatch made models difficult to verify, modify, and
-communicate \cite{fourer1983modeling}.
+This mismatch between how a model is expressed and how it is implemented made them difficult to
+verify, modify, and communicate with others \cite{fourer1983modeling}.
 \emph{Algebraic modeling languages} such as AMPL \cite{fourer1990ampl},
 AIMMS \cite{bisschop2006aimms} and GAMS \cite{brooke1988gams} closed this gap by accepting
 problem descriptions that closely follow the math.
-For a fuller account of the early history of modeling languages, see
+For a more complete overview of the early history of modeling languages refer to
 \cite{orchard-hays1984history}.
 
 More recently, modeling languages embedded in general-purpose programming languages have
@@ -147,43 +148,47 @@ A first example is \texttt{FlipObjective}, which turns a maximization problem
 into a minimization one by
 flipping the sign of the objective; its \texttt{retrieve} step simply flips the sign back.
 
-A second example, \texttt{CvxAttr2Constr}, handles variable attributes such as
-\texttt{nonneg} or bounds.
-When the target solver supports them natively, CVXPY passes them directly to the solver;
-otherwise it rewrites them as explicit constraints, and the \texttt{retrieve} step copies those
-constraints' dual values back onto the variable bounds.
+A second example, \texttt{CvxAttr2Constr}, handles variable attributes, which are properties
+declared on a variable that restrict its domain. These include nonnegativity (\texttt{nonneg}),
+positive semidefiniteness (\texttt{PSD}), and explicit variable bounds, amongst others.
+When the target solver supports an attribute natively, CVXPY leaves it for the solver to enforce;
+otherwise the reduction creates a new variable that carries no attributes and adds
+explicit constraints that enforce the attribute. Its \texttt{retrieve} step then maps the
+reformulated solution back onto the original attributed variable.
 
 \paragraph{Conic reformulation.}
 The main reduction, \texttt{Dcp2Cone}, rewrites every nonlinear atom into conic constraints.
-It first rewrites the problem into \emph{Smith form}, replacing each nonlinear atom with a new
-variable coupled to it by an equality constraint; every atom then acts only on affine arguments
-\cite{smith1996}.
-For example, $\|Fx - g\|_2$ is replaced by a new variable $t$ with $t = \|Fx - g\|_2$, leaving the
-norm applied to the affine argument $Fx - g$.
+The first step of the reduction is to rewrite the problem into \emph{Smith form}, where each
+nonlinear atom is replaced by a new variable coupled with an equality constraint; every atom
+then acts only on affine arguments \cite{smith1996}.
 For a convex atom $\phi$, the Smith form gives an auxiliary variable $t$ with the equality
-constraint $\phi(x) = t$. The DCP rules allow a convex atom only where its value is minimized or
-upper-bounded, so the solver always prefers $t$ as small as possible. Relaxing the equality to the
-inequality $\phi(x) \le t$ is therefore \emph{lossless}: at an optimum $t$ is driven down until
-$\phi(x) = t$.
-The pair $(x, t)$ then lies in the \emph{epigraph} $\{(x, t) : \phi(x) \le t\}$ of $\phi$, so $t$
-is called an \emph{epigraph variable}.
-A concave atom instead uses the reversed inequality $\phi(x) \ge t$, placing $(x, t)$ in the
-\emph{hypograph} of $\phi$ and making $t$ a \emph{hypograph variable}.
+constraint $\phi(x) = t$. The second step relaxes this equality to the inequality $\phi(x) \le t$.
+The DCP rules allow a convex atom only where its value is minimized or upper-bounded, so the solver
+always prefers $t$ as small as possible; the relaxation is therefore \emph{lossless}.
 
-Each epigraph inequality is then expressed as the membership of an affine function of $(x, t)$ in a
-convex cone \cite{grant2008graph}. For
-instance, the inequality $\|x\|_2 \le t$ is exactly the second-order cone constraint
-\begin{equation}
-(t, x) \in \mathcal K_{\mathrm{soc}}.
+The pair $(x, t)$ then lies in the \emph{epigraph} $\{(x, t) : \phi(x) \le t\}$ of $\phi$, so we
+often refer to $t$ as an \emph{epigraph variable}.
+A concave atom relaxes to $\phi(x) \ge t$ instead, giving a \emph{hypograph variable}.
+The final step of the reduction expresses each epigraph (hypograph) inequality as the membership of
+an affine function of $(x, t)$ in a convex cone \cite{grant2008graph}.
+
+\paragraph{Example of reformulations.}
+A first example of a reformulation is the inequality $\|x\|_2 \le t$, which is exactly the
+second-order cone constraint $(t, x) \in \mathcal K_{\mathrm{soc}}$.
+A second example is the nondifferentiable absolute value atom $|x|$, whose epigraph $|x| \le t$ can
+be written smoothly as the pair of affine inequalities $-t \le x \le t$.
+A final example is the sum of the $k$ largest entries of $x$, which expands into a small LP:
+the epigraph $\mathrm{sum\_largest}(x, k) \le t$ holds if and only if there exist a scalar
+$q$ and a vector $u$ such that
+\begin{equation}\label{eq:sum-largest}
+q\mathbf{1} + u \ge x, \qquad u \ge 0, \qquad kq + \mathbf{1}^\top u \le t.
 \end{equation}
-The absolute value $|x|$ is another example: although nonsmooth at the origin, its epigraph
-$|x| \le t$ is simply the pair of affine inequalities $-t \le x \le t$. The reformulation therefore
-guarantees that all functions are affine and lie in convex cones, exactly the
-functional conic form of \eqref{eq:conic-form}.
+Here $q$ acts as a threshold and each $u_i$ measures how far the entry $x_i$ rises above it, so that
+the sum of the $k$ largest entries is bounded by $kq + \mathbf{1}^\top u$ \cite{boyd2004convex}.
 
 \paragraph{Example of canonicalization.}
-To show a concrete example of canonicalization, we consider a simple fitting with regularization
-problem
+To show a concrete example of the frontend of canonicalization,
+we consider a simple fitting with regularization problem
 \begin{equation}
     \begin{array}{ll}
         \text{minimize} & \|Fx-g\|_2 + \mu \|x\|_2\\
