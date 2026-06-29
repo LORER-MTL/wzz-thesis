@@ -2,7 +2,7 @@
 
 Domain specific modeling languages for convex optimization such as CVXPY \cite{diamond2016cvxpy} and
 YALMIP \cite{lofberg2004yalmip} allow users to formulate optimization problems in a natural
-mathematical syntax. Through a process called \emph{canonicalization}, these high-level 
+mathematical syntax. Through a process called \emph{canonicalization}, these high-level
 problem descriptions are converted to a \emph{standard conic form} used by many
 general-purpose convex solvers
 \BEQ \label{e:standard-form}
@@ -15,137 +15,102 @@ where $x \in \reals^n$ is the decision variables,
 and the \emph{problem data} are the matrix $A \in \reals^{m \times n}$, the vectors $b \in \reals^m$
 and $c \in \reals^n$, the scalar $d \in \reals$ and the non-empty closed convex cone
 $K \subseteq \reals^m$.
-Almost all of optimization practice can be divided into two groups, \emph{modeling} and 
+Almost all of optimization practice can be divided into two groups, \emph{modeling} and
 \emph{solving}. The modeler's role is to formulate problems based on real-world business
 or engineering applications.
 The solver's role is to find an optimal solution given the data of a problem instance.
 Modeling languages serve as the communication bridge between these two groups.
 When improvements in solvers are made, modeling languages must adapt to allow users
-to benefit from them. Conversely, it is through natural formulations that modelers can 
+to benefit from them. Conversely, it is through natural formulations that modelers can
 express their requirements and help motivate solver improvements.
 
 While the time taken to solve an optimization problem is often dominated by the solver,
 the time taken to \emph{canonicalize} (or \emph{compile}) a problem can also be significant,
-especially for large problems.
-In the case of CVXPY, the \emph{compilation time} largely lies in \emph{matrix stuffing},
-the final step of canonicalization where symbolic expression trees are converted to 
-explicit numerical matrices.
-Other modeling languages take different approaches to form the problem data, we review these
+especially for large problems or ones that are solved many times.
+In the case of CVXPY, this compilation cost lies largely in \emph{matrix stuffing},
+the final step of canonicalization where symbolic expression trees are converted to
+the explicit numerical problem data $A$, $b$, $c$ and $d$.
+Other modeling languages take different approaches to assemble this data; we review these
 \emph{coefficient extraction} approaches in \S\ref{sec:coefficient-extraction}.
 
-\paragraph{Atoms.}
-Modeling languages for convex optimization are built on top of a library of
-functions which can be used to describe problems.
-These functions are known as \emph{atoms} in CVXPY since they are the fundamental
-building blocks of the modeling language \cite{grant2004disciplined}.
-We write $\phi$ for a general atom from this library.
-Atoms have known attributes such as curvature, monotonicity, and sign,
-for example, .
+\paragraph{Parameters.}
+A modeler can designate part of a problem's data as \emph{parameters}---values that vary between
+solves while the problem's structure remains fixed. A parameterized model is therefore solved many
+times, once for each setting of its parameters, so the cost of canonicalization is paid on every
+solve rather than only once. Re-forming this data each time, when only the parameter values have
+changed, is the cost this thesis sets out to eliminate.
 
 \paragraph{Expression trees.}
-An expression is recursively defined as an atom evaluated at a \emph{subexpression}.
-The subexpression can either be a variable, a parameter, or another expression.
-Similarly to atoms, expressions can also be classified by curvature, monotonicity, and sign
-which are determined by simple \emph{composition rules} \cite{grant2006disciplined}.
-An expression tree whose atoms are all affine is known as an \emph{affine expression tree}.
+Modeling languages for convex optimization are built on top of a library of functions which can be
+used to describe problems. These functions are known as \emph{atoms} in CVXPY since they are the
+fundamental building blocks of the modeling language \cite{grant2004disciplined}.
+An expression is recursively defined as an atom evaluated at a \emph{subexpression}, which can
+itself be a variable, a parameter, or another expression. Every formulation is therefore an
+\emph{expression tree}, or more generally a \emph{computational graph}, of atoms.
+After canonicalization this graph is purely \emph{affine} in the variables and parameters, and
+matrix stuffing is the act of evaluating it into the problem data.
 \begin{figure}
 \centering
 \begin{tikzpicture}
-  [level 1/.style={sibling distance=20mm},
-    level 2/.style={sibling distance=15mm},
-    level 3/.style={sibling distance=15mm}]
-  \node {\annotatedop{\texttt{log}}{\texttt{log}(|Ax-b|)}}
-    child {node[circle,draw] {$t_1$}}
-    child {node {\annotatedop{\texttt{mul}}{\mu  t_2}}
-      child {node[draw] {$\mu$}}
-      child {node[circle,draw] {$t_2$}}
-    };
+  [level 1/.style={sibling distance=25mm},
+    level 2/.style={sibling distance=15mm}]
+  \node {\annotatedop{\texttt{sub}}{Ax - b}}
+    child {node {\annotatedop{\texttt{mul}}{Ax}}
+      child {node[draw] {$A$}}
+      child {node[circle,draw] {$x$}}
+    }
+    child {node[draw] {$b$}};
 \end{tikzpicture}
-\caption{Example of expression tree for the function \texttt{log(|Ax-b|)}.}
+\caption{Example of an affine expression tree for $Ax - b$. Variables are drawn as circles and
+constants (or parameters) as boxes.}
 \label{fig:expr-tree}
 \end{figure}
 
-\paragraph{Parameterized conic form.}
-The data inputs in a problem instance can either be fixed or varying.
-In CVXPY, varying data are referred to as \emph{parameters} and
-fixed data are referred to as \emph{constants}.
-Parameters are useful for specifying a \emph{family} of problems where the 
-structure is fixed \cite{schaller2022cvxpygen}.
-A \emph{parameterized cone program} extends the conic form in \eqref{e:standard-form}
-by letting the problem data depend on a parameter vector $\theta \in \reals^p$:
-\BEQ \label{eq:param-cone}
-\begin{array}{ll}
-\text{minimize}   & c(\theta)^T x + d(\theta) \\
-\text{subject to} & b(\theta) - A(\theta) x \in \mathcal K.
-\end{array}
-\EEQ
-When $c, d, b$ and $A$ are \emph{affine with respect to} $\theta$,
-we can represent the problem data parameter dependence as
-\begin{equation} \label{eq:param-maps}
-    \begin{bmatrix} c \\ d \end{bmatrix} = Q \cdot \tilde{\theta},
-\qquad\text{and}\qquad
-    [A \quad b] = \sum_{i=1}^{p+1} \mathcal{R}[:,:,i]\cdot \tilde{\theta}_i,
-\end{equation}
-where $Q \in \reals^{(n+1) \times (p+1)}$, $\mathcal R \in \reals^{m \times (n+1) \times (p+1)}$
-and $\tilde{\theta} = (\theta, 1) \in \reals^{p+1}$.
-When $A(\theta)$ is sparse, we also require that its structure or \emph{sparsity pattern}
-must be fixed throughout the different iterations.
-We refer to $Q$ as the objective \emph{parameter map}, $\mathcal R$ as the constraint parameter map,
-and $\tilde{\theta}$ as the extended parameter vector.
-The equation for the constraint map is known as a \emph{tensor} product, a generalization of
-matrix-vector product in higher dimensions.
-This notation is required to output a constraint matrix from a three dimensional
-tensor.
+\paragraph{Related work.}
+Every modeling language must turn a symbolic model into the numerical problem data a solver
+consumes, and they differ both in how they extract it and in how they handle data that changes
+between solves. JuMP scalarizes each constraint eagerly as the model is built; it supports parameters through a
+dedicated set, but updating them efficiently relies on a separate package
+(\texttt{ParametricOptInterface.jl}) or on native solver support, rather than a cached
+parameter-to-data map. CasADi differentiates its expression
+graph into a reusable function whose parameters are ordinary numeric inputs, re-evaluated on each
+solve. CVXPY exposes parameters explicitly and caches a reusable map from them to the problem data
+(\S\ref{sec:coefficient-extraction}).
 
-\paragraph{Matrix stuffing.}
-Although the original user specified problem formulation may contain nonlinearities,
-after conversion to standard form, the \emph{canonicalized problem} will
-only contain affine expressions (with respect to both parameters and variables).
-Concretely, matrix stuffing refers to the task of forming the constraint parameter map,
-as the objective parameter map is a scalar special case of it.
-Once the parameter maps are formed, the parameter dependence of the model is \emph{cached}
-and doesn't rely on the expression tree representation anymore.
-Subsequent problem instances will only need to update $\theta$ and apply the maps
-to get the new problem data.
-We review current CVXPY matrix stuffing approaches and give examples of how the parameter maps
-are formed in \S\ref{sec:matrix-stuffing}.
-
-\paragraph{Caching versus recompilation.}
-Once a problem is parameterized, there are two broad strategies for handling repeated solves.
-The default approach in CVXPY, enabled by the DPP composition rules, forms the parameter maps
-once and \emph{caches} them; subsequent solves merely apply the maps to a new $\theta$.
-This is fast to re-solve but requires the problem to be DPP-compliant and stores the large
-three-dimensional tensor $\mathcal R$ in memory.
-The alternative, selected in CVXPY with \texttt{ignore\_dpp=True}, skips the parameter maps
-entirely: parameters are treated as ordinary constants and the problem is re-canonicalized from
-scratch on every solve.
-This removes the DPP restriction and the tensor, but pays the full matrix-stuffing cost each time.
-Our method occupies the middle ground: like the \texttt{ignore\_dpp} path it forms no parameter
-tensor and imposes no DPP restriction, but it caches the \emph{sparsity pattern} of the problem
-data once and only refills the numerical values on each solve, recovering the amortized speed of
-the DPP path.
+Because the canonicalized model is affine, forming its problem data is at heart a derivative
+computation: the constraint matrix is a Jacobian, and the matrix of a quadratic objective is a
+Hessian. Coefficient extraction is thus part of the broader problem of computing sparse derivatives.
+Such derivatives are classically computed one scalar at a time, using graph coloring to recover
+their sparsity; only recently have they been computed directly on vectorized graphs, in statistics
+\cite{kwok2025vectorised} and control \cite{zou2025vectorized} (\S\ref{sec:computing-derivatives}).
+This direct, vectorized view has not yet been brought to convex canonicalization, which is the gap
+this thesis addresses.
 
 \paragraph{Contributions.}
 We make the following contributions:
 \begin{enumerate}
-  \item We propose an alternative method to matrix stuffing that doesn't rely on forming parameter maps.
-  Instead, we treat matrix stuffing as a sparse Jacobian evaluation which naturally
-  separates the symbolic structure of the Jacobian from its numerical values.
-  This generalizes the \texttt{ignore\_dpp} path---it applies to the same broad class of problems---while
-  caching the sparsity pattern rather than re-deriving it on every solve.
-  \item We use the affine atoms from the \texttt{SparseDiffengine} package and its Python bindings
-  to implement a canonicalization backend for CVXPY.
-  \item We benchmark our method against existing approaches and make improvements to CVXPY's codebase.
+  \item \textbf{A structured differentiation package.} We build \texttt{SparseDiffengine}, which
+  computes sparse Jacobians and Hessians of vectorized expressions directly, with no graph coloring,
+  separating their fixed sparsity pattern from their changing values.
+  \item \textbf{A CVXPY backend.} We implement a canonicalization backend for CVXPY using the
+  \texttt{SparseDiffengine}, finding the sparsity pattern once and refilling only its values on each
+  solve.
+  \item \textbf{A portable C implementation.} \texttt{SparseDiffengine} is written in
+  dependency-light C with Python bindings, making the engine usable beyond CVXPY and well suited to
+  embedded and real-time settings.
 \end{enumerate}
 All code is open source and available at
-\url{https://github.com/cvxpy/cvxpy}.
-% should mention sparsediffengine as well probably.
+\begin{center}
+\url{https://github.com/cvxpy/cvxpy} \\
+\url{https://github.com/cvxpy/SparseDiffengine}
+\end{center}
 
 \paragraph{Thesis outline.}
 The rest of this thesis begins with a review of the literature on modeling languages,
-canonicalization, and matrix stuffing in \S\ref{sec:RevLitt}.
-In \S\ref{sec:Theme1} we describe a set of relevant affine atoms and their implementation
-in a sparse differentiation package.
+canonicalization, and computing derivatives in \S\ref{sec:RevLitt}.
+In \S\ref{sec:Theme1} we present \texttt{SparseDiffengine}, a package for structured sparse
+differentiation, and the affine atoms it uses to canonicalize a problem into its sparse Jacobian and
+Hessian.
 In \S\ref{sec:Theme2} we present benchmark results comparing our method
 to existing approaches.
 Finally, in \S\ref{sec:Conclusion} we summarize our contributions and

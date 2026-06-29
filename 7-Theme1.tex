@@ -1,5 +1,11 @@
 \Chapter{A lightweight canonicalization engine}\label{sec:Theme1}
 
+% TODO: planned major restructure of this chapter. The intro (5-Introduction.tex) now frames
+% SparseDiffengine as a structured-differentiation package and promises BOTH the sparse Jacobian
+% AND the Hessian here, but this chapter currently implements the Jacobian path only (the Node
+% struct holds a single `jacobian`; atoms implement jacobian_init/eval_jacobian). Extend to cover
+% Hessian formation so the chapter matches the intro's outline.
+
 This chapter presents a minimal implementation of a subset of affine atoms in the
 \texttt{SparseDiffEngine} package, and shows how they compute the sparse constant Jacobian of a set
 of affine expressions. We start from a \emph{canonicalized} problem in standard form, produced by
