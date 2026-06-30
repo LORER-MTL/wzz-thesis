@@ -86,19 +86,20 @@ introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 \paragraph{Functional form.}
 A user most naturally expresses a CVXPY problem in \emph{functional} form,
-\begin{equation}\label{eq:functional-form}
+\BEQ\label{eq:functional-form}
 \begin{array}{ll}
 \mbox{minimize}   & f_0(x; \theta) \\
 \mbox{subject to} & f_i(x; \theta) \leq g_i(x; \theta), \quad i=1,\ldots,m_1,\\
                   & h_i(x; \theta) = j_i(x; \theta), \quad i=1,\ldots,m_2,
 \end{array}
-\end{equation}
+\EEQ
 where the optimization variables $x_1,\ldots,x_k$ are collected into a single
 vector $x \in \reals^n$, and likewise the parameters $\theta_1,\ldots,\theta_l$
 into $\theta \in \reals^p$ \cite{boyd2004convex}.
-We call \eqref{eq:functional-form} a problem \emph{instance} when $\theta$ is
-fixed to a numerical value, and a problem \emph{family} when $\theta$ is left
-symbolic. Internally, CVXPY represents each function in \eqref{eq:functional-form}
+As in \S\ref{sec:Introduction}, \eqref{eq:functional-form} is a problem family when $\theta$ is left
+symbolic and a problem instance when $\theta$ is fixed to a numerical value; it generalizes the
+parametric form \eqref{e:parametric-family} to the convex/concave inequalities and affine equalities
+CVXPY accepts. Internally, CVXPY represents each function in \eqref{eq:functional-form}
 as an expression tree.
 
 \paragraph{Disciplined convex programming.}
@@ -130,12 +131,12 @@ Affine expressions require $\phi$ and all of its arguments to be affine \cite{gr
 \paragraph{Functional conic form.}
 Once a problem is verified to be DCP-compliant, the frontend of canonicalization
 rewrites its functional form \eqref{eq:functional-form} into an equivalent \emph{functional conic form}
-\begin{equation}\label{eq:conic-form}
+\BEQ\label{eq:conic-form}
 \begin{array}{ll}
 \mbox{minimize}   & f_0(x; \theta) \\
 \mbox{subject to} & \ell_i(x; \theta) \in \mathcal K_i, \quad i = 1,\ldots,m,
 \end{array}
-\end{equation}
+\EEQ
 where $f_0$ is affine or quadratic, each $\ell_i$ is affine, and each $\mathcal{K}_i$ is one of
 the standard convex cones: the zero, nonnegative, second-order, power, exponential, and positive
 semidefinite cones.
@@ -182,22 +183,22 @@ be written smoothly as the pair of affine inequalities $-t \le x \le t$.
 A final example is the sum of the $k$ largest entries of $x$, which expands into a small LP:
 the epigraph $\mathrm{sum\_largest}(x, k) \le t$ holds if and only if there exist a scalar
 $q$ and a vector $u$ such that
-\begin{equation}\label{eq:sum-largest}
+\BEQ\label{eq:sum-largest}
 q\mathbf{1} + u \ge x, \qquad u \ge 0, \qquad kq + \mathbf{1}^\top u \le t.
-\end{equation}
+\EEQ
 Here $q$ acts as a threshold and each $u_i$ measures how far the entry $x_i$ rises above it, so that
 the sum of the $k$ largest entries is bounded by $kq + \mathbf{1}^\top u$ \cite{boyd2004convex}.
 
 \paragraph{Example of canonicalization.}
 To show a concrete example of the frontend of canonicalization,
 we consider a simple fitting with regularization problem
-\begin{equation}
+\BEQ
     \begin{array}{ll}
         \text{minimize} & \|Fx-g\|_2 + \mu \|x\|_2\\
         \text{subject to} & x \succeq 0\\
     \end{array}
       \label{eq:example}
-\end{equation}
+\EEQ
 with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters
 $g\in \reals^m$ and $\mu \geq 0$.
 The problem formulation in CVXPY code is
@@ -254,7 +255,7 @@ these expression trees. Variables are labeled with a circle, and parameters with
 
 \paragraph{Conic form expression tree.}
 After applying the reductions, the problem has been \emph{canonicalized} to
-\begin{equation}\label{eq:graph}
+\BEQ\label{eq:graph}
 \begin{array}{ll}
   \mbox{minimize}  & t_1 + \mu t_2 \\
   \mbox{subject to}  &
@@ -262,7 +263,7 @@ x \in \reals_+^n \\
 & (t_1, Fx -g) \in \mathcal K_{\mathrm{soc},m+1} \\
 & (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\
 \end{array}
-\end{equation}
+\EEQ
 where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
 \ref{e:standard-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
 \times \mathcal K_{\mathrm{soc},n+1}$.
@@ -535,13 +536,13 @@ particular approach to differentiation.
 Other than computing derivatives by hand, the simplest method is to use \emph{numerical
 differentiation}, which approximates the derivative of a function at a point by evaluating the
 function at nearby points using a \emph{finite difference} formula similar to either
-\begin{equation}
+\BEQ
 f'(x) \approx \frac{f(x + h) - f(x)}{h},
-\end{equation}
+\EEQ
 or
-\begin{equation}
+\BEQ
 f'(x) \approx \frac{f(x + h) - f(x - h)}{2h},
-\end{equation}
+\EEQ
 where $h$ is a small step size. Although this approach is straightforward to implement and
 can achieve reasonable accuracy, there are important downsides to consider.
 First, it requires a linear number of function evaluations with respect to the number of
@@ -613,14 +614,14 @@ so these modes are rarely used in practice \cite{naumann2008optimal}.
 For a vector-valued map $F : \reals^n \to \reals^m$ of an input $x \in \reals^n$, the first-order
 derivative is the \emph{Jacobian} $J \in \reals^{m \times n}$ of partial derivatives of the outputs
 with respect to the inputs,
-\begin{equation}\label{eq:jacobian}
+\BEQ\label{eq:jacobian}
   J_{ij} = \frac{\partial F_i}{\partial x_j}, \qquad i = 1, \dots, m, \quad j = 1, \dots, n.
-\end{equation}
+\EEQ
 For a scalar function $f : \reals^n \to \reals$, the second-order derivative is the \emph{Hessian}
 $H \in \reals^{n \times n}$ of second partial derivatives,
-\begin{equation}\label{eq:hessian}
+\BEQ\label{eq:hessian}
   H_{ij} = \frac{\partial^2 f}{\partial x_i \, \partial x_j}, \qquad i, j = 1, \dots, n.
-\end{equation}
+\EEQ
 The Hessian is the Jacobian of the gradient of $f$, and is symmetric whenever $f$ is twice
 continuously differentiable. It is therefore obtained by differentiating the gradient, with no method
 beyond those used for the Jacobian.
@@ -903,13 +904,13 @@ format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} 
 value array \texttt{vals} of length equal to the number of \emph{nonzero entries} in the matrix.
 
 For example, the matrix
-\begin{equation}\label{eq:sparse-matrix}
+\BEQ\label{eq:sparse-matrix}
   \begin{bmatrix}
   0 & 0 & 3.2 & 0\\
   4.1 & 1.8 & 0 & 2.2\\
   0 & 2.8 & 0 & 3.4\\
   \end{bmatrix}
-\end{equation}
+\EEQ
 can be represented in coordinate format as
 \begin{lstlisting}[language=C]
 int     rows[] = {0,    1,    1,    1,    2,    2};
