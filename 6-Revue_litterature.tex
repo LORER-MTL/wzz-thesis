@@ -334,8 +334,9 @@ expression tree per constraint, rather than a single combined tree.
 \end{subfigure}
 \caption{\emph{After canonicalization.} CVXPY represents the conic form~\eqref{eq:graph} as these
 expression trees: the nonlinear norm atoms have become epigraph variables, leaving the objective
-and the three separate cone constraints affine. Variables are deduplicated and .. }
-% TODO talk about the variable x appearing in multiple places being the same.
+and the three separate cone constraints affine. The variable $x$ appears as a leaf of several
+trees; all occurrences refer to the same variable, which owns a single block of columns in the
+problem data.}
 \label{fig:conic-form-tree}
 \end{figure}
 
@@ -355,6 +356,177 @@ for epigraph reformulations and general modeling best practices \cite{aps2025mos
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
+CVXPY takes the perspective of matrix calculus for computing the coefficient matrices of linear
+expressions \cite{diamond2016cvxpy}. This is where most of the computational burden of the entire
+canonicalization of optimization problems lies.
+The section first develops the matrix calculus view, in which every affine atom becomes a linear
+operator and assembling the problem data amounts to composing these operators over the expression
+trees. It then examines how CVXPY realizes this composition: the two styles of operators, the
+per-variable layout of the coefficient tensors, and the role of a third tensor axis in caching
+parametrized data. The two parametric paths, DPP and \texttt{ignore\_dpp}, are contrasted, along
+with the code generator CVXPYgen. The section closes with implementation notes on the sparse
+matrix backends and a worked example on problem \eqref{eq:example}; along the way it highlights
+the design decisions that the engine of \S\ref{sec:Theme1} revisits.
+
+\paragraph{Matrix calculus.}
+Matrix calculus extends differentiation to functions whose arguments and values are vectors and
+matrices \cite{magnus2019matrix}. The derivative of a matrix-valued expression with respect to a
+matrix variable is a four-dimensional object, and several conventions exist for arranging its
+entries. The convention of Magnus and Neudecker, which CVXPY and this thesis follow, removes the
+ambiguity by vectorization: $\vect(X)$ stacks the columns of $X$ into a single vector, every
+expression is identified with its vectorization, and the derivative of one vectorized expression
+with respect to another is an ordinary Jacobian matrix. Under this convention matrix operations
+become linear operators on the vectorized arguments, and their Jacobians carry structure; for
+example $\vect(FX) = (I \otimes F)\vect(X)$, so a matrix-valued product $FX$ corresponds to the
+Kronecker-structured, block-diagonal Jacobian $I \otimes F$.
+
+\paragraph{Composing linear operators.}
+After canonicalization every expression is affine, so each node of a conic-form tree can be
+written in the vectorized form
+\BEQ\label{eq:linop-form}
+e(x) = E\,x + f,
+\EEQ
+where $x$ is the stacked vector of all variables, $E$ is the coefficient matrix of the node and
+$f$ is a constant offset. Since $e$ is affine, $E$ is exactly its Jacobian, constant in $x$. An
+affine atom $g$ with arguments $e_1, \dots, e_k$ is itself a linear map in each argument, and the
+chain rule gives
+\BEQ\label{eq:linop-chain-rule}
+\frac{\partial}{\partial x}\, g\big(e_1(x), \dots, e_k(x)\big) \;=\; \sum_{i=1}^{k} L_i\,E_i,
+\EEQ
+where $L_i$, the Jacobian of $g$ with respect to its $i$-th argument, is constant. Every affine
+atom thus becomes a \emph{linear operator} that applies itself to the coefficient matrices of its
+arguments: computing the Jacobian of the whole tree amounts to composing many linear operators.
+Matrix stuffing performs this composition in one bottom-up pass. A variable leaf contributes an
+identity block in its own column slot, a constant leaf contributes to the offset $f$, and each
+interior node applies its operator to the matrices of its children.
+
+\paragraph{Views and copies.}
+The linear operators come in two styles. The simple ones act as \emph{views}, modifying the
+coefficient matrices of their argument in place: negation flips the sign of every stored entry,
+and indexing selects the rows of the extracted entries. Reshaping costs nothing at all, since it
+leaves the vectorization of the expression unchanged. The operators that carry data of their own
+are more involved: a matrix product $FX$, an elementwise multiplication or a division by constant
+data form a coefficient matrix from that data and multiply it with the matrices of the argument,
+creating a new \emph{copy} of the product.
+
+\paragraph{Local versus global derivatives.}
+The coefficient matrices of \eqref{eq:linop-form} can be laid out in two ways. CVXPY
+differentiates \emph{locally}, one variable at a time: each node stores a separate coefficient
+block per variable appearing beneath it, keyed by the variable's identifier, and every operator
+is applied to each block in turn. The columns of a block index only the entries of its own
+variable; only after the walk completes are the blocks shifted to their variables' column offsets
+and concatenated into the full matrix $E$. The alternative is a \emph{global} derivative, a
+single Jacobian per node whose columns span the whole stacked vector $x$ from the outset. The
+local layout keeps the blocks small and skips variables absent from a subtree, but every operator
+must be dispatched over a dictionary of blocks; the engine of \S\ref{sec:Theme1} takes the global
+route.
+
+\paragraph{Parameters and tensors.}
+Under the DPP rules the problem data is affine in the parameters \cite{agrawal2019dpp}, and CVXPY
+accounts for this with a third tensor axis: every coefficient block stores one slice per
+parameter entry plus one slice for the constant part, and the operators of the walk apply to
+each slice. Flattening the slices of the root yields the cached \emph{parameter map}
+\BEQ\label{eq:param-maps}
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta,
+\qquad
+\tilde\theta = \begin{bmatrix} \theta \\ 1 \end{bmatrix},
+\EEQ
+shown in \ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
+data $[A\ b]$ is recovered the same way from its own map. After a parameter change, a re-solve
+costs a single sparse matrix--vector product $Q\tilde\theta$.
+
+\begin{figure}[H]
+\begin{subfigure}{\textwidth}
+\centering
+$
+Q =
+\begin{blockarray}{cccc}
+        & g^T & \mu & 1 \\
+\begin{block}{c[ccc]}
+  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
+  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
+  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+\end{block}
+\end{blockarray}
+\qquad
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
+= \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
+$
+\caption{DPP path: the objective parameter map $Q$ is formed and cached; each re-solve recovers
+the objective data $(c, d)$ by multiplying $Q$ with the extended parameter vector
+$\tilde\theta = (g, \mu, 1)$.}
+\label{fig:param-map-dpp}
+\end{subfigure}
+\vspace{3ex}
+
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=34mm},
+   level 2/.style={sibling distance=22mm}]
+  \node {\annotatedop{+}{t_1 + 2.5\,t_2}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {\annotatedop{\texttt{mul}}{2.5\,t_2}}
+      child {node {$2.5$}}
+      child {node[circle,draw] {$t_2$}}
+    };
+\end{tikzpicture}
+
+\vspace{1ex}
+$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
+\caption{\texttt{ignore\_dpp} path.}
+\label{fig:param-map-evalparams}
+\end{subfigure}
+\caption{The two parametric paths for the objective data of problem \eqref{eq:example}. The DPP
+path (a) builds the parameter map $Q$ once and caches it; each re-solve recovers $(c, d)$ with the
+single sparse product $Q\tilde\theta$. The \texttt{ignore\_dpp} path (b) replaces each parameter
+leaf by a constant holding its current value and re-walks the tree on every change of the
+parameters.}
+\label{fig:param-map-c}
+\end{figure}
+
+\paragraph{The \texttt{ignore\_dpp} path.}
+Problems that fall outside the DPP grammar, or that opt out of it by solving with
+\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
+parameter leaf by a constant holding its current value, and the parameter-free tree that results
+is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
+fully general, since arbitrary functions of parameters reduce to constants, but every change of
+$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
+never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
+
+\paragraph{Code generation.}
+A third option is to compile the problem ahead of time. CVXPYgen emits problem-specific C code
+that embeds the cached parameter map \eqref{eq:param-maps} of a DPP problem
+\cite{schaller2022cvxpygen}, continuing an earlier line of work on code generation for embedded
+second-order cone programs \cite{chu2013codegen}. The benchmarks of \S\ref{sec:Theme2} do not
+compare against it: code generation is an offline step that fixes the problem structure at
+compile time, a different deployment model from a runtime backend that must accept arbitrary
+problems.
+% TODO: confirm the stated reason for not benchmarking against CVXPYgen.
+
+\paragraph{Implementation notes.}
+CVXPY ships two implementations of the walk, the C++ backend \texttt{cvxcore} and the
+\texttt{SciPy} backend. Three observations about them set up the engine of \S\ref{sec:Theme1}.
+First, both delegate every matrix operation to a general-purpose sparse library, Eigen for
+\texttt{cvxcore} and \texttt{scipy.sparse} for the \texttt{SciPy} backend; the storage formats
+and kernels are fixed by the library, which leaves no room to exploit structure known at
+canonicalization time. Second, all coefficient data is treated as sparse: dense atom data is
+converted to a sparse matrix on entry, and no operator carries a dense or block special case.
+Third, quadratic objectives take a separate and involved path: each quadratic form is swapped
+for a dummy variable, the surrounding affine expression is stuffed by the same walk, and the
+matrices of the quadratic forms are then scaled by the resulting coefficients and reassembled
+into the global objective matrix $P$.
+
+\paragraph{Example.}
+The walk is traced on problem \eqref{eq:example} in \ref{fig:matrix-stuffing}, continuing from
+the conic-form trees of \ref{fig:conic-form-tree}. In the objective tree the variable leaf $t_1$
+contributes an identity block in its own column slot, here a single one, the multiplication by
+$\mu$ scales the block of $t_2$, and the root adds the two rows into $c$. In the constraint tree
+the product $Fx$ multiplies the identity block of $x$ by $F$, negation flips signs in place, the
+constant $g$ lands in the offset column, and the root stacks the matrices of its children at
+their constraint row offsets to form $[A\ b]$. The walk is easy to follow at this size; the
+difficulty of matrix stuffing is carrying it out efficiently for arbitrary problems.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -444,7 +616,7 @@ for epigraph reformulations and general modeling best practices \cite{aps2025mos
         \end{bmatrix}$}
     };
 \end{tikzpicture}
-\caption{Matrix Stuffing tree}
+\caption{Matrix stuffing tree of the constraints}
 \end{center}
 \end{subfigure}
 \caption{Matrix stuffing of problem \eqref{eq:example} by a recursive walk of the conic-form
@@ -453,54 +625,12 @@ linear operation to the matrices of its children.}
 \label{fig:matrix-stuffing}
 \end{figure}
 
-\begin{figure}[H]
-\begin{subfigure}{\textwidth}
-\centering
-$
-Q =
-\begin{blockarray}{cccc}
-        & g^T & \mu & 1 \\
-\begin{block}{c[ccc]}
-  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
-  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
-  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
-  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
-\end{block}
-\end{blockarray}
-\qquad
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
-= \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
-$
-\caption{DPP path: the objective parameter map $Q$ is formed and cached; each re-solve recovers
-the objective data $(c, d)$ by multiplying $Q$ with the extended parameter vector
-$\tilde\theta = (g, \mu, 1)$.}
-\label{fig:param-map-dpp}
-\end{subfigure}
-\vspace{3ex}
-
-\begin{subfigure}{\textwidth}
-\centering
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=34mm},
-   level 2/.style={sibling distance=22mm}]
-  \node {\annotatedop{+}{t_1 + 2.5\,t_2}}
-    child {node[circle,draw] {$t_1$}}
-    child {node {\annotatedop{\texttt{mul}}{2.5\,t_2}}
-      child {node {$2.5$}}
-      child {node[circle,draw] {$t_2$}}
-    };
-\end{tikzpicture}
-
-\vspace{1ex}
-$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
-\caption{\texttt{ignore\_dpp} path.}
-\label{fig:param-map-evalparams}
-\end{subfigure}
-\caption{The two...}
-\label{fig:param-map-c}
-\end{figure}
-
 \paragraph{References.}
+The original CVXPY paper \cite{diamond2016cvxpy} introduces the matrix calculus perspective, and
+the rewriting-system paper \cite{agrawal2018rewriting} situates matrix stuffing as the final
+step of the reduction chain. The DPP paper \cite{agrawal2019dpp} develops the parameter map and
+its caching; the code generation lineage runs from the embedded second-order cone solvers of
+Chu et al. \cite{chu2013codegen} to CVXPYgen \cite{schaller2022cvxpygen}.
 
 %%
 %%  COMPUTING DERIVATIVES
@@ -686,6 +816,10 @@ solvers targeted in this thesis require the matrix explicitly as data, which is 
 direct approach produces.
 
 \paragraph{Overview of recent works.}
+% let's maybe remove some weird papers that aren't really relevant and only focus on
+% some autodiff works in julia and others (for example). We should shift our focus
+% towards more relevant works that we could possibly compare to, or rather they
+% are operating in a similar space as us.
 \begin{table}[ht]
 \centering
 \footnotesize
@@ -964,7 +1098,7 @@ In contrast to iterative methods, the CSC format is the preferred format for
 Mention that both CSR and CSC can do efficient mat-vec, but the algorithm
 must adapt to the underlying data structure.
 
-\paragraph{Matrix-matrx products.}
+\paragraph{Matrix-matrix products.}
 Mention SpGEMM. Mention Gustavson's algorithm and the standard one CSR and CSC method.
 Discuss the tradeoffs.
 
@@ -974,17 +1108,6 @@ but many others exist for different specialized use cases.
 The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
 allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
 the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
-
-\paragraph{Sparse matrix struct in C.}
-A CSR matrix struct in C looks like this.
-\begin{lstlisting}[language=C]
-typedef struct CSR_Matrix {
-    int *p;       /* row pointers, size m+1   */
-    int *i;       /* column indices, size nnz */
-    double *x;    /* values, size nnz         */
-    int m, n, nnz;
-} CSR_Matrix;
-\end{lstlisting}
 
 \paragraph{References.}
 % TODO revisit this once we start writing the methodology.
