@@ -356,177 +356,145 @@ for epigraph reformulations and general modeling best practices \cite{aps2025mos
 \section{Matrix stuffing}
 \label{sec:matrix-stuffing}
 
-CVXPY takes the perspective of matrix calculus for computing the coefficient matrices of linear
-expressions \cite{diamond2016cvxpy}. This is where most of the computational burden of the entire
-canonicalization of optimization problems lies.
-The section first develops the matrix calculus view, in which every affine atom becomes a linear
-operator and assembling the problem data amounts to composing these operators over the expression
-trees. It then examines how CVXPY realizes this composition: the two styles of operators, the
-per-variable layout of the coefficient tensors, and the role of a third tensor axis in caching
-parametrized data. The two parametric paths, DPP and \texttt{ignore\_dpp}, are contrasted, along
-with the code generator CVXPYgen. The section closes with implementation notes on the sparse
-matrix backends and a worked example on problem \eqref{eq:example}; along the way it highlights
-the design decisions that the engine of \S\ref{sec:Theme1} revisits.
+CVXPY takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
+coefficient matrices of linear expressions; this is where most of the computational burden of
+canonicalization lies. The section first develops this view, in which every affine atom becomes a
+linear operator and assembling the problem data amounts to composing these operators over the
+expression trees. It then examines how CVXPY carries out the composition and how parametrized
+data is cached and updated, highlighting along the way important design differences with the
+engine of \S\ref{sec:Theme1}.
 
 \paragraph{Matrix calculus.}
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
-matrices \cite{magnus2019matrix}. The derivative of a matrix-valued expression with respect to a
-matrix variable is a four-dimensional object, and several conventions exist for arranging its
-entries. The convention of Magnus and Neudecker, which CVXPY and this thesis follow, removes the
-ambiguity by vectorization: $\vect(X)$ stacks the columns of $X$ into a single vector, every
-expression is identified with its vectorization, and the derivative of one vectorized expression
-with respect to another is an ordinary Jacobian matrix. Under this convention matrix operations
-become linear operators on the vectorized arguments, and their Jacobians carry structure; for
-example $\vect(FX) = (I \otimes F)\vect(X)$, so a matrix-valued product $FX$ corresponds to the
-Kronecker-structured, block-diagonal Jacobian $I \otimes F$.
-
-\paragraph{Composing linear operators.}
-After canonicalization every expression is affine, so each node of a conic-form tree can be
-written in the vectorized form
-\BEQ\label{eq:linop-form}
-e(x) = E\,x + f,
+matrices. Systematic rules for such derivatives go back to Dwyer and Macphail
+\cite{dwyer1948symbolic}: the derivative of a matrix-valued expression with respect to a matrix
+variable is a four-dimensional object, and several competing conventions arrange its
+entries \cite{magnus2019matrix}. The convention of Magnus and Neudecker, which CVXPY and this
+thesis follow, removes the ambiguity by vectorization: every expression is identified with
+\BEQ\label{eq:vec}
+\vect(X) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^T,
 \EEQ
-where $x$ is the stacked vector of all variables, $E$ is the coefficient matrix of the node and
-$f$ is a constant offset. Since $e$ is affine, $E$ is exactly its Jacobian, constant in $x$. An
-affine atom $g$ with arguments $e_1, \dots, e_k$ is itself a linear map in each argument, and the
-chain rule gives
-\BEQ\label{eq:linop-chain-rule}
-\frac{\partial}{\partial x}\, g\big(e_1(x), \dots, e_k(x)\big) \;=\; \sum_{i=1}^{k} L_i\,E_i,
+the vector that stacks the columns of $X \in \reals^{m \times n}$, and the derivative of one
+vectorized expression with respect to another is an ordinary Jacobian matrix. Under this
+convention matrix operations become linear operators on the vectorized arguments, and their
+Jacobians carry structure: for example
+\BEQ\label{eq:vec-kron}
+\vect(FX) = (I \otimes F)\,\vect(X),
 \EEQ
-where $L_i$, the Jacobian of $g$ with respect to its $i$-th argument, is constant. Every affine
-atom thus becomes a \emph{linear operator} that applies itself to the coefficient matrices of its
-arguments: computing the Jacobian of the whole tree amounts to composing many linear operators.
-Matrix stuffing performs this composition in one bottom-up pass. A variable leaf contributes an
-identity block in its own column slot, a constant leaf contributes to the offset $f$, and each
-interior node applies its operator to the matrices of its children.
-
-\paragraph{Views and copies.}
-The linear operators come in two styles. The simple ones act as \emph{views}, modifying the
-coefficient matrices of their argument in place: negation flips the sign of every stored entry,
-and indexing selects the rows of the extracted entries. Reshaping costs nothing at all, since it
-leaves the vectorization of the expression unchanged. The operators that carry data of their own
-are more involved: a matrix product $FX$, an elementwise multiplication or a division by constant
-data form a coefficient matrix from that data and multiply it with the matrices of the argument,
-creating a new \emph{copy} of the product.
-
-\paragraph{Local versus global derivatives.}
-The coefficient matrices of \eqref{eq:linop-form} can be laid out in two ways. CVXPY
-differentiates \emph{locally}, one variable at a time: each node stores a separate coefficient
-block per variable appearing beneath it, keyed by the variable's identifier, and every operator
-is applied to each block in turn. The columns of a block index only the entries of its own
-variable; only after the walk completes are the blocks shifted to their variables' column offsets
-and concatenated into the full matrix $E$. The alternative is a \emph{global} derivative, a
-single Jacobian per node whose columns span the whole stacked vector $x$ from the outset. The
-local layout keeps the blocks small and skips variables absent from a subtree, but every operator
-must be dispatched over a dictionary of blocks; the engine of \S\ref{sec:Theme1} takes the global
-route.
-
-\paragraph{Parameters and tensors.}
-Under the DPP rules the problem data is affine in the parameters \cite{agrawal2019dpp}, and CVXPY
-accounts for this with a third tensor axis: every coefficient block stores one slice per
-parameter entry plus one slice for the constant part, and the operators of the walk apply to
-each slice. Flattening the slices of the root yields the cached \emph{parameter map}
-\BEQ\label{eq:param-maps}
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta,
-\qquad
-\tilde\theta = \begin{bmatrix} \theta \\ 1 \end{bmatrix},
-\EEQ
-shown in \ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
-data $[A\ b]$ is recovered the same way from its own map. After a parameter change, a re-solve
-costs a single sparse matrix--vector product $Q\tilde\theta$.
+so the matrix product $FX$ corresponds to the Kronecker-structured, block-diagonal Jacobian
+$I \otimes F$. The convention is illustrated in \ref{fig:vec-variable}: as an expression, a
+matrix variable is the identity map of its own entries, so its Jacobian is an identity block
+whose columns are indexed by the entries of $\vect(X)$, and the Jacobian of the product $FX$ is
+block-diagonal with one copy of $F$ per column of $X$.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
 \centering
+\texttt{X = cp.Variable((2, 2))}
+\qquad$\Longrightarrow$\qquad
 $
-Q =
-\begin{blockarray}{cccc}
-        & g^T & \mu & 1 \\
-\begin{block}{c[ccc]}
-  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
-  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
-  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
-  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+\frac{\partial\,\vect(X)}{\partial\,\vect(X)} =
+\begin{blockarray}{ccccc}
+       & x_{11}    & x_{21}    & x_{12}    & x_{22}    \\
+\begin{block}{c[cccc]}
+x_{11} & 1         & \plotzero & \plotzero & \plotzero \\
+x_{21} & \plotzero & 1         & \plotzero & \plotzero \\
+x_{12} & \plotzero & \plotzero & 1         & \plotzero \\
+x_{22} & \plotzero & \plotzero & \plotzero & 1         \\
 \end{block}
 \end{blockarray}
-\qquad
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
-= \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
-\caption{DPP path: the objective parameter map $Q$ is formed and cached; each re-solve recovers
-the objective data $(c, d)$ by multiplying $Q$ with the extended parameter vector
-$\tilde\theta = (g, \mu, 1)$.}
-\label{fig:param-map-dpp}
+\caption{A matrix variable is the identity map of its own entries.}
+\label{fig:vec-variable-identity}
 \end{subfigure}
 \vspace{3ex}
 
 \begin{subfigure}{\textwidth}
 \centering
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=34mm},
-   level 2/.style={sibling distance=22mm}]
-  \node {\annotatedop{+}{t_1 + 2.5\,t_2}}
-    child {node[circle,draw] {$t_1$}}
-    child {node {\annotatedop{\texttt{mul}}{2.5\,t_2}}
-      child {node {$2.5$}}
-      child {node[circle,draw] {$t_2$}}
-    };
-\end{tikzpicture}
-
-\vspace{1ex}
-$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
-\caption{\texttt{ignore\_dpp} path.}
-\label{fig:param-map-evalparams}
+\texttt{Y = F @ X}
+\qquad$\Longrightarrow$\qquad
+$
+\frac{\partial\,\vect(Y)}{\partial\,\vect(X)} = I \otimes F =
+\begin{blockarray}{ccccc}
+       & x_{11}    & x_{21}    & x_{12}    & x_{22}    \\
+\begin{block}{c[cccc]}
+y_{11} & f_{11}    & f_{12}    & \plotzero & \plotzero \\
+y_{21} & f_{21}    & f_{22}    & \plotzero & \plotzero \\
+y_{12} & \plotzero & \plotzero & f_{11}    & f_{12}    \\
+y_{22} & \plotzero & \plotzero & f_{21}    & f_{22}    \\
+\end{block}
+\end{blockarray}
+$
+\caption{The Jacobian \eqref{eq:vec-kron} of the product $Y = FX$ is block-diagonal, one copy
+of $F$ per column of $X$.}
+\label{fig:vec-variable-kron}
 \end{subfigure}
-\caption{The two parametric paths for the objective data of problem \eqref{eq:example}. The DPP
-path (a) builds the parameter map $Q$ once and caches it; each re-solve recovers $(c, d)$ with the
-single sparse product $Q\tilde\theta$. The \texttt{ignore\_dpp} path (b) replaces each parameter
-leaf by a constant holding its current value and re-walks the tree on every change of the
-parameters.}
-\label{fig:param-map-c}
+\caption{The vec convention on a matrix variable $X$ and the product $FX$, with
+$X, F \in \reals^{2 \times 2}$. The entries of $\vect(X)$, in column-major order, index the
+columns of the Jacobians.}
+\label{fig:vec-variable}
 \end{figure}
 
-\paragraph{The \texttt{ignore\_dpp} path.}
-Problems that fall outside the DPP grammar, or that opt out of it by solving with
-\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
-parameter leaf by a constant holding its current value, and the parameter-free tree that results
-is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
-fully general, since arbitrary functions of parameters reduce to constants, but every change of
-$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
-never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
+\paragraph{Composing linear operators.}
+After canonicalization every expression is affine, so each node of a conic-form tree can be
+written in the vectorized form
+\BEQ\label{eq:linop-form}
+f(x) = A\,x + b
+     = \begin{bmatrix} A & b \end{bmatrix} \begin{bmatrix} x \\ 1 \end{bmatrix},
+\EEQ
+where $x$ is the stacked vector of all variables, $A$ is the Jacobian of the node, constant
+since $f$ is affine, and $b$ is a constant offset. Matrix stuffing computes the augmented matrix
+$[A\ b]$ of every node in one bottom-up pass. A variable leaf contributes an identity block in
+its own column slot, a constant leaf contributes its value to the offset column, and an interior
+atom $g$ with arguments $f_1, \dots, f_k$ is a linear map $\sum_i L_i f_i$ whose constant
+Jacobians $L_i$ apply directly to the augmented matrices of its children,
+\BEQ\label{eq:linop-chain-rule}
+\begin{bmatrix} A & b \end{bmatrix}
+  = \sum_{i=1}^{k} L_i \begin{bmatrix} A_i & b_i \end{bmatrix}.
+\EEQ
+Computing the problem data thus amounts to composing many linear operators over the tree: the
+node matrices of the figures in this section are exactly these augmented blocks, and at the root
+of the constraint tree the augmented matrix is the problem data $[A\ b]$ itself.
 
-\paragraph{Code generation.}
-A third option is to compile the problem ahead of time. CVXPYgen emits problem-specific C code
-that embeds the cached parameter map \eqref{eq:param-maps} of a DPP problem
-\cite{schaller2022cvxpygen}, continuing an earlier line of work on code generation for embedded
-second-order cone programs \cite{chu2013codegen}. The benchmarks of \S\ref{sec:Theme2} do not
-compare against it: code generation is an offline step that fixes the problem structure at
-compile time, a different deployment model from a runtime backend that must accept arbitrary
-problems.
-% TODO: confirm the stated reason for not benchmarking against CVXPYgen.
+\paragraph{Views and copies.}
+The simple operators act as \emph{views}, modifying the augmented matrix of their argument in
+place: negation flips the sign of every stored entry, indexing keeps the selected rows, and
+reshaping costs nothing at all, since it leaves the vectorization of the expression unchanged.
+The operators that create \emph{copies} are chiefly the bivariate atoms that carry data: one
+operand of a matrix product, an elementwise multiplication or a division is constant under the
+DCP rules, and the atom forms a matrix from that operand, multiplies it with the augmented
+matrix of the other, and stores the product as new data. An expository subset is classified in
+\ref{tab:views-copies}.
 
-\paragraph{Implementation notes.}
-CVXPY ships two implementations of the walk, the C++ backend \texttt{cvxcore} and the
-\texttt{SciPy} backend. Three observations about them set up the engine of \S\ref{sec:Theme1}.
-First, both delegate every matrix operation to a general-purpose sparse library, Eigen for
-\texttt{cvxcore} and \texttt{scipy.sparse} for the \texttt{SciPy} backend; the storage formats
-and kernels are fixed by the library, which leaves no room to exploit structure known at
-canonicalization time. Second, all coefficient data is treated as sparse: dense atom data is
-converted to a sparse matrix on entry, and no operator carries a dense or block special case.
-Third, quadratic objectives take a separate and involved path: each quadratic form is swapped
-for a dummy variable, the surrounding affine expression is stuffed by the same walk, and the
-matrices of the quadratic forms are then scaled by the resulting coefficients and reassembled
-into the global objective matrix $P$.
+\begin{table}[H]
+\centering
+\caption{A subset of the linear operators, classified as views or copies, applied to an
+argument $f_1$ with augmented matrix $[A_1\ b_1]$.}
+\label{tab:views-copies}
+\begin{tabular}{@{}l l l@{}}
+\toprule
+\textbf{Atom} & \textbf{Operator $L$} & \textbf{Action on $[A_1\ b_1]$} \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Views}} \\
+$-f_1$ & $-I$ & flip the sign of every stored entry \\
+$f_1^T$ & $P$, the vec-permutation & permute the rows \\
+$f_1[\mathcal{I}]$ & $P_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
+$\operatorname{reshape}(f_1)$ & $I$ & none, the vectorization is unchanged \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Copies}} \\
+$F f_1$ & $I \otimes F$ & multiply by a block diagonal formed from $F$ \\
+$f_1 B$ & $B^T \otimes I$ & multiply by a Kronecker matrix formed from $B$ \\
+$c \odot f_1$ & $\diag(\vect(c))$ & multiply by a diagonal formed from $c$ \\
+$f_1 / c$ & $\diag(\vect(c))^{-1}$ & multiply by the reciprocal diagonal \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Example.}
-The walk is traced on problem \eqref{eq:example} in \ref{fig:matrix-stuffing}, continuing from
-the conic-form trees of \ref{fig:conic-form-tree}. In the objective tree the variable leaf $t_1$
-contributes an identity block in its own column slot, here a single one, the multiplication by
-$\mu$ scales the block of $t_2$, and the root adds the two rows into $c$. In the constraint tree
-the product $Fx$ multiplies the identity block of $x$ by $F$, negation flips signs in place, the
-constant $g$ lands in the offset column, and the root stacks the matrices of its children at
-their constraint row offsets to form $[A\ b]$. The walk is easy to follow at this size; the
-difficulty of matrix stuffing is carrying it out efficiently for arbitrary problems.
+The walk on the conic-form trees of problem \eqref{eq:example} is traced in
+\ref{fig:matrix-stuffing}: the leaves contribute their blocks and offsets, the interior nodes
+apply their operators, and the root stacks its children at their constraint row offsets into
+$[A\ b]$. The difficulty that remains is doing this efficiently for arbitrary problems.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -624,6 +592,166 @@ expression trees of \ref{fig:conic-form-tree}: each node's matrix is obtained by
 linear operation to the matrices of its children.}
 \label{fig:matrix-stuffing}
 \end{figure}
+
+\paragraph{Local versus global derivatives.}
+The augmented matrices of \eqref{eq:linop-form} can be laid out in two ways
+(\ref{fig:local-vs-global}). CVXPY
+differentiates \emph{locally}, one variable at a time: each node stores a separate coefficient
+block per variable appearing beneath it, keyed by the variable's identifier, and every operator
+is applied to each block in turn. The constant data is stored under the key $-1$, a common
+Python indexing trick to refer to the last column, the offset $b$. The columns of a block index only the entries of its own
+variable; only after the walk completes are the blocks shifted to their variables' column offsets
+and concatenated into the full matrix $[A\ b]$. The alternative is a \emph{global} derivative, a
+single Jacobian per node whose columns span the whole stacked vector $x$ from the outset. The
+local layout keeps the blocks small and skips variables absent from a subtree, but every operator
+must be dispatched over a dictionary of blocks; the engine of \S\ref{sec:Theme1} takes the global
+route.
+
+\begin{figure}[H]
+\begin{subfigure}{0.48\textwidth}
+\centering
+$
+\left\{\;
+x \mapsto
+\begin{blockarray}{c}
+x \\
+\begin{block}{[c]}
+-F \\
+\end{block}
+\end{blockarray}
+,\;\;
+-1 \mapsto
+\begin{blockarray}{c}
+1 \\
+\begin{block}{[c]}
+-g \\
+\end{block}
+\end{blockarray}
+\;\right\}
+$
+\caption{Local layout.}
+\label{fig:local-layout}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+$
+\begin{blockarray}{cccc}
+t_1        & t_2        & x  & 1  \\
+\begin{block}{[cccc]}
+\plotzero  & \plotzero  & -F & -g \\
+\end{block}
+\end{blockarray}
+$
+\caption{Global layout.}
+\label{fig:global-layout}
+\end{subfigure}
+\caption{What each layout stores during the walk, at the node $-(Fx - g)$ of problem
+\eqref{eq:example}: a dictionary of narrow per-variable blocks, or a single matrix spanning
+all columns.}
+\label{fig:local-vs-global}
+\end{figure}
+
+\paragraph{Parameters and tensors.}
+DPP restricts parameters to enter expressions affinely, so the problem data is affine in the
+parameters \cite{agrawal2019dpp}, and CVXPY accounts for this with a third tensor axis: every
+coefficient block stores one slice per
+parameter entry plus one slice for the constant part, and the operators of the walk apply to
+each slice. Flattening the slices of the root yields the cached \emph{parameter map}
+\BEQ\label{eq:param-maps}
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta,
+\qquad
+\tilde\theta = \begin{bmatrix} \theta \\ 1 \end{bmatrix},
+\EEQ
+shown in \ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
+data $[A\ b]$ is recovered the same way from its own map. After a parameter change, a re-solve
+costs a single sparse matrix--vector product $Q\tilde\theta$.
+
+\begin{figure}[H]
+\begin{subfigure}{\textwidth}
+\centering
+$
+Q =
+\begin{blockarray}{cccc}
+        & g^T & \mu & 1 \\
+\begin{block}{c[ccc]}
+  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
+  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
+  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+\end{block}
+\end{blockarray}
+\qquad
+\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
+= \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
+$
+\caption{DPP path: the cached parameter map recovers the objective data.}
+\label{fig:param-map-dpp}
+\end{subfigure}
+\vspace{3ex}
+
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}
+  [level 1/.style={sibling distance=34mm},
+   level 2/.style={sibling distance=22mm}]
+  \node {\annotatedop{+}{t_1 + 2.5\,t_2}}
+    child {node[circle,draw] {$t_1$}}
+    child {node {\annotatedop{\texttt{mul}}{2.5\,t_2}}
+      child {node {$2.5$}}
+      child {node[circle,draw] {$t_2$}}
+    };
+\end{tikzpicture}
+
+\vspace{1ex}
+$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
+\caption{\texttt{ignore\_dpp} path.}
+\label{fig:param-map-evalparams}
+\end{subfigure}
+\caption{The two parametric paths for the objective data of problem \eqref{eq:example}. The DPP
+path (a) builds the parameter map $Q$ once and caches it; each re-solve recovers $(c, d)$ with the
+single sparse product $Q\tilde\theta$. The \texttt{ignore\_dpp} path (b) replaces each parameter
+leaf by a constant holding its current value and re-walks the tree on every change of the
+parameters.}
+\label{fig:param-map-c}
+\end{figure}
+
+\paragraph{The \texttt{ignore\_dpp} path.}
+Problems that fall outside the DPP grammar, or that opt out of it by solving with
+\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
+parameter leaf by a constant holding its current value, and the parameter-free tree that results
+is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
+fully general, since arbitrary functions of parameters reduce to constants, but every change of
+$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
+never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
+
+\paragraph{Code generation.}
+A third option is to compile the problem ahead of time. CVXPYgen emits problem-specific C code
+that embeds the cached parameter map \eqref{eq:param-maps} of a DPP problem
+\cite{schaller2022cvxpygen}, continuing an earlier line of work on code generation for embedded
+second-order cone programs \cite{chu2013codegen}. The benchmarks of \S\ref{sec:Theme2} do not
+compare against it: code generation is an offline step that fixes the problem structure at
+compile time, a different deployment model from a runtime backend that must accept arbitrary
+problems.
+% TODO: confirm the stated reason for not benchmarking against CVXPYgen.
+
+\paragraph{Implementation details.}
+Three implementation details, shared by CVXPY's two backends, the C++ \texttt{cvxcore} and the
+\texttt{SciPy} backend, stand out as limitations of the current approach; the engine of
+\S\ref{sec:Theme1} does each differently.
+\begin{itemize}
+\item \emph{External sparse libraries.} Both backends delegate every matrix operation to a
+general-purpose sparse library, Eigen \cite{guennebaud2010eigen} for \texttt{cvxcore} and
+\texttt{scipy.sparse} \cite{2020SciPy-NMeth} for the \texttt{SciPy} backend. The storage formats and kernels are fixed by the library, leaving no
+room to exploit structure known at canonicalization time.
+\item \emph{Everything is sparse.} All coefficient data is treated as sparse: dense atom data
+is converted to a sparse matrix on entry, and no operator carries a dense or block special
+case, so dense blocks pay sparse-format overhead and no BLAS kernel is ever used.
+\item \emph{Quadratic objectives are separate.} Each quadratic form is swapped for a dummy
+variable, and the surrounding affine expression is stuffed by the same walk. The matrices of
+the quadratic forms are then scaled by the resulting coefficients and reassembled into the
+global objective matrix $P$.
+\end{itemize}
 
 \paragraph{References.}
 The original CVXPY paper \cite{diamond2016cvxpy} introduces the matrix calculus perspective, and
@@ -889,92 +1017,6 @@ detection--coloring--compression pipeline.
 \label{sec:coefficient-extraction}
 
 \paragraph{\texttt{JuMP}.}
-% VERIFICATION NOTES (claude, 2026-06-11):
-% - History: first commit 2012-10-10 by Dunning
-%   (github.com/jump-dev/JuMP.jl/commit/688b732c), but the paper says "Following JuMP's first
-%   release in 2013" (arxiv.org/abs/1508.01982, sec 1); Huchette's first commit is 2013.
-%   -> reworded to "development started in 2012 ... first released in 2013".
-% - Dowson: governance page (jump.dev/pages/governance/) lists him as core contributor +
-%   steering committee; no public source says "full-time" -> softened the claim.
-% - No DCP check: jump.dev/JuMP.jl/stable/should_i_use/ states "JuMP does not support
-%   disciplined convex programming (DCP)"; paper sec 5 contrasts with CVX's derivative-free
-%   conic approach.
-% - Term lists: GenericAffExpr{C,V} holds constant::C + terms::OrderedDict{V,C},
-%   github.com/jump-dev/JuMP.jl/blob/a57cb499/src/aff_expr.jl#L139-L142; macros rewrite via
-%   MutableArithmetics in src/macros.jl (_rewrite_expression).
-% - Blowup: paper sec 3 -- naive overloading of a d-term *quadratic* sum costs O(d^4) vs
-%   O(d^2) for the macro-generated loop; for purely affine sums it is O(d^2) vs O(d).
-JuMP is an algebraic modeling language embedded in Julia whose development started in 2012 at
-the MIT Operations Research Center by Iain Dunning, Joey Huchette, and Miles Lubin, with a
-first public release in 2013 \cite{dunning2017jump, lubin2023jump10recent}.
-It is now maintained by a team of core contributors, with Oscar Dowson as its most active
-maintainer.
-Unlike CVXPY, JuMP performs no convexity verification; it belongs to the derivative-based
-modeling paradigm, where the user is responsible for the properties of the formulation.
-Coefficient extraction in JuMP is \emph{eager}: the \texttt{@constraint} and
-\texttt{@objective} macros rewrite the user's code at parse time into loops that build each
-affine expression as a sparse list of terms (an ordered dictionary mapping variables to
-coefficients).
-This macro rewriting avoids the asymptotic blowup of naive operator overloading, where summing
-$d$ terms with repeated calls to \texttt{+} copies partial sums of growing size.
-As a consequence, the problem data is scalarized one constraint at a time while the model is
-being built, whereas CVXPY retains whole expression trees until solve time.
-
-\paragraph{\texttt{MathOptInterface}.}
-% VERIFICATION NOTES (claude, 2026-06-11):
-% - Standard form: jump.dev/MathOptInterface.jl/stable/manual/standard_form/ and paper
-%   abstract (arxiv.org/abs/2002.03447): "combining pre-defined functions and sets".
-% - Advertised pairs: supports_constraint(model, ::Type{F}, ::Type{S}) in src/constraints.jl;
-%   paper sec 3 ("solvers can advertise which constraints they support") and its YALMIP
-%   critique in sec 2.1 (single form forces extra slack variables).
-% - Bridges: paper sec 5.1 -- "a shortest path problem through a directed hyper-graph";
-%   implemented with Bellman-Ford in src/Bridges/graph.jl and lazy_bridge_optimizer.jl
-%   ("solves a shortest hyper-path problem") -> changed "graph" to "hypergraph".
-% - Just-in-time: paper sec 5.1 -- "we compute C(n) in a just-in-time fashion whenever the
-%   first constraint of type n is added to the model".
-% - CSC at copy time: Utilities.MatrixOfConstraints + MutableSparseMatrixCSC
-%   (colptr/rowval/nzval); e.g. SCS.jl wrapper hands A.nzval/A.rowval/A.colptr to the C
-%   solver (github.com/jump-dev/SCS.jl, src/MOI_wrapper/MOI_wrapper.jl).
-% - Two-pass CSC assembly: src/Utilities/sparse_matrix.jl docstring lists the 5 steps
-%   (add_column -> allocate_terms -> set_number_of_rows -> load_terms -> final_touch).
-%   allocate_terms does colptr[col+1] += 1 (count per column); set_number_of_rows does
-%   colptr[i] += colptr[i-1] (prefix sum) then resizes rowval/nzval to colptr[end]-offset
-%   (exactly nnz); load_terms scatters via ptr = colptr[col] + nz_added[col], nz_added++ .
-%   No sort, no triplet buffer -- the counting-sort-into-CSC pattern of Davis (CSparse).
-% - Indexing: ZeroBasedIndexing vs OneBasedIndexing (sparse_matrix.jl): one-based gives an
-%   allocation-free convert to SparseArrays.SparseMatrixCSC, zero-based lets colptr/rowval be
-%   passed directly to a C solver. b lives in the constants vector of the enclosing
-%   Utilities.MatrixOfConstraints.
-% - No symbolic parameters: MOI standard form f_i(x) in S_i has numeric coefficients only;
-%   re-solving uses MOI.modify / set_normalized_coefficient (in-place poke) + re-copy, not a
-%   precompiled parameter->data map. ParametricOptInterface.jl (jump.dev/ParametricOptInterface.jl)
-%   adds parameters but substitutes their fixed values and re-optimizes -- not a reusable
-%   sparse parameter-to-data map a la CVXPY's tensor (eq:param-maps).
-JuMP communicates with solvers through MathOptInterface (MOI), an abstraction layer whose
-standard form is to minimize $f_0(x)$ subject to constraints $f_i(x) \in S_i$, where the
-functions $f_i$ and sets $S_i$ are drawn from predefined lists \cite{legat2020mathoptinterface}.
-There is deliberately no single canonical form: each solver advertises the function-set pairs
-it supports natively, and unsupported constraints are rewritten by \emph{bridges}, local
-transformations selected per constraint type by a shortest-path search over a hypergraph of
-possible reformulations.
-Bridges play the same role as CVXPY's reductions, but they are chosen just-in-time as
-constraints are added to the model, rather than applied as a global pass over the whole problem.
-The constraint matrix only materializes inside the solver wrapper.
-When the model is copied to the solver, MOI assembles the affine terms of all constraints into
-a single sparse matrix in compressed sparse column (CSC) format through a two-pass, sort-free
-procedure: a first pass counts the nonzeros falling in each column and a prefix sum turns these
-counts into the column pointers, sizing the row and value arrays to exactly the number of
-nonzeros; a second pass scatters each term into its slot using a per-column cursor.
-The column indices are stored either one-based, for an allocation-free view as a native sparse
-matrix, or zero-based, so the arrays can be handed directly to a C solver.
-This assembly is the same coordinate-to-CSC computation of \S\ref{sec:sparse-matrices}, but it
-is carried out for a single fully numeric instance: the standard form $f_i(x) \in S_i$ admits no
-symbolic parameters, so re-solving with changed data requires rebuilding the affine terms or
-modifying individual coefficients in place and re-copying to the solver.
-There is no precompiled map from a parameter vector to the problem data of the kind CVXPY
-caches~(\ref{eq:param-maps}); even \texttt{ParametricOptInterface.jl}, which adds parameters to
-the JuMP ecosystem, substitutes their fixed values and re-optimizes rather than applying a
-reusable sparse parameter-to-data map.
 
 \paragraph{\texttt{AMPL}.}
 
