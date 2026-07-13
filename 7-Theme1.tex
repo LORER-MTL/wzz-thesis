@@ -1,102 +1,179 @@
 \Chapter{A lightweight canonicalization engine}\label{sec:Theme1}
 
-% TODO: planned major restructure of this chapter. The intro (5-Introduction.tex) now frames
-% SparseDiffengine as a structured-differentiation package and promises BOTH the sparse Jacobian
-% AND the Hessian here, but this chapter currently implements the Jacobian path only (the Node
-% struct holds a single `jacobian`; atoms implement jacobian_init/eval_jacobian). Extend to cover
-% Hessian formation so the chapter matches the intro's outline.
+% TODO (Hessian, deferred): the intro promises BOTH the sparse Jacobian AND the Hessian here, but
+% this chapter covers the Jacobian path only (the expr struct holds a single `jacobian`; atoms
+% implement jacobian_init/eval_jacobian). Add a Hessian section so the chapter matches the intro's
+% outline: for the quadratic objective, P is the Jacobian of the gradient, so the same accumulation
+% machinery forms it. Left for a later pass.
 
-This chapter presents a minimal implementation of a subset of affine atoms in the
-\texttt{SparseDiffEngine} package, and shows how they compute the sparse constant Jacobian of a set
-of affine expressions. We start from a \emph{canonicalized} problem in standard form, produced by
-the canonicalization of \S\ref{sec:canonicalization}. The goal is the same as in
-\S\ref{sec:matrix-stuffing}: form the problem data. \S\ref{sec:data-structures} describes the data
-structures, \S\ref{sec:atom-implementations} the atom implementations, and
-\S\ref{sec:problem-class-and-cvxpy-interface} the problem class and its CVXPY interface. We assume
-the sparse-matrix background of \S\ref{sec:sparse-matrices}.
+This chapter presents the \texttt{SparseDiffEngine} and how it forms the constraint matrix $A$ from
+the canonicalized expression trees of \S\ref{sec:canonicalization}. We reframe the matrix stuffing
+of \S\ref{sec:matrix-stuffing} as the computation of a single sparse Jacobian, assembled by one
+recursive rule applied atom by atom.
 
-\section{Keeping parameters, splitting the walk}
-\label{sec:two-phase}
-Matrix stuffing already walked the objective tree of our running example. Figure
-\ref{fig:matrix-stuffing} annotated each node of the canonicalized objective $t_1 + \mu t_2$ of
-\eqref{eq:graph} with the row of $c$ it produces, ending in
-$c = \begin{bmatrix}1 & \mu & \plotzero\end{bmatrix}$ at the root. The engine walks the very same
-tree of \ref{fig:conic-form-tree}, but it differs from matrix stuffing in two ways.
+After canonicalization the constraints are affine, so $A$ is their Jacobian and is constant in $x$.
+Matrix stuffing walks the expression tree accumulating each atom's linear coefficient into $A$; this
+accumulation is exactly a bottom-up computation of that constant Jacobian.
 
-First, it keeps the parameter. The \texttt{ignore\_dpp} path of \S\ref{sec:matrix-stuffing} begins
-with \texttt{EvalParams}, which deletes the parameter leaf $\mu$ and replaces it by a constant
-holding its current value (\ref{fig:param-map-evalparams}); the walk that follows is parameter-free
-and must be redone from scratch whenever $\mu$ changes. We instead leave $\mu$ in place as a leaf
-node, so the tree that produces $c$ is fixed once and reused across solves.
+The rule behind it is that every affine atom is a linear operator $L$ with a constant offset. If a
+subexpression $z$ has Jacobian $J_z$, then the atom's output $Lz + c$ has Jacobian $L J_z$, so the
+Jacobian of a node is its atom's operator applied to the Jacobians of its children,
+\BEQ \label{eq:jacobian-rule}
+J_{\mathrm{node}} = L_{\mathrm{atom}} \begin{bmatrix} J_{\mathrm{left}} & J_{\mathrm{right}} \end{bmatrix}.
+\EEQ
+Every atom in this chapter is one choice of $L$: addition sums its children, negation flips their
+sign, transpose permutes the rows, and the matmul $Fx$ left-multiplies by $F$. A single pass from
+the leaves to the root composes these operators into $A$.
 
-Second, it splits the single walk into two passes over that fixed tree, shown in
-\ref{fig:obj-two-phase}. A \emph{structural} pass fixes the sparsity pattern of every node's
-Jacobian from the patterns of its children, independent of the value of $\mu$
-(\ref{fig:obj-structure}). A \emph{value} pass then fills the numbers into that fixed pattern,
-reading $\mu$'s current value at the leaf (\ref{fig:obj-values}). The structural pass runs once per
-problem family; only the value pass repeats on each solve, whereas matrix stuffing fuses the two and
-recomputes both on every change of $\mu$. These passes are the \texttt{jacobian\_init} and
-\texttt{eval\_jacobian} functions that the rest of the chapter develops atom by atom.
+Because the constraints are affine, the Jacobian is constant and its sparsity pattern is fixed by
+the composition of the atoms' operators. We read that pattern off directly, in one structural pass,
+rather than discovering it by probing the Jacobian one column group at a time as the coloring-based
+methods of \S\ref{sec:computing-derivatives} do.
 
-On this objective the saving is admittedly hard to see: the structural pass over $t_1 + \mu t_2$ is
-trivial, and one could fairly object that re-evaluating so small a tree from scratch costs nothing.
-The split earns its keep where the structural work is both expensive and shared across solves. The
-clearest case in our running example is the constraint tree of \ref{fig:matrix-stuffing}, which
-contains the product $Fx$ (\ref{fig:con-two-phase}). The Jacobian of $Fx$ is a sparse
-matrix--matrix product handled by the matrix multiplication atom of \S\ref{sec:atom-implementations},
-and its $-F$ block has a sparsity \emph{pattern} that is the costly part to derive and is independent
-of any parameter value. Because the parameter $g$ enters the same constraint, the
-\texttt{ignore\_dpp} path re-derives this block from scratch each time $g$ changes, while the engine
-fixes its pattern once in the structural pass (\ref{fig:con-structure}) and only refills values
-(\ref{fig:con-values}). The per-solve cost this removes, negligible for the scalar objective but
-substantial for problems with large sparse products solved repeatedly, is quantified in
-\S\ref{sec:Theme2}.
+This walk is the one CVXPY's \texttt{cvxcore} already performs, applying each atom's linear operator
+to assemble the problem data. The engine keeps the walk but changes it in two ways, each developed
+below. It splits the single walk into a structural pass that fixes the sparsity pattern of $L J_z$
+once per problem family and a value pass that refills only the numbers on each solve
+(\S\ref{sec:reusing-work}). It also stores each Jacobian block in the representation that matches
+its structural class, applying the dense and Kronecker-structured operators without ever forming
+them (\S\ref{sec:atom-implementations}).
 
-Like \texttt{cvxcore}, which mirrors the Python expression trees into equivalent C++ objects, the
-engine mirrors each CVXPY atom onto a C counterpart and rebuilds the canonicalized trees as the C
-\texttt{expr} trees of \S\ref{sec:data-structures}; both passes then run entirely in C.
+\S\ref{sec:data-structures} describes the data structures and \S\ref{sec:atom-implementations} the
+atom implementations. \S\ref{sec:reusing-work} develops the caching the two passes enable, and
+\S\ref{sec:revisit-limitations} returns to the limitations of \S\ref{sec:matrix-stuffing}. We
+assume the sparse-matrix background of \S\ref{sec:sparse-matrices}.
 
-\begin{figure}[ht]
-\begin{subfigure}{\textwidth}
+\section{Fundamental data structures}
+\label{sec:data-structures}
+
+% first describe in english what an expression is
+% and what we need. Then show the struct.
+The main data structure in the engine is the expression struct.
+\begin{lstlisting}[language=C]
+typedef struct expr {
+    int    d1, d2, size;   /* shape (d1 x d2) and size = d1*d2 */
+    int    n_vars;         /* total number of variables         */
+    int    var_id;         /* offset into u, or NOT_A_VARIABLE  */
+
+    struct expr *left;     /* left child  (NULL for leaves)     */
+    struct expr *right;    /* right child (NULL for leaves)     */
+
+    double     *value;     /* forward-pass output, size entries */
+    matrix     *jacobian;  /* size x n_vars Jacobian            */
+
+    forward_fn       forward;
+    jacobian_init_fn jacobian_init_impl;
+    eval_jacobian_fn eval_jacobian;
+} expr;
+\end{lstlisting}
+
+Each node carries a \texttt{value}, the output of its forward pass, and a Jacobian. The Jacobian is
+held through a polymorphic \texttt{matrix} type: a base struct of shape and a small table of
+operator function pointers, embedded as the first member of each concrete representation. The
+representation an atom uses is fixed once during initialization and is the subject of
+\S\ref{sec:atom-implementations}. Each node also implements three functions: \texttt{forward},
+\texttt{jacobian\_init}, and \texttt{eval\_jacobian}.
+
+\paragraph{Leaf nodes.}
+The leaves are variables and parameters.
+
+\section{Atom implementations}
+\label{sec:atom-implementations}
+An atom takes one or two expression operands and produces an expression. Each atom implements the
+three functions: \texttt{forward} computes the value, \texttt{jacobian\_init} fixes the Jacobian's
+sparsity pattern once, and \texttt{eval\_jacobian} fills its values on each solve. The affine atoms
+number in the dozens, but their Jacobian blocks fall into the few representations of
+\ref{tab:jacobian-classes}. We organize the atoms by representation and give one worked atom for
+each, describing the rest in prose. Two further operators, the diagonal of an elementwise scaling
+and the Kronecker product of a matrix-valued product, are applied to the child Jacobian without
+ever being stored. Throughout, \texttt{x} and \texttt{y} denote variables, \texttt{a} a parameter,
+and \texttt{F} a constant matrix, all of compatible shape.
+
+\begin{table}[ht]
 \centering
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=34mm},
-   level 2/.style={sibling distance=24mm},
-   every node/.style={align=center},
-   edge from parent/.style={draw, -latex}]
-  \node {$\begin{bmatrix} \bullet & \bullet & \plotzero \end{bmatrix}$}
-    child {node {$\begin{bmatrix} \bullet & \plotzero & \plotzero \end{bmatrix}$}}
-    child {node {$\begin{bmatrix} \plotzero & \bullet & \plotzero \end{bmatrix}$}
-      child {node[draw] {$\mu$}}
-      child {node {$\begin{bmatrix} \plotzero & \bullet & \plotzero \end{bmatrix}$}}
-      };
-\end{tikzpicture}
-\caption{Structural pass: a bullet marks a structural nonzero.}
-\label{fig:obj-structure}
-\end{subfigure}
-\vspace{3ex}
+\begin{tabular}{lll}
+\hline
+Representation & Atoms & Jacobian block \\
+\hline
+Generic sparse      & \texttt{add}, negation, transpose, index, sum, stack & selection or sum of the child's rows \\
+Permuted dense      & matmul $F x$ with dense $F$      & the dense block $F$ at $x$'s columns \\
+Block-stacked dense & matmul $F X$, matrix-valued $X$  & a stack of $p$ copies of $F$ \\
+\hline
+\end{tabular}
+\caption{The representations an affine atom's Jacobian block takes. The diagonal $\diag(a)$ of a
+scaling and the Kronecker product $I_p \otimes F$ of a matrix-valued product are applied to the
+child Jacobian without being stored.}
+\label{tab:jacobian-classes}
+\end{table}
 
-\begin{subfigure}{\textwidth}
-\centering
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=34mm},
-   level 2/.style={sibling distance=24mm},
-   every node/.style={align=center},
-   edge from parent/.style={draw, -latex}]
-  \node {$\begin{bmatrix} 1 & 2.5 & \end{bmatrix}$}
-    child {node {$\begin{bmatrix} 1 & & \end{bmatrix}$}}
-    child {node {$\begin{bmatrix} & 2.5 & \end{bmatrix}$}
-      child {node[draw] {$2.5$}}
-      child {node {$\begin{bmatrix} & 1 & \end{bmatrix}$}}
-      };
-\end{tikzpicture}
-\caption{Value pass: entries refilled here for $\mu = 2.5$.}
-\label{fig:obj-values}
-\end{subfigure}
-\caption{The engine's two passes over the objective tree of \ref{fig:conic-form-tree}, with the
-parameter leaf $\mu$ kept across both.}
-\label{fig:obj-two-phase}
-\end{figure}
+\subsection{Generic sparse blocks}
+The default representation is a generic sparse matrix in CSR form (\S\ref{sec:sparse-matrices}). A
+variable leaf of size $n$ has the identity as its Jacobian, stored as an $n \times n_{\mathrm{vars}}$
+selection matrix with one nonzero per row. The atoms whose blocks relabel, select, or add the
+child's rows keep this representation: the output has a nonzero wherever an input does, so its
+pattern is a rearrangement of the children's.
+
+Addition is the template every such atom follows. The forward pass evaluates the children and sums
+their values. \texttt{jacobian\_init} allocates the output Jacobian, whose number of nonzeros is at
+most the sum of the children's, and fixes its pattern. \texttt{eval\_jacobian} sums the children's
+Jacobians into it.
+
+Negation negates an expression elementwise. The forward pass flips the sign of each value; the
+Jacobian has the child's pattern, so \texttt{jacobian\_init} copies it and \texttt{eval\_jacobian}
+negates its values. Transpose (\texttt{cp.transpose(x)}) only relabels the output entries, so its
+Jacobian is a fixed row permutation of the child's: \texttt{jacobian\_init} records the permutation
+and \texttt{eval\_jacobian} copies the child's values into the permuted rows. The vertical stack
+\texttt{cp.vstack([x, y])} needs no new code, using the identity
+\texttt{vstack([A, B]) = transpose(hstack([transpose(A), transpose(B)]))}. Reshape, indexing,
+summation, and broadcasting are of the same kind: each fixes an output pattern that selects or
+accumulates the child's entries and refills it by copying or adding values.
+
+\subsection{Dense blocks}
+\label{sec:dense-blocks}
+When a constant dense matrix $F \in \reals^{m \times n}$ multiplies a vector expression, $F x$, the
+Jacobian is $F$ itself, placed at the columns of $x$'s variables. A dense $F$ stored as a generic
+sparse matrix carries the full CSR index overhead for a block with no zeros to exploit. The engine
+stores it instead as a \emph{permuted dense} block: a single $m \times n$ dense array together with
+the global rows and columns it occupies,
+\BEQ \label{eq:permuted-dense}
+M[\,\mathrm{row}[i],\ \mathrm{col}[j]\,] = F[i, j],
+\EEQ
+with every other entry zero. \texttt{jacobian\_init} places the block once and \texttt{eval\_jacobian}
+refills its $mn$ values, both by applying $F$ to the child's Jacobian following
+\eqref{eq:jacobian-rule}.
+
+A parameter that scales an expression elementwise, $a \odot x$, is the diagonal case: its Jacobian
+is $\diag(a)$. The engine never forms $\diag(a)$; it applies the operator to the child Jacobian $J$
+as $\diag(a)\,J$, scaling row $i$ of $J$ by $a_i$. Only the vector $a$ is stored.
+
+\subsection{Matrix-valued products and the Kronecker block}
+\label{sec:kron-blocks}
+The same matmul atom handles a matrix-valued operand $F X$, where $X$ has $p$ columns. Vectorizing
+column by column,
+\BEQ \label{eq:kron-matmul}
+\operatorname{vec}(F X) = (I_p \otimes F)\, \operatorname{vec}(X),
+\EEQ
+so the operator is the Kronecker product $I_p \otimes F$, a block-diagonal matrix with $p$ copies of
+$F$ on its diagonal, and the Jacobian is $(I_p \otimes F)\, J_X$ by \eqref{eq:jacobian-rule}.
+
+Forming $I_p \otimes F$ is wasteful: it is $p$ times the size of $F$ and completely structured. The
+engine never forms it. It loops over the $p$ diagonal blocks, applies the single stored $F$ to the
+corresponding block of $J_X$, and collects the $p$ results as a vertical stack of permuted dense
+blocks. The engine's own note records the effect: it forms the Kronecker product ``only
+conceptually,'' which ``led to a 100x speedup in the initialization of the Jacobian sparsity
+pattern.'' The stacked representation carries this structure through the rest of the walk, so an
+atom above a matrix-valued product also operates block by block rather than on a materialized
+Kronecker product.
+
+\section{Reusing work across passes}
+\label{sec:reusing-work}
+% TODO: work out paragraphs with the plan (~/.claude/plans/id-like-to-start-logical-reef.md):
+% opening: the two-pass split as one instance of a general discipline (structure once, values
+% each solve); problem-level story (root Jacobians concatenated once into the global CSR by row
+% offsets; a parameter update refreshes values only, no allocation, no symbolic work);
+% four mechanisms: guarded one-time init (DAG-safe), affine-value caching (variable eval no-op,
+% problem-level affine shortcut, CSC mirrors filled once), memoized index maps + generic
+% accumulator, preallocated workspaces; close on the contrast with ignore_dpp.
 
 \begin{figure}[ht]
 \begin{subfigure}{\textwidth}
@@ -147,216 +224,10 @@ across solves only the parameter $g$ changes.}
 \label{fig:con-two-phase}
 \end{figure}
 
-\section{Fundamental data structures}
-\label{sec:data-structures}
-
-% first describe in english what an expression is
-% and what we need. Then show the struct.
-The main data structure in the engine is the expression struct.
-\begin{lstlisting}[language=C]
-typedef struct expr {
-    int    d1, d2, size;   /* shape (d1 x d2) and size = d1*d2 */
-    int    n_vars;         /* total number of variables         */
-    int    var_id;         /* offset into u, or NOT_A_VARIABLE  */
-
-    struct expr *left;     /* left child  (NULL for leaves)     */
-    struct expr *right;    /* right child (NULL for leaves)     */
-
-    double     *value;     /* forward-pass output, size entries */
-    CSR_Matrix *jacobian;  /* size x n_vars sparse Jacobian     */
-
-    forward_fn       forward;
-    jacobian_init_fn jacobian_init_impl;
-    eval_jacobian_fn eval_jacobian;
-} expr;
-\end{lstlisting}
-
-Each node carries a \texttt{value}, the output of its forward pass, and a sparse Jacobian in CSR
-form. Each node also implements three functions: \texttt{forward}, \texttt{jacobian\_init}, and
-\texttt{eval\_jacobian}.
-
-\paragraph{Leaf nodes.}
-The leaves are variables and parameters.
-
-\section{Atom implementations}
-\label{sec:atom-implementations}
-An atom takes one or two expression operands and produces an expression. Each atom implements the
-three functions: \texttt{forward} computes the value, \texttt{jacobian\_init} fixes the Jacobian's
-sparsity pattern once, and \texttt{eval\_jacobian} fills its values on each solve. We give the full
-C implementation of one atom, \texttt{add}, to establish the pattern, and describe the rest in
-prose, each anchored by its CVXPY expression. Throughout, \texttt{x} and \texttt{y} denote
-variables, \texttt{a} and \texttt{b} parameters, and \texttt{F} a constant matrix, all of compatible
-shape.
-
-\paragraph{Addition.}
-The addition atom sums two expressions elementwise.
-\begin{lstlisting}[language=Python]
-add_expr = cp.add(x, y)
-\end{lstlisting}
-
-The implementation below is the template every other atom follows. The forward pass evaluates the
-children and sums their values. \texttt{jacobian\_init} allocates the output Jacobian, whose number
-of nonzeros is at most the sum of the children's, and fixes its pattern. \texttt{eval\_jacobian}
-sums the children's Jacobians into it.
-\begin{lstlisting}[language=C]
-static void forward(expr *node, const double *u)
-{    /* forward pass for children */
-    node->left->forward(node->left, u);
-    node->right->forward(node->right, u);
-    for (int i = 0; i < node->size; i++)
-    {
-        node->value[i] = node->left->value[i] + node->right->value[i];
-    }
-}
-
-static void jacobian_init_impl(expr *node)
-{
-    /* initialize children's jacobians */
-    jacobian_init(node->left);
-    jacobian_init(node->right);
-
-    /* we never have to store more than the sum of children's nnz */
-    int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
-
-    /* fill sparsity pattern  */
-    sum_csr_alloc();
-}
-
-static void eval_jacobian(expr *node)
-{
-    /* evaluate children's jacobians */
-    node->left->eval_jacobian(node->left);
-    node->right->eval_jacobian(node->right);
-
-    /* sum children's jacobians */
-    sum_csr_fill_values();
-}
-\end{lstlisting}
-
-\paragraph{Negation.}
-The negation atom negates an expression elementwise. The forward pass flips the sign of each value.
-The Jacobian has the child's pattern, so \texttt{jacobian\_init} copies it and \texttt{eval\_jacobian}
-negates its values.
-
-\paragraph{Transpose.}
-The transpose atom transposes an expression.
-\begin{lstlisting}[language=Python]
-transpose_expr = cp.transpose(x)
-\end{lstlisting}
-
-The forward pass writes the transpose into the row-major output buffer. Transposing only relabels
-the output entries, so the Jacobian is a fixed row permutation of the child's: \texttt{jacobian\_init}
-records the permutation, and \texttt{eval\_jacobian} copies the child's values into the permuted rows.
-
-\paragraph{Horizontal stack.}
-The horizontal stack atom concatenates expressions of equal row count side by side.
-\begin{lstlisting}[language=Python]
-hstack_expr = cp.hstack([x, y])
-\end{lstlisting}
-
-The forward pass concatenates the arguments' values. The Jacobian stacks the arguments' Jacobian
-rows: \texttt{jacobian\_init} lays out the combined pattern, and \texttt{eval\_jacobian} copies each
-argument's values contiguously into place.
-
-\paragraph{Vertical stack.}
-The vertical stack atom concatenates expressions of equal column count.
-\begin{lstlisting}[language=Python]
-vstack_expr = cp.vstack([x, y])
-\end{lstlisting}
-
-It needs no new code. The engine uses the identity
-\texttt{vstack([A, B]) = transpose(hstack([transpose(A), transpose(B)]))}, inheriting the forward
-and Jacobian behaviour of transpose and hstack.
-
-\paragraph{Indexing.}
-The indexing atom selects a subset of an expression's entries.
-\begin{lstlisting}[language=Python]
-index_expr = x[0:3]
-\end{lstlisting}
-
-The forward pass gathers the selected entries. The Jacobian is the corresponding subset of the
-child's rows: \texttt{jacobian\_init} records which rows are selected, and \texttt{eval\_jacobian}
-copies their values.
-
-\paragraph{Sum.}
-The sum atom reduces all entries of an expression to a scalar.
-\begin{lstlisting}[language=Python]
-sum_expr = cp.sum(x)
-\end{lstlisting}
-
-The forward pass accumulates the child's values into a scalar. The Jacobian is the column-wise sum
-of the child's Jacobian, a single row: \texttt{jacobian\_init} fixes its pattern, and
-\texttt{eval\_jacobian} accumulates the child's values into it.
-
-\paragraph{Elementwise multiplication.}
-The elementwise multiplication atom scales an expression entrywise by data \texttt{a}, constant or
-parameter.
-\begin{lstlisting}[language=Python]
-elemwise_mult_expr = cp.multiply(x, a)
-\end{lstlisting}
-
-The forward pass multiplies the child's values by \texttt{a}, refreshing \texttt{a} first if it is a
-parameter. Scaling row $i$ by $a_i$ leaves the child's pattern unchanged, so \texttt{jacobian\_init}
-copies it and \texttt{eval\_jacobian} scales each entry of row $i$ by $a_i$. A change in \texttt{a}
-is absorbed entirely at evaluation.
-
-\paragraph{Matrix multiplication.}
-The matrix multiplication atom takes a constant matrix $A \in \reals^{m\times k}$ and an expression
-$x$ with $x \in \reals^{k}$, and produces $Ax \in \reals^{m}$. The canonicalized problem is affine,
-so one operand is always data; we take it to be the left operand $A$, with the variable-bearing
-expression as the right child.
-\begin{lstlisting}[language=Python]
-matmul_expr = A @ x
-\end{lstlisting}
-
-The forward pass computes the sparse matrix--vector product $y = Ax$. If $x$ has Jacobian
-$J_x \in \reals^{k \times n_{\mathrm{vars}}}$, then $y$ has Jacobian $J_y = A J_x$, a sparse
-matrix--matrix product. Its pattern depends only on the patterns of $A$ and $J_x$.
-
-This is the one atom where the two-phase split does real work. We factor the product into a
-\emph{symbolic} routine, which allocates $J_y$ and fills its pattern from the patterns of $A$ and
-$J_x$, and a \emph{numeric} routine, which fills the values into that pattern. \texttt{jacobian\_init}
-runs the symbolic routine once; \texttt{eval\_jacobian} runs only the numeric routine on each solve.
-The symbolic step is the expensive part of a sparse matrix--matrix product, and it is hoisted out of
-the per-solve path.
-
-\section{Problem class}
-The atoms compute the Jacobian of a single expression. A \texttt{Problem} ties together the full set
-of constraint expression trees and assembles their root Jacobians into the global problem data
-$[A\ b]$ and objective data $[c\ d]$.
-
-At construction the problem runs the one-time \emph{initialization} phase. It walks each expression
-tree once, calling \texttt{jacobian\_init} bottom-up so every node allocates its Jacobian and fixes
-its pattern. The pattern of an affine expression is independent of its parameter values, so this
-walk runs once per problem family. The root Jacobians are concatenated into the global CSR buffer
-for $A$ using the constraint row offsets of \S\ref{sec:matrix-stuffing}, fixing the pattern of the
-problem data as a whole.
-
-\section{Parameter updates}
-The \emph{evaluation} phase runs on every solve. Given new parameter values $\theta$, the problem
-refreshes the leaf parameters and calls \texttt{eval\_jacobian} bottom-up, filling the values of
-each pre-allocated Jacobian without touching its pattern. The forward pass supplies the constant
-column $b$, and the root Jacobians are copied into the global buffer. A parameter update therefore
-costs only a forward pass and a numeric Jacobian evaluation: no allocation, no symbolic work, no
-graph mutation.
-
-This is the saving over the \texttt{ignore\_dpp} path of \S\ref{sec:matrix-stuffing}. That path is
-general --- it places no DPP restriction on how parameters enter --- but re-derives the symbolic
-structure on every change of $\theta$. Our two-phase design keeps that generality while paying the
-symbolic cost once, recovering the re-solve speed of the cached DPP path without materializing the
-three-dimensional parameter tensor.
-
-\section{CVXPY interface}
-\label{sec:problem-class-and-cvxpy-interface}
-We expose the \texttt{Problem} class and the atom constructors through a thin set of Python bindings.
-The engine then acts as a \emph{canonicalization backend}, occupying the place of \texttt{cvxcore}
-and the \texttt{SciPy} backend of \S\ref{sec:matrix-stuffing}: it consumes the canonicalized affine
-expression trees from the reductions and returns the problem data $(A, b, c, d)$.
-
-CVXPY hands the backend its canonicalized expression trees. The binding mirrors each CVXPY atom onto
-its engine counterpart, builds the C expression trees, runs the initialization phase once, and
-stores the handle on the problem. On each solve with new parameter values, CVXPY calls the
-evaluation phase to obtain the updated data, which is forwarded to the cone solver. The binding
-forwards only pointers to pre-allocated buffers, so no problem data is copied between Python and C
-in the inner loop.
+\section{Revisiting the limitations of matrix stuffing}
+\label{sec:revisit-limitations}
+% TODO: three paragraphs answering the implementation-detail downsides of
+% \S\ref{sec:matrix-stuffing} in order: (1) external sparse libraries -> hand-written kernels
+% specialized to canonicalization-time structure; (2) everything is sparse -> the three
+% representations, dense blocks applied with BLAS, Kronecker never materialized (100x note);
+% (3) quadratic objectives -> brief pointer to dedicated Hessian machinery (deferred).

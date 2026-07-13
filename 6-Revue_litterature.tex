@@ -358,19 +358,22 @@ for epigraph reformulations and general modeling best practices \cite{aps2025mos
 
 CVXPY takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
 coefficient matrices of linear expressions; this is where most of the computational burden of
-canonicalization lies. The section first develops this view, in which every affine atom becomes a
-linear operator and assembling the problem data amounts to composing these operators over the
-expression trees. It then examines how CVXPY carries out the composition and how parametrized
-data is cached and updated, highlighting along the way important design differences with the
-engine of \S\ref{sec:Theme1}.
+canonicalization lies. Matrix stuffing is named for what it does: the coefficients of every
+canonicalized expression are stuffed into their designated slots in the sparse standard-form data
+handed to the solver. The name suggests bookkeeping, but the coefficients it assembles are the
+Jacobians and Hessians of the canonicalized expressions: matrix stuffing is a sparse derivative
+computation, a view developed in \S\ref{sec:computing-derivatives}.
+
+The section gives a brief summary of matrix calculus and a few examples, presents the conventions
+of CVXPY's backend, and closes with implementation details that become important when contrasting
+it with the engine of \S\ref{sec:Theme1}.
 
 \paragraph{Matrix calculus.}
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
 matrices. Systematic rules for such derivatives go back to Dwyer and Macphail
-\cite{dwyer1948symbolic}: the derivative of a matrix-valued expression with respect to a matrix
-variable is a four-dimensional object, and several competing conventions arrange its
-entries \cite{magnus2019matrix}. The convention of Magnus and Neudecker, which CVXPY and this
-thesis follow, removes the ambiguity by vectorization: every expression is identified with
+\cite{dwyer1948symbolic}, and there are many ways to define the derivative of a matrix-valued
+expression with respect to a matrix variable \cite{magnus2019matrix}. The simplest is to
+vectorize: every expression is identified with
 \BEQ\label{eq:vec}
 \vect(X) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^T,
 \EEQ
@@ -460,7 +463,7 @@ of the constraint tree the augmented matrix is the problem data $[A\ b]$ itself.
 The simple operators act as \emph{views}, modifying the augmented matrix of their argument in
 place: negation flips the sign of every stored entry, indexing keeps the selected rows, and
 reshaping costs nothing at all, since it leaves the vectorization of the expression unchanged.
-The operators that create \emph{copies} are chiefly the bivariate atoms that carry data: one
+The operators that create \emph{copies} are mostly the bivariate atoms that carry data: one
 operand of a matrix product, an elementwise multiplication or a division is constant under the
 DCP rules, and the atom forms a matrix from that operand, multiplies it with the augmented
 matrix of the other, and stores the product as new data. An expository subset is classified in
@@ -595,17 +598,17 @@ linear operation to the matrices of its children.}
 
 \paragraph{Local versus global derivatives.}
 The augmented matrices of \eqref{eq:linop-form} can be laid out in two ways
-(\ref{fig:local-vs-global}). CVXPY
-differentiates \emph{locally}, one variable at a time: each node stores a separate coefficient
-block per variable appearing beneath it, keyed by the variable's identifier, and every operator
-is applied to each block in turn. The constant data is stored under the key $-1$, a common
-Python indexing trick to refer to the last column, the offset $b$. The columns of a block index only the entries of its own
-variable; only after the walk completes are the blocks shifted to their variables' column offsets
-and concatenated into the full matrix $[A\ b]$. The alternative is a \emph{global} derivative, a
-single Jacobian per node whose columns span the whole stacked vector $x$ from the outset. The
-local layout keeps the blocks small and skips variables absent from a subtree, but every operator
-must be dispatched over a dictionary of blocks; the engine of \S\ref{sec:Theme1} takes the global
-route.
+(\ref{fig:local-vs-global}). CVXPY differentiates \emph{locally}, one variable at a time: each
+node stores one coefficient block per variable appearing beneath it, keyed by the variable's
+identifier, and every operator is applied to each block in turn. The constant data is stored
+under the key $-1$, a Python idiom for the last column, the offset $b$. The columns of a block
+index only the entries of its own variable; only after the walk completes are the blocks shifted
+to their variables' column offsets and concatenated into the full matrix $[A\ b]$.
+
+The alternative is a \emph{global} derivative: a single Jacobian per node whose columns span the
+whole stacked vector $x$ from the outset. The local layout keeps the blocks small and skips
+variables absent from a subtree, but every operator runs once per stored block; the engine of
+\S\ref{sec:Theme1} takes the global route.
 
 \begin{figure}[H]
 \begin{subfigure}{0.48\textwidth}
@@ -668,7 +671,6 @@ data $[A\ b]$ is recovered the same way from its own map. After a parameter chan
 costs a single sparse matrix--vector product $Q\tilde\theta$.
 
 \begin{figure}[H]
-\begin{subfigure}{\textwidth}
 \centering
 $
 Q =
@@ -685,12 +687,22 @@ Q =
 \begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
 = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
-\caption{DPP path: the cached parameter map recovers the objective data.}
+\caption{The DPP path on the objective data of problem \eqref{eq:example}: the parameter map $Q$
+is built and cached once, and each re-solve recovers $(c, d)$ with the single sparse product
+$Q\tilde\theta$.}
 \label{fig:param-map-dpp}
-\end{subfigure}
-\vspace{3ex}
+\end{figure}
 
-\begin{subfigure}{\textwidth}
+\paragraph{The \texttt{ignore\_dpp} path.}
+Problems that fall outside the DPP grammar, or that opt out of it by solving with
+\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
+parameter leaf by a constant holding its current value, and the parameter-free tree that results
+is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
+fully general, since arbitrary functions of parameters reduce to constants, but every change of
+$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
+never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
+
+\begin{figure}[H]
 \centering
 \begin{tikzpicture}
   [level 1/.style={sibling distance=34mm},
@@ -705,25 +717,11 @@ $
 
 \vspace{1ex}
 $\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
-\caption{\texttt{ignore\_dpp} path.}
+\caption{The \texttt{ignore\_dpp} path on the objective of problem \eqref{eq:example}: the
+parameter leaf $\mu$ is replaced by a constant holding its current value $2.5$, and the
+parameter-free tree is re-walked on every change of the parameters.}
 \label{fig:param-map-evalparams}
-\end{subfigure}
-\caption{The two parametric paths for the objective data of problem \eqref{eq:example}. The DPP
-path (a) builds the parameter map $Q$ once and caches it; each re-solve recovers $(c, d)$ with the
-single sparse product $Q\tilde\theta$. The \texttt{ignore\_dpp} path (b) replaces each parameter
-leaf by a constant holding its current value and re-walks the tree on every change of the
-parameters.}
-\label{fig:param-map-c}
 \end{figure}
-
-\paragraph{The \texttt{ignore\_dpp} path.}
-Problems that fall outside the DPP grammar, or that opt out of it by solving with
-\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
-parameter leaf by a constant holding its current value, and the parameter-free tree that results
-is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
-fully general, since arbitrary functions of parameters reduce to constants, but every change of
-$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
-never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
 
 \paragraph{Code generation.}
 A third option is to compile the problem ahead of time. CVXPYgen emits problem-specific C code
@@ -1074,24 +1072,26 @@ expression graphs, AD implementation, and solver interfaces.
 \section{Sparse matrices}
 \label{sec:sparse-matrices}
 
-Matrices that contain many number of zero entries are known as \emph{sparse matrices}.
+Matrices that contain mostly zero entries are known as \emph{sparse matrices}. Storing only the
+nonzero entries makes memory and work scale with their number rather than with the product of the
+dimensions.
 The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of \emph{nonzero entries} in the matrix.
 
 For example, the matrix
 \BEQ\label{eq:sparse-matrix}
-  \begin{bmatrix}
-  0 & 0 & 3.2 & 0\\
-  4.1 & 1.8 & 0 & 2.2\\
-  0 & 2.8 & 0 & 3.4\\
+  S = \begin{bmatrix}
+  0 & 1 & 0 & 0\\
+  2 & 0 & 3 & 4\\
+  0 & 5 & 6 & 0\\
   \end{bmatrix}
 \EEQ
 can be represented in coordinate format as
 \begin{lstlisting}[language=C]
-int     rows[] = {0,    1,    1,    1,    2,    2};
-int     cols[] = {2,    0,    1,    3,    1,    3};
-double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
+int    rows[] = {0,  1,  1,  1,  2,  2};
+int    cols[] = {1,  0,  2,  3,  1,  2};
+double vals[] = {1,  2,  3,  4,  5,  6};
 \end{lstlisting}
 
 where we use zero-based indexing and array declaration notation from the C programming
@@ -1107,13 +1107,12 @@ The row pointer array indicates the starting index of each row in the \texttt{co
 For example, the matrix in \eqref{eq:sparse-matrix}
 can be represented in CSR format as
 \begin{lstlisting}[language=C]
-int  idxptr[] = {0,    1,                4,         6};
-int    cols[] = {2,    0,    1,    3,    1,    3};
-double vals[] = {3.2,  4.1,  1.8,  2.2,  2.8,  3.4};
+int  idxptr[] = {0,  1,          4,      6};
+int    cols[] = {1,  0,  2,  3,  1,  2};
+double vals[] = {1,  2,  3,  4,  5,  6};
 \end{lstlisting}
 where we deliberately format \texttt{idxptr} to align with the start of each
 row in the \texttt{cols} arrays.
-% talk about benefits of CSR format. fast row slicing, fast matrix-vector products, etc.
 The benefits of the CSR format are more than a reduced size of the \texttt{idxptr} array
 compared to the \texttt{rows} array.
 In the CSR format, accessing a row takes constant time and is very \emph{cache-friendly}
@@ -1131,18 +1130,70 @@ In contrast to iterative methods, the CSC format is the preferred format for
 \emph{direct methods} to solve sparse linear systems \cite{davis2006direct}.
 
 \paragraph{Transpose.}
-% csr format and relation to csc in transpose.
+The CSC arrays of a matrix read exactly as the CSR arrays of its transpose: compressing the
+columns of $S$ is the same as compressing the rows of $S^T$. For \eqref{eq:sparse-matrix},
+\begin{lstlisting}[language=C]
+int  idxptr[] = {0,  1,      3,      5,  6};
+int    rows[] = {1,  0,  2,  1,  2,  1};
+double vals[] = {2,  1,  5,  3,  6,  4};
+\end{lstlisting}
+is at once the CSC representation of $S$ and the CSR representation of $S^T$. Transposition is
+therefore a conversion between the two formats. It requires no sorting: one pass over the
+nonzeros counts the entries of each column to build the new \texttt{idxptr}, and a second pass
+scatters the entries into place, $O(m + n + \mathrm{nnz})$ time in total
+\cite{gustavson1978two, davis2006direct}. The entries of each output row come out sorted by
+column, so transposing twice is also the standard way to restore a matrix with unordered
+indices to canonical form.
 
 \paragraph{Which format to use?}
-% mention that we use both, for efficiency in some cases, etc.
+The access pattern of the algorithm decides: a computation that traverses rows wants CSR, one
+that traverses columns wants CSC. Since conversion costs a single counting pass, keeping the
+same matrix in both formats is common. The engine of \S\ref{sec:Theme1} does exactly this,
+storing Jacobians in CSR and pairing the two formats in its matrix products.
 
 \paragraph{Matrix-vector products.}
-Mention that both CSR and CSC can do efficient mat-vec, but the algorithm
-must adapt to the underlying data structure.
+Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop must
+follow the storage. In CSR each output entry is a sparse dot product, gathering from $x$ row by
+row:
+\begin{lstlisting}[language=C]
+/* y = S @ x, with y zeroed */
+for (int i = 0; i < m; i++)
+{
+    for (int k = idxptr[i]; k < idxptr[i + 1]; k++)
+    {
+        y[i] += vals[k] * x[cols[k]];
+    }
+}
+\end{lstlisting}
+In CSC the roles reverse: the loop visits column $j$ and \emph{scatters} the products
+$\texttt{vals[k]} \cdot x_j$ into \texttt{y[rows[k]]}, accumulating the output instead of
+gathering the input.
 
 \paragraph{Matrix-matrix products.}
-Mention SpGEMM. Mention Gustavson's algorithm and the standard one CSR and CSC method.
-Discuss the tradeoffs.
+The product of two sparse matrices is harder than the operations above because the sparsity
+pattern of the output is not known in advance. Implementations therefore split the work in two
+phases: a \emph{symbolic} phase determines the pattern and allocates the output, and a
+\emph{numeric} phase fills its values \cite{gustavson1978two, bank1993smmp}. The split rewards
+reuse, and the engine of \S\ref{sec:Theme1} is built around it: the symbolic phase runs once per
+problem family and only the numeric phase repeats.
+
+Gustavson's algorithm \cite{gustavson1978two} computes $C = AB$ with both operands in CSR, row
+by row: row $i$ of $C$ is the sum of the rows of $B$ selected and scaled by the nonzeros of row
+$i$ of $A$, merged in a dense accumulator $w$. Take $C = S S^T$, where $S^T$ in CSR is the
+transpose arrays above. Row $2$ of $S$ holds $5$ at column $1$ and $6$ at column $2$, so row $2$
+of $C$ is $5 \cdot (\text{row 1 of } S^T) + 6 \cdot (\text{row 2 of } S^T)$: the first term sets
+$w[0] = 5$ and $w[2] = 25$, the second sets $w[1] = 18$ and grows $w[2]$ to $61$. The cost is
+one multiplication per term merged, but the output indices appear in the order they are first
+touched, here $[0, 2, 1]$; transposing twice sorts them when canonical form is needed.
+
+The alternative is to compute each entry as a sparse dot product,
+$c_{ij} = (\text{row } i \text{ of } A) \cdot (\text{column } j \text{ of } B)$, which asks for
+$A$ in CSR and $B$ in CSC; for $C = S S^T$ both roles are served by the CSR arrays of $S$ alone.
+Entries whose row and column share no index are structural zeros and cost only the scan:
+$c_{01} = 0$ since rows $0$ and $1$ of $S$ have no common column, while rows $1$ and $2$ meet at
+column $2$, giving $c_{12} = 3 \cdot 6 = 18$. This form rescans its operands for every candidate
+entry, where Gustavson's merge touches each term once; in exchange it needs no accumulator and
+produces each row sorted.
 
 \paragraph{Other formats.}
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
@@ -1152,16 +1203,10 @@ allows users to form other types of sparse matrices such as the list of lists (L
 the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 
 \paragraph{References.}
-% TODO revisit this once we start writing the methodology.
-Although the work in this thesis does not necessarily revolve around solving sparse
-linear systems, a lot of techniques for manipulating sparse matrices we use were inspired by
-the literature.
-In particular, the book by Davis \cite{davis2006direct} was used extensively throughout
-the development of our methods.
-The book by Duff \cite{Duff1986Direct} is another great reference to learn more about the
-history and development of sparse matrix algorithms.
-% review this paragraph, and maybe cite this:
-Another reference is the review article by the ``gang of four'' (Gill, Murray, Saunders and Wright)
-from the Systems Optimization Laboratory at Stanford University 
-\cite{gill1984sparse} which provides a high-level overview of various applications
-of sparse matrix methods in optimization.
+The standard references treat the solution of sparse linear systems, a task this thesis never
+performs, but the data structures and kernels they develop apply unchanged. The book by Davis
+\cite{davis2006direct} was used extensively in developing the engine of \S\ref{sec:Theme1}; the
+book by Duff, Erisman and Reid \cite{Duff1986Direct} covers the history and development of the
+field. Gustavson's paper \cite{gustavson1978two} is the origin of the row-wise product and the
+sort-free transposition of this section. Finally, Gill, Murray, Saunders and Wright
+\cite{gill1984sparse} survey the applications of sparse matrix methods in optimization.

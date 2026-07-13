@@ -1,19 +1,24 @@
 \Chapter{Benchmark results}\label{sec:Theme2}
 
-In this chapter we evaluate the engine of \S\ref{sec:Theme1} against CVXPY's existing
-canonicalization path. The central question is the cost of repeatedly forming the problem data for
-a parameterized problem family, which is exactly the regime our two-phase design targets.
+This chapter evaluates the C engine on the problems CVXPY users actually compile. We measure
+canonicalization end to end---from a built expression tree to solver-ready problem data---in the
+two regimes that matter in practice: the cold, single compilation of a fresh problem, and the warm
+re-compilation of a parametrized problem whose parameter values change between solves. The engine
+is compared against CVXPY's default \texttt{cvxcore} backend in both regimes
+(\S\ref{sec:bench-cpp-single}, \S\ref{sec:bench-cpp-param}), and, in the same two regimes,
+against CasADi, which obtains the same problem data by algorithmic differentiation of a symbolic
+graph (\S\ref{sec:bench-casadi}).
+
 
 \section{Benchmark Setup}
 
 We benchmark on the public CVXPY benchmark suite~\cite{cvxpybenchmarks}, $25$ real-world problems
 (linear and quadratic programs, least squares, portfolio models, robust regression, and conic and
 semidefinite programs) maintained under \emph{airspeed velocity} (\texttt{asv})~\cite{asv} with
-seeded, reproducible data. Three problems need the unsupported \texttt{kron} atom and are excluded;
-the remaining $22$ run on both backends.
+seeded, reproducible data. All $25$ problems run on both backends; three of them exercise the
+\texttt{kron} atom, whose support the engine gained late in this work.
 
-We time \emph{canonicalization} only---the construction of the problem data $(A,b,c,P)$ from the
-expression tree---and exclude the numerical solve, since that is what the engine changes. Concretely
+We time \emph{canonicalization} only---the construction of the problem data $(A,b,c,P)$. Concretely
 we time \texttt{get\_problem\_data} with the target solver fixed to Clarabel~\cite{clarabel}: the
 \texttt{CPP} (\texttt{cvxcore}) baseline is the default DPP path, and the C engine is selected with
 \texttt{ignore\_dpp}.
@@ -21,335 +26,222 @@ we time \texttt{get\_problem\_data} with the target solver fixed to Clarabel~\ci
 prob.get_problem_data(solver=cp.CLARABEL)                   # CPP baseline (DPP tensor)
 prob.get_problem_data(solver=cp.CLARABEL, ignore_dpp=True)  # our C engine
 \end{lstlisting}
-We report two regimes: \emph{cold-start} (a fresh \texttt{Problem} built with nothing cached,
-averaged over $3$ builds) and \emph{warm-restart} (parameter values reassigned on a warm cached
-chain, averaged over $20$ re-compiles)---the latter being the regime the engine targets. Alongside
-these wall-clock times we report \emph{peak memory}, and summarize across the suite with the
-\emph{geometric mean} of the per-problem engine/\texttt{CPP} ratios, the standard scale-free
-statistic for timings that span orders of magnitude~\cite{cederberg2026presolving}.
 
-All measurements run single-threaded on a MacBook Pro (13-inch, M2, 2022): 8-core Apple M2,
-\SI{24} GB RAM, macOS~26.3, with Python~3.14, CVXPY~1.10 (dev), NumPy~2.4~\cite{numpy}, and
-SciPy~1.16~\cite{2020SciPy-NMeth}. Versions are pinned and the suite and engine are public, so the
-configuration is reproducible.
+% NOTE: these are the 2026-07-11/12 final numbers, measured on the Intel machine below.
+% If the tables are ever re-generated on the M2 laptop, update this paragraph accordingly.
+% Full provenance: plans/benchmark_results.md.
+All measurements run single-threaded (BLAS thread pools pinned to one thread) on a MacBook Pro
+(15-inch, 2018): 6-core Intel Core i7-8850H at \SI{2.6}{\giga\hertz}, \SI{16}{\giga\byte} RAM,
+macOS~15.7, with Python~3.14, CVXPY~1.10 (dev), NumPy~2.4~\cite{numpy}, and
+SciPy~1.17~\cite{2020SciPy-NMeth}; the CasADi comparison uses CasADi~3.7.2~\cite{andersson2019}.
+Reported times are medians of three fresh compilations (twenty re-evaluations for the re-solve
+columns). Versions are pinned and the suite and engine are public, so the configuration is
+reproducible.\footnote{The complete harness, per-problem CasADi models, mechanism probes, and raw
+result files are published at
+\url{https://github.com/SparseDifferentiation/Jacobian-accumulation} (directory
+\texttt{canonicalization/}).}
 
-\section{Results across the benchmark suite}\label{sec:suite-results}
-Table~\ref{tab:cold-compile} reports cold-start compilation across the $22$ runnable benchmarks,
-and Table~\ref{tab:warm-recompile} reports warm-restart re-compilation on the parametric subset. In
-both, the ratio is $\text{C engine}/\text{CPP}$, so a value below $1$ means the engine is faster;
-the final row gives the geometric mean of the per-problem ratios.
+We report three comparisons: single-solve compilation against \texttt{cvxcore}
+(\S\ref{sec:bench-cpp-single}), parametric compilation against \texttt{cvxcore} across the first
+solve and re-solves (\S\ref{sec:bench-cpp-param}), and both regimes against CasADi
+(\S\ref{sec:bench-casadi}). In every table the ratio is $\text{C engine}/\text{baseline}$; a value
+below $1$ favors the engine, and the final row is the geometric mean of the per-problem ratios.
+
+\section{Single-solve compilation against \texttt{cvxcore}}
+\label{sec:bench-cpp-single}
+A fresh problem is formed and canonicalized once from scratch (Table~\ref{tab:cold-compile}).
 
 \begin{table}[ht]
 \centering
-\caption{Cold compilation time: a fresh problem formed and canonicalized from scratch, C engine
-versus CVXPY's \texttt{CPP} backend (22 runnable benchmarks). Ratio $=$ C engine $/$ \texttt{CPP};
-values below $1$ favor the engine.}
+\caption{Cold compilation time across all 25 benchmarks, C engine versus \texttt{cvxcore}.}
 \label{tab:cold-compile}
 \begin{tabular}{l r r r}
 \toprule
-Benchmark & \texttt{CPP} (ms) & C engine (ms) & Ratio \\
+Benchmark & \texttt{CPP} (s) & C engine (s) & Ratio \\
 \midrule
-Yitzhaki                    & 845  & 69   & \textbf{0.08} \\
-Cajas                       & 2154 & 179  & \textbf{0.08} \\
-SimpleQP                    & 2882 & 295  & 0.10 \\
-LeastSquares                & 2313 & 263  & 0.11 \\
-HuberRegression             & 2559 & 298  & 0.12 \\
-SimpleLP                    & 5656 & 747  & 0.13 \\
-SlowPruning                 & 1726 & 283  & 0.16 \\
-SVMWithL1Regularization     & 2593 & 411  & 0.16 \\
-TvInpainting                & 879  & 164  & 0.19 \\
-SimpleScalarParametrizedLP  & 1066 & 223  & 0.21 \\
-SimpleFullyParametrizedLP   & 463  & 110  & 0.24 \\
-ParametrizedQP              & 2645 & 631  & 0.24 \\
-ConeMatrixStuffing          & 2589 & 819  & 0.32 \\
-ParamSmallMatrixStuffing    & 118  & 40   & 0.34 \\
-OptimalAdvertising          & 2202 & 805  & 0.37 \\
-ParamConeMatrixStuffing     & 69   & 27   & 0.38 \\
-SmallMatrixStuffing         & 1633 & 627  & 0.38 \\
-CVaR                        & 7128 & 6224 & 0.87 \\
-FactorCovarianceModel       & 1157 & 1117 & 0.97 \\
+UnconstrainedQP             & 9.32  & 0.08 & \textbf{0.01} \\
+Cajas                       & 19.66 & 1.06 & 0.05 \\
+FactorCovarianceModel       & 5.24  & 0.73 & 0.14 \\
+SVMWithL1Regularization     & 11.16 & 1.60 & 0.14 \\
+Yitzhaki                    & 3.07  & 0.47 & 0.15 \\
+HuberRegression             & 10.97 & 1.61 & 0.15 \\
+LeastSquares                & 8.87  & 1.42 & 0.16 \\
+SimpleQP                    & 10.49 & 1.69 & 0.16 \\
+SimpleScalarParametrizedLP  & 5.29  & 0.92 & 0.17 \\
+SimpleLP                    & 30.07 & 5.29 & 0.18 \\
+SDPSegfault1132             & 59.75 & 12.47 & 0.21 \\
+SimpleFullyParametrizedLP   & 2.12  & 0.45 & 0.21 \\
+ParametrizedQP              & 10.19 & 2.25 & 0.22 \\
+TvInpainting                & 3.57  & 1.06 & 0.30 \\
+SlowPruning                 & 6.88  & 2.15 & 0.31 \\
+SemidefiniteProgramming     & 5.38  & 1.93 & 0.36 \\
+ConeMatrixStuffing          & 10.34 & 3.76 & 0.36 \\
+QuantumHilbertMatrix        & 3.89  & 1.64 & 0.42 \\
+SmallMatrixStuffing         & 6.52  & 2.77 & 0.42 \\
+ParamSmallMatrixStuffing    & 0.48  & 0.21 & 0.43 \\
+ParamConeMatrixStuffing     & 0.31  & 0.14 & 0.45 \\
+Murray                      & 5.79  & 3.43 & 0.59 \\
+CVaR                        & 34.80 & 25.31 & 0.73 \\
+OptimalAdvertising          & 6.06  & 5.20 & 0.86 \\
+ConvexPlasticity            & 2.09  & 2.13 & \textbf{1.02} \\
 \midrule
-Murray                      & 1052 & 1627 & 1.55 \\
-ConvexPlasticity            & 81   & 220  & 2.63 \\
-SemidefiniteProgramming     & 995  & 8886 & \textbf{8.90} \\
-\midrule
-\textbf{Geometric mean}     &      &      & \textbf{0.32} \\
+\textbf{Geometric mean}     &       &      & \textbf{0.24} \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The engine is faster on 24 of the 25 problems, between $1.2\times$ and $124\times$, with a
+geometric-mean speedup of $4.2\times$. The wins are largest where \texttt{cvxcore}'s per-expression
+tensor construction dominates (portfolio and regression models with many scalar constraints, and
+\textsc{UnconstrainedQP}'s tiny problem wrapped in a large \texttt{kron} expression); they shrink
+toward parity on problems whose cost is a single huge data copy (\textsc{OptimalAdvertising},
+\textsc{CVaR}) or whose compilation is dominated by CVXPY's Python-side reductions rather than
+either backend (\textsc{ConvexPlasticity}, the one row at parity).
+
+\section{Parametric compilation against \texttt{cvxcore}}
+\label{sec:bench-cpp-param}
+On the parametric subset we report the first solve and the re-solve after reassigning parameter
+values on a warm cached chain (Table~\ref{tab:param-compile}). The re-solve is the engine's target
+regime; its ratio is the last column.
 
 \begin{table}[ht]
 \centering
-\caption{Parametric re-compilation time on a warm cached chain: parameter values are reassigned and
-the problem data rebuilt (the engine's target regime). Ratio $=$ C engine $/$ \texttt{CPP}.}
-\label{tab:warm-recompile}
-\begin{tabular}{l r r r r}
+\caption{Parametric compilation, C engine versus \texttt{cvxcore}: first solve and warm re-solve.
+Ratio is on the re-solve.}
+\label{tab:param-compile}
+\begin{tabular}{l r r r r r r}
 \toprule
-Benchmark & \#par & \texttt{CPP} (ms) & C engine (ms) & Ratio \\
+ & & \multicolumn{2}{c}{First solve (s)} & \multicolumn{2}{c}{Re-solve (s)} & \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Benchmark & \#par & \texttt{CPP} & engine & \texttt{CPP} & engine & Ratio \\
 \midrule
-ParamSmallMatrixStuffing    & 3 & 2.23 & 0.65 & \textbf{0.29} \\
-ParamConeMatrixStuffing     & 3 & 1.19 & 0.40 & 0.33 \\
-SimpleFullyParametrizedLP   & 1 & 50.8 & 36.8 & 0.72 \\
-ParametrizedQP              & 2 & 333  & 309  & 0.93 \\
+ParamConeMatrixStuffing     & 3 & 0.31  & 0.14 & 0.0030 & 0.0010 & \textbf{0.33} \\
+ParamSmallMatrixStuffing    & 3 & 0.48  & 0.21 & 0.0048 & 0.0017 & 0.35 \\
+SimpleFullyParametrizedLP   & 1 & 2.12  & 0.45 & 0.230  & 0.123  & 0.54 \\
+ParametrizedQP              & 2 & 10.19 & 2.25 & 1.361  & 0.959  & 0.70 \\
+SimpleScalarParametrizedLP  & 1 & 5.29  & 0.92 & 0.330  & 0.251  & 0.76 \\
+ConvexPlasticity            & 3 & 2.09  & 2.13 & 0.668  & 0.666  & 1.00 \\
 \midrule
-SimpleScalarParametrizedLP  & 1 & 66.2 & 67.9 & 1.03 \\
-FactorCovarianceModel       & 2 & 21.3 & 72.2 & 3.39 \\
-SVMWithL1Regularization     & 1 & 40.2 & 150  & 3.72 \\
-ConvexPlasticity            & 3 & 43.0 & 194  & 4.52 \\
+FactorCovarianceModel       & 2 & 5.24  & 0.73 & 0.144  & 0.277  & 1.92 \\
+SVMWithL1Regularization     & 1 & 11.16 & 1.60 & 0.263  & 0.530  & \textbf{2.01} \\
 \midrule
-\textbf{Geometric mean}     &   &      &      & \textbf{1.18} \\
+\textbf{Geometric mean}     &   &       &      &        &        & \textbf{0.78} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Reading.}
-In aggregate the engine is about $3\times$ faster on cold builds (geometric-mean ratio $0.32$) and
-near parity on parametric re-compiles ($1.18$), but the per-problem split is the more informative
-story. On \emph{cold} compilation the engine wins on the bulk of the LP, QP, portfolio, and conic
-problems---typically $3$--$12\times$ faster, since it extracts the problem data directly from the
-expression trees while \texttt{CPP} pays the full parameter-tensor build. It loses on
-\texttt{Murray} ($1.55\times$), \texttt{ConvexPlasticity} ($2.63\times$), and the
-\texttt{SemidefiniteProgramming} outlier ($8.9\times$), and reaches parity on
-\texttt{FactorCovarianceModel} ($0.97\times$). On \emph{parametric re-compilation} the picture is
-mixed and use-case dependent: the engine is faster on the matrix-stuffing and fully-parametrized-LP
-re-solves ($0.29$--$0.72\times$) and near parity on \texttt{ParametrizedQP}, but $3.4$--$4.5\times$
-slower on \texttt{FactorCovarianceModel}, \texttt{SVM}, and \texttt{ConvexPlasticity}, where
-\texttt{CPP}'s cached DPP parameter$\to$data tensor (one sparse matmul per solve) is hard to beat.
-The largest memory wins come from keeping constants sparse: eliminating an eager
-$25\,000\times25\,000$ dense densification ($\approx 5$\,GB) on \texttt{FactorCovarianceModel}, and
-shrinking the \texttt{ConvexPlasticity} Hessian block from $9$M to $51$k nonzeros by routing a
-mostly-zero \texttt{quad\_form} matrix to the sparse binding.
+The engine wins the re-solve on six of the eight parametric problems and the first solve on all
+but \textsc{ConvexPlasticity}. Because the engine's program is cached, a re-solve only re-evaluates
+the parameter-dependent coefficient entries; the DPP baseline instead multiplies its cached
+parameter tensor by the new parameter vector, which is hard to beat when that tensor is small and
+dense. The two rows where DPP retains a $\approx 2\times$ edge share one trait: a scalar parameter
+whose effect is spread across many coefficients (\textsc{SVM}'s regularization weight,
+\textsc{FactorCovariance}'s risk aversion multiplying the quadratic), the ideal case for the
+tensor product and the worst case for entry-wise re-evaluation.
 
-\section{Scaling with problem size}\label{sec:scaling}
-The cross-suite tables fix the problem size; here we instead sweep it. We deep-dive three
-parameterized problems---parametric least squares, a factor-covariance portfolio, and an
-energy-storage scheduling model---and re-measure cold-start time, warm-restart time, and peak
-memory as the size grows. All three are genuinely parametric, so the warm-restart curve measures
-the engine's target regime: refilling values on a fixed sparsity pattern as the parameters change.
-For each panel we plot \texttt{CPP} against the C engine on log--log axes.
+\section{Comparison against CasADi}
+\label{sec:bench-casadi}
+CasADi~\cite{andersson2019} extracts problem data by algorithmic differentiation of a symbolic
+expression graph. Since CasADi has no notion of disciplined convex programming, it cannot
+canonicalize the high-level models; for a fair comparison we hand it the \emph{already-lowered}
+formulation: the same epigraph variables and the same conic rows that CVXPY's canonicalization
+produces, written as CasADi \texttt{MX} expressions $f(z, \theta)$ (objective) and
+$g(z, \theta) = b - Az$ (constraint slacks), where $z$ stacks the original and epigraph variables
+and $\theta$ collects the parameters. The problem data are recovered exactly the way CasADi's own
+quadratic-programming interface does, by differentiating the graph with no solver involved:
+$c = \nabla_z f|_{z=0}$, $P = \partial(\nabla_z f)/\partial z$, $A = -\partial g/\partial z$, and
+$b = g|_{z=0}$, wrapped in a \texttt{casadi.Function} mapping $\theta \mapsto (P, c, A, b)$;
+$P$ is computed as the Jacobian of the gradient, CasADi's fastest path on these problems. The
+\emph{single} regime times differentiation, function construction, and the first numeric
+evaluation on a freshly built graph; the \emph{re-solve} regime times one further evaluation at
+fresh parameter values on the compiled function. Graph construction itself is excluded, mirroring
+the engine's timing, which also starts from a built expression tree. We verified on every
+benchmark that the two systems produce identical $(P, c, A, b)$ at full benchmark size, so the
+tables below time the construction of the same matrices. All $25$ problems are compared, with
+\textsc{CVaR} reported as a did-not-finish.
 
-% Reusable 1x3 (cold / warm / memory) scaling figure. Arguments:
-% #1 caption  #2 label  #3..#8 = six placeholder coordinate lists
-% (CPP-cold, eng-cold, CPP-warm, eng-warm, CPP-mem, eng-mem).
-% TODO(data): replace the placeholder coordinate lists once the size-sweep run is complete.
-\newcommand{\scalingfig}[8]{%
-\begin{figure}[ht]
+The single extraction of a freshly built problem is reported in Table~\ref{tab:casadi-single},
+mirroring Table~\ref{tab:cold-compile}.
+
+\begin{table}[ht]
 \centering
-\begin{tikzpicture}
-\begin{groupplot}[
-  group style={group size=3 by 1, horizontal sep=1.5cm},
-  width=0.36\textwidth, height=4cm,
-  xmode=log, ymode=log, log basis x=10,
-  tick label style={font=\scriptsize}, label style={font=\scriptsize},
-  title style={font=\small}, grid=both, grid style={gray!20},
-  xlabel={size},
-]
-\nextgroupplot[title={Cold-start (ms)}, legend style={font=\tiny}, legend pos=north west]
-  \addplot coordinates {#3}; \addlegendentry{\texttt{CPP}}
-  \addplot coordinates {#4}; \addlegendentry{C engine}
-\nextgroupplot[title={Warm-restart (ms)}]
-  \addplot coordinates {#5};
-  \addplot coordinates {#6};
-\nextgroupplot[title={Peak memory (MB)}]
-  \addplot coordinates {#7};
-  \addplot coordinates {#8};
-\end{groupplot}
-\end{tikzpicture}
-\caption{#1}
-\label{#2}
-\end{figure}}
+\caption{Single problem-data extraction across all 25 benchmarks, C engine versus CasADi (s).}
+\label{tab:casadi-single}
+\begin{tabular}{l r r r}
+\toprule
+Benchmark & CasADi (s) & C engine (s) & Ratio \\
+\midrule
+ParametrizedQP              & 771.5  & 2.52 & \textbf{0.003} \\
+FactorCovarianceModel       & 250.4  & 2.05 & 0.008 \\
+SVMWithL1Regularization     & 145.5  & 1.79 & 0.012 \\
+SemidefiniteProgramming     & 66.4   & 2.07 & 0.031 \\
+SimpleQP                    & 53.7   & 1.70 & 0.032 \\
+LeastSquares                & 36.6   & 1.62 & 0.044 \\
+HuberRegression             & 42.4   & 1.88 & 0.044 \\
+Yitzhaki                    & 8.72   & 0.47 & 0.054 \\
+SlowPruning                 & 38.8   & 2.80 & 0.072 \\
+SimpleLP                    & 38.1   & 5.02 & 0.132 \\
+TvInpainting                & 8.49   & 1.14 & 0.134 \\
+Murray                      & 25.9   & 3.52 & 0.136 \\
+SimpleFullyParametrizedLP   & 2.36   & 0.48 & 0.204 \\
+SimpleScalarParametrizedLP  & 4.57   & 0.98 & 0.214 \\
+Cajas                       & 4.88   & 1.12 & 0.229 \\
+ConeMatrixStuffing          & 6.10   & 3.94 & 0.646 \\
+OptimalAdvertising          & 9.47   & 6.16 & 0.650 \\
+SDPSegfault1132             & 17.65  & 14.61 & 0.83 \\
+SmallMatrixStuffing         & 2.77   & 2.75 & 0.99  \\
+QuantumHilbertMatrix        & 1.41   & 1.57 & 1.11  \\
+UnconstrainedQP             & 0.021  & 0.074 & 3.49 \\
+ConvexPlasticity            & 0.13   & 2.29 & 17.3  \\
+ParamSmallMatrixStuffing    & 0.007  & 0.21 & 30.8  \\
+ParamConeMatrixStuffing     & 0.004  & 0.14 & \textbf{39.7} \\
+CVaR                        & \multicolumn{1}{c}{DNF} & 25.3 & --- \\
+\midrule
+\textbf{Geometric mean}     &        &      & \textbf{0.24} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-% Reusable single (larger) scaling plot for one metric. Arguments:
-% #1 in-plot title  #2 y-axis label  #3 caption  #4 label
-% #5 CPP coordinate list  #6 C-engine coordinate list
-\newcommand{\scalingplot}[6]{%
-\begin{figure}[ht]
+The engine is fastest where the lowered matrices contain large dense blocks: it knows every
+atom's Jacobian block and its sparsity pattern in closed form, while CasADi must discover the
+pattern and reconstruct the values through seeded derivative sweeps, whose number a dense block
+forces to the full dimension (on \textsc{CVaR}'s dense scenario block the extraction did not
+finish within \SI{10}{\hour}). The ratio reverses on the smallest problems, where the engine
+column is dominated not by extraction but by CVXPY's Python-side reduction chain, which the
+hand-lowered CasADi models are spared by construction.
+
+On the parametric subset we report the first extraction and the warm re-solve
+(Table~\ref{tab:casadi-param}), mirroring Table~\ref{tab:param-compile}.
+
+\begin{table}[ht]
 \centering
-\begin{tikzpicture}
-\begin{axis}[
-  width=0.7\textwidth, height=6.2cm,
-  xmode=log, ymode=log, log basis x=10,
-  xlabel={problem size $n$}, ylabel={#2}, title={#1},
-  grid=both, grid style={gray!20},
-  legend pos=north west, legend style={font=\small},
-  tick label style={font=\small}, label style={font=\small},
-]
-  \addplot coordinates {#5}; \addlegendentry{\texttt{CPP} (rebuild)}
-  \addplot coordinates {#6}; \addlegendentry{C engine}
-\end{axis}
-\end{tikzpicture}
-\caption{#3}
-\label{#4}
-\end{figure}}
+\caption{Parametric extraction, C engine versus CasADi: first extraction and warm re-solve (s).
+Ratio is on the re-solve.}
+\label{tab:casadi-param}
+\begin{tabular}{l r r r r r r}
+\toprule
+ & & \multicolumn{2}{c}{First (s)} & \multicolumn{2}{c}{Re-solve (s)} & \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Benchmark & \#par & CasADi & engine & CasADi & engine & Ratio \\
+\midrule
+FactorCovarianceModel       & 2 & 250.4 & 2.05 & 3.956  & 0.567  & \textbf{0.14} \\
+SVMWithL1Regularization     & 1 & 145.5 & 1.79 & 0.548  & 0.491  & 0.90 \\
+ParametrizedQP              & 2 & 771.5 & 2.52 & 0.938  & 0.942  & 1.00 \\
+\midrule
+SimpleScalarParametrizedLP  & 1 & 4.57  & 0.98 & 0.124  & 0.236  & 1.90 \\
+SimpleFullyParametrizedLP   & 1 & 2.36  & 0.48 & 0.062  & 0.120  & 1.95 \\
+ParamSmallMatrixStuffing    & 3 & 0.007 & 0.21 & 0.0007 & 0.0020 & 3.0 \\
+ParamConeMatrixStuffing     & 3 & 0.004 & 0.14 & 0.0003 & 0.0011 & 3.5 \\
+ConvexPlasticity            & 3 & 0.13  & 2.29 & 0.0067 & 0.707  & \textbf{105.5} \\
+\midrule
+\textbf{Geometric mean}     &   &       &      &        &        & \textbf{2.19} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Parametric least squares}\label{sec:scaling-ls}
-The bread-and-butter case: fit $x$ to noisy observations with the data matrix $A$ and right-hand
-side $b$ supplied as parameters, so a re-solve only reassigns $A$ and $b$. The size knobs are the
-number of observations $m$ and variables $n$.
-\begin{lstlisting}[language=Python]
-import cvxpy as cp
-
-A = cp.Parameter((m, n))      # data matrix   (reassigned each solve)
-b = cp.Parameter(m)           # observations  (reassigned each solve)
-
-x = cp.Variable(n)
-objective   = cp.Minimize(cp.sum_squares(A @ x - b))
-constraints = [0 <= x, x <= 1]
-prob = cp.Problem(objective, constraints)
-\end{lstlisting}
-We sweep $n \in \{250, 500, 1000, 2000, 4000\}$ with $m = 3n$ (overdetermined) and measure both
-backends in the \emph{ignore-DPP} regime: the canonicalization is rebuilt from scratch whenever the
-parameters change, which is the engine's intended use case. The C engine carries the parameters
-natively and re-extracts values on a fixed sparsity pattern; the \texttt{CPP} baseline substitutes
-the parameter values (the \texttt{EvalParams} reduction) and re-canonicalizes the resulting
-constant-data problem. We deliberately avoid CPP's DPP parameter-tensor path here: because the data
-matrix $A$ is itself an $m \times n$ parameter, that tensor has $\Theta(mn)$ entries and its
-construction dominates everything else---tens of seconds and gigabytes already at $n = 500$---so it
-is neither representative nor the comparison of interest. Cold-start and warm-restart times are
-medians over three repetitions; peak memory is the process resident-set high-water mark
-(\texttt{ru\_maxrss}), measured in a fresh subprocess per point so that, unlike Python-level
-\texttt{tracemalloc}, it also captures the engine's C-side allocations.
-
-\scalingplot
-  {Cold-start compilation}
-  {compile time (ms)}
-  {Parametric least squares, cold-start: full canonicalization from scratch versus problem size
-   $n$ ($m = 3n$). The C engine is $\approx\!4\times$ faster across the whole range; both backends
-   scale as $\sim n^{2.1}$.}
-  {fig:scaling-ls-cold}
-  {(250,28.36)(500,110.4)(1000,480.5)(2000,2295)(4000,9724)}
-  {(250,7.378)(500,24.69)(1000,100.5)(2000,595.5)(4000,2643)}
-
-\scalingplot
-  {Warm-restart}
-  {re-compile time (ms)}
-  {Parametric least squares, warm-restart: rebuild after reassigning $A$ and $b$. With no DPP
-   tensor to reuse, \texttt{CPP} pays its full cold-start cost again, while the C engine only
-   re-evaluates values on the cached sparsity pattern---a $10$--$12\times$ speed-up.}
-  {fig:scaling-ls-warm}
-  {(250,26.83)(500,107.7)(1000,468.1)(2000,2235)(4000,9115)}
-  {(250,2.22)(500,9.592)(1000,37.97)(2000,229.6)(4000,863.4)}
-
-\scalingplot
-  {Peak memory}
-  {peak memory (MB)}
-  {Parametric least squares, peak process memory (resident-set high-water mark). The backends are
-   within $\sim\!30\%$ of each other; both grow as $\sim n^{1.6}$, dominated by the shared
-   interpreter and the dense data matrix $A$.}
-  {fig:scaling-ls-mem}
-  {(250,160.6)(500,288.1)(1000,823.1)(2000,2938)(4000,11590)}
-  {(250,164.9)(500,326.5)(1000,962.8)(2000,3819)(4000,11857)}
-
-Cold-start (Figure~\ref{fig:scaling-ls-cold}) favours the engine by roughly $4\times$ across the
-range (ratio $0.21$--$0.27$), both backends scaling as $\sim n^{2.1}$. The gap widens on
-warm-restart (Figure~\ref{fig:scaling-ls-warm}): \texttt{CPP} re-canonicalizes in essentially its
-cold-start time ($9.1$\,s at $n = 4000$), whereas the engine re-extracts on the cached pattern in
-$863$\,ms---a $10$--$12\times$ speed-up that is precisely the non-DPP re-solve regime the engine
-targets. Peak memory (Figure~\ref{fig:scaling-ls-mem}) is comparable: both grow as $\sim n^{1.6}$
-and are dominated by the dense $A$, with the engine $2$--$30\%$ heavier in resident set. Its own
-internal accounting (the engine's \texttt{verbose} ``peak memory'') grows as $\sim n^{2.0}$, from
-$14$\,MB at $n = 250$ to $3.7$\,GB at $n = 4000$, yet stays below the process RSS throughout.
-
-\subsection{Factor-covariance portfolio}\label{sec:scaling-portfolio}
-A Markowitz portfolio whose risk is expressed through a low-rank factor model: $n$ assets load on
-$m \ll n$ factors with covariance $\Sigma$, plus idiosyncratic diagonal risk $D$. The risk-aversion
-$\gamma$ and leverage limit $L_{\max}$ are parameters, so re-solving traces the efficient frontier
-without rebuilding the problem. The size knobs are the number of assets $n$ and factors $m$.
-\begin{lstlisting}[language=Python]
-import cvxpy as cp
-import numpy as np
-
-# mu: expected returns, F: factor loadings (n x m),
-# Sigma: factor covariance (m x m), D: idiosyncratic variances (diagonal).
-w = cp.Variable(n)                  # portfolio weights
-f = cp.Variable(m)                  # factor exposures
-gamma = cp.Parameter(nonneg=True)   # risk aversion   (reassigned each solve)
-Lmax  = cp.Parameter()              # leverage limit  (reassigned each solve)
-
-ret  = mu.T @ w
-risk = cp.quad_form(f, Sigma, assume_PSD=True) + cp.sum_squares(np.sqrt(D) @ w)
-objective   = cp.Maximize(ret - gamma * risk)
-constraints = [cp.sum(w) == 1, f == F.T @ w, cp.norm(w, 1) <= Lmax]
-prob = cp.Problem(objective, constraints)
-\end{lstlisting}
-We hold the factor count fixed at $m = 100$ and sweep the assets
-$n \in \{500, 1000, 2000, 4000, 8000\}$. As in the least-squares study, both backends run in the
-\emph{ignore-DPP} rebuild regime---the engine carries $\gamma, L_{\max}$ natively and re-extracts on
-a fixed sparsity pattern, while \texttt{CPP} substitutes their values and re-canonicalizes. (Here the
-parameters are scalar, so CPP's DPP cache would in fact be feasible; we use the same rebuild regime
-as before for a consistent comparison.) Times are medians over three repetitions; peak memory is the
-process resident-set high-water mark measured in a fresh subprocess.
-
-\scalingplot
-  {Cold-start compilation}
-  {compile time (ms)}
-  {Factor-covariance portfolio, cold-start versus number of assets $n$ ($m = 100$ factors). The
-   engine leads at small $n$ but its advantage shrinks with size---it scales as $\sim n^{1.2}$
-   against CPP's $\sim n^{0.9}$, reaching near-parity by $n = 8000$.}
-  {fig:scaling-portfolio-cold}
-  {(500,12.17)(1000,20.21)(2000,37.95)(4000,73.38)(8000,147.4)}
-  {(500,4.996)(1000,7.906)(2000,16.59)(4000,42.18)(8000,129.5)}
-
-\scalingplot
-  {Warm-restart}
-  {re-compile time (ms)}
-  {Factor-covariance portfolio, warm-restart after reassigning $\gamma$ and $L_{\max}$. \texttt{CPP}
-   re-canonicalizes in essentially its cold-start time; the engine re-extracts on the cached
-   pattern, a stable $12$--$13\times$ speed-up across the range.}
-  {fig:scaling-portfolio-warm}
-  {(500,10.99)(1000,19.38)(2000,36.29)(4000,72.8)(8000,144)}
-  {(500,0.8958)(1000,1.521)(2000,2.801)(4000,5.523)(8000,10.71)}
-
-\scalingplot
-  {Peak memory}
-  {peak memory (MB)}
-  {Factor-covariance portfolio, peak process memory. The backends are within $\sim\!15\%$; both grow
-   slowly ($\sim n^{0.35}$), reflecting the low-rank factor structure rather than a dense operator.}
-  {fig:scaling-portfolio-mem}
-  {(500,125.2)(1000,141.6)(2000,170.8)(4000,214.5)(8000,317.5)}
-  {(500,131.2)(1000,147.6)(2000,185)(4000,239.2)(8000,369.8)}
-
-Cold-start (Figure~\ref{fig:scaling-portfolio-cold}) again favours the engine, but less decisively
-than for least squares and with a narrowing margin: from $0.41\times$ at $n = 500$ to $0.88\times$
-at $n = 8000$, as the engine's $\sim n^{1.2}$ cold cost catches CPP's $\sim n^{0.9}$. Warm-restart
-(Figure~\ref{fig:scaling-portfolio-warm}) is where the engine dominates: \texttt{CPP} pays its full
-cold-start cost on every re-solve ($144$\,ms at $n = 8000$), while the engine refills the cached
-pattern in $10.7$\,ms---a steady $12$--$13\times$ advantage. Peak memory
-(Figure~\ref{fig:scaling-portfolio-mem}) is close, the engine $4$--$16\%$ heavier in resident set;
-both curves are nearly flat because the low-rank model keeps the operator small. The engine's own
-internal peak (its \texttt{verbose} accounting) grows as $\sim n^{0.9}$, from $6$\,MB at $n = 500$
-to $74$\,MB at $n = 8000$.
-
-\subsection{Energy-storage scheduling}\label{sec:scaling-energy}
-A simple energy problem: schedule a battery over a horizon of $T$ hours to minimize the cost of grid
-energy, where the hourly price is the parameter that changes between solves. The state of charge is
-the running sum of charge minus discharge, and the battery must end empty. The size knob is the
-horizon $T$.
-\begin{lstlisting}[language=Python]
-import cvxpy as cp
-import numpy as np
-
-price = cp.Parameter(T)             # hourly price  (reassigned each solve)
-load  = np.random.rand(T)           # fixed demand profile
-Q, Pmax = 50.0, 20.0                # capacity and charge/discharge power limit
-
-charge    = cp.Variable(T, nonneg=True)
-discharge = cp.Variable(T, nonneg=True)
-soc = cp.cumsum(charge - discharge)         # battery state of charge
-
-constraints = [charge <= Pmax, discharge <= Pmax,
-               soc >= 0, soc <= Q, soc[T - 1] == 0]
-grid = load + charge - discharge            # net energy drawn from the grid
-prob = cp.Problem(cp.Minimize(price @ grid), constraints)
-\end{lstlisting}
-\scalingfig
-  {Energy-storage scheduling: scaling of cold-start, warm-restart, and peak memory with horizon
-   length $T$ (\emph{placeholder curves; data pending the size-sweep run}).}
-  {fig:scaling-energy}
-  {(100,15)(200,35)(400,80)(800,190)}{(100,9)(200,20)(400,44)(800,100)}
-  {(100,4)(200,9)(400,20)(800,46)}{(100,4.2)(200,9.5)(400,21)(800,49)}
-  {(100,6)(200,12)(400,25)(800,52)}{(100,5)(200,10)(400,21)(800,44)}
-
-The cross-suite results (\S\ref{sec:suite-results}) and these scaling curves together delineate the
-operating regime where the engine pays off: cheap from-scratch builds across the suite, and a
-favorable size trend on problems whose canonicalization cost the engine avoids re-paying.
+The re-solve is CasADi's home regime: evaluating the compiled function tape beats the engine's
+re-solve, which still traverses CVXPY's solve path, by about $2\times$ in geometric mean, and
+dramatically so when the parameters only touch $b$ (\textsc{ConvexPlasticity}). The engine
+retains the advantage when a parameter reshapes the quadratic itself
+(\textsc{FactorCovarianceModel}), where the tape must re-gather a large parameter-dependent $P$
+on every evaluation.
