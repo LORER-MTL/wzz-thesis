@@ -1177,6 +1177,8 @@ phases: a \emph{symbolic} phase determines the pattern and allocates the output,
 reuse, and the engine of \S\ref{sec:Theme1} is built around it: the symbolic phase runs once per
 problem family and only the numeric phase repeats.
 
+% TODO maybe clean this up and make it a bit more visual? Otherwise make sure to
+% read it more thoroughly and make some edits so that it is clearer.
 Gustavson's algorithm \cite{gustavson1978two} computes $C = AB$ with both operands in CSR, row
 by row: row $i$ of $C$ is the sum of the rows of $B$ selected and scaled by the nonzeros of row
 $i$ of $A$, merged in a dense accumulator $w$. Take $C = S S^T$, where $S^T$ in CSR is the

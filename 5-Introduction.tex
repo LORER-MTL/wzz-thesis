@@ -4,6 +4,9 @@ Domain specific modeling languages for convex optimization such as CVXPY \cite{d
 YALMIP \cite{lofberg2004yalmip} allow users to formulate optimization problems in a natural
 mathematical syntax. A convex optimization problem parametrized by $\theta \in \reals^p$ can be
 written as
+% TODO clean this up to not focus so much on parametric problems.
+% I think it is nice and more niche, but the benchmarks show that it is also faster on single solves
+% which is definitely something interesting and more generally applicable.
 \BEQ \label{e:parametric-family}
 \begin{array}{ll}
 \mbox{minimize}   & f_0(x; \theta) \\

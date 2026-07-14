@@ -1,51 +1,47 @@
 \Chapter{Benchmark results}\label{sec:Theme2}
 
-This chapter evaluates the C engine on the problems CVXPY users actually compile. We measure
-canonicalization end to end---from a built expression tree to solver-ready problem data---in the
-two regimes that matter in practice: the cold, single compilation of a fresh problem, and the warm
-re-compilation of a parametrized problem whose parameter values change between solves. The engine
-is compared against CVXPY's default \texttt{cvxcore} backend in both regimes
-(\S\ref{sec:bench-cpp-single}, \S\ref{sec:bench-cpp-param}), and, in the same two regimes,
-against CasADi, which obtains the same problem data by algorithmic differentiation of a symbolic
-graph (\S\ref{sec:bench-casadi}).
-
+This chapter presents benchmark results which compare the \texttt{diffengine} backend
+(the CVXPY implementation based on \texttt{SparseDiffEngine}) with \texttt{cvxcore}
+and CasADi.
+All comparisons run on the $25$ problems of CVXPY's public benchmark suite
+(\url{https://github.com/cvxpy/benchmarks}). These convex optimization problems cover many
+fields, ranging from portfolio models, robust regression, and semidefinite programs to simple
+LPs and QPs that are close to standard form.
+The rest of the chapter first presents some technical details about the benchmark setup,
+followed by the comparison results which are paired with commentary and observations.
+% question for future, would it be helpful to compare with JuMP, is that even possible?
 
 \section{Benchmark Setup}
 
-We benchmark on the public CVXPY benchmark suite~\cite{cvxpybenchmarks}, $25$ real-world problems
-(linear and quadratic programs, least squares, portfolio models, robust regression, and conic and
-semidefinite programs) maintained under \emph{airspeed velocity} (\texttt{asv})~\cite{asv} with
-seeded, reproducible data. All $25$ problems run on both backends; three of them exercise the
-\texttt{kron} atom, whose support the engine gained late in this work.
+Every benchmark measures the construction of the problem data $(A,b,c,P)$; no solver is
+invoked. For the two CVXPY backends this corresponds to a call to \texttt{get\_problem\_data}
+with the target solver fixed to Clarabel~\cite{clarabel}: the \texttt{CPP} (\texttt{cvxcore})
+baseline runs on the default DPP path, while \texttt{diffengine} is selected by passing
+\texttt{ignore\_dpp=True}. For CasADi, we time the extraction of the same $(A,b,c,P)$ by
+differentiation of an equivalent expression graph, following the conventions described in
+Section~\ref{sec:bench-casadi}.
 
-We time \emph{canonicalization} only---the construction of the problem data $(A,b,c,P)$. Concretely
-we time \texttt{get\_problem\_data} with the target solver fixed to Clarabel~\cite{clarabel}: the
-\texttt{CPP} (\texttt{cvxcore}) baseline is the default DPP path, and the C engine is selected with
-\texttt{ignore\_dpp}.
-\begin{lstlisting}[language=Python]
-prob.get_problem_data(solver=cp.CLARABEL)                   # CPP baseline (DPP tensor)
-prob.get_problem_data(solver=cp.CLARABEL, ignore_dpp=True)  # our C engine
-\end{lstlisting}
+Every comparison reports up to two timings: a \emph{single} solve, where the problem
+data are constructed once from scratch, and, on the subset of parametric problems, a
+\emph{re-solve}, where the problem data are reconstructed after reassigning random parameter
+values on a cached problem.
 
-% NOTE: these are the 2026-07-11/12 final numbers, measured on the Intel machine below.
-% If the tables are ever re-generated on the M2 laptop, update this paragraph accordingly.
-% Full provenance: plans/benchmark_results.md.
-All measurements run single-threaded (BLAS thread pools pinned to one thread) on a MacBook Pro
-(15-inch, 2018): 6-core Intel Core i7-8850H at \SI{2.6}{\giga\hertz}, \SI{16}{\giga\byte} RAM,
-macOS~15.7, with Python~3.14, CVXPY~1.10 (dev), NumPy~2.4~\cite{numpy}, and
-SciPy~1.17~\cite{2020SciPy-NMeth}; the CasADi comparison uses CasADi~3.7.2~\cite{andersson2019}.
-Reported times are medians of three fresh compilations (twenty re-evaluations for the re-solve
-columns). Versions are pinned and the suite and engine are public, so the configuration is
-reproducible.\footnote{The complete harness, per-problem CasADi models, mechanism probes, and raw
-result files are published at
-\url{https://github.com/SparseDifferentiation/Jacobian-accumulation} (directory
-\texttt{canonicalization/}).}
+All measurements run single-threaded (BLAS thread pools pinned to one thread) on a 2018 MacBook
+Pro with a 6-core Intel Core i7-8850H at \SI{2.6}{\giga\hertz} and \SI{16}{\giga\byte} of RAM.
+The software versions are:
+\begin{itemize}
+  \item Python 3.14,
+  \item CVXPY 1.10 (development version),
+  \item \texttt{sparsediffpy} 0.6.1,
+  \item NumPy 2.4~\cite{numpy} and SciPy 1.17~\cite{2020SciPy-NMeth},
+  \item CasADi 3.7.2~\cite{andersson2019}.
+\end{itemize}
 
-We report three comparisons: single-solve compilation against \texttt{cvxcore}
-(\S\ref{sec:bench-cpp-single}), parametric compilation against \texttt{cvxcore} across the first
-solve and re-solves (\S\ref{sec:bench-cpp-param}), and both regimes against CasADi
-(\S\ref{sec:bench-casadi}). In every table the ratio is $\text{C engine}/\text{baseline}$; a value
-below $1$ favors the engine, and the final row is the geometric mean of the per-problem ratios.
+Each reported time is the median of three new compilations; the re-solve columns are medians
+of twenty re-evaluations. The scripts which run the benchmarks, the CasADi model for each
+problem, and all recorded timings are available at
+\url{https://github.com/SparseDifferentiation/Jacobian-accumulation} under the
+\texttt{canonicalization/} directory.
 
 \section{Single-solve compilation against \texttt{cvxcore}}
 \label{sec:bench-cpp-single}
@@ -53,11 +49,13 @@ A fresh problem is formed and canonicalized once from scratch (Table~\ref{tab:co
 
 \begin{table}[ht]
 \centering
-\caption{Cold compilation time across all 25 benchmarks, C engine versus \texttt{cvxcore}.}
+\caption{Cold compilation time across all 25 benchmarks, \texttt{diffengine} versus
+\texttt{cvxcore}. The ratio is \texttt{diffengine}/\texttt{CPP}; values below $1$ favor
+\texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:cold-compile}
 \begin{tabular}{l r r r}
 \toprule
-Benchmark & \texttt{CPP} (s) & C engine (s) & Ratio \\
+Benchmark & \texttt{CPP} (s) & \texttt{diffengine} (s) & Ratio \\
 \midrule
 UnconstrainedQP             & 9.32  & 0.08 & \textbf{0.01} \\
 Cajas                       & 19.66 & 1.06 & 0.05 \\
@@ -90,30 +88,33 @@ ConvexPlasticity            & 2.09  & 2.13 & \textbf{1.02} \\
 \end{tabular}
 \end{table}
 
-The engine is faster on 24 of the 25 problems, between $1.2\times$ and $124\times$, with a
-geometric-mean speedup of $4.2\times$. The wins are largest where \texttt{cvxcore}'s per-expression
-tensor construction dominates (portfolio and regression models with many scalar constraints, and
-\textsc{UnconstrainedQP}'s tiny problem wrapped in a large \texttt{kron} expression); they shrink
-toward parity on problems whose cost is a single huge data copy (\textsc{OptimalAdvertising},
-\textsc{CVaR}) or whose compilation is dominated by CVXPY's Python-side reductions rather than
-either backend (\textsc{ConvexPlasticity}, the one row at parity).
+\texttt{diffengine} is faster on 24 of the 25 problems, with speedups between $1.2\times$ and
+$124\times$ and a geometric mean of $4.2\times$. The largest speedups occur where
+\texttt{cvxcore}'s per-expression tensor construction dominates the compilation time, as in the
+portfolio and regression models with many scalar constraints. \textsc{UnconstrainedQP}, a tiny
+problem wrapped in a large \texttt{kron} expression, is the extreme case at $124\times$.
+The speedups shrink on problems whose cost is a single large data copy, such as 
+\textsc{OptimalAdvertising} and \textsc{CVaR}. Finally, the compilation of 
+\textsc{ConvexPlasticity}, is dominated by CVXPY's
+Python-side reductions rather than by either backend.
 
 \section{Parametric compilation against \texttt{cvxcore}}
 \label{sec:bench-cpp-param}
-On the parametric subset we report the first solve and the re-solve after reassigning parameter
-values on a warm cached chain (Table~\ref{tab:param-compile}). The re-solve is the engine's target
-regime; its ratio is the last column.
+On the subset of parametric problems, we report both the first solve and the subsequent
+re-solve time after reassigning random parameter values
+(Table~\ref{tab:param-compile}).
 
 \begin{table}[ht]
 \centering
-\caption{Parametric compilation, C engine versus \texttt{cvxcore}: first solve and warm re-solve.
-Ratio is on the re-solve.}
+\caption{Parametric compilation, \texttt{diffengine} versus \texttt{cvxcore}: first solve and
+warm re-solve. The ratio is \texttt{diffengine}/\texttt{CPP} on the re-solve; values below $1$
+favor \texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:param-compile}
 \begin{tabular}{l r r r r r r}
 \toprule
  & & \multicolumn{2}{c}{First solve (s)} & \multicolumn{2}{c}{Re-solve (s)} & \\
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Benchmark & \#par & \texttt{CPP} & engine & \texttt{CPP} & engine & Ratio \\
+Benchmark & \#par & \texttt{CPP} & \texttt{diffengine} & \texttt{CPP} & \texttt{diffengine} & Ratio \\
 \midrule
 ParamConeMatrixStuffing     & 3 & 0.31  & 0.14 & 0.0030 & 0.0010 & \textbf{0.33} \\
 ParamSmallMatrixStuffing    & 3 & 0.48  & 0.21 & 0.0048 & 0.0017 & 0.35 \\
@@ -130,46 +131,62 @@ SVMWithL1Regularization     & 1 & 11.16 & 1.60 & 0.263  & 0.530  & \textbf{2.01}
 \end{tabular}
 \end{table}
 
-The engine wins the re-solve on six of the eight parametric problems and the first solve on all
-but \textsc{ConvexPlasticity}. Because the engine's program is cached, a re-solve only re-evaluates
-the parameter-dependent coefficient entries; the DPP baseline instead multiplies its cached
-parameter tensor by the new parameter vector, which is hard to beat when that tensor is small and
-dense. The two rows where DPP retains a $\approx 2\times$ edge share one trait: a scalar parameter
-whose effect is spread across many coefficients (\textsc{SVM}'s regularization weight,
-\textsc{FactorCovariance}'s risk aversion multiplying the quadratic), the ideal case for the
-tensor product and the worst case for entry-wise re-evaluation.
+\texttt{diffengine} is faster on the re-solve for six of the eight parametric problems, and on
+the first solve for all but \textsc{ConvexPlasticity}. Its re-solves are fast because the
+compiled program is cached, so only the parameter-dependent coefficient entries are
+re-evaluated. The DPP baseline instead multiplies its cached parameter tensor by the new
+parameter vector, which is hard to beat when that tensor is small and dense. This explains the
+two rows where DPP remains around $2\times$ faster: a scalar parameter whose effect is spread
+across many coefficients (\textsc{SVM}'s regularization weight, \textsc{FactorCovariance}'s
+risk aversion) is the ideal case for the tensor product.
 
 \section{Comparison against CasADi}
 \label{sec:bench-casadi}
 CasADi~\cite{andersson2019} extracts problem data by algorithmic differentiation of a symbolic
 expression graph. Since CasADi has no notion of disciplined convex programming, it cannot
 canonicalize the high-level models; for a fair comparison we hand it the \emph{already-lowered}
-formulation: the same epigraph variables and the same conic rows that CVXPY's canonicalization
+formulation: the same epigraph variables and the same conic rows that CVXPY's canonicalization frontend
 produces, written as CasADi \texttt{MX} expressions $f(z, \theta)$ (objective) and
 $g(z, \theta) = b - Az$ (constraint slacks), where $z$ stacks the original and epigraph variables
-and $\theta$ collects the parameters. The problem data are recovered exactly the way CasADi's own
-quadratic-programming interface does, by differentiating the graph with no solver involved:
-$c = \nabla_z f|_{z=0}$, $P = \partial(\nabla_z f)/\partial z$, $A = -\partial g/\partial z$, and
-$b = g|_{z=0}$, wrapped in a \texttt{casadi.Function} mapping $\theta \mapsto (P, c, A, b)$;
-$P$ is computed as the Jacobian of the gradient, CasADi's fastest path on these problems. The
-\emph{single} regime times differentiation, function construction, and the first numeric
-evaluation on a freshly built graph; the \emph{re-solve} regime times one further evaluation at
-fresh parameter values on the compiled function. Graph construction itself is excluded, mirroring
-the engine's timing, which also starts from a built expression tree. We verified on every
-benchmark that the two systems produce identical $(P, c, A, b)$ at full benchmark size, so the
-tables below time the construction of the same matrices. All $25$ problems are compared, with
-\textsc{CVaR} reported as a did-not-finish.
+and $\theta$ collects the parameters.
 
-The single extraction of a freshly built problem is reported in Table~\ref{tab:casadi-single},
-mirroring Table~\ref{tab:cold-compile}.
+The problem data are recovered exactly the way CasADi's own quadratic-programming interface
+\texttt{qpsol} does~\cite{casadidocs}, by differentiating the graph without invoking any
+solver:
+\[
+c = \nabla_z f \,\big|_{z=0}, \qquad
+P = \frac{\partial (\nabla_z f)}{\partial z}, \qquad
+A = -\frac{\partial g}{\partial z}, \qquad
+b = g \,\big|_{z=0}.
+\]
+These four quantities are wrapped in a \texttt{casadi.Function} which maps $\theta$ to
+$(P, c, A, b)$. Computing $P$ as the Jacobian of the gradient is CasADi's fastest path on
+these problems.
+
+For CasADi, the single-solve timing covers differentiation, function construction, and the first
+numeric evaluation on a freshly built graph, while a re-solve is one further evaluation of
+the compiled function at the new parameter values. Graph construction itself is excluded,
+mirroring the \texttt{diffengine} timing, which also starts from a built expression tree. We
+verified on every benchmark that the two systems produce identical $(P, c, A, b)$ at full
+benchmark size, so the tables below time the construction of the same matrices. All $25$
+problems are compared, with \textsc{CVaR} reported as a did-not-finish.
+
+These benchmarks are not the most favorable showcase for CasADi. It is built to differentiate
+arbitrary programs, whose derivatives genuinely change with the evaluation point, and the
+canonicalization of affine and quadratic problems, where every derivative is constant, is a
+degenerate special case of that task. CasADi is also designed for workflows which construct a
+function once and then evaluate it many times, so the one-time extraction cost measured here
+is amortized away in its intended use.
 
 \begin{table}[ht]
 \centering
-\caption{Single problem-data extraction across all 25 benchmarks, C engine versus CasADi (s).}
+\caption{Single problem-data extraction across all 25 benchmarks, \texttt{diffengine} versus
+CasADi. The ratio is \texttt{diffengine}/CasADi; values below $1$ favor \texttt{diffengine}.
+The final row is the geometric mean of the per-problem ratios.}
 \label{tab:casadi-single}
 \begin{tabular}{l r r r}
 \toprule
-Benchmark & CasADi (s) & C engine (s) & Ratio \\
+Benchmark & CasADi (s) & \texttt{diffengine} (s) & Ratio \\
 \midrule
 ParametrizedQP              & 771.5  & 2.52 & \textbf{0.003} \\
 FactorCovarianceModel       & 250.4  & 2.05 & 0.008 \\
@@ -195,34 +212,36 @@ UnconstrainedQP             & 0.021  & 0.074 & 3.49 \\
 ConvexPlasticity            & 0.13   & 2.29 & 17.3  \\
 ParamSmallMatrixStuffing    & 0.007  & 0.21 & 30.8  \\
 ParamConeMatrixStuffing     & 0.004  & 0.14 & \textbf{39.7} \\
-CVaR                        & \multicolumn{1}{c}{DNF} & 25.3 & --- \\
+CVaR                        & DNF & 25.3 & --- \\
 \midrule
 \textbf{Geometric mean}     &        &      & \textbf{0.24} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The engine is fastest where the lowered matrices contain large dense blocks: it knows every
-atom's Jacobian block and its sparsity pattern in closed form, while CasADi must discover the
-pattern and reconstruct the values through seeded derivative sweeps, whose number a dense block
-forces to the full dimension (on \textsc{CVaR}'s dense scenario block the extraction did not
-finish within \SI{10}{\hour}). The ratio reverses on the smallest problems, where the engine
-column is dominated not by extraction but by CVXPY's Python-side reduction chain, which the
-hand-lowered CasADi models are spared by construction.
+\texttt{diffengine} is fastest where the lowered matrices contain large dense blocks: it knows
+every atom's Jacobian block and its sparsity pattern in closed form, while CasADi must discover
+the pattern and reconstruct the values through seeded derivative sweeps, whose number a dense
+block forces to the full dimension. \textsc{CVaR} is the extreme case: its constraint matrix
+contains a dense $131\,072 \times 768$ scenario block, which forces roughly $770$ derivative
+sweeps during the Jacobian construction, and the extraction did not finish within
+\SI{10}{\hour}.
 
-On the parametric subset we report the first extraction and the warm re-solve
-(Table~\ref{tab:casadi-param}), mirroring Table~\ref{tab:param-compile}.
+On the subset of parametric problems, we report both the first extraction and the subsequent
+re-solve time after reassigning random parameter values (Table~\ref{tab:casadi-param}),
+mirroring Table~\ref{tab:param-compile}.
 
 \begin{table}[ht]
 \centering
-\caption{Parametric extraction, C engine versus CasADi: first extraction and warm re-solve (s).
-Ratio is on the re-solve.}
+\caption{Parametric extraction, \texttt{diffengine} versus CasADi: first extraction and warm
+re-solve. The ratio is \texttt{diffengine}/CasADi on the re-solve; values below $1$ favor
+\texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:casadi-param}
 \begin{tabular}{l r r r r r r}
 \toprule
  & & \multicolumn{2}{c}{First (s)} & \multicolumn{2}{c}{Re-solve (s)} & \\
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Benchmark & \#par & CasADi & engine & CasADi & engine & Ratio \\
+Benchmark & \#par & CasADi & \texttt{diffengine} & CasADi & \texttt{diffengine} & Ratio \\
 \midrule
 FactorCovarianceModel       & 2 & 250.4 & 2.05 & 3.956  & 0.567  & \textbf{0.14} \\
 SVMWithL1Regularization     & 1 & 145.5 & 1.79 & 0.548  & 0.491  & 0.90 \\
@@ -239,9 +258,11 @@ ConvexPlasticity            & 3 & 0.13  & 2.29 & 0.0067 & 0.707  & \textbf{105.5
 \end{tabular}
 \end{table}
 
-The re-solve is CasADi's home regime: evaluating the compiled function tape beats the engine's
-re-solve, which still traverses CVXPY's solve path, by about $2\times$ in geometric mean, and
-dramatically so when the parameters only touch $b$ (\textsc{ConvexPlasticity}). The engine
-retains the advantage when a parameter reshapes the quadratic itself
-(\textsc{FactorCovarianceModel}), where the tape must re-gather a large parameter-dependent $P$
+The re-solve plays to CasADi's strengths. A re-solve only runs the compiled function: the
+constant values are baked in at construction time, so only the entries which actually depend
+on $\theta$ are recomputed, with no Python in the loop. This is about $2\times$ faster in
+geometric mean than the \texttt{diffengine} re-solve, which still traverses CVXPY's solve
+path, and dramatically faster when the parameters only touch $b$ (\textsc{ConvexPlasticity}).
+\texttt{diffengine} remains faster when a parameter reshapes the quadratic itself
+(\textsc{FactorCovarianceModel}), where CasADi must re-gather a large parameter-dependent $P$
 on every evaluation.
