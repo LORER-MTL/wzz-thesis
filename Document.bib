@@ -87,6 +87,14 @@ Canonicalization
   publisher={Cambridge university press}
 }
 
+@book{bental2001lectures,
+  title={Lectures on modern convex optimization: analysis, algorithms, and engineering
+         applications},
+  author={Ben-Tal, Aharon and Nemirovski, Arkadi},
+  year={2001},
+  publisher={SIAM}
+}
+
 @article{cederberg2025disciplined,
   title={Disciplined Nonlinear Programming},
   author={Cederberg, Daniel and Zhang, William and Nobel, Parth and Boyd, Stephen},
@@ -305,6 +313,24 @@ Modeling languages
   institution={AT\&T Bell Laboratories},
   number={Numerical Analysis Manuscript 91-05},
   note={Reverse mode AD on AMPL expression graphs}
+}
+
+@incollection{gay1996more,
+  title={More {AD} of Nonlinear {AMPL} Models: Computing Hessian Information and Exploiting
+         Partial Separability},
+  author={Gay, David M.},
+  booktitle={Computational Differentiation: Techniques, Applications, and Tools},
+  publisher={SIAM},
+  year={1996},
+  note={Sparse Hessians via partial separability, no graph coloring}
+}
+
+@misc{amplpy,
+  title={{amplpy}: {P}ython {API} for {AMPL}},
+  author={{AMPL Optimization Inc.}},
+  year={2025},
+  howpublished={\url{https://amplpy.ampl.com}},
+  note={Python interface to the AMPL modeling language}
 }
 
 @article{Fu_2020,
@@ -786,6 +812,15 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   url          = {https://iclr-blogposts.github.io/2025/blog/sparse-autodiff/}
 }
 
+@misc{hill2025sct,
+  author       = {Hill, Adrian and Dalle, Guillaume},
+  title        = {{SparseConnectivityTracer.jl}: {J}acobian and {H}essian sparsity detection
+                  via operator overloading},
+  year         = {2025},
+  howpublished = {\url{https://github.com/adrhill/SparseConnectivityTracer.jl}},
+  note         = {Julia package, companion software to the sparsity detection paper}
+}
+
 @article{bentert2025structural,
   author  = {Bentert, Matthias and Crane, Alex and Drange, P{\aa}l Gr{\o}n{\aa}s
              and Mizutani, Yosuke and Sullivan, Blair D.},
@@ -1010,6 +1045,13 @@ Benchmarking
   year         = {2024}
 }
 
+@article{ge2022copt,
+  title        = {Cardinal {Optimizer} ({COPT}) user guide},
+  author       = {Ge, Dongdong and Huangfu, Qi and Wang, Zizhuo and Wu, Jian and Ye, Yinyu},
+  journal      = {arXiv preprint arXiv:2208.14314},
+  year         = {2022}
+}
+
 @article{stellato2020osqp,
   title        = {{OSQP}: an operator splitting solver for quadratic programs},
   author       = {Stellato, Bartolomeo and Banjac, Goran and Goulart, Paul and Bemporad, Alberto
@@ -1029,4 +1071,57 @@ Benchmarking
   year         = {2026},
   note         = {Preprint},
   howpublished = {\url{https://www.cvxpy.org/_static/cvxpy-1.9.pdf}}
+}
+
+@article{lawson1979blas,
+  title        = {Basic Linear Algebra Subprograms for {Fortran} Usage},
+  author       = {Lawson, Charles L. and Hanson, Richard J. and Kincaid, David R.
+                  and Krogh, Fred T.},
+  journal      = {ACM Transactions on Mathematical Software},
+  volume       = {5},
+  number       = {3},
+  pages        = {308--323},
+  year         = {1979}
+}
+
+@article{dongarra1990level3,
+  title        = {A Set of Level 3 Basic Linear Algebra Subprograms},
+  author       = {Dongarra, Jack J. and Du Croz, Jeremy and Hammarling, Sven and Duff, Iain S.},
+  journal      = {ACM Transactions on Mathematical Software},
+  volume       = {16},
+  number       = {1},
+  pages        = {1--17},
+  year         = {1990}
+}
+
+@book{anderson1999lapack,
+  title        = {{LAPACK} Users' Guide},
+  author       = {Anderson, Edward and Bai, Zhaojun and Bischof, Christian and Blackford, Susan
+                  and Demmel, James and Dongarra, Jack and Du Croz, Jeremy and Greenbaum, Anne
+                  and Hammarling, Sven and McKenney, Alan and Sorensen, Danny},
+  edition      = {Third},
+  publisher    = {SIAM},
+  address      = {Philadelphia, PA},
+  year         = {1999}
+}
+
+@article{goto2008anatomy,
+  title        = {Anatomy of High-Performance Matrix Multiplication},
+  author       = {Goto, Kazushige and van de Geijn, Robert A.},
+  journal      = {ACM Transactions on Mathematical Software},
+  volume       = {34},
+  number       = {3},
+  pages        = {1--25},
+  year         = {2008}
+}
+
+@article{wachter2006ipopt,
+  title        = {On the implementation of an interior-point filter line-search algorithm for
+                  large-scale nonlinear programming},
+  author       = {W{\"a}chter, Andreas and Biegler, Lorenz T.},
+  journal      = {Mathematical Programming},
+  volume       = {106},
+  number       = {1},
+  pages        = {25--57},
+  year         = {2006}
 }

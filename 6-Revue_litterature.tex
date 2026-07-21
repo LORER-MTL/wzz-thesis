@@ -3,369 +3,36 @@
 % et identifie les lacunes que la recherche vise à combler.
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
-%%
-%% Intro of literature review
-%%
-\paragraph{History and background}
-Since the early days of linear programming (LP), practitioners have needed to translate
-mathematical formulations into data that solvers can process.
-At first, this meant encoding each coefficient of the problem matrices by hand, a process
-that is both tedious and error-prone~\cite{fourer1978modern}.
-\emph{Matrix generators} were introduced in the late 1960s to automate this task: they compute the
-coefficients through explicit loops and write them out in solver-readable formats like
-MPS~\cite{marceau1971matrix, ibm1976mpsx}.
-
-Despite matrix generators removing most of the manual labor, a gap remained.
-Modelers naturally think in terms of sets, indices, and algebraic expressions,
-while procedural code constructs the coefficient matrices entry by entry.
-This mismatch between how a model is expressed and how it is implemented made them difficult to
-verify, modify, and communicate with others \cite{fourer1983modeling}.
-\emph{Algebraic modeling languages} such as AMPL \cite{fourer1990ampl},
-AIMMS \cite{bisschop2006aimms} and GAMS \cite{brooke1988gams} closed this gap by accepting
-problem descriptions that closely follow the math.
-For a more complete overview of the early history of modeling languages refer to
-\cite{orchard-hays1984history}.
-
-More recently, modeling languages embedded in general-purpose programming languages have
-gained popularity, such as Pyomo \cite{bynum2021pyomo, hart2011pyomo} in Python,
-JuMP \cite{dunning2017jump} in Julia, and CasADi \cite{andersson2019} in C++.
-Other domain-specific modeling languages specialized for convex optimization \cite{boyd2004convex}
-are built on \emph{disciplined convex programming} (DCP), a set of composition rules under which
-the convexity of a problem can be verified
-automatically \cite{grant2004disciplined, grant2006disciplined}.
-These DCP-based languages include CVX \cite{cvx} in MATLAB, CVXR \cite{Fu_2020} in R,
-CVXPY \cite{diamond2016cvxpy} in Python, and Convex.jl \cite{udell2014convex} in Julia.
-
+% TODO: replace this roadmap with the new hand-written chapter introduction.
 \paragraph{Structure of the chapter}
-The first two sections focus on CVXPY: it is the most actively maintained DCP implementation,
-and the work of this thesis aims to be integrated into it.
-\S\ref{sec:canonicalization} covers the \emph{frontend} of canonicalization, which rewrites the
-user's functional form into a functional conic form of purely affine and quadratic expressions.
-\S\ref{sec:matrix-stuffing} covers its \emph{backend}, \emph{matrix stuffing}, which assembles
-the problem data from this functional conic form.
-
-Because the problem data assembled this way is exactly a sparse Jacobian of the canonicalized
-form, \S\ref{sec:computing-derivatives} reviews the methods available for computing sparse
-derivatives.
-\S\ref{sec:coefficient-extraction} then revisits the same task from the side of other modeling
-systems: it presents the embedded modeling languages JuMP and CasADi as well as the algebraic
-language AMPL as instances of that machinery, and compares how each one extracts the problem
-data with the approach taken in CVXPY.
-Finally, \S\ref{sec:sparse-matrices} covers the sparse matrix formats used to store the
-problem data, along with some useful algorithms for manipulating them.
-
-%%
-%%  CANONICALIZATION
-%%
-\section{Canonicalization}
-\label{sec:canonicalization}
-
-CVXPY is a DCP-based modeling language embedded in Python \cite{diamond2016cvxpy},
-which began in 2013 as an implementation of the modeling principles of CVX \cite{cvx}.
-Three fundamental design decisions differed from CVX at the beginning.
-The first is modularity: a few core data structures are shared by separate components for
-verification, canonicalization, matrix stuffing, and solver interfaces.
-The second is the expression tree as the central data structure, which is formed
-automatically from user code through Python's operator overloading.
-The third is support for parameters: since canonicalization never looks at the values of
-constants, much of the compilation work can be reused when a problem is solved repeatedly.
-
-These ideas matured with version 1.0, which redesigned canonicalization as
-a general reduction-based rewriting system \cite{agrawal2018rewriting}.
-The new design enabled the addition of other disciplined
-grammars \cite{agrawal2019dgp, agrawal2020dqcp, cederberg2025disciplined}, and the early
-parameter support grew into disciplined parameterized programming (DPP), a restricted grammar
-under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
-
-The open source project has since grown through contributions from many other enthusiastic
-developers; a recent paper surveys the new canonicalization and modeling features
-introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
-% we could mention that the exposition in the thesis for canonicalization
-% is inspired from there and that it is slightly different with more of a focus
-% on the non-DPP path.
-
-\paragraph{Functional form.}
-A user most naturally expresses a CVXPY problem in \emph{functional} form,
-\BEQ\label{eq:functional-form}
-\begin{array}{ll}
-\mbox{minimize}   & f_0(x; \theta) \\
-\mbox{subject to} & f_i(x; \theta) \leq g_i(x; \theta), \quad i=1,\ldots,m_1,\\
-                  & h_i(x; \theta) = j_i(x; \theta), \quad i=1,\ldots,m_2,
-\end{array}
-\EEQ
-where the optimization variables $x_1,\ldots,x_k$ are collected into a single
-vector $x \in \reals^n$, and likewise the parameters $\theta_1,\ldots,\theta_l$
-into $\theta \in \reals^p$ \cite{boyd2004convex}.
-As in \S\ref{sec:Introduction}, \eqref{eq:functional-form} is a problem family when $\theta$ is left
-symbolic and a problem instance when $\theta$ is fixed to a numerical value; it generalizes the
-parametric form \eqref{e:parametric-family} to the convex/concave inequalities and affine equalities
-CVXPY accepts. Internally, CVXPY represents each function in \eqref{eq:functional-form}
-as an expression tree.
-
-\paragraph{Disciplined convex programming.}
-When $f_0$ and all $f_i$ are convex, all $g_i$ are concave, and all $h_i$ and $j_i$ are
-affine, the functional form defines a convex optimization problem.
-To certify convexity, CVXPY uses the DCP composition rules to classify
-the curvature of each function.
-Once all functions are classified, a problem is \emph{DCP-compliant} if the objective and
-each constraint have curvatures compatible with a convex problem: a convex objective,
-convex $\leq$ concave inequalities, and affine equalities.
-
-Otherwise, if a curvature is incompatible (\emph{e.g.}\ $f_0$ is concave) or cannot be
-determined, CVXPY raises an error and terminates.
-Because these rules are only sufficient for convexity, a problem that is genuinely convex
-but not expressed in a recognized form may still be rejected.
-
-\paragraph{Composition rules.}
-The composition $\phi(f_1(x), f_2(x), \dots, f_k(x))$ of an atom $\phi$ with subexpressions $f_i$
-is convex when $\phi$ is convex and, for each argument $i \in \{1, \dots, k\}$, one of the
-following holds:
-\begin{itemize}
-    \item $\phi$ is non-decreasing in argument $i$ and $f_i$ is convex, or
-    \item $\phi$ is non-increasing in argument $i$ and $f_i$ is concave, or
-    \item $f_i$ is affine.
-\end{itemize}
-The same results hold for concave functions by swapping convex and concave.
-Affine expressions require $\phi$ and all of its arguments to be affine \cite{grant2004disciplined}.
-
-\paragraph{Functional conic form.}
-Once a problem is verified to be DCP-compliant, the frontend of canonicalization
-rewrites its functional form \eqref{eq:functional-form} into an equivalent \emph{functional conic form}
-\BEQ\label{eq:conic-form}
-\begin{array}{ll}
-\mbox{minimize}   & f_0(x; \theta) \\
-\mbox{subject to} & \ell_i(x; \theta) \in \mathcal K_i, \quad i = 1,\ldots,m,
-\end{array}
-\EEQ
-where $f_0$ is affine or quadratic, each $\ell_i$ is affine, and each $\mathcal{K}_i$ is one of
-the standard convex cones: the zero, nonnegative, second-order, power, exponential, and positive
-semidefinite cones.
-
-\paragraph{Reductions.}
-This rewriting is carried out as a sequence of \emph{reductions}. Each reduction provides an
-\texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
-step that recovers a solution of the original problem from a solution of the rewritten one
-\cite{agrawal2018rewriting}.
-
-A first example is \texttt{FlipObjective}, which turns a maximization problem
-into a minimization one by
-flipping the sign of the objective; its \texttt{retrieve} step simply flips the sign back.
-
-A second example, \texttt{CvxAttr2Constr}, handles variable attributes, which are properties
-declared on a variable that restrict its domain. These include nonnegativity (\texttt{nonneg}),
-positive semidefiniteness (\texttt{PSD}), and explicit variable bounds, amongst others.
-When the target solver supports an attribute natively, CVXPY leaves it for the solver to enforce;
-otherwise the reduction creates a new variable that carries no attributes and adds
-explicit constraints that enforce the attribute. Its \texttt{retrieve} step then maps the
-reformulated solution back onto the original attributed variable.
-
-\paragraph{Conic reformulation.}
-The main reduction, \texttt{Dcp2Cone}, rewrites every nonlinear atom into conic constraints.
-The first step of the reduction is to rewrite the problem into \emph{Smith form}, where each
-nonlinear atom is replaced by a new variable coupled with an equality constraint; every atom
-then acts only on affine arguments \cite{smith1996}.
-For a convex atom $\phi$, the Smith form gives an auxiliary variable $t$ with the equality
-constraint $\phi(x) = t$. The second step relaxes this equality to the inequality $\phi(x) \le t$.
-The DCP rules allow a convex atom only where its value is minimized or upper-bounded, so the solver
-always prefers $t$ as small as possible; the relaxation is therefore \emph{lossless}.
-
-The pair $(x, t)$ then lies in the \emph{epigraph} $\{(x, t) : \phi(x) \le t\}$ of $\phi$, so we
-often refer to $t$ as an \emph{epigraph variable}.
-A concave atom relaxes to $\phi(x) \ge t$ instead, giving a \emph{hypograph variable}.
-The final step of the reduction expresses each epigraph (hypograph) inequality as the membership of
-an affine function of $(x, t)$ in a convex cone \cite{grant2008graph}.
-
-\paragraph{Example of reformulations.}
-A first example is the $\ell_2$ norm atom $\|x\|_2$, whose epigraph $\|x\|_2 \le t$ is exactly the
-second-order cone constraint $(t, x) \in \mathcal K_{\mathrm{soc}}$.
-A second example is the nondifferentiable absolute value atom $|x|$, whose epigraph $|x| \le t$ can
-be written smoothly as the pair of affine inequalities $-t \le x \le t$.
-A final example is the sum of the $k$ largest entries of $x$, which expands into a small LP:
-the epigraph $\mathrm{sum\_largest}(x, k) \le t$ holds if and only if there exist a scalar
-$q$ and a vector $u$ such that
-\BEQ\label{eq:sum-largest}
-q\mathbf{1} + u \ge x, \qquad u \ge 0, \qquad kq + \mathbf{1}^\top u \le t.
-\EEQ
-Here $q$ acts as a threshold and each $u_i$ measures how far the entry $x_i$ rises above it, so that
-the sum of the $k$ largest entries is bounded by $kq + \mathbf{1}^\top u$ \cite{boyd2004convex}.
-
-\paragraph{Example of canonicalization.}
-To show a concrete example of the frontend of canonicalization,
-we consider a simple fitting with regularization problem
-\BEQ
-    \begin{array}{ll}
-        \text{minimize} & \|Fx-g\|_2 + \mu \|x\|_2\\
-        \text{subject to} & x \succeq 0\\
-    \end{array}
-      \label{eq:example}
-\EEQ
-with variable $x \in \reals^n$, fixed problem data $F\in \reals^{m\times n}$, and parameters
-$g\in \reals^m$ and $\mu \geq 0$.
-The problem formulation in CVXPY code is
-\begin{lstlisting}[language=Python]
-import cvxpy as cp
-import numpy as np
-F = np.random.randn(m, n)
-x = cp.Variable(n)
-g = cp.Parameter(m)
-mu = cp.Parameter(nonneg=True)
-objective = cp.Minimize(cp.norm(F @ x - g) + mu * cp.norm(x))
-prob = cp.Problem(objective, [x >= 0])
-\end{lstlisting}
-where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
-the data arrays. The expression tree representation of the problem
-is shown in \ref{fig:dcp-expression-tree}.
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}[t]{0.65\textwidth}
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=40mm},
-   level 2/.style={sibling distance=20mm}]
-  \node { \annotatedop{+}{\|Fx-g\|_2 + \mu\|x\|_2}}
-    child {node {\annotatedop{\|\cdot\|_2}{\|Fx-g\|_2}}
-      child {node {\annotatedop{-}{Fx-g}}
-          child {node {\annotatedop{\texttt{matmul}}{Fx}}
-                child {node {$F$}}
-                child {node[circle, draw] {$x$}} }
-          child {node[draw] {$g$}}
-            }
-        }
-    child {node {\annotatedop{\texttt{mul}}{\mu\|x\|_2}}
-      child {node[draw] {$\mu$}}
-      child {node {\annotatedop{\|\cdot\|_2}{\|x\|_2}}
-            child {node[circle, draw] {$x$}}
-      }
-    };
-\end{tikzpicture}
-\caption{Expression tree of the objective}
-\end{subfigure} %
-\begin{subfigure}{0.3\textwidth}
-\begin{tikzpicture}
-  \node {\annotatedop{\succeq}{x \succeq 0}}
-    child {node[circle, draw] {$x$}}
-    child {node {$0$}};
-\end{tikzpicture}
-\caption{Expression tree of the constraints}
-\end{subfigure}
-\caption{\emph{Before canonicalization.} CVXPY represents the DCP problem~\eqref{eq:example} as
-these expression trees. Variables are labeled with a circle, and parameters with a square.}
-\label{fig:dcp-expression-tree}
-\end{figure}
-
-\paragraph{Conic form expression tree.}
-After applying the reductions, the problem has been \emph{canonicalized} to
-\BEQ\label{eq:graph}
-\begin{array}{ll}
-  \mbox{minimize}  & t_1 + \mu t_2 \\
-  \mbox{subject to}  &
-x \in \reals_+^n \\
-& (t_1, Fx -g) \in \mathcal K_{\mathrm{soc},m+1} \\
-& (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\
-\end{array}
-\EEQ
-where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
-\ref{e:standard-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
-\times \mathcal K_{\mathrm{soc},n+1}$.
-Problem \eqref{eq:graph} is now in the functional conic form introduced above: every constraint
-is a cone membership, and the objective and constraint expressions are affine.
-Comparing the DCP trees of \ref{fig:dcp-expression-tree} with the conic-form trees of
-\ref{fig:conic-form-tree} shows the effect of canonicalization: the nonlinear norm atoms have been
-replaced by epigraph variables, leaving affine expression trees in the variables.
-The three rows of \eqref{eq:graph} remain three separate cone constraints, each carrying the
-affine expressions that must lie in its cone; \ref{fig:conic-form-tree} accordingly shows one
-expression tree per constraint, rather than a single combined tree.
-
-\begin{figure}[H]
-\centering
-\begin{subfigure}{\textwidth}
-\centering
-\begin{tikzpicture}
-  [level 1/.style={sibling distance=20mm},
-   level 2/.style={sibling distance=15mm}]
-  \node {\annotatedop{+}{t_1+\mu  t_2}}
-    child {node[circle,draw] {$t_1$}}
-    child {node {\annotatedop{\texttt{mul}}{\mu  t_2}}
-      child {node[draw] {$\mu$}}
-      child {node[circle,draw] {$t_2$}}
-    };
-\end{tikzpicture}
-\caption{Expression tree of the objective}
-\end{subfigure}
-
-\vspace{2ex}
-\begin{subfigure}{\textwidth}
-\centering
-\begin{minipage}[t]{0.6\textwidth}
-\centering
-\begin{tikzpicture}[baseline=(current bounding box.north),
-   level 1/.style={sibling distance=38mm},
-   level 2/.style={sibling distance=34mm},
-   level 3/.style={sibling distance=14mm}]
-  \node {$\mathcal K_{\mathrm{soc},m+1}$}
-    child {node[circle,draw] {$t_1$}}
-    child {node {$Fx-g$}
-      child {node {\annotatedop{\texttt{matmul}}{Fx}}
-        child {node {$F$}}
-        child {node[circle,draw] {$x$}}
-        }
-      child {node {\annotatedop{\texttt{neg}}{-g}}
-        child {node[draw] {$g$}}
-        }
-    };
-\end{tikzpicture}
-\end{minipage}%
-\hfil
-\begin{minipage}[t]{0.36\textwidth}
-\centering
-\begin{tikzpicture}[baseline=(current bounding box.north), level distance=12mm, sibling distance=14mm]
-  \node {$\mathcal K_{\mathrm{soc},n+1}$}
-    child {node[circle,draw] {$t_2$}}
-    child {node[circle,draw] {$x$}};
-\end{tikzpicture}
-
-\vspace{5ex}
-\begin{tikzpicture}[baseline=(current bounding box.north), level distance=12mm, sibling distance=14mm]
-  \node {$\reals_+^n$}
-    child {node[circle,draw] {$x$}};
-\end{tikzpicture}
-\end{minipage}
-\caption{One expression tree per constraint}
-\end{subfigure}
-\caption{\emph{After canonicalization.} CVXPY represents the conic form~\eqref{eq:graph} as these
-expression trees: the nonlinear norm atoms have become epigraph variables, leaving the objective
-and the three separate cone constraints affine. The variable $x$ appears as a leaf of several
-trees; all occurrences refer to the same variable, which owns a single block of columns in the
-problem data.}
-\label{fig:conic-form-tree}
-\end{figure}
-
-\paragraph{References.}
-Michael Grant's papers and PhD thesis on CVX and DCP are the standard references on verifying convexity
-and canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
-The paper by Chu et al. \cite{chu2013codegen} gives another perspective of canonicalization
-through the \emph{relaxed smith form}, it was used extensively to learn the concept initially.
-The paper by Agrawal et al. \cite{agrawal2018rewriting} on rewriting systems is a great reference
-for understanding reductions and the core concepts behind CVXPY.
-Finally, the Mosek modeling cookbook is a complementary reference
-for epigraph reformulations and general modeling best practices \cite{aps2025mosek}.
+This chapter reviews the systems this thesis builds on and compares against, each building on
+one background section of the introduction.
+\S\ref{sec:matrix-stuffing} covers matrix stuffing, the backend of \texttt{CVXPY}'s canonicalization
+(\S\ref{sec:canonicalization}), which assembles the problem data from the functional conic
+form.
+\S\ref{sec:computing-derivatives} reviews sparse algorithmic differentiation systems, which
+discover the structure of the derivative, and positions the approach of this thesis among
+them.
+\S\ref{sec:declared-structure} reviews modeling systems that extract the problem data from
+the declared structure of the model instead, as \texttt{AMPL} and \texttt{JuMP} do.
 
 %%
 %%  MATRIX STUFFING
 %%
-\section{Matrix stuffing}
+\section{Matrix stuffing in \texttt{CVXPY}}
 \label{sec:matrix-stuffing}
 
-CVXPY takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
+\texttt{CVXPY} takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
 coefficient matrices of linear expressions; this is where most of the computational burden of
 canonicalization lies. Matrix stuffing is named for what it does: the coefficients of every
 canonicalized expression are stuffed into their designated slots in the sparse standard-form data
 handed to the solver. The name suggests bookkeeping, but the coefficients it assembles are the
 Jacobians and Hessians of the canonicalized expressions: matrix stuffing is a sparse derivative
-computation, a view developed in \S\ref{sec:computing-derivatives}.
+computation, a view developed in \S\ref{sec:bg-derivatives} and \S\ref{sec:computing-derivatives}.
 
 The section gives a brief summary of matrix calculus and a few examples, presents the conventions
-of CVXPY's backend, and closes with implementation details that become important when contrasting
+of \texttt{CVXPY}'s backend, and closes with implementation details that become important when
+contrasting
 it with the engine of \S\ref{sec:Theme1}.
 
 \paragraph{Matrix calculus.}
@@ -598,7 +265,8 @@ linear operation to the matrices of its children.}
 
 \paragraph{Local versus global derivatives.}
 The augmented matrices of \eqref{eq:linop-form} can be laid out in two ways
-(\ref{fig:local-vs-global}). CVXPY differentiates \emph{locally}, one variable at a time: each
+(\ref{fig:local-vs-global}). \texttt{CVXPY} differentiates \emph{locally}, one variable at a time:
+each
 node stores one coefficient block per variable appearing beneath it, keyed by the variable's
 identifier, and every operator is applied to each block in turn. The constant data is stored
 under the key $-1$, a Python idiom for the last column, the offset $b$. The columns of a block
@@ -657,7 +325,8 @@ all columns.}
 
 \paragraph{Parameters and tensors.}
 DPP restricts parameters to enter expressions affinely, so the problem data is affine in the
-parameters \cite{agrawal2019dpp}, and CVXPY accounts for this with a third tensor axis: every
+parameters \cite{agrawal2019dpp}, and \texttt{CVXPY} accounts for this with a third tensor axis:
+every
 coefficient block stores one slice per
 parameter entry plus one slice for the constant part, and the operators of the walk apply to
 each slice. Flattening the slices of the root yields the cached \emph{parameter map}
@@ -700,7 +369,7 @@ parameter leaf by a constant holding its current value, and the parameter-free t
 is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
 fully general, since arbitrary functions of parameters reduce to constants, but every change of
 $\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
-never changes. This is the regime the engine of \S\ref{sec:Theme1} improves.
+never changes. This is the setting the engine of \S\ref{sec:Theme1} improves.
 
 \begin{figure}[H]
 \centering
@@ -724,7 +393,8 @@ parameter-free tree is re-walked on every change of the parameters.}
 \end{figure}
 
 \paragraph{Code generation.}
-A third option is to compile the problem ahead of time. CVXPYgen emits problem-specific C code
+A third option is to compile the problem ahead of time. \texttt{CVXPYgen} emits problem-specific C
+code
 that embeds the cached parameter map \eqref{eq:param-maps} of a DPP problem
 \cite{schaller2022cvxpygen}, continuing an earlier line of work on code generation for embedded
 second-order cone programs \cite{chu2013codegen}. The benchmarks of \S\ref{sec:Theme2} do not
@@ -734,17 +404,20 @@ problems.
 % TODO: confirm the stated reason for not benchmarking against CVXPYgen.
 
 \paragraph{Implementation details.}
-Three implementation details, shared by CVXPY's two backends, the C++ \texttt{cvxcore} and the
+Three implementation details, shared by \texttt{CVXPY}'s two backends, the C++ \texttt{cvxcore} and
+the
 \texttt{SciPy} backend, stand out as limitations of the current approach; the engine of
 \S\ref{sec:Theme1} does each differently.
 \begin{itemize}
 \item \emph{External sparse libraries.} Both backends delegate every matrix operation to a
 general-purpose sparse library, Eigen \cite{guennebaud2010eigen} for \texttt{cvxcore} and
-\texttt{scipy.sparse} \cite{2020SciPy-NMeth} for the \texttt{SciPy} backend. The storage formats and kernels are fixed by the library, leaving no
+\texttt{scipy.sparse} \cite{2020SciPy-NMeth} for the \texttt{SciPy} backend. The storage formats and
+kernels are fixed by the library, leaving no
 room to exploit structure known at canonicalization time.
 \item \emph{Everything is sparse.} All coefficient data is treated as sparse: dense atom data
 is converted to a sparse matrix on entry, and no operator carries a dense or block special
-case, so dense blocks pay sparse-format overhead and no BLAS kernel is ever used.
+case, so dense blocks pay sparse-format overhead and no BLAS kernel (\S\ref{sec:bg-blas}) is
+ever used.
 \item \emph{Quadratic objectives are separate.} Each quadratic form is swapped for a dummy
 variable, and the surrounding affine expression is stuffed by the same walk. The matrices of
 the quadratic forms are then scaled by the resulting coefficients and reassembled into the
@@ -752,24 +425,30 @@ global objective matrix $P$.
 \end{itemize}
 
 \paragraph{References.}
-The original CVXPY paper \cite{diamond2016cvxpy} introduces the matrix calculus perspective, and
+Michael Grant's papers and PhD thesis are the standard references on verifying convexity and
+canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}; the
+code-generation paper of Chu et al. \cite{chu2013codegen} contributes the relaxed Smith form,
+and the Mosek modeling cookbook \cite{aps2025mosek} complements them on epigraph
+reformulations.
+The original \texttt{CVXPY} paper \cite{diamond2016cvxpy} introduces the matrix calculus
+perspective, and
 the rewriting-system paper \cite{agrawal2018rewriting} situates matrix stuffing as the final
 step of the reduction chain. The DPP paper \cite{agrawal2019dpp} develops the parameter map and
 its caching; the code generation lineage runs from the embedded second-order cone solvers of
-Chu et al. \cite{chu2013codegen} to CVXPYgen \cite{schaller2022cvxpygen}.
+Chu et al. \cite{chu2013codegen} to \texttt{CVXPYgen} \cite{schaller2022cvxpygen}.
 
 %%
 %%  COMPUTING DERIVATIVES
 %%
 
-\section{Computing derivatives}
+\section{Sparse derivatives by structure discovery}
 \label{sec:computing-derivatives}
 
-Finding the rate of change, or \emph{derivative}, of a function is a fundamental problem in many
-fields of science and engineering.
-Although computing derivatives may seem straightforward at first, there are many approaches, each
-with its own trade-offs \cite{baydin2017ADsurvey}.
-These approaches differ in four basic choices: whether the function is treated as a \emph{scalar}
+The introduction (\S\ref{sec:bg-derivatives}) presented the elementary methods for computing
+derivatives: finite differences, symbolic differentiation, and AD with its forward and reverse
+modes.
+The software systems implementing AD differ in four basic choices: whether the
+function is treated as a \emph{scalar}
 or \emph{vectorized} expression, whether derivatives are propagated \emph{forward} or in
 \emph{reverse}, whether the Jacobian or Hessian is assembled \emph{directly} or accessed through an
 \emph{oracle} of matrix--vector products, and whether the resulting matrix is \emph{sparse} or
@@ -783,62 +462,9 @@ oracle evaluations.
 This thesis instead proposes to compute these sparse derivatives directly on a vectorized graph
 whose sparsity pattern follows from the structure of the operations, so no coloring is needed.
 
-The remainder of the section is structured as follows: we begin with a brief survey of the standard
-numerical and symbolic methods, before turning to algorithmic differentiation.
-Finally, we gather a range of relevant works, organizing them in a table according to their
-particular approach to differentiation.
-
-\paragraph{Numerical differentiation.}
-Other than computing derivatives by hand, the simplest method is to use \emph{numerical
-differentiation}, which approximates the derivative of a function at a point by evaluating the
-function at nearby points using a \emph{finite difference} formula similar to either
-\BEQ
-f'(x) \approx \frac{f(x + h) - f(x)}{h},
-\EEQ
-or
-\BEQ
-f'(x) \approx \frac{f(x + h) - f(x - h)}{2h},
-\EEQ
-where $h$ is a small step size. Although this approach is straightforward to implement and
-can achieve reasonable accuracy, there are important downsides to consider.
-First, it requires a linear number of function evaluations with respect to the number of
-input variables, which is expensive for high-dimensional functions.
-Second, it can easily lead to \emph{truncation errors} (when $h$ is too large) or
-\emph{rounding errors} (when $h$ is too small) in the computed derivative if the step size is
-not carefully chosen \cite{chakravarti1961truncation}.
-Despite these downsides, numerical differentiation is still widely used in practice,
-especially for verifying the correctness of derivative computations (also known as a
-\emph{derivative checker}) \cite{wolfe1982checking}.
-
-\paragraph{Symbolic differentiation.}
-Mathematical expressions can be manipulated automatically using simple derivative rules of
-calculus, such as the product and sum rule. This \emph{symbolic} approach to differentiation
-is used in computer algebra systems such as Mathematica \cite{mathematica} and Maple
-\cite{maple} as well as the SymPy library in Python \cite{sympy2017}.
-Unlike its numerical counterpart, symbolic differentiation tools compute derivatives as
-closed-form expressions, which can be simplified and evaluated at any arbitrary point.
-These closed-form expressions are particularly useful for deriving analytic solutions of
-optimization problems, and can be further used in mathematical proofs and analyses.
-
-However, a naive implementation of symbolic differentiation can quickly form exponentially
-large symbolic expressions, which is impractical and inefficient for many problems
-\cite{griewank2008evaluating}.
-Interestingly, when intermediate expressions are stored as \emph{common subexpressions}, and
-the expression is represented with a \emph{directed acyclic graph} (DAG) instead of a tree,
-symbolic differentiation performs the same set of operations as \emph{reverse mode
-differentiation} \cite{Laue2019OnTE}.
-
-\paragraph{Algorithmic differentiation.}
-\emph{Algorithmic differentiation} (AD) treats the function as a \emph{computational graph} of
-elementary operations, each with a known local derivative rule.
-The chain rule is then applied to combine these local derivatives throughout the graph, giving the
-derivative of the whole function.
-AD is also commonly referred to as \emph{automatic differentiation}; we prefer the term
-\emph{algorithmic} to emphasize that AD differentiates the algorithm that computes a function,
-rather than a numerical approximation or a symbolic formula \cite{griewank2008evaluating}.
-In this broad sense, AD can refer to any method that applies the chain rule over a computational
-graph. In the remainder of this section, we introduce the standard scalar and oracle-based 
-differentiation methods, then contrast them with vectorized and direct approaches.
+The remainder of the section presents the standard scalar and oracle-based pipeline, then the
+vectorized and direct alternatives, and closes by gathering a range of relevant works,
+organizing them in a table according to their particular approach to differentiation.
 
 \paragraph{Scalar differentiation.}
 The earliest and most foundational form of AD operates on a \emph{scalar} computational graph, where
@@ -853,40 +479,11 @@ a single matrix--vector product $Ax$ unrolls into one scalar
 multiplication for every entry of $A$, together with the additions that sum them, so it quickly
 reaches millions of nodes for a realistic problem.
 
-\paragraph{Modes of differentiation.}
-The chain rule can be applied in different orders, all giving the same result. The two best-known are
-\emph{forward mode} (or \emph{tangent} mode), which propagates derivatives from the inputs
-toward the outputs, and \emph{reverse mode} (or \emph{adjoint} mode), which propagates them from the
-outputs back toward the inputs \cite{baydin2017ADsurvey}.
-The two modes have asymmetric costs: in forward mode the work scales with the number of inputs, and
-in reverse mode with the number of outputs.
-Reverse mode is therefore preferred when there are far fewer outputs than inputs,
-such as computing the gradient of a scalar function.
-Other mixed-ordering modes exist, commonly grouped under the umbrella term \emph{cross-country}
-elimination \cite{griewank2008evaluating}. However, finding the best ordering on a general graph is difficult,
-so these modes are rarely used in practice \cite{naumann2008optimal}.
-
-\paragraph{First- and second-order derivatives.}
-For a vector-valued map $F : \reals^n \to \reals^m$ of an input $x \in \reals^n$, the first-order
-derivative is the \emph{Jacobian} $J \in \reals^{m \times n}$ of partial derivatives of the outputs
-with respect to the inputs,
-\BEQ\label{eq:jacobian}
-  J_{ij} = \frac{\partial F_i}{\partial x_j}, \qquad i = 1, \dots, m, \quad j = 1, \dots, n.
-\EEQ
-For a scalar function $f : \reals^n \to \reals$, the second-order derivative is the \emph{Hessian}
-$H \in \reals^{n \times n}$ of second partial derivatives,
-\BEQ\label{eq:hessian}
-  H_{ij} = \frac{\partial^2 f}{\partial x_i \, \partial x_j}, \qquad i, j = 1, \dots, n.
-\EEQ
-The Hessian is the Jacobian of the gradient of $f$, and is symmetric whenever $f$ is twice
-continuously differentiable. It is therefore obtained by differentiating the gradient, with no method
-beyond those used for the Jacobian.
-
 \paragraph{Oracle-based differentiation.}
-Instead of $J$ itself, AD returns its action on a vector: the Jacobian-vector product (JVP) $Jv$ in
-forward mode, and the vector-Jacobian product (VJP) $J^\top w$ in reverse mode (for the Hessian, the
-analogous Hessian-vector product $Hv$ comes from one forward pass over one reverse pass)
-\cite{baydin2017ADsurvey}.
+Instead of the Jacobian $J$ itself, AD returns its action on a vector: the Jacobian-vector product
+(JVP) $Jv$ in forward mode, and the vector-Jacobian product (VJP) $J^\top w$ in reverse mode (for
+the Hessian, the analogous Hessian-vector product $Hv$ comes from one forward pass over one
+reverse pass) \cite{baydin2017ADsurvey}.
 These matrix-vector products are obtained without ever forming $J$, each at about the cost of one
 function evaluation. Borrowing terminology from numerical linear algebra, we call this the
 \emph{matrix-free}, or \emph{oracle}, view of AD.
@@ -917,8 +514,8 @@ An oracle-based sparse Jacobian is obtained in three stages: \emph{detect} the s
 \emph{compress} it by coloring, and \emph{propagate} the compressed seeds through the oracle to
 recover the nonzero entries \cite{hill2025sparser}. The pattern is computed once and reused, so its
 cost is amortized across repeated evaluations of the same function. This pipeline underlies sparse AD
-in oracle-based tools such as CasADi \cite{andersson2019}, which we revisit in
-\S\ref{sec:coefficient-extraction}.
+in oracle-based tools such as \texttt{CasADi} \cite{andersson2019}, which we examine at the end of
+this section.
 
 \paragraph{Vectorized differentiation.}
 More recent frameworks coarsen the graph so that each node is a whole vector or matrix operation
@@ -942,10 +539,6 @@ solvers targeted in this thesis require the matrix explicitly as data, which is 
 direct approach produces.
 
 \paragraph{Overview of recent works.}
-% let's maybe remove some weird papers that aren't really relevant and only focus on
-% some autodiff works in julia and others (for example). We should shift our focus
-% towards more relevant works that we could possibly compare to, or rather they
-% are operating in a similar space as us.
 \begin{table}[ht]
 \centering
 \footnotesize
@@ -964,23 +557,14 @@ block) need no graph coloring, unlike the matrix-free methods above them.}
 \midrule
 ADOL-C, CppAD \cite{griewank1996adolc, bell2012cppad}
   & scalar & both & oracle & dense \\
-Tapenade, Enzyme \cite{hascoet2013tapenade, moses2020enzyme}
-  & scalar & both & oracle & dense \\
-CasADi \cite{andersson2019}
+\texttt{CasADi} \cite{andersson2019}
   & scalar / vectorized & both & oracle & sparse \\
 JAX \cite{jax2018github}
   & vectorized & both & oracle & dense \\
-PyTorch \cite{pytorch2019}
-  & vectorized & reverse & oracle & dense \\
 \texttt{torch-sla} \cite{chi2026torchsla}
   & vectorized & reverse & oracle & sparse \\
-\addlinespace
-CPR, Coleman--Moré \cite{curtis1974estimation, coleman1983estimation}
-  & scalar & forward & oracle & sparse \\
-Hill--Dalle \cite{hill2025sparser}
+\texttt{SCT} stack (Hill--Dalle) \cite{hill2025sparser}
   & scalar & both & oracle & sparse \\
-Vector forward mode \cite{huckelheim2020vector}
-  & scalar & forward & oracle & dense \\
 \addlinespace
 Zou and Jiang \cite{zou2025vectorized}
   & vectorized & forward & direct & sparse \\
@@ -993,6 +577,44 @@ $\nabla$SD \cite{shaikhha2023sparse}
 \bottomrule
 \end{tabular}
 \end{table}
+
+We now examine in more detail the two systems most relevant to this thesis: the sparse-AD stack
+of the Julia ecosystem, anchored by \texttt{SparseConnectivityTracer}, and \texttt{CasADi}, the
+system benchmarked against in \S\ref{sec:Theme2}.
+
+\subsection{\texttt{SparseConnectivityTracer}}
+\label{sec:sct}
+
+\texttt{SparseConnectivityTracer} (SCT) is the sparsity-detection tool of the Julia sparse-AD
+stack developed by Hill and Dalle \cite{hill2025sparser, hill2025sct}. It implements the
+\emph{detect} stage of the detect--compress--propagate pipeline described above, using operator
+overloading to trace which inputs each output depends on.
+% TODO: draft the SCT deep-dive. Planned content:
+% - index-set tracers propagated through the program: each intermediate carries the set of input
+%   indices it depends on, yielding the global (input-independent) Jacobian or Hessian pattern.
+% - the pattern feeds coloring (SparseMatrixColorings.jl) and compressed seeded propagation
+%   through the AD backend, orchestrated by DifferentiationInterface.jl.
+% - pattern and coloring computed once and amortized across repeated evaluations.
+% - positioning: this is the state of the art of the "discover structure at runtime" philosophy
+%   that this thesis contrasts with; the diff engine never detects because each atom's pattern
+%   is known analytically.
+
+\subsection{\texttt{CasADi}}
+\label{sec:casadi}
+
+\texttt{CasADi} \cite{andersson2019} is an integrated symbolic-AD framework for optimization
+whose QP interface extracts the explicit matrices $H$ and $A$ by AD on the expression graph; it
+is the system this thesis benchmarks against in \S\ref{sec:Theme2}.
+% TODO: draft the CasADi deep-dive. Planned content:
+% - two graph dialects: SX (scalar expression graph, exact node-by-node sparsity) and MX
+%   (vectorized matrix graph for large problems); functions compiled to a flat instruction tape
+%   over a shared work vector, enabling CSE, constant folding, and codegen \cite{casadidocs}.
+% - Jacobian assembly: sparsity detection then unidirectional (distance-2) graph coloring;
+%   Hessian by forward-over-reverse with star coloring for symmetry.
+% - the detected pattern and compiled derivative function are cached and reused across calls.
+% - dense-block pathology: a dense m x n block in an affine expression forces min(m,n) colors
+%   regardless of implementation, so the detect-color-sweep pipeline degrades to dense cost on
+%   dense-in-disguise data; measured in \S\ref{sec:Theme2}.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on
@@ -1007,18 +629,57 @@ For the combinatorial side of sparse derivative computation, the survey of Gebre
 \cite{gebremedhin2005color} is the standard entry point, and the illustrated guide of Hill and
 Dalle \cite{hill2025illustrated} gives an accessible modern tutorial on the
 detection--coloring--compression pipeline.
+Finally, the \texttt{CasADi} paper \cite{andersson2019} is a self-contained reference covering its
+expression graphs, AD implementation, and solver interfaces.
 
 %%
-%%  COEFFICIENT EXTRACTION
+%%  DECLARED STRUCTURE
 %%
-\section{Coefficient extraction}
-\label{sec:coefficient-extraction}
+\section{Coefficient extraction from declared structure}
+\label{sec:declared-structure}
 
-\paragraph{\texttt{JuMP}.}
+A useful question sorts every modeling system: are the coefficients of the problem data
+\emph{stored} as the user typed them, \emph{differentiated} out of an expression graph, or
+\emph{detected} at runtime and recovered through coloring?
+The previous section covered the third answer; this section examines two mature systems that
+avoid discovery altogether, \texttt{AMPL} and \texttt{JuMP}. Both declare the structure of the
+problem up front, so extraction reduces to reading off what is already known.
 
-\paragraph{\texttt{AMPL}.}
+\subsection{\texttt{AMPL}}
+\label{sec:ampl}
 
-\paragraph{\texttt{CasADi}.}
+\texttt{AMPL} \cite{fourer1990ampl} is accessed from Python through the \texttt{amplpy} API
+\cite{amplpy}: the model is written to a compact binary \texttt{.nl} file \cite{gay2005writing}
+whose expression graphs the AMPL Solver Library (ASL) rebuilds inside the solver process
+\cite{gay1997hooking}.
+% TODO: draft the AMPL deep-dive. Planned content:
+% - linear coefficients are explicit J-segments in the .nl file: stored, never differentiated;
+%   extraction cost is linear in the number of nonzeros.
+% - nonlinear parts: ASL performs operator-overloaded reverse-mode AD on the rebuilt graph
+%   (objval/objgrd, conval/jacval, sphsetup/sphes) \cite{gay1991automatic}.
+% - sparse Hessians by partial separability f(x) = sum_i f_i(A_i x), assembled as a sum of small
+%   dense blocks; no detection, no coloring anywhere \cite{gay1996more}.
+% - positioning: closest prior art to the diff engine (exploit known structure instead of
+%   detect-then-color); the difference is granularity, partial separability of a scalar tape
+%   versus per-atom analytic sparsity of a vectorized DCP graph.
+% - benchmark hook: driven through amplpy in \S\ref{sec:Theme2}.
+
+\subsection{\texttt{JuMP}}
+\label{sec:jump}
+
+\texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modeling language
+embedded in Julia and built on the \texttt{MathOptInterface} (MOI) abstraction layer
+\cite{legat2020mathoptinterface}. For the linear, quadratic, and conic problems considered here,
+coefficients are stored as the user types them, and no differentiation occurs anywhere on the
+problem-data path.
+% TODO: draft the JuMP/MOI deep-dive. Planned content:
+% - MOI function types are coefficient stores: VectorAffineFunction is a list of
+%   (row, variable, coefficient) terms, ScalarQuadraticFunction a list of Q-terms.
+% - extraction = copy_to into a MatrixOfConstraints: pure data-structure serialization of the
+%   stored terms into the solver's sparse format.
+% - cone reformulations are handled by structural MOI bridges, not by differentiation.
+% - fence off the nonlinear path (Nonlinear.ReverseAD: reverse mode + coloring for sparse
+%   Hessians), which is out of scope for this thesis.
 
 \begin{table}[ht]
 \centering
@@ -1028,7 +689,8 @@ detection--coloring--compression pipeline.
 \label{tab:modeling-systems}
 \begin{tabular}{@{}p{2.4cm} p{3.2cm} p{3.2cm} p{3.2cm} p{3.2cm}@{}}
 \toprule
- & \textbf{JuMP} & \textbf{AMPL} & \textbf{CasADi} & \textbf{CVXPY} \\
+ & \textbf{\texttt{JuMP}} & \textbf{\texttt{AMPL}} & \textbf{\texttt{CasADi}} &
+\textbf{\texttt{CVXPY}} \\
 \midrule
 Front-end paradigm
   & Algebraic modeling
@@ -1059,156 +721,6 @@ Problem-data mechanism
 
 \paragraph{References.}
 The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
-design of JuMP's solver abstraction layer and its bridge system.
+design of \texttt{JuMP}'s solver abstraction layer and its bridge system.
 David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the authoritative
-description of the \texttt{.nl} format and the AMPL solver interface.
-Finally, the CasADi paper \cite{andersson2019} is a self-contained reference covering its
-expression graphs, AD implementation, and solver interfaces.
-
-%%
-%%  SPARSE MATRIX FORMATS
-%%
-
-\section{Sparse matrices}
-\label{sec:sparse-matrices}
-
-Matrices that contain mostly zero entries are known as \emph{sparse matrices}. Storing only the
-nonzero entries makes memory and work scale with their number rather than with the product of the
-dimensions.
-The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
-format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
-value array \texttt{vals} of length equal to the number of \emph{nonzero entries} in the matrix.
-
-For example, the matrix
-\BEQ\label{eq:sparse-matrix}
-  S = \begin{bmatrix}
-  0 & 1 & 0 & 0\\
-  2 & 0 & 3 & 4\\
-  0 & 5 & 6 & 0\\
-  \end{bmatrix}
-\EEQ
-can be represented in coordinate format as
-\begin{lstlisting}[language=C]
-int    rows[] = {0,  1,  1,  1,  2,  2};
-int    cols[] = {1,  0,  2,  3,  1,  2};
-double vals[] = {1,  2,  3,  4,  5,  6};
-\end{lstlisting}
-
-where we use zero-based indexing and array declaration notation from the C programming
-language \cite{Kernighan1988}.
-The coordinate format is the easiest to understand and form, but it is not effective for most
-operations on sparse matrices; the \emph{compressed sparse row} or CSR format is commonly
-used instead.
-
-\paragraph{Compressed sparse row format.}
-The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
-a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
-The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
-For example, the matrix in \eqref{eq:sparse-matrix}
-can be represented in CSR format as
-\begin{lstlisting}[language=C]
-int  idxptr[] = {0,  1,          4,      6};
-int    cols[] = {1,  0,  2,  3,  1,  2};
-double vals[] = {1,  2,  3,  4,  5,  6};
-\end{lstlisting}
-where we deliberately format \texttt{idxptr} to align with the start of each
-row in the \texttt{cols} arrays.
-The benefits of the CSR format are more than a reduced size of the \texttt{idxptr} array
-compared to the \texttt{rows} array.
-In the CSR format, accessing a row takes constant time and is very \emph{cache-friendly}
-since the nonzero entries are stored contiguously in memory.
-For this reason, the CSR format is the default for \emph{iterative methods}
-to solve sparse linear systems \cite{saad2003iterative}.
-
-\paragraph{Compressed sparse column format.}
-% talk about CSC as a direct extension of CSR but with column pointers.
-However, one downside of the CSR format is that accessing a column is much more difficult;
-one would need to look at every row to find the nonzero entries in a column.
-An alternative format is the \emph{compressed sparse column} or CSC format, 
-which swaps the role of the \texttt{idxptr} array to refer to column indices instead.
-In contrast to iterative methods, the CSC format is the preferred format for
-\emph{direct methods} to solve sparse linear systems \cite{davis2006direct}.
-
-\paragraph{Transpose.}
-The CSC arrays of a matrix read exactly as the CSR arrays of its transpose: compressing the
-columns of $S$ is the same as compressing the rows of $S^T$. For \eqref{eq:sparse-matrix},
-\begin{lstlisting}[language=C]
-int  idxptr[] = {0,  1,      3,      5,  6};
-int    rows[] = {1,  0,  2,  1,  2,  1};
-double vals[] = {2,  1,  5,  3,  6,  4};
-\end{lstlisting}
-is at once the CSC representation of $S$ and the CSR representation of $S^T$. Transposition is
-therefore a conversion between the two formats. It requires no sorting: one pass over the
-nonzeros counts the entries of each column to build the new \texttt{idxptr}, and a second pass
-scatters the entries into place, $O(m + n + \mathrm{nnz})$ time in total
-\cite{gustavson1978two, davis2006direct}. The entries of each output row come out sorted by
-column, so transposing twice is also the standard way to restore a matrix with unordered
-indices to canonical form.
-
-\paragraph{Which format to use?}
-The access pattern of the algorithm decides: a computation that traverses rows wants CSR, one
-that traverses columns wants CSC. Since conversion costs a single counting pass, keeping the
-same matrix in both formats is common. The engine of \S\ref{sec:Theme1} does exactly this,
-storing Jacobians in CSR and pairing the two formats in its matrix products.
-
-\paragraph{Matrix-vector products.}
-Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop must
-follow the storage. In CSR each output entry is a sparse dot product, gathering from $x$ row by
-row:
-\begin{lstlisting}[language=C]
-/* y = S @ x, with y zeroed */
-for (int i = 0; i < m; i++)
-{
-    for (int k = idxptr[i]; k < idxptr[i + 1]; k++)
-    {
-        y[i] += vals[k] * x[cols[k]];
-    }
-}
-\end{lstlisting}
-In CSC the roles reverse: the loop visits column $j$ and \emph{scatters} the products
-$\texttt{vals[k]} \cdot x_j$ into \texttt{y[rows[k]]}, accumulating the output instead of
-gathering the input.
-
-\paragraph{Matrix-matrix products.}
-The product of two sparse matrices is harder than the operations above because the sparsity
-pattern of the output is not known in advance. Implementations therefore split the work in two
-phases: a \emph{symbolic} phase determines the pattern and allocates the output, and a
-\emph{numeric} phase fills its values \cite{gustavson1978two, bank1993smmp}. The split rewards
-reuse, and the engine of \S\ref{sec:Theme1} is built around it: the symbolic phase runs once per
-problem family and only the numeric phase repeats.
-
-% TODO maybe clean this up and make it a bit more visual? Otherwise make sure to
-% read it more thoroughly and make some edits so that it is clearer.
-Gustavson's algorithm \cite{gustavson1978two} computes $C = AB$ with both operands in CSR, row
-by row: row $i$ of $C$ is the sum of the rows of $B$ selected and scaled by the nonzeros of row
-$i$ of $A$, merged in a dense accumulator $w$. Take $C = S S^T$, where $S^T$ in CSR is the
-transpose arrays above. Row $2$ of $S$ holds $5$ at column $1$ and $6$ at column $2$, so row $2$
-of $C$ is $5 \cdot (\text{row 1 of } S^T) + 6 \cdot (\text{row 2 of } S^T)$: the first term sets
-$w[0] = 5$ and $w[2] = 25$, the second sets $w[1] = 18$ and grows $w[2]$ to $61$. The cost is
-one multiplication per term merged, but the output indices appear in the order they are first
-touched, here $[0, 2, 1]$; transposing twice sorts them when canonical form is needed.
-
-The alternative is to compute each entry as a sparse dot product,
-$c_{ij} = (\text{row } i \text{ of } A) \cdot (\text{column } j \text{ of } B)$, which asks for
-$A$ in CSR and $B$ in CSC; for $C = S S^T$ both roles are served by the CSR arrays of $S$ alone.
-Entries whose row and column share no index are structural zeros and cost only the scan:
-$c_{01} = 0$ since rows $0$ and $1$ of $S$ have no common column, while rows $1$ and $2$ meet at
-column $2$, giving $c_{12} = 3 \cdot 6 = 18$. This form rescans its operands for every candidate
-entry, where Gustavson's merge touches each term once; in exchange it needs no accumulator and
-produces each row sorted.
-
-\paragraph{Other formats.}
-The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
-but many others exist for different specialized use cases.
-The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
-allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
-the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
-
-\paragraph{References.}
-The standard references treat the solution of sparse linear systems, a task this thesis never
-performs, but the data structures and kernels they develop apply unchanged. The book by Davis
-\cite{davis2006direct} was used extensively in developing the engine of \S\ref{sec:Theme1}; the
-book by Duff, Erisman and Reid \cite{Duff1986Direct} covers the history and development of the
-field. Gustavson's paper \cite{gustavson1978two} is the origin of the row-wise product and the
-sort-free transposition of this section. Finally, Gill, Murray, Saunders and Wright
-\cite{gill1984sparse} survey the applications of sparse matrix methods in optimization.
+description of the \texttt{.nl} format and the \texttt{AMPL} solver interface.
