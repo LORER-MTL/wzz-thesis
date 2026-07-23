@@ -1,10 +1,10 @@
-\Chapter{Benchmark results}\label{sec:Theme2}
+\Chapter{BENCHMARK RESULTS}\label{sec:Theme2}
 
 This chapter presents benchmark results which compare the \texttt{diffengine} backend
 (the \texttt{CVXPY} implementation based on \texttt{SparseDiffEngine}) with the systems
 reviewed in Chapter~\ref{sec:RevLitt}, keeping its organization: the \texttt{cvxcore}
 matrix-stuffing baseline of \S\ref{sec:matrix-stuffing}, the two structure-discovery
-systems of \S\ref{sec:computing-derivatives} (\texttt{CasADi} and the \texttt{SCT}
+systems of \S\ref{sec:computing-derivatives} (\texttt{CasADi} and the Julia
 sparse-AD stack), and the two declared-structure modeling systems of
 \S\ref{sec:declared-structure} (\texttt{AMPL} and \texttt{JuMP}).
 All comparisons run on the $25$ problems of \texttt{CVXPY}'s public benchmark suite
@@ -22,7 +22,7 @@ invoked. For the two \texttt{CVXPY} backends this corresponds to a call to
 with the target solver fixed to \texttt{Clarabel}~\cite{clarabel}: the \texttt{CPP}
 (\texttt{cvxcore})
 baseline runs on the default DPP path, while \texttt{diffengine} is selected by passing
-\texttt{ignore\_dpp=True}. For \texttt{CasADi} and the \texttt{SCT} stack, we time the
+\texttt{ignore\_dpp=True}. For \texttt{CasADi} and the Julia sparse-AD stack, we time the
 extraction of the same $(A,b,c,P)$ by differentiation of an equivalent expression graph,
 following the conventions described in Section~\ref{sec:bench-casadi}. For \texttt{JuMP} and
 \texttt{AMPL}, we time the assembly of the same data from an equivalent declared-structure
@@ -42,7 +42,7 @@ The software versions are:
   \item \texttt{sparsediffpy} 0.6.1,
   \item \texttt{NumPy} 2.4~\cite{numpy} and \texttt{SciPy} 1.17~\cite{2020SciPy-NMeth},
   \item \texttt{CasADi} 3.7.2~\cite{andersson2019},
-  \item the \texttt{SCT} sparse-AD stack~\cite{hill2025sparser, hill2025sct} on
+  \item the Julia sparse-AD stack~\cite{hill2025sparser, hill2025sct} on
         \texttt{Julia} 1.10.5 (single-threaded):\\
         \texttt{SparseConnectivityTracer} 1.2.2, \texttt{SparseMatrixColorings} 0.4.27,\\
         \texttt{DifferentiationInterface} 0.7.20, and \texttt{ForwardDiff} 1.4.1,
@@ -57,7 +57,7 @@ Each reported time is the median of three new compilations; the re-solve columns
 of twenty re-evaluations. Before any timing, every tool is verified to reproduce
 \texttt{CVXPY}'s problem data bit-identically ($\max|\Delta| = 0$) at full benchmark size.
 The \texttt{cvxcore} and \texttt{CasADi} comparisons cover all $25$ problems; the
-\texttt{SCT} harness ports four representative problems; the \texttt{JuMP} and \texttt{AMPL}
+Julia harness ports four representative problems; the \texttt{JuMP} and \texttt{AMPL}
 comparisons cover the $21$-problem subset that has been ported to a tool-neutral lowered
 form (the three \texttt{kron}-based problems and \textsc{CVaR} are not ported). The scripts
 which run the benchmarks, the models for each tool, and all recorded timings are available
@@ -162,7 +162,7 @@ two rows where DPP remains around $2\times$ faster: a scalar parameter whose eff
 across many coefficients (\textsc{SVM}'s regularization weight, \textsc{FactorCovariance}'s
 risk aversion) is the ideal case for the tensor product.
 
-\section{Comparison against structure discovery: \texttt{CasADi} and \texttt{SCT}}
+\section{Comparison against structure discovery: \texttt{CasADi} and Julia sparse AD}
 \label{sec:bench-casadi}
 % this paragraph is very run-on, let's break it up into clean sentences.
 \texttt{CasADi}~\cite{andersson2019} extracts problem data by algorithmic differentiation of a
@@ -200,7 +200,7 @@ problems are compared, with \textsc{CVaR} reported as a did-not-finish.
 
 \begin{sloppypar}
 The same lowered formulations also drive the generic Julia sparse-AD stack of
-\S\ref{sec:sct}: the sparsity patterns of $A$ and $P$ are traced by
+\S\ref{sec:julia-ad}: the sparsity patterns of $A$ and $P$ are traced by
 \texttt{SparseConnectivityTracer}, compressed by \texttt{SparseMatrixColorings}
 (unidirectional distance-2 coloring for $A$, star coloring for $P$), and the values are
 then recovered with compressed \texttt{ForwardDiff} sweeps driven by
@@ -226,15 +226,15 @@ is amortized away in its intended use.
 \begin{table}[htbp]
 \centering
 \caption{Single problem-data extraction, \texttt{diffengine} versus the two
-structure-discovery systems: the \texttt{SCT} stack on its four ported problems and
-\texttt{CasADi} on all 25 benchmarks. Dashes in the \texttt{SCT} column mark problems not
+structure-discovery systems: the Julia sparse-AD stack on its four ported problems and
+\texttt{CasADi} on all 25 benchmarks. Dashes in the Julia column mark problems not
 ported to the Julia harness. The ratio is \texttt{diffengine}/\texttt{CasADi}; values below
 $1$ favor \texttt{diffengine}. The final row is the geometric mean of the per-problem
 ratios.}
 \label{tab:casadi-single}
 \begin{tabular}{l r r r r}
 \toprule
-Benchmark & \texttt{SCT} (s) & \texttt{CasADi} (s) & \texttt{diffengine} (s) & Ratio \\
+Benchmark & Julia (s) & \texttt{CasADi} (s) & \texttt{diffengine} (s) & Ratio \\
 \midrule
 ParametrizedQP              & 111.5 & 771.5  & 2.52 & \textbf{0.003} \\
 FactorCovarianceModel       & ---   & 250.4  & 2.05 & 0.008 \\
@@ -276,7 +276,7 @@ contains a dense $131\,072 \times 768$ scenario block, which forces roughly $770
 sweeps during the Jacobian construction, and the extraction did not finish within
 \SI{10}{\hour}.
 
-The \texttt{SCT} column shows that this cost belongs to the paradigm, not to
+The Julia column shows that this cost belongs to the paradigm, not to
 \texttt{CasADi}'s implementation of it: the state-of-the-art generic stack is slower still
 on all three shared problems, and its stage instrumentation places the bulk of the time in
 the greedy coloring itself (\SI{52}{\second} of the \SI{85.5}{\second} on
@@ -330,7 +330,7 @@ path, and dramatically faster when the parameters only change $b$ (\textsc{Conve
 (\textsc{FactorCovarianceModel}), where \texttt{CasADi} must re-gather a large parameter-dependent
 $P$
 on every evaluation.
-The \texttt{SCT} stack sits at the opposite end: it compiles no parametric function at all,
+The Julia sparse-AD stack sits at the opposite end: it compiles no parametric function at all,
 so a warm re-solve re-runs its compressed sweeps with cached pattern and coloring, costing
 \SI{17.9}{\second} on \textsc{ParametrizedQP} where both \texttt{CasADi} and
 \texttt{diffengine} re-solve in under a second.

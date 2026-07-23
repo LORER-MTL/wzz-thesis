@@ -3,24 +3,20 @@
 % et identifie les lacunes que la recherche vise à combler.
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
-% TODO: replace this roadmap with the new hand-written chapter introduction.
-\paragraph{Structure of the chapter}
-This chapter reviews the systems this thesis builds on and compares against, each building on
-one background section of the introduction.
-\S\ref{sec:matrix-stuffing} covers matrix stuffing, the backend of \texttt{CVXPY}'s canonicalization
-(\S\ref{sec:canonicalization}), which assembles the problem data from the functional conic
-form.
-\S\ref{sec:computing-derivatives} reviews sparse algorithmic differentiation systems, which
-discover the structure of the derivative, and positions the approach of this thesis among
-them.
-\S\ref{sec:declared-structure} reviews modeling systems that extract the problem data from
-the declared structure of the model instead, as \texttt{AMPL} and \texttt{JuMP} do.
+This chapter reviews three bodies of prior work, each continuing one background section of the
+introduction. \S\ref{sec:matrix-stuffing} covers matrix stuffing, the \texttt{cvxcore} backend
+of \texttt{CVXPY}'s canonicalization (\S\ref{sec:canonicalization}) that this thesis replaces.
+\S\ref{sec:computing-derivatives} covers sparse AD systems (\S\ref{sec:bg-derivatives}), which
+compute the same coefficient matrices by differentiating an expression graph and must discover
+their sparsity at runtime. \S\ref{sec:declared-structure} covers \texttt{AMPL} and \texttt{JuMP}
+(\S\ref{sec:problem-statement}), which never differentiate on the problem-data path: the user
+declares the structure, and extraction reduces to reading off stored coefficients. All five
+systems return as benchmark subjects in Chapter~\ref{sec:Theme2}.
 
 %%
 %%  MATRIX STUFFING
 %%
 \section{Matrix stuffing in \texttt{CVXPY}}\label{sec:matrix-stuffing}
-\label{sec:matrix-stuffing}
 
 \texttt{CVXPY} takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
 coefficient matrices of linear expressions; this is where most of the computational burden of
@@ -563,7 +559,7 @@ JAX \cite{jax2018github}
   & vectorized & both & oracle & dense \\
 \texttt{torch-sla} \cite{chi2026torchsla}
   & vectorized & reverse & oracle & sparse \\
-\texttt{SCT} stack (Hill--Dalle) \cite{hill2025sparser}
+Julia sparse AD (Hill--Dalle) \cite{hill2025sparser}
   & scalar & both & oracle & sparse \\
 \addlinespace
 Zou and Jiang \cite{zou2025vectorized}
@@ -579,42 +575,92 @@ $\nabla$SD \cite{shaikhha2023sparse}
 \end{table}
 
 We now examine in more detail the two systems most relevant to this thesis: the sparse-AD stack
-of the Julia ecosystem, anchored by \texttt{SparseConnectivityTracer}, and \texttt{CasADi}, the
-system benchmarked against in \S\ref{sec:Theme2}.
+of the Julia ecosystem, and \texttt{CasADi}, the main system benchmarked against in
+\S\ref{sec:Theme2}.
 
-\subsection{\texttt{SparseConnectivityTracer}}
-\label{sec:sct}
+\subsection{Sparse automatic differentiation in Julia}
+\label{sec:julia-ad}
 
-\texttt{SparseConnectivityTracer} (SCT) is the sparsity-detection tool of the Julia sparse-AD
-stack developed by Hill and Dalle \cite{hill2025sparser, hill2025sct}. It implements the
-\emph{detect} stage of the detect--compress--propagate pipeline described above, using operator
-overloading to trace which inputs each output depends on.
-% TODO: draft the SCT deep-dive. Planned content:
-% - index-set tracers propagated through the program: each intermediate carries the set of input
-%   indices it depends on, yielding the global (input-independent) Jacobian or Hessian pattern.
-% - the pattern feeds coloring (SparseMatrixColorings.jl) and compressed seeded propagation
-%   through the AD backend, orchestrated by DifferentiationInterface.jl.
-% - pattern and coloring computed once and amortized across repeated evaluations.
-% - positioning: this is the state of the art of the "discover structure at runtime" philosophy
-%   that this thesis contrasts with; the diff engine never detects because each atom's pattern
-%   is known analytically.
+The Julia sparse-AD stack developed by Hill and Dalle \cite{hill2025sparser, hill2025sct} is the
+state of the art of the detect--compress--propagate pipeline described above, packaged as three
+composable libraries: \texttt{SparseConnectivityTracer} detects the sparsity pattern,
+\texttt{SparseMatrixColorings} compresses it, and \texttt{DifferentiationInterface} drives the
+compressed sweeps through any Julia AD backend.
+
+\paragraph{Sparsity detection.}
+Detection works by operator overloading. The function is evaluated once on \emph{index-set
+tracers}: input $x_j$ starts as the singleton $\{j\}$, and every operation returns the union of
+the index sets of its arguments. The index sets of the outputs are the rows of the Jacobian
+pattern; a second-order tracer propagates index pairs the same way and yields the Hessian
+pattern. The tracers carry no values, so the pattern is \emph{global}: it holds at every input
+and is computed once per function.
+
+\paragraph{Compression and propagation.}
+\texttt{SparseMatrixColorings} compresses the pattern with the greedy distance-2 and star
+colorings above, and \texttt{DifferentiationInterface} propagates one compressed seed per color
+through the chosen backend, then scatters the recovered values into the sparse matrix. All three stages are bundled into a preparation object, computed once and reused, so
+repeated evaluations pay only for the compressed sweeps:
+\begin{lstlisting}
+using DifferentiationInterface, SparseConnectivityTracer, SparseMatrixColorings
+import ForwardDiff
+
+backend = AutoSparse(AutoForwardDiff();
+    sparsity_detector  = TracerSparsityDetector(),
+    coloring_algorithm = GreedyColoringAlgorithm())
+prep = prepare_jacobian(f, backend, x)  # detect + color, once
+J = jacobian(f, prep, backend, x)       # compressed sweeps, repeated
+\end{lstlisting}
+
+\paragraph{Relation to the diff engine.}
+The stack treats the program as opaque, so its sparsity must be traced, compressed, and
+recovered. The diff engine of this thesis needs none of the three stages: the Jacobian pattern
+of every DCP atom is known analytically. \S\ref{sec:Theme2} measures this difference.
 
 \subsection{\texttt{CasADi}}
 \label{sec:casadi}
 
 \texttt{CasADi} \cite{andersson2019} is an integrated symbolic-AD framework for optimization
-whose QP interface extracts the explicit matrices $H$ and $A$ by AD on the expression graph; it
-is the system this thesis benchmarks against in \S\ref{sec:Theme2}.
-% TODO: draft the CasADi deep-dive. Planned content:
-% - two graph dialects: SX (scalar expression graph, exact node-by-node sparsity) and MX
-%   (vectorized matrix graph for large problems); functions compiled to a flat instruction tape
-%   over a shared work vector, enabling CSE, constant folding, and codegen \cite{casadidocs}.
-% - Jacobian assembly: sparsity detection then unidirectional (distance-2) graph coloring;
-%   Hessian by forward-over-reverse with star coloring for symmetry.
-% - the detected pattern and compiled derivative function are cached and reused across calls.
-% - dense-block pathology: a dense m x n block in an affine expression forces min(m,n) colors
-%   regardless of implementation, so the detect-color-sweep pipeline degrades to dense cost on
-%   dense-in-disguise data; measured in \S\ref{sec:Theme2}.
+whose quadratic-programming interface extracts the explicit matrices $P$ and $A$ by AD on the
+expression graph; it is the main system this thesis benchmarks against in \S\ref{sec:Theme2}.
+
+\paragraph{Expression dialects.}
+Expressions come in two dialects \cite{casadidocs}. An \texttt{SX} graph is scalar: every node
+is one elementary operation, so sparsity is exact node by node, at the cost of a graph whose
+size grows with the problem data. An \texttt{MX} graph is vectorized: nodes are whole matrix
+operations, so large models keep small graphs. Either graph is compiled into a flat instruction
+tape over a shared work vector, which enables common-subexpression elimination, constant
+folding, and C code generation.
+
+\paragraph{Jacobian assembly.}
+Even on a vectorized graph, the Jacobian is reached through the oracle: a sweep over the tape
+carries a batch of seed directions and returns their products $Jv$, not $J$ itself. Assembly is
+therefore the pipeline of this section: the sparsity is computed by a pattern propagation over
+the tape, compressed by greedy distance-2 coloring, and the compressed seeds are pushed through
+batched forward or reverse sweeps, with the mode chosen by a cost heuristic on the pattern's
+shape. The Hessian is assembled as the Jacobian of the gradient, one forward sweep over the
+reverse tape, with a star coloring exploiting its symmetry. Pattern, coloring, and the compiled
+derivative function are cached, so repeated evaluations pay only for the sweeps. The benchmarks
+of \S\ref{sec:Theme2} recover the problem data the way
+\texttt{CasADi}'s own \texttt{qpsol} interface does, by differentiating the lowered conic model
+without invoking a solver:
+\begin{lstlisting}[language=Python]
+import casadi as cs
+z, th = cs.MX.sym("z", n), cs.MX.sym("th", p)
+f, g = objective(z, th), slacks(z, th)  # lowered conic model
+c = cs.substitute(cs.gradient(f, z), z, 0)
+P = cs.jacobian(cs.gradient(f, z), z)   # Jacobian of the gradient
+A = -cs.jacobian(g, z)
+b = cs.substitute(g, z, 0)
+data = cs.Function("data", [th], [P, c, A, b])
+\end{lstlisting}
+
+\paragraph{The dense-block worst case.}
+A dense $m \times n$ block in the problem data makes every pair of its columns collide in some
+row: the column intersection graph restricted to the block is a clique, no coloring can use
+fewer than $\min(m,n)$ colors, and the sweep count grows to the full dimension of the block at
+any implementation quality, even when the assembled matrix is mostly sparse. This worst case
+dominates the single-extraction benchmarks of \S\ref{sec:Theme2}, where lowered conic problems
+routinely embed dense blocks.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} is a comprehensive reference on
@@ -648,79 +694,207 @@ problem up front, so extraction reduces to reading off what is already known.
 \subsection{\texttt{AMPL}}
 \label{sec:ampl}
 
-\texttt{AMPL} \cite{fourer1990ampl} is accessed from Python through the \texttt{amplpy} API
-\cite{amplpy}: the model is written to a compact binary \texttt{.nl} file \cite{gay2005writing}
-whose expression graphs the AMPL Solver Library (ASL) rebuilds inside the solver process
-\cite{gay1997hooking}.
-% TODO: draft the AMPL deep-dive. Planned content:
-% - linear coefficients are explicit J-segments in the .nl file: stored, never differentiated;
-%   extraction cost is linear in the number of nonzeros.
-% - nonlinear parts: ASL performs operator-overloaded reverse-mode AD on the rebuilt graph
-%   (objval/objgrd, conval/jacval, sphsetup/sphes) \cite{gay1991automatic}.
-% - sparse Hessians by partial separability f(x) = sum_i f_i(A_i x), assembled as a sum of small
-%   dense blocks; no detection, no coloring anywhere \cite{gay1996more}.
-% - positioning: closest prior art to the diff engine (exploit known structure instead of
-%   detect-then-color); the difference is granularity, partial separability of a scalar tape
-%   versus per-atom analytic sparsity of a vectorized DCP graph.
-% - benchmark hook: driven through amplpy in \S\ref{sec:Theme2}.
+\texttt{AMPL} \cite{fourer1990ampl} is the oldest system in this review, and its architecture
+still defines how most solvers receive nonlinear problems. The AMPL translator runs in its own
+process: it parses the model and the data, instantiates every constraint, and writes the
+resulting instance to a \texttt{.nl} file \cite{gay2005writing}. The solver is a separate
+executable that links the AMPL Solver Library (ASL), reads the file back, and returns its answer
+in a \texttt{.sol} file \cite{gay1997hooking}. The benchmarks of \S\ref{sec:Theme2} drive this
+pipeline from Python through the \texttt{amplpy} API \cite{amplpy}.
+
+\paragraph{The \texttt{.nl} format.}
+The \texttt{.nl} file is an instance format, not a model format: sets and indexing are resolved
+by the translator, and what remains is one flat record per objective and constraint, in a binary
+or ASCII encoding. A header states the dimensions of the problem and the nonzero counts of its
+Jacobian and gradients; the body is a sequence of segments keyed by a leading letter.
+\texttt{C} and \texttt{O} segments hold the nonlinear parts of constraints and objectives as
+expression graphs in Polish prefix notation. \texttt{J} and \texttt{G} segments hold their
+linear parts as explicit lists of (variable, coefficient) pairs. \texttt{b} and \texttt{r}
+segments hold variable and constraint bounds, and \texttt{k} segments hold column-wise nonzero
+counts of the Jacobian. Every linear coefficient is stored exactly as the translator assembled
+it, so the solver recovers the linear problem data by reading, at a cost linear in the number
+of nonzeros; only the nonlinear parts are ever differentiated.
+
+\paragraph{Example.}
+A small quadratic program makes the format concrete:
+\begin{lstlisting}[language=Python]
+var x; var y;
+minimize obj: x^2 + x*y + 3*x;
+subject to c1: x + 2*y >= 1;
+subject to c2: 3*x - y = 2;
+\end{lstlisting}
+The translator writes the following \texttt{.nl} file (ASCII encoding; annotations and
+elisions ours):
+\begin{lstlisting}[language=Python]
+g3 0 1 0     # text format; 9 more header lines follow
+ 2 2 1 0 1   # 2 vars, 2 constraints, 1 objective, 0 ranges, 1 eqn
+...
+r            # constraint bounds: c1 >= 1, c2 = 2
+2 1
+4 2
+...
+O0 0         # minimize objective 0; nonlinear part x^2 + x*y
+o0           #   add
+o5           #     pow
+v0           #       variable 0 (x)
+n2           #       constant 2
+o2           #     multiply
+v0           #       variable 0 (x)
+v1           #       variable 1 (y)
+...
+J0 2         # linear Jacobian row of c1: two entries
+0 1          #   coefficient 1 on variable 0
+1 2          #   coefficient 2 on variable 1
+J1 2         # linear Jacobian row of c2
+0 3
+1 -1
+G0 2         # linear part of the objective gradient: 3x
+0 3
+1 0
+\end{lstlisting}
+The quadratic terms $x^2 + xy$ appear only as the expression graph of the \texttt{O0} segment;
+every linear coefficient, the rows of $A$ and the linear term of the gradient, is spelled out
+in the \texttt{J} and \texttt{G} segments. For a linear program, the file \emph{is} the problem
+data.
+
+\paragraph{Solver-side evaluation.}
+Inside the solver, ASL reads the header, rebuilds the expression graphs, and exposes the
+instance through a small evaluation interface: \texttt{objval} and \texttt{objgrd} for the
+objective and its gradient, \texttt{conval} and \texttt{jacval} for the constraints and their
+Jacobian, and \texttt{sphsetup} and \texttt{sphes} for the sparse Hessian of the Lagrangian. Gradients and
+Jacobian entries of the nonlinear parts come from reverse-mode AD on the rebuilt graphs
+\cite{gay1991automatic}. The sparse Hessian exploits \emph{partial separability}: each nonlinear
+function is recognized as a sum of terms $f_i(A_i x)$ with few variables each, so the Hessian
+assembles as a sum of small dense blocks $A_i^\top \nabla^2 f_i \, A_i$, and \texttt{sphsetup}
+produces the sparsity pattern from this structure alone \cite{gay1996more}. There is no runtime
+detection and no coloring anywhere in the pipeline.
+
+\paragraph{The file as contract.}
+Any modeling system that writes \texttt{.nl} reaches
+every solver that links ASL, and the format has stayed backward compatible since 1990, so old
+instances run against today's solvers. An instance is an ordinary file: it can be archived,
+shipped to a solver developer to reproduce a bug, and rerun across machines, versions, and
+modeling environments. The price is the decoupling itself: every solve serializes the instance
+to disk and rebuilds its graphs in the solver process; \S\ref{sec:Theme2} reports these write
+and read stages separately.
+
+\paragraph{Relation to the diff engine.}
+\texttt{AMPL} is the closest prior art to the diff engine: both exploit known structure rather
+than discovering it at runtime. The difference is granularity. ASL derives its sparsity from
+the partial separability of a scalar expression tape; the diff engine reads it off per atom of
+a vectorized DCP graph, as whole sparse blocks known analytically.
 
 \subsection{\texttt{JuMP}}
 \label{sec:jump}
 
 \texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modeling language
-embedded in Julia and built on the \texttt{MathOptInterface} (MOI) abstraction layer
-\cite{legat2020mathoptinterface}. For the linear, quadratic, and conic problems considered here,
-coefficients are stored as the user types them, and no differentiation occurs anywhere on the
-problem-data path.
-% TODO: draft the JuMP/MOI deep-dive. Planned content:
-% - MOI function types are coefficient stores: VectorAffineFunction is a list of
-%   (row, variable, coefficient) terms, ScalarQuadraticFunction a list of Q-terms.
-% - extraction = copy_to into a MatrixOfConstraints: pure data-structure serialization of the
-%   stored terms into the solver's sparse format.
-% - cone reformulations are handled by structural MOI bridges, not by differentiation.
-% - fence off the nonlinear path (Nonlinear.ReverseAD: reverse mode + coloring for sparse
-%   Hessians), which is out of scope for this thesis.
+embedded in Julia; its abstraction layer between models and solvers is
+\texttt{MathOptInterface} (MOI) \cite{legat2020mathoptinterface}.
+Where \texttt{AMPL} decouples modeler and solver through a
+file, \texttt{JuMP} decouples them through a typed in-memory interface. For the linear,
+quadratic, and conic problems considered here, coefficients are stored as the user types them,
+and no differentiation occurs anywhere on the problem-data path.
 
-\begin{table}[ht]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\caption{Comparison of problem-data extraction methods across modeling languages.}
-\label{tab:modeling-systems}
-\begin{tabular}{@{}p{2.4cm} p{3.2cm} p{3.2cm} p{3.2cm} p{3.2cm}@{}}
-\toprule
- & \textbf{\texttt{JuMP}} & \textbf{\texttt{AMPL}} & \textbf{\texttt{CasADi}} &
-\textbf{\texttt{CVXPY}} \\
-\midrule
-Front-end paradigm
-  & Algebraic modeling
-  & Algebraic, file-based
-  & Symbolic graphs $+$ AD
-  & Disciplined convex (DCP) \\
-\addlinespace
-Problem classes
-  & LP, MILP, QP, conic, NLP
-  & LP, MILP, NLP (conic via recent drivers)
-  & NLP, QP / conic (QP-shaped)
-  & Convex: LP, QP, SOCP, SDP, EXP \\
-\addlinespace
-Path to conic solvers
-  & Native cones $+$ bridges (MOI)
-  & Solver-side, recent drivers
-  & \texttt{soc} helper on the QP path
-  & Automatic DCP reduction \\
-\addlinespace
-Problem-data mechanism
-  & Eager, per scalar constraint
-  & \texttt{.nl} file; nonlinear via solver AD
-  & Explicit $H, A$ by AD on the graph
-  & Affine-tree stuffing $+$ parameter map \\
-\bottomrule
-\end{tabular}
-\end{table}
+\paragraph{Macros and term lists.}
+The macros of \texttt{JuMP} rewrite each expression as it is entered: \texttt{@objective} and
+\texttt{@constraint} build affine and quadratic expression objects term by term, merging
+duplicates eagerly, so the model never holds an expression tree, only coefficient lists. These
+lists are typed by MOI. A \texttt{VectorAffineFunction} is a list of (row, variable,
+coefficient) terms plus a constant vector; a \texttt{ScalarQuadraticFunction} adds a list of
+(variable, variable, coefficient) triples. A constraint pairs one such function with a set, for
+instance a nonnegative orthant or a second-order cone: the functional conic form of
+\S\ref{sec:bg-canonicalization}.
+% TODO(oscar): confirm the macro story (eager merging, no retained expression tree) is accurate
+% for current JuMP, and whether GenericAffExpr uses an ordered dict of terms.
+
+\paragraph{Extraction.}
+Extraction is serialization: when the model is passed to a solver, MOI copies each constraint
+into the solver's own representation (\texttt{copy\_to}); solvers that consume matrix data use
+the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists into one
+sparse matrix in the solver's format. The measured cost in \S\ref{sec:Theme2} is exactly this
+copy: a pure data-structure transformation, linear in the number of terms, with no analysis of
+any graph.
+% TODO(oscar): confirm copy_to + MatrixOfConstraints is the canonical path for conic solver
+% wrappers (SCS.jl, Clarabel.jl), and whether any differentiation can occur on this path.
+
+\paragraph{Bridges.}
+When a solver does not support a constraint type natively, MOI reformulates it through its
+\emph{bridge} system: a bridge is a structural rewrite from one function-set pair to another,
+for instance from a rotated to a plain second-order cone, chosen by a shortest-path search over
+the graph of available bridges \cite{legat2020mathoptinterface}. Bridging manipulates stored
+coefficients and adds auxiliary variables and constraints. This mirrors \texttt{CVXPY}'s
+canonicalization (\S\ref{sec:canonicalization}) with one difference: \texttt{JuMP} rewrites
+problems whose data is already in matrix form, while \texttt{CVXPY} must first produce that
+data from a DCP atom tree, which is the work this thesis accelerates.
+% TODO(oscar): is the bridge cost ever significant relative to copy_to on conic problems?
+
+\paragraph{The nonlinear path.}
+\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and derivatives
+come from reverse-mode AD with coloring for sparse Hessians
+(the \texttt{Nonlinear.ReverseAD} module); it serves general nonlinear solvers and is out of
+scope for this thesis.
+% TODO(oscar): one-sentence accuracy check on the ReverseAD summary (reverse mode + acyclic or
+% star coloring for the Hessian?).
 
 \paragraph{References.}
 The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
 design of \texttt{JuMP}'s solver abstraction layer and its bridge system.
 David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the authoritative
 description of the \texttt{.nl} format and the \texttt{AMPL} solver interface.
+
+\paragraph{Summary.}
+\ref{tab:modeling-systems} closes the chapter by sorting the reviewed systems, together with the
+engine of \S\ref{sec:Theme1}, by the question that opened this section: whether the coefficients
+of the problem data are stored, detected, or differentiated. The stored systems trade
+canonicalization for declaration, so extraction is a copy of what the user typed; the detecting
+systems accept an opaque program and pay for tracing, coloring, and compressed sweeps; the
+differentiating systems compute the coefficients from an expression graph, and differ in whether
+the sparsity of each operation must be discovered or is known analytically. Chapter~\ref{sec:Theme2}
+measures the engine against the other five.
+
+\begin{table}[ht]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\caption{The reviewed systems and the engine of \S\ref{sec:Theme1}, sorted by the origin of
+their problem-data coefficients: stored as the user typed them, detected at runtime, or
+differentiated out of an expression graph.}
+\label{tab:modeling-systems}
+\begin{tabular}{@{}l l p{4.6cm} p{4.6cm}@{}}
+\toprule
+\textbf{System} & \textbf{Coefficients} & \textbf{Sparsity known from} & \textbf{Extraction cost} \\
+\midrule
+\texttt{JuMP}
+  & stored
+  & the term lists themselves
+  & one copy of the term lists (\texttt{copy\_to}) \\
+\texttt{AMPL}
+  & stored\textsuperscript{a}
+  & partial separability of the scalar tape
+  & \texttt{.nl} write and ASL read \\
+\addlinespace
+Julia sparse AD \cite{hill2025sparser}
+  & detected
+  & index-set tracing, then coloring
+  & compressed oracle sweeps \\
+\texttt{CasADi} \cite{andersson2019}
+  & detected
+  & pattern propagation, then coloring
+  & compressed oracle sweeps \\
+\addlinespace
+\texttt{CVXPY} \cite{diamond2016cvxpy}
+  & differentiated
+  & emerges from generic sparse products
+  & operator walk over the conic-form trees \\
+\textbf{This thesis}
+  & \textbf{differentiated}
+  & \textbf{analytic, per DCP atom}
+  & \textbf{operator walk over the conic-form trees} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5ex}
+\raggedright\footnotesize
+\textsuperscript{a}\,Linear parts only; the nonlinear parts are differentiated by ASL in the
+solver process.
+\end{table}

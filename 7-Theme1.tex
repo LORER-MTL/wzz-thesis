@@ -1,13 +1,10 @@
-\Chapter{A lightweight canonicalization engine}\label{sec:Theme1}
+\Chapter{A LIGHTWEIGHT CANONICALIZATION ENGINE}\label{sec:Theme1}
 
-% TODO maybe revisit this first sentence later.
-% either add some context (i.e. both take the matrix calculus view)
-% and also both operate on vectorized expression trees.
-% or when I think about it more, there is actually lots of differences.
-% maybe we should change fundamentally to mathematically?
-Fundamentally, there is not much difference between how \texttt{SparseDiffEngine}
-and \texttt{CVXPY}'s canonicalization backend compute derivatives. However, there are many
-interesting implementation details which we will present in this chapter.
+Mathematically, \texttt{SparseDiffEngine} computes the same derivatives as
+\texttt{CVXPY}'s canonicalization backend: both apply the chain rule of matrix calculus
+to trees of vectorized expressions, producing the Jacobian and Hessian of
+\S\ref{sec:bg-derivatives}. The differences are in the implementation details,
+which we will present in this chapter.
 Firstly, the use of a custom sparse matrix data structure allows a natural split
 between the symbolic and numeric phases of the derivative computation. This separation
 is particularly useful for compiling problems involving parameters, where
@@ -21,13 +18,13 @@ use of dense storage and BLAS subroutines when possible.
 Finally, some important design decisions differ from \texttt{CVXPY}'s backends for
 simplicity rather than speed. Every node carries a single Jacobian whose columns span
 all of the variables of the problem, rather than a dictionary of local Jacobians keyed by
-variable. As a consequence, the chain rule is a single matrix product, and the problem
-data assembles by concatenation. In addition, quadratic functions pass through
+variables. As a consequence, the chain rule is a single matrix product, and the
+constraint matrix is built by stacking the Jacobians of the constraints.
+In addition, quadratic functions pass through
 dedicated Hessian oracles instead of a separate substitution and matrix stuffing pass.
 
 The rest of the chapter is structured as follows: we begin with a brief overview of
-the engine, describing how expressions are represented as trees of atoms and how the
-code is organized.
+the engine, describing how expressions are represented and how the code is organized.
 We then present the matrix representations used for the derivative computations,
 where we will focus much of our attention on the \texttt{permuted-dense}
 matrix, which appears most often. Next we describe the algorithms, or \emph{kernels},
@@ -41,32 +38,54 @@ The chapter ends with some comments about the \ac{API} of
 
 \section{Overview of the engine}\label{sec:theme1-overview}
 
-\texttt{SparseDiffEngine} is a small C library, roughly eighteen thousand lines of code,
-with a test suite of about the same size.
-The expression node and the routines that traverse trees of expressions are defined in
-\texttt{expr.c}. Each atom is implemented in its own file in the \texttt{atoms/}
-directory; there are forty-five of them, divided into six subdirectories based on their
+\texttt{SparseDiffEngine} is a small C library which is around seventeen thousand lines
+of code (and a similar number of lines for the test suite).
+The expression node is defined in \texttt{expr.h}; atoms that carry extra data, such as
+the exponent of a power, define a larger structure in \texttt{subexpr.h}.
+Each atom is implemented in its own file in the \texttt{atoms/}
+directory; there are around forty-five of them, divided into six subdirectories based on their
 mathematical properties: \texttt{affine}, elementwise and bivariate functions with full or
 restricted domains, and a small group of \texttt{other} atoms such as the quadratic form.
-The matrix data structures and the numerical kernels that operate on them are in
+The matrix data structures and the computational kernels that operate on them are in
 \texttt{utils/}, and \texttt{problem.c} collects the objective and constraints of a
-problem and implements the oracles that are passed to a solver. Atoms in the same
-subdirectory have Jacobians with the same structure, and their implementations share most
-of their code (\S\ref{sec:theme1-atom-implementations}). In this chapter we only discuss
-the affine atoms and the quadratic form, since these are the only atoms that appear in
-canonicalized DCP problems; the remaining classes are used by the nonlinear programming
-(\acs{NLP}) interface of \texttt{CVXPY} \cite{cederberg2025disciplined}.\acused{NLP}
+problem and implements the oracles that are passed to a solver.
 
+\paragraph{Atom classes.}
+Atoms in the same subdirectory compute their derivatives in the same way
+(Table~\ref{tab:atom-classes}). In this chapter we only discuss the affine atoms and the
+quadratic form, since these are the only atoms that appear in canonicalized DCP problems;
+the remaining classes are used by the nonlinear programming (\acs{NLP}) interface of
+\texttt{CVXPY} \cite{cederberg2025disciplined}.\acused{NLP}
+\begin{table}[htbp]
+\caption{The atom classes and how each computes its Jacobian.}
+\label{tab:atom-classes}
+\centering
+\begin{tabular}{llp{4.5cm}}
+\toprule
+Class & Examples & Jacobian computation \\
+\midrule
+affine & \texttt{sum}, \texttt{index}, \texttt{left\_matmul} & fixed; index maps and copies \\
+elementwise, full domain & \texttt{exp}, \texttt{power}, \texttt{logistic} & diagonal
+scaling of the child Jacobian \\
+elementwise, restricted domain & \texttt{log}, \texttt{entr}, \texttt{atanh} & diagonal at
+the variable's columns \\
+bivariate, full domain & \texttt{multiply}, \texttt{matmul} & two-term chain rule \\
+bivariate, restricted domain & \texttt{quad\_over\_lin}, \texttt{rel\_entr} & two-term
+chain rule \\
+other & \texttt{quad\_form}, \texttt{prod} & specific to each atom \\
+\bottomrule
+\end{tabular}
+\end{table}
 Each atom implements three operations: a \emph{forward} pass, which evaluates the atom at
-a point; an \emph{init} pass, which computes the sparsity patterns of its derivatives and
-allocates memory for them; and a \emph{value} pass, which computes the numerical values
-inside the fixed patterns. The constructor of the atom installs these operations as
-function pointers on the expression node.
-The init pass runs once per problem, while the value pass runs at every evaluation.
-\S\ref{sec:theme1-reusing-work} describes the benefits of this separation.
+a point; a \emph{symbolic} pass, which computes the sparsity patterns of its derivatives
+and allocates memory for them; and a \emph{numeric} pass, which computes the numerical
+values inside the fixed patterns. The constructor of the atom
+stores pointers to these three functions in the expression node.
 
+\paragraph{The expression node.}
 An expression node stores its dimensions, pointers to at most two children, a buffer for
-its value, and its derivative matrices. A simplified version of the definition in
+its value, and its derivative matrices, whose \texttt{n\_vars} columns span all of the
+variables of the problem. A simplified version of the definition in
 \texttt{expr.h} is shown below.
 \begin{lstlisting}[language=C]
 typedef struct expr
@@ -79,21 +98,24 @@ typedef struct expr
     matrix *jacobian;  /* Jacobian w.r.t. the variables */
 
     forward_fn        forward;
-    jacobian_init_fn  jacobian_init_impl;
-    eval_jacobian_fn  eval_jacobian;
+    jacobian_init_fn  jacobian_init_impl;  /* symbolic pass */
+    eval_jacobian_fn  eval_jacobian;       /* numeric pass  */
     /* ... Hessian oracle, workspace and caching fields ... */
 } expr;
 \end{lstlisting}
 Trees are built bottom up, with one constructor function per atom; the Python bindings
-expose the same constructors. Expressions that appear multiple times can be shared, in
+expose the same constructors, so a \texttt{CVXPY} expression is converted by a single
+traversal that calls the constructor of the corresponding atom at each node
+(\S\ref{sec:theme1-api}). Expressions that appear multiple times can be shared, in
 which case the tree becomes a directed acyclic graph. Nodes are therefore reference
-counted, and the initialization routines return early if a node was already initialized
+counted, and the symbolic pass returns early if a node was already initialized
 through another parent.
 
-There are two leaf atoms, variables and parameters. A \emph{variable} occupies a
+\paragraph{Leaf nodes.}
+There are two leaf nodes, variables and parameters. A \emph{variable} occupies a
 contiguous slice of the global variable vector, starting at its offset \texttt{var\_id};
 its Jacobian is a selection matrix with one unit entry per row, written once during the
-init pass. Unlike \texttt{CVXPY}, there is no separate constant node: constants and
+symbolic pass. Unlike \texttt{CVXPY}, there is no separate constant node: constants and
 parameters share a single leaf type, distinguished by an identifier that is $-1$ for
 constants and, for updatable parameters, the offset of the parameter in the global
 parameter vector. The Jacobian of this leaf is empty, since parameters are fixed during a
@@ -101,29 +123,30 @@ solve, and because parameters are leaves of the tree, the derivative structure r
 valid when their values change (\S\ref{sec:problem-statement}).
 
 \section{Matrix representations}\label{sec:theme1-matrix-representations}
-
 The \texttt{jacobian} field of the expression node has a polymorphic type called
 \texttt{matrix}, with one representation for each kind of structure that we want to
-exploit. The representation of a Jacobian is chosen by the atom that owns it during the
-init pass, that is, during the symbolic phase; after that, every operation on the matrix,
+exploit. Each atom chooses the representation of its Jacobian when it allocates it
+during the symbolic pass; multiplication by dense data allocates a permuted dense
+matrix, for example. After that, every operation on the matrix,
 such as transposition, row indexing, or a chain-rule product, simply dispatches to a
 kernel specific to the representations involved. The default representation is a generic
-sparse matrix stored in the CSR format of \S\ref{sec:bg-sparse} \cite{davis2006direct}.
+sparse matrix stored in the CSR format of \S\ref{sec:bg-sparse}.
 
 \subsection{The permuted dense matrix}\label{sec:theme1-permuted-dense}
 
 The Jacobians that appear during canonicalization are usually not sparse in the sense of
-having scattered, isolated nonzeros. More often they contain a dense block, typically
-problem data or a product involving problem data, placed at a subset of the rows and
-columns of a much larger matrix. As an example, consider the affine expression $Ax$ with
-dense data $A \in \reals^{50 \times 50}$ in a problem with ten thousand variables. The
-Jacobian of this expression is the matrix $A$ itself, stored in the fifty columns that
-correspond to $x$, with all other entries equal to zero. If this Jacobian is stored in a
-generic sparse format, all subsequent products go through sparse kernels, and the
-hardware efficiency of \S\ref{sec:bg-blas} is lost.
-% let's rework the example or atleast the wording of the example.
-% what do we mean by factored form below?
-We therefore store such matrices in factored form. A \emph{permuted dense} matrix
+having scattered, isolated nonzeros. Multiplication by problem data places the data
+itself, or a product involving it, as a dense block at a subset of the rows and columns
+of the Jacobian. Consider the expression $Bx$ with dense
+data $B \in \reals^{50 \times 50}$, in a problem with ten thousand variables. Its Jacobian
+with respect to the full variable vector is a matrix with ten thousand columns that
+contains $B$ in the fifty columns of $x$ and is zero everywhere else. If this Jacobian is
+stored in a generic sparse format, every subsequent product goes through sparse kernels,
+and the hardware efficiency of \S\ref{sec:bg-blas} is lost.
+
+\paragraph{Definition.}
+We therefore store such matrices in \emph{factored form}: we keep the dense block and the
+index vectors that place it, and never assemble the global matrix. A \emph{permuted dense} matrix
 is a triple $(X, r, c)$, where $X \in \reals^{m_0 \times n_0}$ is a dense block and $r$ and
 $c$ are strictly increasing index vectors, representing
 \BEQ\label{eq:permuted-dense}
@@ -131,9 +154,15 @@ $c$ are strictly increasing index vectors, representing
   \qquad A_{r_i,\, c_j} = X_{ij},
 \EEQ
 where $S_r \in \{0,1\}^{m_0 \times m}$ and $S_c \in \{0,1\}^{n_0 \times n}$ are the selector
-matrices whose rows are the rows of the identity indexed by $r$ and $c$. All other entries of
+matrices whose rows are the rows of the identity indexed by $r$ and $c$: multiplying a
+vector by $S_r$ selects the entries indexed by $r$, and multiplying by $S_r^T$ scatters
+them back into a vector of length $m$, with zeros elsewhere. All other entries of
 $A$ are structurally zero and never stored. Figure~\ref{fig:permuted-dense} shows an
 example with a $3 \times 3$ block inside a $6 \times 7$ matrix.
+
+\colorlet{pdRowA}{blue!12}
+\colorlet{pdRowB}{green!16!white}
+\colorlet{pdRowC}{orange!22!white}
 
 \begin{figure}[htbp]
 \centering
@@ -142,9 +171,9 @@ A \;=\;
 \begin{pNiceMatrix}[margin]
 \CodeBefore
   \begin{tikzpicture}
-    \foreach \r in {2,4,5}
+    \foreach \r/\clr in {2/pdRowA,4/pdRowB,5/pdRowC}
       \foreach \c in {1,3,6}
-        \fill[blue!12] (row-\r-|col-\c) rectangle
+        \fill[\clr] (row-\r-|col-\c) rectangle
           (row-\the\numexpr\r+1\relax-|col-\the\numexpr\c+1\relax);
   \end{tikzpicture}
 \Body
@@ -158,7 +187,11 @@ x_{20} & \cdot & x_{21} & \cdot & \cdot & x_{22} & \cdot \\
 \qquad
 X \;=\;
 \begin{pNiceMatrix}[margin]
-\CodeBefore \rectanglecolor{blue!12}{1-1}{3-3} \Body
+\CodeBefore
+  \rectanglecolor{pdRowA}{1-1}{1-3}
+  \rectanglecolor{pdRowB}{2-1}{2-3}
+  \rectanglecolor{pdRowC}{3-1}{3-3}
+\Body
 x_{00} & x_{01} & x_{02} \\
 x_{10} & x_{11} & x_{12} \\
 x_{20} & x_{21} & x_{22}
@@ -169,62 +202,83 @@ r = (1,3,4), \qquad c = (0,2,5).
 \]
 \caption{A permuted dense matrix. The dense block $X$ is stored once, contiguously; the
 index vectors $r$ and $c$ place its entries in the global index space, and every entry
-outside the shaded cells is structurally zero and never stored.}
+outside the shaded cells is structurally zero and never stored. Each block row keeps its
+own shade, reused in Figure~\ref{fig:permuted-dense-index}.}
 \label{fig:permuted-dense}
 \end{figure}
 
-The block $X$ is stored in one contiguous row-major buffer of $m_0 n_0$ doubles, and the
-index vectors are two integer arrays, so the amount of storage does not depend on the
-global dimensions. We also store the two inverse maps, which send a global index to the
-corresponding block index, or to $-1$ if there is none, so that membership can be checked
-in constant time. Structural operations only involve integer arithmetic on the index
-vectors, while all floating point operations are performed on the contiguous block.
-% I think this last sentence is really nice and important and worth pointing out.
-% should we consider maybe showing another more complicated example?
-% where we would do a structural operation on the block?
-% nevermind the example is alreday there. maybe we can make it more visual possibly?
-% actually you do that already but it is not really comprehensible yet.
-% let's make another iteration on it to see if we could make it make more sense visually.
-The representation is closed under the operations that we need to perform on it. To
-transpose, we swap the two index vectors and transpose the block. The structural atoms,
-for example indexing, broadcasting, and the row partitions of \texttt{sum}, all map a
-permuted dense matrix to another permuted dense matrix, using integer arithmetic on the
-index vectors and row copies of the block. As an example,
-Figure~\ref{fig:permuted-dense-index} shows the result of indexing the rows $(3,0,4,3)$
-of the matrix in Figure~\ref{fig:permuted-dense}. Global rows $3$ and $4$ correspond to
-block rows $1$ and $2$; global row $0$ does not appear in the row vector, so the
-corresponding output row is zero; and the repeated index $3$ duplicates a block row. The
-result is again permuted dense, with row vector $(0,2,3)$, the same column vector as $A$,
-and a block made of rows of $X$. Computing the structure takes one scan of the inverse
-row map, and computing the values takes three row copies.
+\paragraph{Storage.}
+The block $X$ is stored contiguously in row-major order and the index vectors as two
+integer arrays, so storage does not depend on the global dimensions. Two inverse maps,
+which send a global index to its block index or to $-1$, make membership checks constant
+time. Structure is computed with integer arithmetic on the index vectors; floating point
+operations run only on the contiguous block.
+
+\paragraph{Structural operations.}
+Every operation we need maps a permuted dense matrix to another permuted dense matrix.
+Transposition swaps the two index vectors and transposes the block. The structural atoms,
+such as indexing, broadcasting, and the row partitions of \texttt{sum}, work the same
+way: since row $r_i$ of $A$ is row $i$ of $X$ and every other row is zero, an operation
+on the rows of $A$ reduces to the same operation on the rows of $X$, guided by the
+inverse row map.
 
 \begin{figure}[htbp]
 \centering
 \[
-C = A[(3,0,4,3),\,:] \;=\;
+\begin{NiceArray}{r|ccc}
+\CodeBefore
+  \rectanglecolor{pdRowB}{4-2}{4-2}
+  \rectanglecolor{pdRowC}{4-4}{4-4}
+\Body
+\text{output row } i & 0 & 1 & 2 \\
+\text{requested global row } s_i & 3 & 0 & 4 \\
+\text{inverse row map } r^{-1}[s_i] & 1 & -1 & 2 \\
+\text{action} & \text{copy } X_{1,:} & \text{zero row} & \text{copy } X_{2,:}
+\end{NiceArray}
+\]
+\[
+C = A[(3,0,4),\,:] \;=\;
 \begin{pNiceMatrix}[margin,last-col]
 \CodeBefore
-  \rectanglecolor{blue!12}{1-1}{1-1}\rectanglecolor{blue!12}{1-3}{1-3}\rectanglecolor{blue!12}{1-6}{1-6}
-  \rectanglecolor{blue!12}{3-1}{3-1}\rectanglecolor{blue!12}{3-3}{3-3}\rectanglecolor{blue!12}{3-6}{3-6}
-  \rectanglecolor{blue!12}{4-1}{4-1}\rectanglecolor{blue!12}{4-3}{4-3}\rectanglecolor{blue!12}{4-6}{4-6}
+  \rectanglecolor{pdRowB}{1-1}{1-1}\rectanglecolor{pdRowB}{1-3}{1-3}\rectanglecolor{pdRowB}{1-6}{1-6}
+  \rectanglecolor{pdRowC}{3-1}{3-1}\rectanglecolor{pdRowC}{3-3}{3-3}\rectanglecolor{pdRowC}{3-6}{3-6}
 \Body
 x_{10} & \cdot & x_{11} & \cdot & \cdot & x_{12} & \cdot & \leftarrow A_{3,:} \\
 \cdot  & \cdot & \cdot  & \cdot & \cdot & \cdot  & \cdot & \leftarrow A_{0,:} = 0 \\
-x_{20} & \cdot & x_{21} & \cdot & \cdot & x_{22} & \cdot & \leftarrow A_{4,:} \\
-x_{10} & \cdot & x_{11} & \cdot & \cdot & x_{12} & \cdot & \leftarrow A_{3,:}
+x_{20} & \cdot & x_{21} & \cdot & \cdot & x_{22} & \cdot & \leftarrow A_{4,:}
 \end{pNiceMatrix}
-,\qquad
-X_C = \begin{pmatrix} X_{1,:} \\ X_{2,:} \\ X_{1,:} \end{pmatrix}
+\]
+\[
+X_C \;=\; X[(1,2),\,:] \;=\;
+\begin{pNiceMatrix}[margin]
+\CodeBefore
+  \rectanglecolor{pdRowB}{1-1}{1-3}
+  \rectanglecolor{pdRowC}{2-1}{2-3}
+\Body
+x_{10} & x_{11} & x_{12} \\
+x_{20} & x_{21} & x_{22}
+\end{pNiceMatrix}
+, \qquad
+r_C = (0,2), \qquad c_C = c = (0,2,5).
 \]
 \caption{Row indexing of the permuted dense matrix $A$ of Figure~\ref{fig:permuted-dense}.
-One output row is zero, one block row is duplicated, and the column structure is
-unchanged: the result has row vector $(0,2,3)$, the column vector of $A$, and a block made
-of rows of $X$.}
+The table traces the scan of the inverse row map: each requested global row yields a block
+row of $X$ to copy, or $-1$, in which case the output row is structurally zero and not
+stored. Shades follow the block rows of Figure~\ref{fig:permuted-dense}. The result is the
+permuted dense triple $(X_C, r_C, c_C)$.}
 \label{fig:permuted-dense-index}
 \end{figure}
 
-The chain-rule product of two permuted dense matrices is also permuted dense: for
-permuted dense $A$ and $B$, the product $B^T A$ factors as
+Figure~\ref{fig:permuted-dense-index} traces the indexing of rows $(3,0,4)$ of the
+matrix in Figure~\ref{fig:permuted-dense}: each hit in the inverse row map yields a
+block row to copy, and the miss at row $0$ produces a zero row that is not stored. The
+result is again permuted dense, with block $X[(1,2),\,:]$, row vector $(0,2)$, and the
+column vector of $A$; a repeated row would simply copy the same block row twice. The
+structure costs one integer scan, the values two row copies.
+
+\paragraph{The chain-rule product.}
+The product of two permuted dense matrices is also permuted dense: for
+permuted dense $A$ and $B$, the chain-rule product $B^T A$ factors as
 \BEQ\label{eq:pd-product}
 B^T A
 = S_{c_B}^T X_B^T \underbrace{\left(S_{r_B} S_{r_A}^T\right)}_{\text{row-set intersection}}
@@ -234,114 +288,119 @@ The middle factor is a zero-one matrix whose entry $(k, l)$ is one exactly when
 $r_{B,k} = r_{A,l}$, so the sparsity analysis of the product amounts to intersecting two
 sorted integer arrays. The result has row vector $c_B$ and column vector $c_A$, which are
 known before any numerical values exist. For the values there are three cases. If the two
-row sets are equal, the product is computed with a single \texttt{dgemm} on the two
-blocks. If they overlap partially, the matching rows are first gathered into a workspace
-(allocated during init), followed by the same \texttt{dgemm}. If they are disjoint, the
-product is zero, and nothing is computed in the value pass. The weighted product
-$B^T D A$, which appears when Hessians are assembled, is handled the same way, since
-$S_r D S_r^T$ reduces to a small diagonal that is applied by scaling the rows of the
-block.
-% maybe this last sentence can be removed? I don't think this appears for anything
-% that is actually used in the diffengine backend. Since the hessian is always of only the objective.
+row sets are equal, the product is computed on the two blocks with a single call to
+\texttt{dgemm}, the double precision general matrix--matrix product of level-3 BLAS
+(\S\ref{sec:bg-blas}). If they overlap partially, the matching rows are first gathered
+into a workspace (allocated during the symbolic pass),
+followed by the same \texttt{dgemm}. If they are
+disjoint, the product is zero, and nothing is computed in the numeric pass. The weighted
+product $B^T D A$, needed for the Hessian of the objective, is handled the same way.
 
-% what is the factored form again? also can you summarize the citation, I haven't read
-% it before.
-The main benefit of the factored form is that the floating point work is done by dense
-kernels. If the same matrix is stored in the CSR format, its products go through sparse
-kernels, whose indexed accesses and irregular inner loops reach only a fraction of the
-throughput of BLAS at the same operation count \cite{goto2008anatomy}. In the factored
-form, the value pass of each kernel consists of a few BLAS calls on contiguous buffers.
+\paragraph{Performance.}
+The main benefit of the factored form \eqref{eq:permuted-dense} is that the floating
+point work is done by dense kernels. If the same matrix is stored in the CSR format, its
+products go through sparse kernels, whose indexed accesses and irregular inner loops
+reach only a fraction of the throughput of BLAS \cite{goto2008anatomy} at the same
+operation count. In the factored
+form, the numeric pass of each kernel consists of a few BLAS calls on contiguous buffers.
 The product $A^T D A$, for example, is computed with one copy, $m_0$ scalings, and one
 \texttt{dgemm}, and the cost does not depend on the global dimensions.
 
-% Isn't this exactly what the stacked permuted dense class is for?
-% or maybe I don't quite understand it yet.
-% please explain this part and let's clean it up if it is supposed to be for stacked_pd.
+\paragraph{Limitations.}
+A permuted dense matrix cannot represent nonzeros outside its block: by
+\eqref{eq:permuted-dense}, every such entry is structurally zero. A Jacobian that mixes a
+dense block with scattered entries simply uses the default CSR representation, and an
+operation whose result does not keep the block structure, such as adding operands with
+different patterns, is performed on CSR views of its operands. The remaining risk is
+dense data that contains many zeros, which would be stored and multiplied densely,
+spending floating point work on zeros; since \texttt{CVXPY} supplies sparse data in
+sparse formats, this does not arise in practice.
+
+\subsection{The stacked permuted dense matrix}\label{sec:theme1-stacked-pd}
+
 When an expression with matrix shape $n \times p$ is multiplied by data
 $A \in \reals^{m \times n}$, the effect on the vectorized expression is that of the block
-diagonal operator $I_p \otimes A$. This operator is never formed. In memory, the $p$
-segments of length $n$ of a vector $x$ form a $p \times n$ row-major matrix $\tilde{X}$,
-and by a standard vectorization identity \cite{magnus2019matrix},
+diagonal operator $I_p \otimes A$; this is the \texttt{left\_matmul} atom. The operator
+is never formed: the engine keeps one copy of $A$ and applies it block by block. In
+memory, the $p$ segments of length $n$ of a vector $x$ form a $p \times n$ row-major
+matrix $\tilde{X}$, and by a standard vectorization identity \cite{magnus2019matrix},
 \BEQ\label{eq:kron-reshape}
   y = (I_p \otimes A)\, x
   \quad\Longleftrightarrow\quad
   \tilde{Y} = \tilde{X} A^T,
 \EEQ
-so the operator, nominally of size $pm \times pn$, is applied with a single
-\texttt{dgemm} and no data movement. The Jacobian products of the \texttt{left\_matmul}
-atom use the same identity, and avoiding the explicit operator made the initialization of
-its sparsity pattern roughly one hundred times faster.
+so applying the operator to a vector is a single \texttt{dgemm} on the stored $A$.
+Avoiding the explicit operator made the initialization of the atom's sparsity pattern
+roughly one hundred times faster.
 
-\subsection{The stacked permuted dense matrix}\label{sec:theme1-stacked-pd}
+The identity applies the operator; the atom must also store its Jacobian. The parent node
+receives $(I_p \otimes A)\, J$, where $J$ is the Jacobian of the child, and transposes,
+indexes, and multiplies it like any other Jacobian. This matrix is made of $p$ dense
+blocks at disjoint rows, one per column of the operand, and each block generally sits at
+its own global columns, so no single triple $(X, r, c)$ describes it. Merging the blocks
+into one larger triple would store the full block diagonal, $p$ copies of $A$ separated
+by blocks of zeros, and falling back to generic sparse would lose the dense kernels. The
+engine instead keeps the blocks as they are, in a third representation.
 
-% I like that this section is short. but maybe we ccan try another visual here?
-% also I don't like the start with "the representaiton..." like which one are we talking about?
-The representation is, however, not closed under one family of products. The Jacobian of
-the \texttt{left\_matmul} atom is $(I_p \otimes A)\, J$, where $J$ is the Jacobian of the
-child expression. This matrix consists of $p$ row blocks, each of them a permuted dense
-product, placed at disjoint global rows, and blocks with different column index vectors
-cannot be described by a single triple $(X, r, c)$. For this reason there is a third
-representation. A \emph{stacked permuted dense} matrix is a vertical union of permuted
-dense blocks whose row vectors are pairwise disjoint; the column vectors may overlap. The
-blocks share one value buffer, and the kernels of this subsection apply block by block:
-structural atoms modify the index vectors of each block, products distribute over the
-blocks with one \texttt{dgemm} each, and pairs of blocks with disjoint row sets are
-skipped, as in \eqref{eq:pd-product}. A few operations, such as transposition, can cause
-row vectors to overlap; these are followed by a coalescing step that merges such blocks.
+\paragraph{Definition.}
+A \emph{stacked permuted dense} matrix is a vertical union of permuted dense blocks
+whose row vectors are pairwise disjoint; the column vectors may overlap. The blocks share
+one value buffer. Every kernel treats the blocks one at a time: structural atoms rewrite
+the index vectors of each block, and products distribute over the blocks, with one
+\texttt{dgemm} for each pair of blocks with intersecting row sets and nothing at all for
+the pairs with disjoint row sets, as in \eqref{eq:pd-product}. The assembled matrix is
+never allocated or traversed, and each stacked kernel is a short loop over the
+corresponding permuted dense kernel. Figure~\ref{fig:stacked-pd} shows the Jacobian of
+$AX$ for a variable $X$ with two columns: one block per column of $X$, each a copy of $A$
+at its own rows and columns.
+\begin{figure}[htbp]
+\centering
+\[
+M \;=\;
+\begin{pNiceMatrix}[margin]
+\CodeBefore
+  \rectanglecolor{pdRowB}{1-1}{2-2}
+  \rectanglecolor{pdRowC}{3-3}{4-4}
+\Body
+a_{00} & a_{01} & \cdot  & \cdot  & \cdot & \cdot \\
+a_{10} & a_{11} & \cdot  & \cdot  & \cdot & \cdot \\
+\cdot  & \cdot  & a_{00} & a_{01} & \cdot & \cdot \\
+\cdot  & \cdot  & a_{10} & a_{11} & \cdot & \cdot
+\end{pNiceMatrix}
+\]
+\[
+X_1 = X_2 = A, \qquad
+r_1 = (0,1), \quad c_1 = (0,1), \qquad
+r_2 = (2,3), \quad c_2 = (2,3).
+\]
+\caption{The Jacobian of $AX$ as a stacked permuted dense matrix, for dense
+$A \in \reals^{2 \times 2}$ and a variable $X \in \reals^{2 \times 2}$ in a problem with
+six variables. There is one block per column of $X$, each a permuted dense copy of $A$ at
+its own rows and columns. The $4 \times 6$ matrix $M$ is never assembled; a product with
+$M$ is one \texttt{dgemm} per block.}
+\label{fig:stacked-pd}
+\end{figure}
 
+\paragraph{The three representations.}
 Generic sparse, permuted dense, and stacked permuted dense are the only three matrix
-representations in the engine.
+representations in the engine. Generic sparse is the default: it is produced by the
+variable leaves and by every atom that does not hold dense data.
+Permuted dense and stacked permuted dense are created by the two atoms that
+hold dense data, \texttt{left\_matmul} and the quadratic form, and propagate from there
+through the structural atoms and the chain rule.
 
 \section{Computational kernels}\label{sec:theme1-kernels}
 
-This section describes how the atoms compute their derivatives, how kernels are selected
-when the operands of a product have different representations, and how computational work is reused
-across evaluations.
-
-\subsection{Atom implementations}\label{sec:theme1-atom-implementations}
-% I dont understand the purpose of this paragraph.
-% maybe we can consider cutting it if there's no good justification.
-The six subdirectories of \S\ref{sec:theme1-overview} group the atoms by their number of
-arguments and by whether their domain is all of $\reals^n$. Atoms in the same class
-compute their derivatives in the same way, and the shared part of the computation is
-implemented once in a common file; the individual atom only supplies its forward map and
-its scalar derivatives. Table~\ref{tab:atom-classes} summarizes the six classes. We only
-describe the two classes that appear in canonicalized problems.
-
-\begin{table}[htbp]
-\caption{The atom classes and their shared Jacobian recipes.}
-\label{tab:atom-classes}
-\centering
-\begin{tabular}{lll}
-\toprule
-Class & Examples & Jacobian recipe \\
-\midrule
-affine & \texttt{sum}, \texttt{index}, \texttt{left\_matmul} & fixed; index maps and copies \\
-elementwise, full domain & \texttt{exp}, \texttt{power}, \texttt{logistic} & diagonal
-scaling of the child Jacobian \\
-elementwise, restricted domain & \texttt{log}, \texttt{entr}, \texttt{atanh} & diagonal at
-the variable's columns \\
-bivariate, full domain & \texttt{multiply}, \texttt{matmul} & two-term chain rule \\
-bivariate, restricted domain & \texttt{quad\_over\_lin}, \texttt{rel\_entr} & two-term
-chain rule \\
-other & \texttt{quad\_form}, \texttt{prod} & bespoke \\
-\bottomrule
-\end{tabular}
-\end{table}
-% let's try to always use the symbolic pass instead of init.
-The Jacobian of an affine atom does not depend on $x$. For the structural atoms, such as
-indexing, transposition, reshaping, stacking, and summation, the Jacobian is determined
-by shapes and index sets alone. Their init pass computes an index map, and their value
-pass gathers or copies the values of the child; for several of these atoms the value pass
-does nothing, because the entries were already written during init. The remaining affine
-atoms, such as \texttt{left\_matmul}, \texttt{scalar\_mult}, \texttt{convolve}, and
-\texttt{kron}, place problem data in the Jacobian. Their values only change when a
-parameter update sets the refresh flag of \S\ref{sec:theme1-overview}.
-% I dont like using the word hessian machinery. maybe should we just cut this?
-% I feel like it will just raise more questions than the purpose it serves currently.
-The quadratic form is the only atom outside the affine class that appears in
-canonicalized problems. Its gradient is affine in $x$, and most of its implementation
-belongs to the Hessian machinery, which we do not describe in this chapter.
+A kernel is an operation on one or two of the matrix representations of
+\S\ref{sec:theme1-matrix-representations}: a transposition, a row selection, a
+chain-rule product. Every kernel is split into an alloc function and a fill function,
+called by the symbolic and numeric passes respectively: alloc computes the structure of the
+result and reserves its memory, and fill writes numerical values into the fixed
+structure. This section describes the kernels from the point of view of the atoms that
+call them. \S\ref{sec:theme1-kernel-dispatch} describes
+how a product selects a kernel when each operand can have any of the three
+representations, and \S\ref{sec:theme1-reusing-work} collects the work that is done once
+during the symbolic pass instead of at every evaluation.
 
 \subsection{Kernel dispatch}\label{sec:theme1-kernel-dispatch}
 
@@ -350,7 +409,7 @@ Unary operations are dispatched through the function pointer table of
 operand. The chain-rule products $B^T A$ and $B^T D A$ depend on the representations of
 both operands, which a single table cannot express. They are instead resolved with double
 dispatch: a dispatch function switches on the type tags of $B$ and then of $A$, and calls
-one of nine kernels, each consisting of an alloc and a fill function.
+one of nine kernels.
 Figure~\ref{fig:kernel-dispatch} shows the representation of the result for the nine
 combinations of operand types.
 
@@ -407,40 +466,39 @@ BLAS calls; in the mixed combinations, the columns of the sparse operand are gat
 into the dense computation. Only the product of two generic sparse matrices uses
 Gustavson's algorithm \cite{gustavson1978two}, with the symbolic and numeric phases
 discussed in \S\ref{sec:bg-sparse}.
-% I feel like I haven't talked about the CSC mirror a lot. are we sure we introduced it before?
-% let's make sure of it. otherwise we should maybe not talk about it?
-% also maybe that's something we could mention as an "improvement" over matrix stuffing?
-% that we are careful with the type of matrix we operate on and also that we store the
-% transpose for certain use cases? Something to think about I guess.
-The number of kernels is kept small with transpose identities. No kernel transposes an
-operand explicitly: reading a CSR matrix through its CSC mirror gives the transpose (the
-mirror is built once and refreshed when needed), and a permuted dense matrix caches its
-transpose the first time it is requested. A plain product $B A$ is only implemented for
-permuted dense $B$, and the block diagonal products $(I_p \otimes A)\,J$ of
-\texttt{left\_matmul} have their own three kernels, with stacked permuted dense results.
-In some atoms the order of operations is chosen with the dispatcher in mind; the
-quadratic form, for example, computes $J^T Q J$ as $(Q J)^T J$, so that the permuted
-dense factor is in the operand slot that determines the kernel.
 
 \subsection{Reusing work across passes}\label{sec:theme1-reusing-work}
 
-The value pass never allocates memory; every buffer, including the scratch space of the
-kernels, is allocated during init. Beyond allocation, several other kinds of work are
-done only once. Sparsity patterns are computed during init: \texttt{add} merges the
+\paragraph{Affine atoms.}
+The Jacobian of an affine atom does not depend on $x$: for the structural atoms, such as
+indexing, transposition, reshaping, stacking, and summation, it is determined by shapes
+and index sets alone, and the remaining affine atoms, such as \texttt{left\_matmul},
+\texttt{scalar\_mult}, \texttt{convolve}, and \texttt{kron}, place problem data in the
+Jacobian, whose values only change when a parameter update sets their refresh flag. The
+quadratic form is the only atom outside the affine class that appears in canonicalized
+problems; it contributes the objective matrix $P$ through the Hessian oracle
+(\S\ref{sec:theme1-api}).
+
+\paragraph{Work done once.}
+The numeric pass never allocates memory; every buffer, including the scratch space of the
+kernels, is allocated during the symbolic pass. Beyond allocation, several other kinds of
+work are done only once. Sparsity patterns are computed symbolically: \texttt{add} merges the
 patterns of its children with a sorted merge, the sparse products run the symbolic phase
 of Gustavson's algorithm \cite{bank1993smmp}, and the factored products of
 \S\ref{sec:theme1-matrix-representations} determine their output index vectors before any
 values exist. Index maps are also precomputed: transposition stores its row permutation,
 \texttt{kron} its per-row copy maps, and \texttt{sum} the map from child nonzeros to
-output entries, so the value pass performs no index arithmetic. When the index vectors of
-two operands do not intersect, the product is recorded as empty during init, and its
-value pass does nothing. Finally, values that cannot change are written once; the
-Jacobian of a variable, for example, is filled during init and never touched again.
+output entries, so the numeric pass performs no index arithmetic. When the index vectors
+of two operands do not intersect, the product is recorded as empty during the symbolic
+pass, and its numeric pass does nothing. Finally, values that cannot change are written
+once; the Jacobian of a variable, for example, is filled during the symbolic pass and
+never touched again.
 
-Figure~\ref{fig:sum-idx-map} illustrates this for the \texttt{sum} atom. During init, the
-representation of the child allocates the output and fills \texttt{idx\_map}, an array
+Figure~\ref{fig:sum-idx-map} illustrates this for the \texttt{sum} atom. During the
+symbolic pass, the representation of the child allocates the output and fills
+\texttt{idx\_map}, an array
 that maps each nonzero of the child Jacobian to the output entry it is added to. The axis
-convention and all other index decisions are handled at this point. The value pass is a
+convention and all other index decisions are handled at this point. The numeric pass is a
 single loop, the same for every axis and every representation. Indexing, transposition,
 and \texttt{kron} work the same way, with a copy instead of an addition.
 
@@ -455,8 +513,8 @@ and \texttt{kron} work the same way, with a copy instead of an addition.
   ttl/.style={font=\small\itshape, anchor=center},
 ]
 \def\dy{0.62}
-% ---------- left panel: init ----------
-\node[ttl] at (1.15, 1.0) {init phase, once};
+% ---------- left panel: symbolic ----------
+\node[ttl] at (1.15, 1.0) {symbolic pass, once};
 \foreach \j in {0,...,4}
   \node[src] (L\j) at (0, -\j*\dy) {$v_\j$};
 \node[dst] (M0) at (2.3, -0.62) {$w_0$};
@@ -471,7 +529,7 @@ and \texttt{kron} work the same way, with a copy instead of an addition.
   {$\mathtt{idx\_map} = (0, 1, 0, 2, 1)$};
 % ---------- right panel: eval ----------
 \begin{scope}[xshift=6.4cm]
-\node[ttl] at (1.15, 1.0) {value phase, every evaluation};
+\node[ttl] at (1.15, 1.0) {numeric pass, every evaluation};
 \node[src] (R0) at (0, 0)        {2.0};
 \node[src] (R1) at (0, -\dy)     {3.0};
 \node[src] (R2) at (0, -2*\dy)   {1.5};
@@ -489,52 +547,29 @@ and \texttt{kron} work the same way, with a copy instead of an addition.
   {$\mathtt{out[idx\_map[}j\mathtt{]]} \mathrel{+}= \mathtt{vals[}j\mathtt{]}$};
 \end{scope}
 \end{tikzpicture}
-\caption{The two passes of the \texttt{sum} atom. During init, \texttt{idx\_map} is built,
+\caption{The two passes of the \texttt{sum} atom. During the symbolic pass,
+\texttt{idx\_map} is built,
 shown as arrows from the nonzeros $v_j$ of the child Jacobian to the output entries $w_i$;
-at every evaluation, the values are accumulated along the fixed arrows. The value passes
+at every evaluation, the values are accumulated along the fixed arrows. The numeric passes
 of the other structural atoms have the same form.}
 \label{fig:sum-idx-map}
 \end{figure}
 
-The problem level works in the same way. During init, the sparsity structures of the
-constraint Jacobians are concatenated into one global CSR matrix, by shifting the row
-pointers of each root and copying the column indices. At every evaluation, each subtree
-is refreshed and the value array of each root is copied into the global buffer at a fixed
-offset. If a root Jacobian is permuted dense, its CSR view is built once during init, and
-the value array of the view is a pointer to the dense block itself, so no values are ever
-copied or converted when the block is refilled. Affine constraints are skipped entirely
-after the first evaluation, since their values cannot change until the parameters do.
+\paragraph{The problem level.}
+Assembly works in the same way. The solver receives one global CSR matrix, formed by
+concatenating the constraint Jacobians, whose layout is fixed during the symbolic pass;
+an evaluation only copies the values of each constraint root into this matrix at a fixed
+offset. Affine constraints are skipped entirely after the first evaluation, since their
+values cannot change until the parameters do.
 
-A parameter update therefore only involves the value pass: \texttt{update\_params} writes
-the new values into the parameter leaves and sets the refresh flags, and the next
+\paragraph{Parameter updates.}
+An update only involves the numeric pass: \texttt{update\_params} writes
+the new values into the parameter leaves and sets a refresh flag on each affected
+subtree, and the next
 evaluation recomputes the values through the fixed maps and kernels. In comparison,
 without parametric compilation \cite{agrawal2019dpp}, \texttt{CVXPY} traverses the
 expression graph again, recomputes every sparsity pattern, and reallocates every buffer
 each time a parameter changes. The difference is measured in Chapter~\ref{sec:Theme2}.
-
-\section{Revisiting the limitations of matrix stuffing}\label{sec:theme1-limitations}
-
-\S\ref{sec:matrix-stuffing} listed three implementation details that are shared by the
-two stuffing backends of \texttt{CVXPY}. We now describe how the engine handles each of
-them. % we should maybe say, instead of we now describe, we summarize or emphasize again
-% how the engine is able to be better on these cases.
-
-\emph{External sparse libraries.} We use no external sparse library. All kernels are
-written by hand and specialized to structure that is known at canonicalization time, such
-as the selection-block Jacobians of variables and the factored products of
-\S\ref{sec:theme1-matrix-representations}. This made it possible to design the storage
-formats and the kernels around canonicalized problems instead of around generality.
-
-\emph{Everything is sparse.} Dense atom data enters the engine as a permuted dense block,
-remains in a structured representation through every product
-(Figure~\ref{fig:kernel-dispatch}), and is processed by level-3 BLAS. The generic sparse
-type is only used for data that is actually sparse.
-
-\emph{Quadratic objectives are separate.} No dummy variables are substituted and no
-second stuffing pass is run. A quadratic form remains in the tree as an atom, and its
-contribution to $P$ is computed by the Hessian oracle of \S\ref{sec:theme1-overview},
-with the same init and value passes as everything else. A full description of the Hessian
-machinery is outside the scope of this chapter.
 
 \section{The API and the CVXPY interface}\label{sec:theme1-api}
 
@@ -547,13 +582,13 @@ passing \texttt{ignore\_dpp=True}, and replaces the stuffed matrices of
 \S\ref{sec:matrix-stuffing} with a cone program object that wraps the same
 \texttt{C\_problem}. The code below is lightly condensed from the actual interface.
 
-The lifecycle of a \texttt{C\_problem} mirrors the two phases of this chapter:
+The lifecycle of a \texttt{C\_problem} mirrors the symbolic and numeric passes:
 \begin{lstlisting}[language=Python]
 prob = C_problem(problem)        # convert the tree, register parameters
-prob.init_jacobian_coo()         # init phase: patterns, maps, buffers
+prob.init_jacobian_coo()         # symbolic pass: patterns, maps, buffers
 rows, cols = prob.get_jacobian_sparsity_coo()  # structure, fetched once
 
-prob.objective_forward(x)        # value phase, repeated per iterate
+prob.objective_forward(x)        # numeric pass, repeated per iterate
 prob.constraint_forward(x)
 grad = prob.gradient()
 vals = prob.eval_jacobian_vals() # values aligned with (rows, cols)
@@ -571,13 +606,13 @@ def apply_parameters(self, id_to_value):
     theta = flatten_and_concatenate(id_to_value)
     if theta == self.cached_theta:       # same values: reuse everything
         return self.P, self.q, self.d, self.A, self.b
-    self.c_problem.update_params(theta)  # numeric phase only
+    self.c_problem.update_params(theta)  # numeric pass only
     self.P, self.q, self.d, self.A, self.b = self.extract()  # at x = 0
     self.cached_theta = theta
     return self.P, self.q, self.d, self.A, self.b
 \end{lstlisting}
 Repeated solves with unchanged parameter values return the cached matrices; an actual
-update costs one run of the value pass.
+update costs one run of the numeric pass.
 
 The caching follows the same pattern as in \S\ref{sec:theme1-reusing-work}. The
 \texttt{C\_problem} and its sparsity structures live as long as the problem family, the
@@ -588,14 +623,11 @@ Chapter~\ref{sec:RevLitt}.
 
 \paragraph{References.}
 The row-wise sparse product and the symbolic and numeric split are due to Gustavson
-\cite{gustavson1978two}; see also \cite{bank1993smmp}. The books of Davis
-\cite{davis2006direct} and Saad \cite{saad2003iterative} cover the compressed formats and
-their kernels. The BLAS interface was developed in \cite{lawson1979blas,
-dongarra1990level3}, and \cite{goto2008anatomy} explains the hardware behavior behind its
-performance. Griewank and Walther \cite{griewank2008evaluating} treat the computation of
-Jacobians on expression graphs. The idea of compiling a parametric problem family once
-also appears in DPP \cite{agrawal2019dpp}, where a cached parameter map plays the role of
-the init pass.
-% maybe we can cite cusparse from nvidia? And need to look for more work on
-% combining sparse and dense data structures or dense blocks, or maybe even block sparse
-% matrices?
+\cite{gustavson1978two}; see also \cite{bank1993smmp}.
+Mixing dense blocks into sparse storage appears in several settings:
+supernodal and multifrontal solvers gather dense submatrices of a sparse factor and
+process them with level-3 BLAS \cite{duff1983multifrontal, demmel1999supernodal} (see
+also the survey \cite{liu1992multifrontal}), and
+blocked sparse formats and autotuned kernels exploit small dense blocks found in the
+matrix \cite{im2004sparsity, vuduc2005oski}. In these systems the
+blocks are discovered in the data; in the engine they are known from canonicalization.

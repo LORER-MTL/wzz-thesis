@@ -1,5 +1,24 @@
 
 ###
+IEEEtran bibliography control entry, referenced by \bstctlcite in Document.tex.
+Values are the IEEEtran defaults; it exists only to silence the missing-entry warning.
+###
+@IEEEtranBSTCTL{IEEEexample:BSTcontrol,
+  CTLuse_article_number    = "yes",
+  CTLuse_paper             = "yes",
+  CTLuse_url               = "yes",
+  CTLuse_forced_etal       = "no",
+  CTLmax_names_forced_etal = "10",
+  CTLnames_show_etal       = "1",
+  CTLuse_alt_spacing       = "yes",
+  CTLalt_stretch_factor    = "4",
+  CTLdash_repeated_names   = "no",
+  CTLname_format_string    = "{f.~}{vv~}{ll}{, jj}",
+  CTLname_latex_cmd        = "",
+  CTLname_url_prefix       = "[Online]. Available:"
+}
+
+###
 Introduction of literature review
 ###
 @techreport{marceau1971matrix,
@@ -51,11 +70,12 @@ numpages = {41}
   doi={10.1109/MAHC.1984.10032}
 }
 
-@article{fourer1978modern,
+@techreport{fourer1978modern,
   title={A modern approach to computer systems for linear programming},
-  author={Fourer, Robert and Harrison, Michael J},
-  year={1978},
-  publisher={Cambridge, Mass.: Alfred P. Sloan School of Management, MIT}
+  author={Fourer, Robert and Harrison, Michael J.},
+  institution={Alfred P. Sloan School of Management, Massachusetts Institute of Technology},
+  address={Cambridge, MA},
+  year={1978}
 }
 
 @book{brooke1988gams,
@@ -95,10 +115,12 @@ Canonicalization
   publisher={SIAM}
 }
 
-@article{cederberg2025disciplined,
+@misc{cederberg2025disciplined,
   title={Disciplined Nonlinear Programming},
   author={Cederberg, Daniel and Zhang, William and Nobel, Parth and Boyd, Stephen},
-  year={2025}
+  year={2025},
+  howpublished={arXiv:2606.02896},
+  url={https://arxiv.org/abs/2606.02896}
 }
 
 @incollection{grant2008graph,
@@ -351,8 +373,10 @@ Modeling languages
 Coefficient extraction methods
 ###
 @book{bisschop2006aimms,
-  title={AIMMS optimization modeling},
-  author={Bisschop, J.},
+  title={{AIMMS} Optimization Modeling},
+  author={Bisschop, Johannes},
+  publisher={Paragon Decision Technology},
+  address={Haarlem, The Netherlands},
   year={2006}
 }
 
@@ -449,34 +473,7 @@ Computing derivatives
   doi = {10.7717/peerj-cs.103}
 }
 
-@inbook{pytorch2019,
-author = {Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and Gimelshein, Natalia and Antiga, Luca and Desmaison, Alban and K\"{o}pf, Andreas and Yang, Edward and DeVito, Zach and Raison, Martin and Tejani, Alykhan and Chilamkurthy, Sasank and Steiner, Benoit and Fang, Lu and Bai, Junjie and Chintala, Soumith},
-title = {PyTorch: an imperative style, high-performance deep learning library},
-year = {2019},
-publisher = {Curran Associates Inc.},
-address = {Red Hook, NY, USA},
-abstract = {Deep learning frameworks have often focused on either usability or speed, but not both. PyTorch is a machine learning library that shows that these two goals are in fact compatible: it provides an imperative and Pythonic programming style that supports code as a model, makes debugging easy and is consistent with other popular scientific computing libraries, while remaining efficient and supporting hardware accelerators such as GPUs.In this paper, we detail the principles that drove the implementation of PyTorch and how they are reflected in its architecture. We emphasize that every aspect of PyTorch is a regular Python program under the full control of its user. We also explain how the careful and pragmatic implementation of the key components of its runtime enables them to work together to achieve compelling performance. We demonstrate the efficiency of individual subsystems, as well as the overall speed of PyTorch on several common benchmarks.},
-booktitle = {Proceedings of the 33rd International Conference on Neural Information Processing Systems},
-articleno = {721},
-numpages = {12}
-}
-
-@inproceedings{tensorflow2016,
-author = {Abadi, Mart\'{\i}n and Barham, Paul and Chen, Jianmin and Chen, Zhifeng and Davis, Andy and Dean, Jeffrey and Devin, Matthieu and Ghemawat, Sanjay and Irving, Geoffrey and Isard, Michael and Kudlur, Manjunath and Levenberg, Josh and Monga, Rajat and Moore, Sherry and Murray, Derek G. and Steiner, Benoit and Tucker, Paul and Vasudevan, Vijay and Warden, Pete and Wicke, Martin and Yu, Yuan and Zheng, Xiaoqiang},
-title = {TensorFlow: a system for large-scale machine learning},
-year = {2016},
-isbn = {9781931971331},
-publisher = {USENIX Association},
-address = {USA},
-abstract = {TensorFlow is a machine learning system that operates at large scale and in heterogeneous environments. Tensor-Flow uses dataflow graphs to represent computation, shared state, and the operations that mutate that state. It maps the nodes of a dataflow graph across many machines in a cluster, and within a machine across multiple computational devices, including multicore CPUs, general-purpose GPUs, and custom-designed ASICs known as Tensor Processing Units (TPUs). This architecture gives flexibility to the application developer: whereas in previous "parameter server" designs the management of shared state is built into the system, TensorFlow enables developers to experiment with novel optimizations and training algorithms. TensorFlow supports a variety of applications, with a focus on training and inference on deep neural networks. Several Google services use TensorFlow in production, we have released it as an open-source project, and it has become widely used for machine learning research. In this paper, we describe the TensorFlow dataflow model and demonstrate the compelling performance that TensorFlow achieves for several real-world applications.},
-booktitle = {Proceedings of the 12th USENIX Conference on Operating Systems Design and Implementation},
-pages = {265–283},
-numpages = {19},
-location = {Savannah, GA, USA},
-series = {OSDI'16}
-}
-
-@software{jax2018github,
+@misc{jax2018github,
   author = {James Bradbury and Roy Frostig and Peter Hawkins and Matthew James Johnson and Yash Katariya and Chris Leary and Dougal Maclaurin and George Necula and Adam Paszke and Jake Vander{P}las and Skye Wanderman-{M}ilne and Qiao Zhang},
   title = {{JAX}: composable transformations of {P}ython+{N}um{P}y programs},
   url = {http://github.com/jax-ml/jax},
@@ -502,40 +499,6 @@ series = {OSDI'16}
   address={Philadelphia, PA},
   edition={2nd},
   isbn={978-0-89871-659-7}
-}
-
-@inproceedings{lecun1988theoretical,
-  title={A theoretical framework for back-propagation},
-  author={LeCun, Yann},
-  booktitle={Proceedings of the 1988 Connectionist Models Summer School},
-  volume={1},
-  pages={21--28},
-  year={1988},
-  publisher={CMU, Pittsburgh, Pa}
-}
-
-@article{Bottou2018Optimization,
-  author    = {Bottou, L{\'e}on and Curtis, Frank E. and Nocedal, Jorge},
-  title     = {Optimization Methods for Large-Scale Machine Learning},
-  journal   = {SIAM Review},
-  volume    = {60},
-  number    = {2},
-  pages     = {223--311},
-  year      = {2018},
-  publisher = {SIAM},
-  doi       = {10.1137/16M1080173},
-  url       = {https://epubs.siam.org/doi/10.1137/16M1080173}
-}
-
-@article{lecun2015deep,
-  title={Deep learning},
-  author={LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},
-  journal={nature},
-  volume={521},
-  number={7553},
-  pages={436--444},
-  year={2015},
-  publisher={Nature Publishing Group UK London}
 }
 
 @article{chakravarti1961truncation,
@@ -600,13 +563,13 @@ keywords = {backpropagation, differentiable programming}
   url = {https://www.wolfram.com/mathematica}
 }
 
-@software{maple,
+@misc{maple,
   author = {{Maplesoft, a division of Waterloo Maple Inc.}},
   title = {Maple},
   url = {https://www.maplesoft.com},
   version = {2026},
   address = {Waterloo, Ontario},
-  date = {2026},
+  year = {2026},
 }
 
 @article{Laue2019OnTE,
@@ -616,26 +579,6 @@ keywords = {backpropagation, differentiable programming}
   year={2019},
   volume={abs/1904.02990},
   url={https://api.semanticscholar.org/CorpusID:102350450}
-}
-
-@article{Herholz2022SparsitySpecific,
-author = {Herholz, Philipp and Tang, Xuan and Schneider, Teseo and Kamil, Shoaib and Panozzo, Daniele and Sorkine-Hornung, Olga},
-title = {Sparsity-Specific Code Optimization using Expression Trees},
-year = {2022},
-issue_date = {October 2022},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {41},
-number = {5},
-issn = {0730-0301},
-url = {https://doi.org/10.1145/3520484},
-doi = {10.1145/3520484},
-abstract = {We introduce a code generator that converts unoptimized C++ code operating on sparse data into vectorized and parallel CPU or GPU kernels. Our approach unrolls the computation into a massive expression graph, performs redundant expression elimination, grouping, and then generates an architecture-specific kernel to solve the same problem, assuming that the sparsity pattern is fixed, which is a common scenario in many applications in computer graphics and scientific computing. We show that our approach scales to large problems and can achieve speedups of two orders of magnitude on CPUs and three orders of magnitude on GPUs, compared to a set of manually optimized CPU baselines. To demonstrate the practical applicability of our approach, we employ it to optimize popular algorithms with applications to physical simulation and interactive mesh deformation.},
-journal = {ACM Trans. Graph.},
-month = may,
-articleno = {175},
-numpages = {19},
-keywords = {Code optimisation, sparse computation}
 }
 
 @article{Gebremedhin2009SparseHessians,
@@ -708,14 +651,6 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   url     = {https://doi.org/10.1137/0720013}
 }
 
-@article{revels2016forward,
-  author  = {Revels, Jarrett and Lubin, Miles and Papamarkou, Theodore},
-  title   = {Forward-Mode Automatic Differentiation in {J}ulia},
-  journal = {arXiv preprint arXiv:1607.07892},
-  year    = {2016},
-  url     = {https://arxiv.org/abs/1607.07892}
-}
-
 @article{griewank1996adolc,
   author  = {Griewank, Andreas and Juedes, David and Utke, Jean},
   title   = {Algorithm 755: {ADOL-C}: a package for the automatic differentiation
@@ -736,41 +671,6 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   year   = {2023},
   note   = {Computational Infrastructure for Operations Research},
   url    = {https://github.com/coin-or/CppAD}
-}
-
-@article{hascoet2013tapenade,
-  author  = {Hasco{\"e}t, Laurent and Pascual, Val{\'e}rie},
-  title   = {The {T}apenade Automatic Differentiation tool: Principles, Model, and Specification},
-  journal = {ACM Transactions on Mathematical Software},
-  volume  = {39},
-  number  = {3},
-  articleno = {20},
-  numpages = {43},
-  year    = {2013},
-  publisher = {Association for Computing Machinery},
-  doi     = {10.1145/2450153.2450158},
-  url     = {https://doi.org/10.1145/2450153.2450158}
-}
-
-@inproceedings{moses2020enzyme,
-  author    = {Moses, William and Churavy, Valentin},
-  title     = {Instead of Rewriting Foreign Code for Machine Learning,
-               Automatically Synthesize Fast Gradients},
-  booktitle = {Advances in Neural Information Processing Systems},
-  volume    = {33},
-  pages     = {12472--12485},
-  year      = {2020}
-}
-
-@inproceedings{huckelheim2020vector,
-  author    = {H{\"u}ckelheim, Jan and Schanen, Michel and
-               Narayanan, Sri Hari Krishna and Hovland, Paul},
-  title     = {Vector Forward Mode Automatic Differentiation on {SIMD/SIMT} architectures},
-  booktitle = {Proceedings of the 49th International Conference on Parallel Processing (ICPP)},
-  year      = {2020},
-  publisher = {Association for Computing Machinery},
-  doi       = {10.1145/3404397.3404470},
-  url       = {https://doi.org/10.1145/3404397.3404470}
 }
 
 @article{zou2025vectorized,
@@ -821,16 +721,6 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   note         = {Julia package, companion software to the sparsity detection paper}
 }
 
-@article{bentert2025structural,
-  author  = {Bentert, Matthias and Crane, Alex and Drange, P{\aa}l Gr{\o}n{\aa}s
-             and Mizutani, Yosuke and Sullivan, Blair D.},
-  title   = {Structural Optimal {J}acobian Accumulation and Minimum Edge Count
-             are {NP}-Complete Under Vertex Elimination},
-  journal = {arXiv preprint arXiv:2506.17521},
-  year    = {2025},
-  url     = {https://arxiv.org/abs/2506.17521}
-}
-
 @article{chi2026torchsla,
   author  = {Chi, Mingyuan and Wen, Shizheng},
   title   = {torch-sla: Differentiable Sparse Linear Algebra with Adjoint Solvers
@@ -873,44 +763,6 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   edition   = {3rd},
   series    = {Wiley Series in Probability and Statistics},
   isbn      = {978-1-119-54120-2}
-}
-
-@article{bischof1996sparse,
-  author    = {Bischof, Christian H. and Khademi, Peyvand M. and Bouaricha, Ali and Carle, Alan},
-  title     = {Efficient computation of gradients and {J}acobians by dynamic exploitation
-               of sparsity in automatic differentiation},
-  journal   = {Optimization Methods and Software},
-  volume    = {7},
-  number    = {1},
-  pages     = {1--39},
-  year      = {1996},
-  publisher = {Taylor \& Francis}
-}
-
-@incollection{giles2008collected,
-  author    = {Giles, Mike B.},
-  title     = {Collected Matrix Derivative Results for Forward and Reverse Mode
-               Algorithmic Differentiation},
-  booktitle = {Advances in Automatic Differentiation},
-  editor    = {Bischof, Christian H. and B{\"u}cker, H. Martin and Hovland, Paul and
-               Naumann, Uwe and Utke, Jean},
-  series    = {Lecture Notes in Computational Science and Engineering},
-  volume    = {64},
-  pages     = {35--44},
-  year      = {2008},
-  publisher = {Springer},
-  doi       = {10.1007/978-3-540-68942-3_4}
-}
-
-@article{gower2012new,
-  author    = {Gower, Robert M. and Mello, Margarida P.},
-  title     = {A new framework for the computation of {H}essians},
-  journal   = {Optimization Methods and Software},
-  volume    = {27},
-  number    = {2},
-  pages     = {251--273},
-  year      = {2012},
-  publisher = {Taylor \& Francis}
 }
 
 ###
@@ -967,6 +819,17 @@ Sparse Matrix Formats
   isbn = {0-19-853408-6}
 }
 
+@article{gill1984sparse,
+  title={Sparse matrix methods in optimization},
+  author={Gill, Philip E and Murray, Walter and Saunders, Michael A and Wright, Margaret H},
+  journal={SIAM Journal on Scientific and Statistical Computing},
+  volume={5},
+  number={3},
+  pages={562--589},
+  year={1984},
+  publisher={SIAM}
+}
+
 @book{saad2003iterative,
   title={Iterative Methods for Sparse Linear Systems},
   author={Saad, Yousef},
@@ -976,6 +839,89 @@ Sparse Matrix Formats
   edition={2nd},
   isbn={978-0-898715-34-7},
   doi={10.1137/1.9780898718003}
+}
+
+@article{duff1983multifrontal,
+  author  = {Duff, Iain S. and Reid, John K.},
+  title   = {The Multifrontal Solution of Indefinite Sparse Symmetric Linear Equations},
+  journal = {ACM Transactions on Mathematical Software},
+  volume  = {9},
+  number  = {3},
+  pages   = {302--325},
+  year    = {1983},
+  doi     = {10.1145/356044.356047}
+}
+
+@article{liu1992multifrontal,
+  author  = {Liu, Joseph W. H.},
+  title   = {The Multifrontal Method for Sparse Matrix Solution: Theory and Practice},
+  journal = {SIAM Review},
+  volume  = {34},
+  number  = {1},
+  pages   = {82--109},
+  year    = {1992},
+  doi     = {10.1137/1034004}
+}
+
+@article{demmel1999supernodal,
+  author  = {Demmel, James W. and Eisenstat, Stanley C. and Gilbert, John R. and Li, Xiaoye S.
+             and Liu, Joseph W. H.},
+  title   = {A Supernodal Approach to Sparse Partial Pivoting},
+  journal = {SIAM Journal on Matrix Analysis and Applications},
+  volume  = {20},
+  number  = {3},
+  pages   = {720--755},
+  year    = {1999},
+  doi     = {10.1137/S0895479895291765}
+}
+
+@article{im2004sparsity,
+  author  = {Im, Eun-Jin and Yelick, Katherine and Vuduc, Richard},
+  title   = {Sparsity: Optimization Framework for Sparse Matrix Kernels},
+  journal = {International Journal of High Performance Computing Applications},
+  volume  = {18},
+  number  = {1},
+  pages   = {135--158},
+  year    = {2004},
+  doi     = {10.1177/1094342004041296}
+}
+
+@article{vuduc2005oski,
+  author  = {Vuduc, Richard and Demmel, James W. and Yelick, Katherine A.},
+  title   = {{OSKI}: A Library of Automatically Tuned Sparse Matrix Kernels},
+  journal = {Journal of Physics: Conference Series},
+  volume  = {16},
+  pages   = {521--530},
+  year    = {2005},
+  doi     = {10.1088/1742-6596/16/1/071}
+}
+
+@inproceedings{bell2009throughput,
+  author    = {Bell, Nathan and Garland, Michael},
+  title     = {Implementing Sparse Matrix-Vector Multiplication on Throughput-Oriented
+               Processors},
+  booktitle = {Proceedings of the Conference on High Performance Computing Networking, Storage
+               and Analysis (SC '09)},
+  year      = {2009},
+  pages     = {18:1--18:11},
+  publisher = {ACM},
+  doi       = {10.1145/1654059.1654078}
+}
+
+@techreport{gray2017blocksparse,
+  author      = {Gray, Scott and Radford, Alec and Kingma, Diederik P.},
+  title       = {{GPU} Kernels for Block-Sparse Weights},
+  institution = {OpenAI},
+  year        = {2017},
+  url         = {https://cdn.openai.com/blocksparse/blocksparsepaper.pdf}
+}
+
+@misc{nvidia2026cusparse,
+  author       = {{NVIDIA Corporation}},
+  title        = {{cuSPARSE}: The {CUDA} Sparse Matrix Library},
+  howpublished = {\url{https://docs.nvidia.com/cuda/cusparse}},
+  year         = {2026},
+  note         = {Version 13}
 }
 
 @ARTICLE{2020SciPy-NMeth,
@@ -1000,17 +946,6 @@ Sparse Matrix Formats
   pages   = {261--272},
   adsurl  = {https://rdcu.be/b08Wh},
   doi     = {10.1038/s41592-019-0686-2},
-}
-
-@article{gill1984sparse,
-  title={Sparse matrix methods in optimization},
-  author={Gill, Philip E and Murray, Walter and Saunders, Michael A and Wright, Margaret H},
-  journal={SIAM Journal on Scientific and Statistical Computing},
-  volume={5},
-  number={3},
-  pages={562--589},
-  year={1984},
-  publisher={SIAM}
 }
 
 ###
