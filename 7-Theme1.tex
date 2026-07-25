@@ -3,8 +3,11 @@
 Mathematically, \texttt{SparseDiffEngine} computes the same derivatives as
 \texttt{CVXPY}'s canonicalization backend: both apply the chain rule of matrix calculus
 to trees of vectorized expressions, producing the Jacobian and Hessian of
+% TODO(read-through): drop the framing clause "which we will present in this chapter".
 \S\ref{sec:bg-derivatives}. The differences are in the implementation details,
 which we will present in this chapter.
+% TODO(read-through): "symbolic/numeric phases" used before being defined (Atom classes
+% paragraph); see the pass-naming TODO there.
 Firstly, the use of a custom sparse matrix data structure allows a natural split
 between the symbolic and numeric phases of the derivative computation. This separation
 is particularly useful for compiling problems involving parameters, where
@@ -29,6 +32,8 @@ We then present the matrix representations used for the derivative computations,
 where we will focus much of our attention on the \texttt{permuted-dense}
 matrix, which appears most often. Next we describe the algorithms, or \emph{kernels},
 which allow us to operate on and combine these matrix representations.
+% TODO(read-through): editorializing ("Rather than attempting to explain too much", "An
+% intrigued reader will learn more"); cut or state the scope factually.
 Rather than attempting to explain too much, we focus on the organization of
 the code and on how we handle operations between different
 types of matrices. An intrigued reader will learn more
@@ -43,6 +48,8 @@ of code (and a similar number of lines for the test suite).
 The expression node is defined in \texttt{expr.h}; atoms that carry extra data, such as
 the exponent of a power, define a larger structure in \texttt{subexpr.h}.
 Each atom is implemented in its own file in the \texttt{atoms/}
+% TODO(read-through): "six subdirectories" doesn't map cleanly onto the compressed list that
+% follows; name all six.
 directory; there are around forty-five of them, divided into six subdirectories based on their
 mathematical properties: \texttt{affine}, elementwise and bivariate functions with full or
 restricted domains, and a small group of \texttt{other} atoms such as the quadratic form.
@@ -51,6 +58,9 @@ The matrix data structures and the computational kernels that operate on them ar
 problem and implements the oracles that are passed to a solver.
 
 \paragraph{Atom classes.}
+% TODO(read-through): "we only discuss the affine atoms and the quadratic form" promises a
+% quad_form/Hessian-oracle discussion that never gets a dedicated paragraph; add one or
+% soften the scope sentence.
 Atoms in the same subdirectory compute their derivatives in the same way
 (Table~\ref{tab:atom-classes}). In this chapter we only discuss the affine atoms and the
 quadratic form, since these are the only atoms that appear in canonicalized DCP problems;
@@ -76,6 +86,9 @@ other & \texttt{quad\_form}, \texttt{prod} & specific to each atom \\
 \bottomrule
 \end{tabular}
 \end{table}
+% TODO(read-through): pass-naming decision: the C API says init/eval but the prose says
+% symbolic/numeric thesis-wide; either rename to init/value here (with one bridge sentence
+% to symbolic/numeric) or keep symbolic/numeric everywhere deliberately.
 Each atom implements three operations: a \emph{forward} pass, which evaluates the atom at
 a point; a \emph{symbolic} pass, which computes the sparsity patterns of its derivatives
 and allocates memory for them; and a \emph{numeric} pass, which computes the numerical
@@ -87,6 +100,8 @@ An expression node stores its dimensions, pointers to at most two children, a bu
 its value, and its derivative matrices, whose \texttt{n\_vars} columns span all of the
 variables of the problem. A simplified version of the definition in
 \texttt{expr.h} is shown below.
+% TODO(read-through): listing comments say "symbolic/numeric pass" next to the init/eval
+% function names; align with whichever pass naming wins.
 \begin{lstlisting}[language=C]
 typedef struct expr
 {
@@ -297,6 +312,8 @@ disjoint, the product is zero, and nothing is computed in the numeric pass. The 
 product $B^T D A$, needed for the Hessian of the objective, is handled the same way.
 
 \paragraph{Performance.}
+% TODO(read-through): restates the CSR-loses-BLAS motivation from the chapter intro;
+% consider merging the two statements.
 The main benefit of the factored form \eqref{eq:permuted-dense} is that the floating
 point work is done by dense kernels. If the same matrix is stored in the CSR format, its
 products go through sparse kernels, whose indexed accesses and irregular inner loops
@@ -330,9 +347,13 @@ matrix $\tilde{X}$, and by a standard vectorization identity \cite{magnus2019mat
   \tilde{Y} = \tilde{X} A^T,
 \EEQ
 so applying the operator to a vector is a single \texttt{dgemm} on the stored $A$.
+% TODO(read-through): "roughly one hundred times faster" is unsupported here; add the
+% measurement context or move the number to Theme2.
 Avoiding the explicit operator made the initialization of the atom's sparsity pattern
 roughly one hundred times faster.
 
+% TODO(read-through): "The identity" is a bare referent; name it, e.g. "Identity
+% \eqref{eq:kron-reshape} applies the operator...".
 The identity applies the operator; the atom must also store its Jacobian. The parent node
 receives $(I_p \otimes A)\, J$, where $J$ is the Jacobian of the child, and transposes,
 indexes, and multiplies it like any other Jacobian. This matrix is made of $p$ dense
@@ -470,6 +491,8 @@ discussed in \S\ref{sec:bg-sparse}.
 \subsection{Reusing work across passes}\label{sec:theme1-reusing-work}
 
 \paragraph{Affine atoms.}
+% TODO(read-through): six-line run-on sentence; split into two (structural atoms;
+% data-bearing atoms).
 The Jacobian of an affine atom does not depend on $x$: for the structural atoms, such as
 indexing, transposition, reshaping, stacking, and summation, it is determined by shapes
 and index sets alone, and the remaining affine atoms, such as \texttt{left\_matmul},
@@ -618,7 +641,9 @@ The caching follows the same pattern as in \S\ref{sec:theme1-reusing-work}. The
 \texttt{C\_problem} and its sparsity structures live as long as the problem family, the
 extracted matrices are kept until the parameter values change, and only numerical values
 are recomputed. After construction, nothing in the Python layer traverses an expression
-tree. Chapter~\ref{sec:Theme2} compares the engine with the systems reviewed in
+tree.
+Chapter~\ref{sec:Theme2} compares the engine with \texttt{CVXPY}'s canonicalization
+backends, implementations of the matrix-stuffing approach reviewed in
 Chapter~\ref{sec:RevLitt}.
 
 \paragraph{References.}

@@ -4,12 +4,22 @@
 %%  SYNTHESE DES TRAVAUX / SUMMARY OF WORKS
 %%
 \section{Summary of Works}
+% TODO(read-through): unwritten; summarize the three intro contributions and the
+% cvxcore-only benchmark results (faster on 24/25 cold compiles, geometric mean 4.2x;
+% re-solve geomean ratio 0.78).
 %%
 %%  LIMITATIONS
 %%
 \section{Limitations}\label{sec:Limitations}
+% TODO(read-through): unwritten; candidates: DPP's cached tensor still wins on small dense
+% parameter maps (SVM, FactorCovariance), Python-side reductions dominate some problems
+% (ConvexPlasticity), benchmarks limited to one machine and one solver target.
 
 %%
 %%  AMELIORATIONS FUTURES / FUTURE RESEARCH
 %%
 \section{Future Research}
+% TODO(read-through): unwritten; include block-aware factorization (factorize directly from
+% the known permuted-dense blocks, skipping CSR conversion and the solver's structure
+% re-detection); optionally a qualitative positioning vs CasADi/AMPL/JuMP now that the
+% cross-system benchmarks are cut.
