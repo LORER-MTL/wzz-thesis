@@ -64,7 +64,8 @@ A fresh problem is formed and canonicalized once from scratch (Table~\ref{tab:co
 
 \begin{table}[htbp]
 \centering
-\caption{Cold compilation time across all 25 benchmarks, \texttt{diffengine} versus
+\caption[Cold compilation time, \texttt{diffengine} versus \texttt{cvxcore}]{Cold
+compilation time across all 25 benchmarks, \texttt{diffengine} versus
 \texttt{cvxcore}. The ratio is \texttt{diffengine}/\texttt{CPP}; values below $1$ favor
 \texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:cold-compile}
@@ -130,7 +131,8 @@ those of Table~\ref{tab:cold-compile}.
 
 \begin{table}[htbp]
 \centering
-\caption{Cold compilation time under all three \texttt{CVXPY} canonicalization backends,
+\caption[Cold compilation time under all three \texttt{CVXPY} backends]{Cold
+compilation time under all three \texttt{CVXPY} canonicalization backends,
 compared with \texttt{diffengine}. The ratio is \texttt{diffengine} over the best of the
 three backends on each problem; values below $1$ mean \texttt{diffengine} beats all of them.
 The final row is the geometric mean of the per-problem ratios over the $22$ problems on which
@@ -207,7 +209,8 @@ re-solve time after reassigning random parameter values
 
 \begin{table}[htbp]
 \centering
-\caption{Parametric compilation, \texttt{diffengine} versus \texttt{cvxcore}: first solve and
+\caption[Parametric compilation, \texttt{diffengine} versus \texttt{cvxcore}]{Parametric
+compilation, \texttt{diffengine} versus \texttt{cvxcore}: first solve and
 warm re-solve. The ratio is \texttt{diffengine}/\texttt{CPP} on the re-solve; values below $1$
 favor \texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:param-compile}

@@ -112,12 +112,15 @@ and their derivatives from this file inside the solver process \cite{gay1997hook
 \texttt{Pyomo} \cite{bynum2021pyomo} also interfaces to solvers through \texttt{.nl} files,
 among other formats, though it generally writes them more slowly than the \texttt{AMPL}
 translator.
-% I should probably mention that JuMP uses the MOI standard form.
-% it might be good to list and mention MOI early here already.
-On the other hand, \texttt{JuMP} \cite{dunning2017jump} has no single standard form to target.
-The model is built constraint by constraint, and each constraint stores its coefficients directly,
-so extraction reduces to copying them into the format of the chosen solver
+On the other hand, \texttt{JuMP} \cite{dunning2017jump} has no single standard form to target;
+it decouples modeler and solver through \ac{MOI}, a typed in-memory interface
 \cite{legat2020mathoptinterface}.
+The model is built constraint by constraint, and each constraint stores its coefficients directly,
+so extraction reduces to copying them into the format of the chosen solver.
+None of these approaches operates on expression trees: the AD tools record the expression as a
+flat tape of instructions, \texttt{AMPL} exchanges the model through a file, and \texttt{JuMP}
+stores lists of coefficients. In \texttt{CVXPY} the expression trees themselves are the input
+of the backend.
 We review both these modeling languages in \S\ref{sec:declared-structure}.
 
 \paragraph{Our approach.}
@@ -199,7 +202,7 @@ used to describe problems. These functions are known as \emph{atoms} in \texttt{
 are the fundamental building blocks of the modeling language \cite{grant2004disciplined}.
 Alongside its numerical definition, each atom declares useful attributes such as 
 its \emph{curvature}, \emph{monotonicity} with respect to each argument, and the
-\emph{sign} of its output. A selection of common atoms is shown in \ref{tab:atoms}.
+\emph{sign} of its output. A selection of common atoms is shown in Table~\ref{tab:atoms}.
 
 \begin{table}[ht]
 \centering
@@ -406,7 +409,7 @@ prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
 where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
 the data arrays. The expression tree representation of the problem
-is shown in \ref{fig:dcp-expression-tree}.
+is shown in Figure~\ref{fig:dcp-expression-tree}.
 
 \begin{figure}[H]
 \centering
@@ -457,20 +460,19 @@ x \in \reals_+^n \\
 & (t_2, x) \in \mathcal K_{\mathrm{soc},n+1} \\
 \end{array}
 \EEQ
-% TODO(read-through): bare \ref{e:quad-conic-form}; use \eqref like every other equation
-% reference.
 where $t_1$ and $t_2$ are new epigraph variables, and the cone $\mathcal K$ from
-\ref{e:quad-conic-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
+\eqref{e:quad-conic-form} is the product $\reals_+^n \times \mathcal K_{\mathrm{soc},m+1}
 \times \mathcal K_{\mathrm{soc},n+1}$.
 Problem \eqref{eq:graph} is now in the functional conic form of \S\ref{sec:bg-canonicalization}:
 every constraint
 is a cone membership, and the objective and constraint expressions are affine.
-Comparing the DCP trees of \ref{fig:dcp-expression-tree} with the conic-form trees of
-\ref{fig:conic-form-tree} shows the effect of canonicalization: the nonlinear norm atoms have been
-replaced by epigraph variables, leaving affine expression trees in the variables.
+Comparing the DCP trees of Figure~\ref{fig:dcp-expression-tree} with the trees of
+Figure~\ref{fig:conic-form-tree} shows the effect of canonicalization: the nonlinear norm atoms
+have been replaced by epigraph variables, leaving affine expression trees in the variables,
+which we call the \emph{conic-form trees} of the problem.
 The three rows of \eqref{eq:graph} remain three separate cone constraints, each carrying the
-affine expressions that must lie in its cone; \ref{fig:conic-form-tree} accordingly shows one
-expression tree per constraint, rather than a single combined tree.
+affine expressions that must lie in its cone; Figure~\ref{fig:conic-form-tree} accordingly shows
+one expression tree per constraint, rather than a single combined tree.
 
 \begin{figure}[H]
 \centering
@@ -534,12 +536,6 @@ and the three separate cone constraints affine. The variable $x$ appears as a le
 trees; all occurrences refer to the same variable.}
 \label{fig:conic-form-tree}
 \end{figure}
-
-% should we maybe move the other part matrix stuffing tree here?
-% so the examples are not separated?
-% then we could refer to the matrix stuffing section for more details there?
-% what do you think? I think it could be nice to have the examples not separated
-% but on the other hand, this intro might be getting a bit too long.
 
 \section{Computing derivatives}\label{sec:bg-derivatives}
 
@@ -658,21 +654,31 @@ smaller, and most tools provide both modes.
 The third choice is what the differentiation returns.
 An \emph{oracle} returns the action of the derivative on a vector, the product $Jv$ in forward
 mode or $J^\top w$ in reverse mode, without ever forming $J$.
-Many applications need only this action, as in training neural networks or in iterative linear
-solvers, but the conic solvers targeted in this thesis consume the matrix itself as problem data.
-A \emph{direct} method instead assembles $J$ explicitly by combining the local derivatives through
-the graph.
+One product costs one \emph{sweep} of the graph: the function is evaluated once, and every node
+carries one extra scalar, its derivative along the seed direction $v$, updated by the chain
+rule as the evaluation proceeds. A sweep thus costs about one function evaluation, and the
+per-node state stays a single scalar; recovering $J$ column by column takes one sweep per
+column, since propagating all $n$ directions at once means every node carries a whole
+gradient rather than a scalar.
+Many applications need only the action of the derivative, as in training neural networks or in
+iterative linear solvers, but the conic solvers targeted in this thesis consume the matrix
+itself as problem data.
+A \emph{direct} method accepts exactly that trade: it assembles $J$ in a single sweep that
+carries whole derivative objects, dense or sparse, through the graph, each node combining the
+local derivatives of its arguments.
 The choice between the two matters only when the target matrix is sparse, which is the last of the
 four choices.
 
 \paragraph{The sparse case.}
 When the target matrix is sparse, the two assemblies part ways.
-On the oracle route, the sparsity pattern must be detected and \emph{graph coloring} used to
-compress many probes of the oracle into few (\S\ref{sec:computing-derivatives}).
-On the direct route, the local derivatives are carried through the graph as sparse matrices and
-combined into the result, so there is nothing to compress.
-This thesis takes the direct route on a vectorized graph, assembling the sparse Jacobian and
-Hessian without probing; \S\ref{sec:computing-derivatives} develops both routes and locates the
+With an oracle, the sparsity pattern must be detected and \emph{graph coloring} used to
+compress the many sweeps into few.
+With direct assembly, the local derivatives are carried through the graph as sparse matrices
+and combined into the result, so there is nothing to compress.
+The four choices are not independent: direct assembly is practical only on vectorized graphs,
+whose few coarse nodes make carrying a matrix per node affordable.
+This thesis assembles the sparse Jacobian and Hessian directly on a vectorized graph, without
+oracle sweeps; \S\ref{sec:computing-derivatives} develops both assemblies and locates the
 systems of the literature, and our approach, among them.
 
 \section{Matrix computations}\label{sec:intro-matrix}
@@ -812,22 +818,13 @@ the output vector.
 % otherwise I think the paragraph is a bit too short.
 
 \paragraph{Matrix-matrix products.}
-% TODO(read-through): "symbolic phase runs once / numeric repeats" is stated a third time at
-% the end of this paragraph (also in "Our approach" and "Choice of format"); trim to the
-% background statement and let Theme1 own the engine claim.
-% let's maybe not say operations above.. I dont like this wording.
-% also let's not talk about splitting the symbolic phase and numeric here.
-% let's amybe focus on describing the algorithm at a high level and cite gustavson?
-% we could also mention that this algorithm is widely used (for example in Eigen in CPP).
-% what do you think? I think what you have currently here can all be removed.
-The product of two sparse matrices is harder than the operations above because the sparsity
-pattern of the output is not known in advance. Implementations therefore split the work in two
-phases: a \emph{symbolic} phase determines the pattern and allocates the output, and a
-\emph{numeric} phase fills its values \cite{gustavson1978two, bank1993smmp}. The split rewards
-reuse, and the engine of \S\ref{sec:Theme1} is built around it: the symbolic phase runs once per
-problem family and only the numeric phase repeats.
-% I really don't like this last sentence about and referencing the engine.
-%let's try to avoid doing this throughout the intro, its a bit too early for that.
+The product of two sparse matrices is harder than a matrix-vector product because the sparsity
+pattern of the result is not known in advance. The standard algorithm is due to Gustavson
+\cite{gustavson1978two}: the result is formed row by row, each row as a combination of the
+rows of the second operand selected by the nonzeros of the first, gathered in a dense
+accumulator before compaction into sparse storage \cite{bank1993smmp}. The algorithm underlies
+the sparse products of widely used linear algebra libraries such as \texttt{Eigen}
+\cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
 
 \paragraph{Other sparse formats.}
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,

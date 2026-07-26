@@ -3,22 +3,16 @@
 % et identifie les lacunes que la recherche vise à combler.
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
-% I really hate the beginning of this literature review.
-% let's rework it possibly.
-% I need to think of things to say.
-% Honestly if its hard to have an intro to the literature review, maybe we just give up and cut
-% it entirely from the lit review?
-This chapter reviews three bodies of prior work, each continuing one background section of the
-introduction. \S\ref{sec:matrix-stuffing} covers matrix stuffing, the \texttt{cvxcore} backend
-of \texttt{CVXPY}'s canonicalization (\S\ref{sec:canonicalization}) that this thesis replaces.
-\S\ref{sec:computing-derivatives} covers sparse AD systems (\S\ref{sec:bg-derivatives}), which
-compute the same coefficient matrices by differentiating an expression graph and must discover
-their sparsity at runtime. \S\ref{sec:declared-structure} covers \texttt{AMPL} and \texttt{JuMP}
-(\S\ref{sec:problem-statement}), which never differentiate on the problem-data path: the user
-declares the structure, and extraction reduces to reading off stored coefficients. Only
-\texttt{cvxcore} returns as the benchmark baseline in Chapter~\ref{sec:Theme2}: it computes
-the same problem data from the same input. The other systems position the design choices of
-the engine of \S\ref{sec:Theme1}.
+This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
+(\S\ref{sec:matrix-stuffing}) and of other modeling language approaches, from sparse AD
+(\S\ref{sec:computing-derivatives}) to \texttt{AMPL} and \texttt{JuMP}
+(\S\ref{sec:declared-structure}). These modeling languages have a similar purpose, and the goal of the
+chapter is to make the distinctions clear. The backends of \texttt{CVXPY} compute the same
+problem data from the same input as \texttt{SparseDiffEngine}, and they serve as the baselines
+for the benchmarks of Chapter~\ref{sec:Theme2}. \texttt{CasADi} carries vectorized expressions, but
+must discover the structure of their derivatives at runtime, over many sweeps of the graph.
+\texttt{AMPL} and \texttt{JuMP} let the user declare vectorized expressions, and scalarize
+them for processing.
 
 %%
 %%  MATRIX STUFFING
@@ -26,29 +20,17 @@ the engine of \S\ref{sec:Theme1}.
 \section{Matrix stuffing in \texttt{CVXPY}}\label{sec:matrix-stuffing}
 
 \texttt{CVXPY} takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
-coefficient matrices of linear expressions; this is where most of the computational burden of
-canonicalization lies. Matrix stuffing is named for what it does: the coefficients of every
-canonicalized expression are stuffed into their designated slots in the sparse standard-form data
-handed to the solver. The name suggests bookkeeping, but the coefficients it assembles are the
-Jacobians and Hessians of the canonicalized expressions: matrix stuffing is a sparse derivative
-computation, a view developed in \S\ref{sec:bg-derivatives} and \S\ref{sec:computing-derivatives}.
-% let's cut this naming stuff and the bookkeeping.
-% let's also not say that matrix stuffing is a sparse derivative, they fundamentally take
-% different approaches still. and we shouldn't draw the connection so early.
+coefficient matrices of linear expressions, and this is where most of the computational burden of
+canonicalization lies.
 The section gives a brief summary of matrix calculus and a few examples, presents the conventions
 of \texttt{CVXPY}'s backend, and closes with implementation details that become important when
-contrasting it with our methodology \S\ref{sec:Theme1}.
+contrasting it with our methodology (\S\ref{sec:Theme1}).
 
 \paragraph{Matrix calculus.}
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
-matrices. 
-% on second read, I don't like this sentence anymore, I don't know about these people
-% I think it is fine to cite them, but I haven't read their work so maybe let's reword this a bit.
-% also let's try to avoid having too many semicolons once again.
-Systematic rules for such derivatives go back to Dwyer and Macphail
-\cite{dwyer1948symbolic}, and there are many ways to define the derivative of a matrix-valued
-expression with respect to a matrix variable \cite{magnus2019matrix}. The simplest is to
-vectorize: every expression is identified with
+matrices. Systematic rules for such derivatives date back to the 1940s \cite{dwyer1948symbolic}.
+The simplest convention is to vectorize \cite{magnus2019matrix}: every expression is identified
+with
 \BEQ\label{eq:vec}
 \vect(X) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^T,
 \EEQ
@@ -60,12 +42,7 @@ Jacobians carry structure: for example
 \vect(FX) = (I \otimes F)\,\vect(X),
 \EEQ
 so the matrix product $FX$ corresponds to the Kronecker-structured, block-diagonal Jacobian
-% TODO(read-through): bare \ref for figures/tables here and throughout this chapter vs
-% "Table~\ref" style in ch.4; pick one thesis-wide cross-reference convention.
-$I \otimes F$. The convention is illustrated in \ref{fig:vec-variable}: as an expression, a
-matrix variable is the identity map of its own entries, so its Jacobian is an identity block
-whose columns are indexed by the entries of $\vect(X)$, and the Jacobian of the product $FX$ is
-block-diagonal with one copy of $F$ per column of $X$.
+$I \otimes F$. The convention is illustrated in Figure~\ref{fig:vec-variable}.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -122,52 +99,40 @@ written in the vectorized form
 f(x) = A\,x + b
      = \begin{bmatrix} A & b \end{bmatrix} \begin{bmatrix} x \\ 1 \end{bmatrix},
 \EEQ
-where $x$ is the stacked vector of all variables, $A$ is the Jacobian of the node, constant
-since $f$ is affine, and $b$ is a constant offset.
-% for the sentence above, are we talking about the full Jacobian? or is A just the jacobian
-% of this particular constraint with respect to all variables? 
-Matrix stuffing computes the augmented matrix
-$[A\ b]$ of every node in one bottom-up pass. A variable leaf contributes an identity block in
-its own column slot, a constant leaf contributes its value to the offset column, and an interior
-atom $g$ with arguments $f_1, \dots, f_k$ is a linear map $\sum_i L_i f_i$ whose constant
-Jacobians $L_i$ apply directly to the augmented matrices of its children,
+where $x$ is the stacked vector of all the problem variables, $A$ is the Jacobian of the node's
+expression $f$ with respect to $x$, constant since $f$ is affine, and $b$ is a constant vector.
+Each variable occupies a contiguous block of columns of $A$, starting at its \emph{column
+offset} within $x$, and the columns of the variables that do not appear under the node are zero.
+Matrix stuffing computes the augmented matrix $[A\ b]$ of every node in one bottom-up pass. A
+variable leaf contributes an identity block at its own column offset, and a constant leaf
+contributes its value to the last column. An interior atom $g$ with arguments $f_1, \dots, f_k$
+is a linear map $g = \sum_i L_i f_i$, and since each $L_i$ is a constant matrix under the vec
+convention, the chain rule reduces to one matrix product per child:
 \BEQ\label{eq:linop-chain-rule}
 \begin{bmatrix} A & b \end{bmatrix}
   = \sum_{i=1}^{k} L_i \begin{bmatrix} A_i & b_i \end{bmatrix}.
 \EEQ
-% I am not sure I understand the full purpose of this equation and what we say before that.
-% can we try to revisit this?
-% I like the sentence after, maybe let's remove the semicolon though.
-% I also don't really like the ending of the sentence with mentions of augmented blocks
-% and also augmented matrix. Maybe it makes sense, instead of at the root, we can
-% say the final output or result.
-Computing the problem data thus amounts to composing many linear operators over the tree: the
-node matrices of the figures in this section are exactly these augmented blocks, and at the root
-of the constraint tree the augmented matrix is the problem data $[A\ b]$ itself.
+Computing the problem data thus amounts to composing linear operators over the tree, with no
+differentiation at the nodes. The node matrices of the figures in this section are the matrices
+$[A\ b]$, and the final result of the walk is the problem data.
 
 \paragraph{Views and copies.}
-% once again too many semicolons here.
-% make it seem a bit less like AI.
-The simple operators act as \emph{views}, modifying the augmented matrix of their argument in
-place: negation flips the sign of every stored entry, indexing keeps the selected rows, and
-reshaping costs nothing at all, since it leaves the vectorization of the expression unchanged.
-The operators that create \emph{copies} are mostly the bivariate atoms that carry data: one
-operand of a matrix product, an elementwise multiplication or a division is constant under the
-DCP rules, and the atom forms a matrix from that operand, multiplies it with the augmented
-matrix of the other, and stores the product as new data. An expository subset is classified in
-\ref{tab:views-copies}.
-% what copies are we creating is it of the data or the full tensor? Maybe let's check this
-% for a better understanding.
-% the last few sentences are a bit hard to understand. let's revisit them.
-% it is very jargony and run-on, what is the goal? And what are we trying to say ultimately?
+The linear operators divide into \emph{views}, which involve no atom data, and \emph{copies},
+which do. A view reuses the stored coefficients of its argument: negation flips the sign of
+each entry, indexing keeps a subset of the rows, and reshaping leaves the vectorization
+unchanged, so the cost of a view is at most proportional to the number of stored nonzeros. A
+copy occurs at the bivariate atoms that carry data. In a matrix product, an elementwise
+multiplication, or a division, one operand is constant under the DCP rules, and the operator
+multiplies a Kronecker or diagonal matrix formed from this constant operand with the augmented
+matrix of the other, storing the product as a new coefficient matrix with a new sparsity
+pattern. Table~\ref{tab:views-copies} classifies a subset of the operators, where
+$\mathcal{I}$ denotes an index set and $\diag(v)$ the diagonal matrix with the entries of $v$
+on its diagonal.
 
 \begin{table}[H]
 \centering
 \caption{A subset of the linear operators, classified as views or copies, applied to an
 argument $f_1$ with augmented matrix $[A_1\ b_1]$.}
-% we should maybe clarify notation and say what the \mathcal{I} is (an index set)
-% and also describe diag and the kronecker product maybe?
-% or should these go inside a list of mathematical terms and notation?
 \label{tab:views-copies}
 \begin{tabular}{@{}l l l@{}}
 \toprule
@@ -188,12 +153,11 @@ $f_1 / c$ & $\diag(\vect(c))^{-1}$ & multiply by the reciprocal diagonal \\
 \end{tabular}
 \end{table}
 
-% Like I mentioned in the intro, I think it might be better to move this into the intro.
 \paragraph{Example.}
 The walk on the conic-form trees of problem \eqref{eq:example} is traced in
-\ref{fig:matrix-stuffing}: the leaves contribute their blocks and offsets, the interior nodes
+Figure~\ref{fig:matrix-stuffing}: the leaves contribute their blocks and offsets, the interior nodes
 apply their operators, and the root stacks its children at their constraint row offsets into
-$[A\ b]$. The difficulty that remains is doing this efficiently for arbitrary problems.
+$[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this walk.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -240,13 +204,15 @@ $[A\ b]$. The difficulty that remains is doing this efficiently for arbitrary pr
 % Root matrix
 \node {$\begin{bmatrix}
     A & b
-\end{bmatrix} = \begin{bmatrix}
+\end{bmatrix} = \left[\begin{array}{cccc}
                    \plotzero & \plotzero & -I & \plotzero\\
+                   \hline
                     -1 & \plotzero & \plotzero & \plotzero\\
                     \plotzero & \plotzero & -F & -g\\
+                   \hline
                     \plotzero & -1 & \plotzero & \plotzero\\
                     \plotzero & \plotzero & -I & \plotzero\\
-                \end{bmatrix}$}
+                \end{array}\right]$}
     % First level children
     child {node {$\begin{bmatrix}
         \plotzero & \plotzero & -I & \plotzero\\
@@ -287,42 +253,27 @@ $[A\ b]$. The difficulty that remains is doing this efficiently for arbitrary pr
 \end{center}
 \end{subfigure}
 \caption{Matrix stuffing of problem \eqref{eq:example} by a recursive walk of the conic-form
-expression trees of \ref{fig:conic-form-tree}: each node's matrix is obtained by applying a
-linear operation to the matrices of its children.}
+expression trees of Figure~\ref{fig:conic-form-tree}: each node's matrix is obtained by applying a
+linear operation to the matrices of its children. The horizontal rules in $[A\ b]$ separate the
+rows of the three constraints.}
 \label{fig:matrix-stuffing}
 \end{figure}
-% for the examples, should we add lines in the final [A b] matrix? To denote
-% the different constraints (one for each row I guess)?
-% or maybe we can combine the soc cone arguments into one constraint technically?
 
 \paragraph{Local versus global derivatives.}
-% this paragraph is quite unreadable.
-% I think we should maybe simplify the language a bit.
-% I dont like using the Python idiom.
-% I like that you say that it is at the end that the variables are combined
-% into the full matrix and every block is placed at the correct location.
 The augmented matrices of \eqref{eq:linop-form} can be laid out in two ways
-(\ref{fig:local-vs-global}). \texttt{CVXPY} differentiates \emph{locally}, one variable at a time:
-% also it is not true that we differentiate with respect to one variable at a time
-% it is just more like how it gets stored internally.
-each
-node stores one coefficient block per variable appearing beneath it, keyed by the variable's
-identifier, and every operator is applied to each block in turn. The constant data is stored
-under the key $-1$, a Python idiom for the last column, the offset $b$. 
-% I also dont understand the first part of the following sentence?
-The columns of a block
-index only the entries of its own variable; only after the walk completes are the blocks shifted
-to their variables' column offsets and concatenated into the full matrix $[A\ b]$.
+(Figure~\ref{fig:local-vs-global}). \texttt{CVXPY} stores them \emph{locally}: each node keeps
+one coefficient block per variable appearing beneath it, keyed by the variable's identifier, and
+every operator is applied to each block in turn. A block's columns index only the entries of its
+own variable, so the column offsets are not needed during the walk. The constant data is stored
+under the key $-1$ and becomes the last column of the assembled matrix. Only after the walk
+completes are the blocks shifted to their variables' column offsets and concatenated into the
+full matrix $[A\ b]$.
 
-The alternative is a \emph{global} derivative: a single Jacobian per node whose columns span the
-whole stacked vector $x$ from the outset. The local layout keeps the blocks small and skips
-variables absent from a subtree, but every operator runs once per stored block; the engine of
-\S\ref{sec:Theme1} takes the global route.
-% I don't like using the word outset?
-% also we should clarify that the main and only difference is that we apply the offset
-% from the beginning.
-% also is it kind of clear what the offset means here? maybe we should kind
-% of define that earlier?
+In the alternative, \emph{global} layout, each node stores one matrix whose columns span the
+whole stacked vector $x$, and the column offsets are applied from the start rather than at the
+end. The local layout keeps the blocks small and skips the variables absent from a subtree, but
+every operator runs once per stored block. The engine of \S\ref{sec:Theme1} uses the global
+layout.
 
 \begin{figure}[H]
 \begin{subfigure}{0.48\textwidth}
@@ -370,12 +321,11 @@ all columns.}
 \end{figure}
 
 \paragraph{Parameters and tensors.}
-% I think here we mention DPP a bit too suddenly, and there isn't any mention
-% of what it is and how? We should have atleast one introductory sentence for it right?
-DPP restricts parameters to enter expressions affinely, so the problem data is affine in the
-parameters \cite{agrawal2019dpp}, and \texttt{CVXPY} accounts for this with a third tensor axis:
-every
-coefficient block stores one slice per
+In a problem family the structure is fixed and only the numeric parameter values change
+between solves. \ac{DPP} restricts how parameters may enter such families: only affinely, so
+that the problem data is affine in the parameters \cite{agrawal2019dpp}. \texttt{CVXPY}
+accounts for this with a third tensor axis.
+Every coefficient block stores one slice per
 parameter entry plus one slice for the constant part, and the operators of the walk apply to
 each slice. Flattening the slices of the root yields the cached \emph{parameter map}
 \BEQ\label{eq:param-maps}
@@ -383,10 +333,9 @@ each slice. Flattening the slices of the root yields the cached \emph{parameter 
 \qquad
 \tilde\theta = \begin{bmatrix} \theta \\ 1 \end{bmatrix},
 \EEQ
-shown in \ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
+shown in Figure~\ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
 data $[A\ b]$ is recovered the same way from its own map. After a parameter change, a re-solve
-costs a single sparse matrix--vector product $Q\tilde\theta$. % I think I already said that
-% in the intro.. maybe its fine to re-iterate it though.
+costs a single sparse matrix--vector product $Q\tilde\theta$.
 
 \begin{figure}[H]
 \centering
@@ -412,18 +361,15 @@ $Q\tilde\theta$.}
 \end{figure}
 
 \paragraph{The \texttt{ignore\_dpp} path.}
-% I dont like using the word stuffed like this in a sentence it is a bit weird.
-% also maybe let's not forward the diffengine yet?
-% also let's rethink if the example does its job? I guess it does right?
-% in constrast with the c that gets produced in the previous figure.
-% amybe we should mention the contrast there.
 Problems that fall outside the DPP grammar, or that opt out of it by solving with
 \texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
-parameter leaf by a constant holding its current value, and the parameter-free tree that results
-is stuffed as if the problem had no parameters (\ref{fig:param-map-evalparams}). The path is
-fully general, since arbitrary functions of parameters reduce to constants, but every change of
-$\theta$ repeats the whole symbolic walk even though the sparsity pattern of the problem data
-never changes. This is the setting the engine of \S\ref{sec:Theme1} improves.
+parameter leaf by a constant holding its current value, and the resulting parameter-free tree
+goes through the walk as if the problem had no parameters
+(Figure~\ref{fig:param-map-evalparams}). The result is the same objective data $c$ as in
+Figure~\ref{fig:param-map-dpp}, now obtained by re-walking the tree instead of applying the
+cached product $Q\tilde\theta$. The path is fully general, since arbitrary functions of
+parameters reduce to constants, but every change of $\theta$ repeats the whole symbolic walk
+even though the sparsity pattern of the problem data never changes.
 
 \begin{figure}[H]
 \centering
@@ -446,64 +392,52 @@ parameter-free tree is re-walked on every change of the parameters.}
 \label{fig:param-map-evalparams}
 \end{figure}
 
-% let's maybe have one paragraph which mentions all three backends? and how they form the tensor?
-% I think we should be very brief and say a few things about how they handle the third dimension.
-% cpp does for loops over the number of parameters
-% scipy stores it as a stacked matrix.
-% and finally coo doesn't actually form the tensor but rather keeps track of a third axis
-% for the parameter dependence.
+\paragraph{The three backends.}
+\texttt{CVXPY} implements the walk in three canonicalization backends that differ in how they
+represent the parameter axis. The C++ backend \texttt{cvxcore} keeps one sparse matrix per
+parameter slice and loops over the slices at every operator. The \texttt{SciPy} backend stacks
+the slices vertically into a single two-dimensional sparse matrix. The \texttt{COO} backend does
+not form the tensor; it stores each nonzero with an explicit parameter index alongside its row
+and column.
+
 \paragraph{Code generation.}
-% I don't think we should say a third option here.
-% we should say if compilation is slow, cvxpygen can take the tensor and emit code
-% that generates faster problem data extraction.
-A third option is to compile the problem ahead of time. \texttt{CVXPYgen} emits problem-specific C
-code
-that embeds the cached parameter map \eqref{eq:param-maps} of a DPP problem
-\cite{schaller2022cvxpygen}, continuing an earlier line of work on code generation for embedded
-second-order cone programs \cite{chu2013codegen}. The benchmarks of \S\ref{sec:Theme2} do not
-compare against it: code generation is an offline step that fixes the problem structure at
-compile time, a different deployment model from a runtime backend that must accept arbitrary
-problems.
-% TODO: confirm the stated reason for not benchmarking against CVXPYgen.
+When canonicalization remains too slow, \texttt{CVXPYgen} can compile the problem ahead of
+time: it emits problem-specific C code that embeds the cached parameter map
+\eqref{eq:param-maps} of a DPP problem \cite{schaller2022cvxpygen}, continuing an earlier line
+of work on code generation for embedded second-order cone programs \cite{chu2013codegen}. The
+benchmarks of \S\ref{sec:Theme2} do not compare against it: code generation is an offline step
+that fixes the problem structure at compile time, a different deployment model from a runtime
+backend that must accept arbitrary problems.
 
 \paragraph{Implementation details.}
-% we should cleanup this paragraph after making the changes to the parts above.
-Three implementation details, shared by \texttt{CVXPY}'s two backends, the C++ \texttt{cvxcore} and
-the
-\texttt{SciPy} backend, stand out as limitations of the current approach; the engine of
-\S\ref{sec:Theme1} does each differently.
+Two implementation details, shared by all the backends, limit the current approaches
+in \texttt{CVXPY}.
 \begin{itemize}
-\item \emph{External sparse libraries.} Both backends delegate every matrix operation to a
-general-purpose sparse library, Eigen \cite{guennebaud2010eigen} for \texttt{cvxcore} and
-\texttt{scipy.sparse} \cite{2020SciPy-NMeth} for the \texttt{SciPy} backend. The storage formats and
-kernels are fixed by the library, leaving no
-room to exploit structure known at canonicalization time.
+\item \emph{External sparse libraries.} The backends delegate their matrix operations to a
+general-purpose sparse library, Eigen \cite{guennebaud2010eigen} in \texttt{cvxcore} and
+\texttt{scipy.sparse} \cite{2020SciPy-NMeth} in the Python backends. Although the COO backend
+stores no \texttt{scipy.sparse} matrices, it still converts to them for sparse operations such
+as matrix products and Kronecker products. The storage formats and kernels are fixed by the
+library, leaving no room to exploit structure known at canonicalization time. In
+\texttt{cvxcore} the views of Table~\ref{tab:views-copies} also materialize explicit sparse
+operators: a reshape builds a sparse identity matrix that is then multiplied.
 \item \emph{Everything is sparse.} All coefficient data is treated as sparse: dense atom data
 is converted to a sparse matrix on entry, and no operator carries a dense or block special
 case, so dense blocks pay sparse-format overhead and no BLAS kernel (\S\ref{sec:bg-blas}) is
-ever used.
-\item \emph{Quadratic objectives are separate.} Each quadratic form is swapped for a dummy
-variable, and the surrounding affine expression is stuffed by the same walk. The matrices of
-the quadratic forms are then scaled by the resulting coefficients and reassembled into the
-global objective matrix $P$.
+used.
 \end{itemize}
-
-% overall what are your thoughts on the matrix stuffing section?
-% are there more things to talk about? Or things/details we might have forgot?
-% overall I like the structure and how we bring up some implementation details
-% that we later on talk about as improvements that we had in mind for the diffengine.
+Other design choices matter when comparing with \texttt{SparseDiffEngine}: each node stores a
+dictionary of
+local Jacobian blocks rather than a single global matrix (Figure~\ref{fig:local-vs-global}),
+and the quadratic forms of the objective are removed by substitution and recovered in a
+separate matrix stuffing pass that assembles the objective matrix $P$. In \S\ref{sec:Theme1}
+we revisit these limitations and design choices, which motivate our implementation.
 
 \paragraph{References.}
 Michael Grant's papers and PhD thesis are the standard references on verifying convexity and
-canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}; the
-code-generation paper of Chu et al. \cite{chu2013codegen} contributes the relaxed Smith form,
-and the Mosek modeling cookbook \cite{aps2025mosek} complements them on epigraph
-reformulations. The DPP paper \cite{agrawal2019dpp} develops the parameter map and
-its caching; the code generation lineage runs from the embedded second-order cone solvers of
-Chu et al. \cite{chu2013codegen} to \texttt{CVXPYgen} \cite{schaller2022cvxpygen}.
-% I don't like the word lineage here, otherwise this reference is quite nice.
-% we should also maybe just cite the cvxpy source code? which is the main
-% reference for the implementation details.
+canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
+The implementation details of this section come from the
+\texttt{CVXPY} source code \cite{cvxpy2026source}.
 
 %%
 %%  COMPUTING DERIVATIVES
@@ -514,12 +448,12 @@ Chu et al. \cite{chu2013codegen} to \texttt{CVXPYgen} \cite{schaller2022cvxpygen
 The introduction (\S\ref{sec:bg-derivatives}) organized differentiation software by four choices:
 the granularity of the expression graph, the mode of differentiation, the assembly of the result,
 and its storage.
-This section examines the assembly choice in detail, with emphasis on the oracle route, the
+This section examines the assembly choice in detail, with emphasis on oracle assembly, the
 standard of the literature \cite{griewank2008evaluating}.
-On this route, sparsity detection and graph coloring act as compression: they reduce the number of
-oracle probes needed to recover the sparse matrix.
-Table~\ref{tab:ad-landscape} gathers recent systems, and the section closes with the two nearest
-this thesis.
+Under oracle assembly, sparsity detection and graph coloring act as compression: they reduce the
+number of oracle sweeps needed to recover the sparse matrix.
+Table~\ref{tab:ad-landscape} gathers recent systems, and the section closes with the system
+nearest this thesis, \texttt{CasADi}.
 
 \paragraph{Scalar traces.}
 Early AD tools such as ADOL-C \cite{griewank1996adolc} and CppAD \cite{bell2012cppad} record the
@@ -532,34 +466,72 @@ reaches millions of nodes for a realistic problem.
 \paragraph{Oracle-based differentiation.}
 The oracle of \S\ref{sec:bg-derivatives} returns the Jacobian-vector product (JVP) $Jv$ in forward
 mode and the vector-Jacobian product (VJP) $J^\top w$ in reverse mode (for the Hessian, the
-analogous Hessian-vector product $Hv$ comes from one forward pass over one reverse pass)
+analogous Hessian-vector product $Hv$ comes from one forward sweep over one reverse sweep)
 \cite{baydin2017ADsurvey}.
-These matrix-vector products are obtained without ever forming $J$, each at about the cost of one
-function evaluation; borrowing terminology from numerical linear algebra, this is also called the
-\emph{matrix-free} view of AD.
+These matrix-vector products are obtained without ever forming $J$, each by one sweep of the
+graph at about the cost of one function evaluation; borrowing terminology from numerical linear
+algebra, this is also called the \emph{matrix-free} view of AD.
+Figure~\ref{fig:forward-sweep} traces one forward sweep on a small graph.
+
+\colorlet{sweepCol}{blue!55!black}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>={Stealth}, thick,
+    var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
+    lab/.style={font=\small, align=center}]
+  \node[var] (x1) at (0,0) {$x_1$};
+  \node[var] (x2) at (0,-2.6) {$x_2$};
+  \node[var] (v1) at (4.2,0) {$v_1$};
+  \node[var] (v2) at (4.2,-2.6) {$v_2$};
+  \draw[->] (x1) -- (v1);
+  \draw[->] (x1) -- (v2);
+  \draw[->] (x2) -- (v2);
+  \node[lab, below=1.5mm of x1] {\textcolor{sweepCol}{$\dot x_1 = 1$}};
+  \node[lab, below=1.5mm of x2] {\textcolor{sweepCol}{$\dot x_2 = 0$}};
+  \node[lab, right=2mm of v1]
+    {$v_1 = \sin x_1$\\[0.3ex]
+     \textcolor{sweepCol}{$\dot v_1 = \cos(x_1)\,\dot x_1 = \cos x_1$}};
+  \node[lab, right=2mm of v2]
+    {$v_2 = x_1 x_2$\\[0.3ex]
+     \textcolor{sweepCol}{$\dot v_2 = x_2\,\dot x_1 + x_1\,\dot x_2 = x_2$}};
+\end{tikzpicture}
+\[
+\begin{bmatrix} \textcolor{sweepCol}{\dot v_1} \\ \textcolor{sweepCol}{\dot v_2} \end{bmatrix}
+= \begin{bmatrix} \cos x_1 \\ x_2 \end{bmatrix}
+= J e_1,
+\qquad
+J = \begin{bmatrix} \cos x_1 & 0 \\ x_2 & x_1 \end{bmatrix}.
+\]
+\caption[One forward sweep of a computational graph]{One forward
+sweep of the computational graph of $F(x_1, x_2) = (\sin x_1,\ x_1 x_2)$.
+Alongside its value, each node carries a single extra scalar, its tangent $\dot v$ (in color),
+updated by the chain rule as the evaluation proceeds. The seed $(\dot x_1, \dot x_2) = (1, 0)$
+delivers the first column of $J$ at the outputs; every further column requires its own sweep.}
+\label{fig:forward-sweep}
+\end{figure}
 
 \paragraph{Recovering the Jacobian.}
-Recovering $J$ explicitly requires \emph{probing} the oracle with a sequence of seed vectors: the $n$
+Recovering $J$ explicitly requires \emph{sweeping} the oracle over a sequence of seed vectors: the $n$
 unit seeds recover it column by column in forward mode, and the $m$ unit seeds recover it row by row
 in reverse mode (the Hessian is recovered the same way, though its symmetry permits fewer seeds)
 \cite{griewank2008evaluating}.
-Probing with the full identity recovers $J$ exactly, $JI = J$, so for a dense target direct
-assembly is the oracle batched over unit seeds.
-When the Jacobian is sparse, most of each probe is wasted on zeros, and the full identity is
-prohibitively expensive; reducing the number of probes is the purpose of graph coloring.
+Seeding the full identity recovers $J$ exactly, $JI = J$, so assembling a dense $J$ is simply
+the oracle batched over the unit seeds.
+When the Jacobian is sparse, most of each sweep is wasted on zeros, and the full identity is
+prohibitively expensive; reducing the number of sweeps is the purpose of graph coloring.
 Coloring operates on the oracle alone, independently of how the underlying graph is built,
 so even fully vectorized frameworks such as JAX \cite{jax2018github}, whose local derivatives are
 Jacobian blocks combined by the rules of matrix calculus \cite{magnus2019matrix}, rely on it when
 they need an assembled sparse Jacobian.
 
 \paragraph{Graph coloring.}
-The cost of probing drops when several seeds share a single pass. Two columns of $J$ with no nonzero
+The number of sweeps drops when several seeds share one. Two columns of $J$ with no nonzero
 in a common row are \emph{structurally orthogonal}, so one seed recovers both without their nonzeros
 colliding. Finding the fewest such groups is a graph-coloring problem on the column intersection
 graph, whose edges join columns that share a row
 \cite{curtis1974estimation, coleman1983estimation, gebremedhin2005color}.
-Figure~\ref{fig:jacobian-coloring} illustrates the compression: one probe per color group replaces
-one probe per column.
+Figure~\ref{fig:jacobian-coloring} illustrates the compression: one sweep per color group replaces
+one sweep per column.
 The Hessian compresses
 further: its symmetry admits dedicated star and acyclic colorings that use fewer colors than the
 general Jacobian case \cite{Gebremedhin2009SparseHessians}.
@@ -633,10 +605,10 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \times & \times & \cdot
 \end{pNiceMatrix}}
 \]
-\caption{Graph coloring compresses the probing of the oracle. The columns of the sparse Jacobian
+\caption{Graph coloring compresses the sweeps of the oracle. The columns of the sparse Jacobian
 $J$ are grouped into three structurally orthogonal color classes; the seed matrix $S$ sums the
 unit vectors of each class, and the compressed product $B = JS$ recovers every nonzero of $J$
-without collisions, in three probes instead of eight.}
+without collisions, in three sweeps instead of eight.}
 \label{fig:jacobian-coloring}
 \end{figure}
 
@@ -649,25 +621,31 @@ cost is amortized across repeated evaluations of the same function. This scheme 
 in oracle-based tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
 
 \paragraph{Direct differentiation.}
-The direct route of \S\ref{sec:bg-derivatives} needs neither probing nor coloring.
-Direct assembly on scalar graphs exists but is rare: \emph{vertex elimination} (also called
+Direct assembly (\S\ref{sec:bg-derivatives}) needs neither sweeps nor coloring: each node
+carries its whole derivative object, and one pass over the graph combines them into $J$.
+On a scalar graph the cost is prohibitive. The derivative work at a node is proportional to
+the gradient it carries, not to the $O(1)$ operation it performs, and every intermediate
+materializes a gradient of its own: the inner product $y = a_1 x_1 + \cdots + a_k x_k$ unrolls
+into $k-1$ running partial sums whose gradients grow from one nonzero to $k$, so direct
+propagation costs $O(k^2)$ against $O(k)$ for one sweep. The affine expressions of
+canonicalized problems are dominated by such sums.
+Direct assembly on scalar graphs is therefore rare: \emph{vertex elimination} (also called
 \emph{cross-country} accumulation) forms $J$ by eliminating the intermediate vertices of the
-linearized graph, though finding the optimal elimination order is intractable
+linearized graph, but the optimal elimination order is intractable
 \cite{griewank2008evaluating, naumann2008optimal}, and the scalar symbolic graphs of
 \texttt{CasADi} build derivative expressions node by node in the same spirit \cite{casadidocs}.
-A scalar node carries only a $0/1$ dependency, so direct propagation degenerates to bookkeeping
-the sparsity pattern; vectorization upgrades the propagated object to a structured block, and
-direct assembly pays off on vectorized graphs.
-Recent works apply
-this idea in statistics \cite{kwok2025vectorised} and optimal control \cite{zou2025vectorized}.
-Direct propagation wins when the local blocks are well structured and intermediate fill-in stays
-bounded, while coloring through the oracle can be cheaper when the intermediates densify.
+Vectorization removes the obstruction: a node is a whole matrix operation, its local
+derivative is a structured block rather than a $0/1$ dependency, and the graph shrinks from
+millions of scalar operations to a few structured nodes, so carrying a sparse matrix per node
+is affordable. Recent works apply this idea in statistics \cite{kwok2025vectorised} and
+optimal control \cite{zou2025vectorized}.
+On a vectorized graph, direct propagation is cheaper when the local blocks are structured and
+intermediate fill-in stays bounded; the oracle with coloring is cheaper when the intermediates
+densify.
 Which assembly is preferable follows the solver that consumes the result: the conic
 solvers targeted in this thesis require the matrix explicitly as data, which the direct approach
 produces.
 
-% we should maybe find more in julia?
-% there's like enzyme and whatnot. but maybe they are all just the same?
 \begin{table}[ht]
 \centering
 \footnotesize
@@ -677,7 +655,8 @@ type} (scalar or vectorized), the \emph{mode} (forward, reverse, or both), the \
 the Jacobian (formed \emph{directly} by composing local Jacobians, or matrix-free through an
 \emph{oracle} that returns only matrix--vector products and is reconstructed by seeded sweeps), and
 the \emph{data format} (sparse or dense). The vectorized, forward, direct, sparse methods (lower
-block) need no graph coloring, unlike the matrix-free methods above them.}
+block) need no graph coloring, unlike the matrix-free methods above them. The choices are not
+independent: every direct method in the table operates on a vectorized graph.}
 \label{tab:ad-landscape}
 \begin{tabular}{@{}l c c c c@{}}
 \toprule
@@ -692,7 +671,7 @@ JAX \cite{jax2018github}
   & vectorized & both & oracle & dense \\
 \texttt{torch-sla} \cite{chi2026torchsla}
   & vectorized & reverse & oracle & sparse \\
-Julia sparse AD (Hill--Dalle) \cite{hill2025sparser}
+Hill and Dalle \cite{hill2025sparser}
   & scalar & both & oracle & sparse \\
 \addlinespace
 Zou and Jiang \cite{zou2025vectorized}
@@ -706,45 +685,6 @@ $\nabla$SD \cite{shaikhha2023sparse}
 \bottomrule
 \end{tabular}
 \end{table}
-
-\subsection{Sparse automatic differentiation in Julia}
-\label{sec:julia-ad}
-
-The Julia sparse-AD stack developed by Hill and Dalle \cite{hill2025sparser, hill2025sct} is the
-state of the art of the detect--compress--propagate scheme described above, packaged as three
-composable libraries: \texttt{SparseConnectivityTracer} detects the sparsity pattern,
-\texttt{SparseMatrixColorings} compresses it, and \texttt{DifferentiationInterface} drives the
-compressed sweeps through any Julia AD backend.
-
-\paragraph{Sparsity detection.}
-Detection works by operator overloading. The function is evaluated once on \emph{index-set
-tracers}: input $x_j$ starts as the singleton $\{j\}$, and every operation returns the union of
-the index sets of its arguments. The index sets of the outputs are the rows of the Jacobian
-pattern; a second-order tracer propagates index pairs the same way and yields the Hessian
-pattern. The tracers carry no values, so the pattern is \emph{global}: it holds at every input
-and is computed once per function.
-
-\paragraph{Compression and propagation.}
-\texttt{SparseMatrixColorings} compresses the pattern with greedy distance-2 and star colorings,
-and \texttt{DifferentiationInterface} propagates one compressed seed per color
-through the chosen backend, then scatters the recovered values into the sparse matrix.
-All three stages are bundled into a preparation object, computed once and reused across
-evaluations:
-\begin{lstlisting}
-using DifferentiationInterface, SparseConnectivityTracer, SparseMatrixColorings
-import ForwardDiff
-
-backend = AutoSparse(AutoForwardDiff();
-    sparsity_detector  = TracerSparsityDetector(),
-    coloring_algorithm = GreedyColoringAlgorithm())
-prep = prepare_jacobian(f, backend, x)  # detect + color, once
-J = jacobian(f, prep, backend, x)       # compressed sweeps, repeated
-\end{lstlisting}
-
-\paragraph{Relation to the diff engine.}
-The stack treats the program as opaque, so its sparsity must be traced, compressed, and
-recovered. The diff engine of this thesis needs none of the three stages: the Jacobian pattern
-of every DCP atom is known analytically.
 
 \subsection{\texttt{CasADi}}
 \label{sec:casadi}
@@ -809,12 +749,10 @@ and solver interfaces.
 \section{Coefficient extraction from declared structure}
 \label{sec:declared-structure}
 
-One question sorts every modeling system: are the coefficients of the problem data
-\emph{stored} as the user typed them, \emph{differentiated} out of an expression graph, or
-\emph{detected} at runtime and recovered through coloring?
-The previous section covered the third answer; this section examines two systems that need no
-detection, \texttt{AMPL} and \texttt{JuMP}. Both declare the structure of the
-problem up front, so extraction reduces to reading off what is already known.
+The systems of the previous section detect the structure of the problem at runtime and recover
+its coefficients through coloring. \texttt{AMPL} and \texttt{JuMP} need no detection: the
+structure is declared up front and the coefficients are stored as the user types them, so
+extraction reduces to reading off what is already known. This section examines both systems.
 
 \subsection{\texttt{AMPL}}
 \label{sec:ampl}
@@ -822,97 +760,71 @@ problem up front, so extraction reduces to reading off what is already known.
 \texttt{AMPL} \cite{fourer1990ampl} is the oldest system in this review, and its architecture
 still defines how most solvers receive nonlinear problems. The AMPL translator runs in its own
 process: it parses the model and the data, instantiates every constraint, and writes the
-resulting instance to a \texttt{.nl} file \cite{gay2005writing}. The solver is a separate
-executable that links the AMPL Solver Library (ASL), reads the file back, and returns its answer
-in a \texttt{.sol} file \cite{gay1997hooking}.
+resulting instance to a \texttt{.nl} file \cite{gay2005writing}, which the solver, a separate
+executable linking the AMPL Solver Library (ASL), reads back \cite{gay1997hooking}.
 
 \paragraph{The \texttt{.nl} format.}
 The \texttt{.nl} file is an instance format, not a model format: sets and indexing are resolved
-by the translator, and what remains is one flat record per objective and constraint, in a binary
-or ASCII encoding. A header states the dimensions of the problem and the nonzero counts of its
-Jacobian and gradients; the body is a sequence of segments keyed by a leading letter.
-\texttt{C} and \texttt{O} segments hold the nonlinear parts of constraints and objectives as
-expression graphs in Polish prefix notation. \texttt{J} and \texttt{G} segments hold their
-linear parts as explicit lists of (variable, coefficient) pairs. \texttt{b} and \texttt{r}
-segments hold variable and constraint bounds, and \texttt{k} segments hold column-wise nonzero
-counts of the Jacobian. Every linear coefficient is stored exactly as the translator assembled
-it, so the solver recovers the linear problem data by reading, at a cost linear in the number
-of nonzeros; only the nonlinear parts are ever differentiated.
+by the translator, and what remains is one flat record per objective and constraint. A header
+states the dimensions of the problem and the nonzero counts of its Jacobian and gradients; the
+body is a sequence of segments keyed by a leading letter. \texttt{C} and \texttt{O} segments
+hold the nonlinear parts of constraints and objectives as expression graphs in Polish prefix
+notation; \texttt{J} and \texttt{G} segments hold their linear parts as explicit lists of
+(variable, coefficient) pairs; the remaining segments hold bounds and nonzero counts.
 
 \paragraph{Example.}
-A small quadratic program makes the format concrete:
-\begin{lstlisting}[language=Python]
+The following quadratic program shows the syntax of \texttt{.nl} files.
+\begin{lstlisting}[language=Ampl]
 var x; var y;
 minimize obj: x^2 + x*y + 3*x;
 subject to c1: x + 2*y >= 1;
-subject to c2: 3*x - y = 2;
 \end{lstlisting}
 The translator writes the following \texttt{.nl} file (ASCII encoding; annotations and
 elisions ours):
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language={}]
 g3 0 1 0     # text format; 9 more header lines follow
- 2 2 1 0 1   # 2 vars, 2 constraints, 1 objective, 0 ranges, 1 eqn
+ 2 1 1 0 0   # 2 vars, 1 constraint, 1 objective, 0 ranges, 0 eqns
 ...
-r            # constraint bounds: c1 >= 1, c2 = 2
+r            # constraint bounds: c1 >= 1
 2 1
-4 2
 ...
 O0 0         # minimize objective 0; nonlinear part x^2 + x*y
 o0           #   add
 o5           #     pow
 v0           #       variable 0 (x)
 n2           #       constant 2
-o2           #     multiply
-v0           #       variable 0 (x)
-v1           #       variable 1 (y)
-...
+...          #     multiply subtree of x*y
 J0 2         # linear Jacobian row of c1: two entries
 0 1          #   coefficient 1 on variable 0
 1 2          #   coefficient 2 on variable 1
-J1 2         # linear Jacobian row of c2
-0 3
-1 -1
 G0 2         # linear part of the objective gradient: 3x
 0 3
 1 0
 \end{lstlisting}
 The quadratic terms $x^2 + xy$ appear only as the expression graph of the \texttt{O0} segment;
-every linear coefficient, the rows of $A$ and the linear term of the gradient, is spelled out
-in the \texttt{J} and \texttt{G} segments. For a linear program, the file \emph{is} the problem
-data.
+every linear coefficient is spelled out in the \texttt{J} and \texttt{G} segments. For a linear
+program, the file \emph{is} the problem data.
 
 \paragraph{Solver-side evaluation.}
-Inside the solver, ASL reads the header, rebuilds the expression graphs, and exposes the
-instance through a small evaluation interface: \texttt{objval} and \texttt{objgrd} for the
-objective and its gradient, \texttt{conval} and \texttt{jacval} for the constraints and their
-Jacobian, and \texttt{sphsetup} and \texttt{sphes} for the sparse Hessian of the Lagrangian. Gradients and
-Jacobian entries of the nonlinear parts come from reverse-mode AD on the rebuilt graphs
-\cite{gay1991automatic}. The sparse Hessian exploits \emph{partial separability}: each nonlinear
-function is recognized as a sum of terms $f_i(A_i x)$ with few variables each, so the Hessian
-assembles as a sum of small dense blocks $A_i^\top \nabla^2 f_i \, A_i$, and \texttt{sphsetup}
-produces the sparsity pattern from this structure alone \cite{gay1996more}. There is no runtime
-detection and no coloring anywhere in the process.
+Inside the solver, ASL reads the linear coefficients and bounds directly from the file, so for
+a linear or quadratic-over-linear instance this read is the whole extraction, at a cost linear
+in the number of nonzeros. Only the rebuilt nonlinear graphs are differentiated, by
+reverse-mode AD \cite{gay1991automatic}, with sparse Hessians assembled from partial
+separability \cite{gay1996more}.
 
-\paragraph{The file as contract.}
-Any modeling system that writes \texttt{.nl} reaches
-every solver that links ASL, and the format has stayed backward compatible since 1990, so old
-instances run against today's solvers. An instance is an ordinary file: it can be archived,
-shipped to reproduce a bug, and rerun across machines and versions.
-The price is the decoupling itself: every solve serializes the instance
-to disk and rebuilds its graphs in the solver process.
-
-\paragraph{Relation to the diff engine.}
-\texttt{AMPL} is the closest prior art to the diff engine: both exploit known structure rather
-than discovering it at runtime. The difference is granularity. ASL derives its sparsity from
-the partial separability of a scalar expression tape; the diff engine reads it off per atom of
-a vectorized DCP graph, as whole sparse blocks known analytically.
+\paragraph{Advantages of the file format.}
+The format has three benefits: any system that writes \texttt{.nl} reaches every solver that
+links ASL; the format has stayed backward compatible since 1990; and an instance is an
+ordinary file that can be archived, shipped to reproduce a bug, and rerun across machines.
+The cost is the decoupling itself: every solve serializes the instance to disk and rebuilds
+its expression graphs in the solver process.
 
 \subsection{\texttt{JuMP}}
 \label{sec:jump}
 
 \texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modeling language
 embedded in Julia; its abstraction layer between models and solvers is
-\texttt{MathOptInterface} (MOI) \cite{legat2020mathoptinterface}.
+\ac{MOI} \cite{legat2020mathoptinterface}.
 Where \texttt{AMPL} decouples modeler and solver through a
 file, \texttt{JuMP} decouples them through a typed in-memory interface. For the linear,
 quadratic, and conic problems considered here, coefficients are stored as the user types them,
@@ -927,8 +839,12 @@ coefficient) terms plus a constant vector; a \texttt{ScalarQuadraticFunction} ad
 (variable, variable, coefficient) triples. A constraint pairs one such function with a set, for
 instance a nonnegative orthant or a second-order cone: the functional conic form of
 \S\ref{sec:bg-canonicalization}.
-% TODO(oscar): confirm the macro story (eager merging, no retained expression tree) is accurate
-% for current JuMP, and whether GenericAffExpr uses an ordered dict of terms.
+The constraint of the \texttt{AMPL} example above, entered as
+\lstinline|@constraint(model, x + 2y >= 1)|, is stored as the pair
+\begin{lstlisting}
+ScalarAffineFunction([(1.0, x), (2.0, y)], 0.0)   in   GreaterThan(1.0)
+\end{lstlisting}
+a term list, a constant, and a set; the expression itself is gone once the macro returns.
 
 \paragraph{Extraction.}
 Extraction is serialization: when the model is passed to a solver, MOI copies each constraint
@@ -936,6 +852,9 @@ into the solver's own representation (\texttt{copy\_to}); solvers that consume m
 the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists into one
 sparse matrix in the solver's format. The cost of extraction is this copy: a pure
 data-structure transformation, linear in the number of terms, with no analysis of any graph.
+The assembled matrix is the same problem data that \texttt{CVXPY}'s matrix stuffing computes
+(\S\ref{sec:matrix-stuffing}); \texttt{JuMP} arrives at it by copying stored coefficients
+rather than by differentiating conic-form trees.
 % TODO(oscar): confirm copy_to + MatrixOfConstraints is the canonical path for conic solver
 % wrappers (SCS.jl, Clarabel.jl), and whether any differentiation can occur on this path.
 
@@ -948,31 +867,17 @@ coefficients and adds auxiliary variables and constraints. This mirrors \texttt{
 canonicalization (\S\ref{sec:canonicalization}) with one difference: \texttt{JuMP} rewrites
 problems whose data is already in matrix form, while \texttt{CVXPY} must first produce that
 data from a DCP atom tree, which is the work this thesis accelerates.
-% TODO(oscar): is the bridge cost ever significant relative to copy_to on conic problems?
 
-\paragraph{The nonlinear path.}
-\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and derivatives
-come from reverse-mode AD with coloring for sparse Hessians
-(the \texttt{Nonlinear.ReverseAD} module); it serves general nonlinear solvers and is out of
-scope for this thesis.
-% TODO(oscar): one-sentence accuracy check on the ReverseAD summary (reverse mode + acyclic or
-% star coloring for the Hessian?).
+\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and
+derivatives come from sparse AD in the style of \S\ref{sec:computing-derivatives}; it serves
+general nonlinear solvers and is out of scope for this thesis.
 
 \paragraph{References.}
 The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
-design of \texttt{JuMP}'s solver abstraction layer and its bridge system.
-David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the authoritative
+design of \texttt{JuMP}'s solver abstraction layer and its bridge system, and the \ac{MOI}
+and \texttt{JuMP} documentation \cite{moidocs, jumpdocs} cover the implementation details.
+David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the primary
 description of the \texttt{.nl} format and the \texttt{AMPL} solver interface.
-
-\paragraph{Summary.}
-Table~\ref{tab:modeling-systems} closes the chapter by sorting the reviewed systems, together with
-the engine of \S\ref{sec:Theme1}, by the question that opened this section. The stored systems
-trade canonicalization for declaration, so extraction is a copy of what the user typed; the
-detecting systems accept an opaque program and pay for tracing, coloring, and compressed sweeps;
-the differentiating systems compute the coefficients from an expression graph, and differ in
-whether the sparsity of each operation must be detected or is known analytically.
-Chapter~\ref{sec:Theme2} benchmarks the engine against \texttt{cvxcore}, the one system that
-computes the same problem data from the same DCP input.
 
 \begin{table}[ht]
 \centering
@@ -995,7 +900,7 @@ differentiated out of an expression graph.}
   & partial separability of the scalar tape
   & \texttt{.nl} write and ASL read \\
 \addlinespace
-Julia sparse AD \cite{hill2025sparser}
+Hill and Dalle \cite{hill2025sparser}
   & detected
   & index-set tracing, then coloring
   & compressed oracle sweeps \\
