@@ -4,27 +4,31 @@
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
 This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
-(\S\ref{sec:matrix-stuffing}) and of other modeling language approaches, from sparse AD
-(\S\ref{sec:computing-derivatives}) to \texttt{AMPL} and \texttt{JuMP}
-(\S\ref{sec:declared-structure}). These modeling languages have a similar purpose, and the goal of the
-chapter is to make the distinctions clear. The backends of \texttt{CVXPY} compute the same
-problem data from the same input as \texttt{SparseDiffEngine}, and they serve as the baselines
-for the benchmarks of Chapter~\ref{sec:Theme2}. \texttt{CasADi} carries vectorized expressions, but
-must discover the structure of their derivatives at runtime, over many sweeps of the graph.
-\texttt{AMPL} and \texttt{JuMP} let the user declare vectorized expressions, and scalarize
-them for processing.
+(\S\ref{sec:matrix-stuffing}) and of other modeling language approaches, from sparse AD such as
+\texttt{CasADi} (\S\ref{sec:computing-derivatives}) to coefficient extraction in \texttt{AMPL}
+and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modeling languages all produce a
+similar output to \texttt{CVXPY}, the solver problem data, but with varying inputs and intermediate
+steps. For example, \texttt{CasADi} accepts vectorized expressions as input, but differentiates
+them through matrix--vector products, so the structure of the derivatives is never materialized
+and must be detected at runtime, over many sweeps of the expression graph.
+\texttt{AMPL} and \texttt{JuMP} let the user declare vectorized expressions but scalarize them
+when processing the data into coefficients.
+On the other hand, the canonicalization backends of \texttt{CVXPY} keep the expressions
+vectorized and need no detection step (for this reason, we only compare against these backends
+in Chapter~\ref{sec:Theme2}). The goal of this chapter is to make these differences clear.
 
 %%
 %%  MATRIX STUFFING
 %%
 \section{Matrix stuffing in \texttt{CVXPY}}\label{sec:matrix-stuffing}
 
-\texttt{CVXPY} takes the perspective of matrix calculus \cite{magnus2019matrix} for computing the
-coefficient matrices of linear expressions, and this is where most of the computational burden of
-canonicalization lies.
-The section gives a brief summary of matrix calculus and a few examples, presents the conventions
-of \texttt{CVXPY}'s backend, and closes with implementation details that become important when
-contrasting it with our methodology (\S\ref{sec:Theme1}).
+Matrix stuffing converts the conic-form expression trees into the problem data. After
+canonicalization every expression is affine, so the Jacobian of
+each node is a constant matrix, and matrix calculus \cite{magnus2019matrix} gives the Jacobian
+of each atom in closed form. Computing the problem data reduces to composing these linear
+operators over the tree. This section reviews these derivative rules and two design choices of
+the \texttt{CVXPY} implementation: how the coefficients are stored during the computation, and
+how the problem data is cached across parameter changes.
 
 \paragraph{Matrix calculus.}
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
@@ -37,12 +41,8 @@ with
 the vector that stacks the columns of $X \in \reals^{m \times n}$, and the derivative of one
 vectorized expression with respect to another is an ordinary Jacobian matrix. Under this
 convention matrix operations become linear operators on the vectorized arguments, and their
-Jacobians carry structure: for example
-\BEQ\label{eq:vec-kron}
-\vect(FX) = (I \otimes F)\,\vect(X),
-\EEQ
-so the matrix product $FX$ corresponds to the Kronecker-structured, block-diagonal Jacobian
-$I \otimes F$. The convention is illustrated in Figure~\ref{fig:vec-variable}.
+Jacobians carry structure: the matrix product $FX$ has the Kronecker-structured, block-diagonal
+Jacobian $I \otimes F$. The convention is illustrated in Figure~\ref{fig:vec-variable}.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -82,7 +82,7 @@ y_{22} & \plotzero & \plotzero & f_{21}    & f_{22}    \\
 \end{block}
 \end{blockarray}
 $
-\caption{The Jacobian \eqref{eq:vec-kron} of the product $Y = FX$ is block-diagonal, one copy
+\caption{The Jacobian of the product $Y = FX$ is block-diagonal, one copy
 of $F$ per column of $X$.}
 \label{fig:vec-variable-kron}
 \end{subfigure}
@@ -93,8 +93,8 @@ columns of the Jacobians.}
 \end{figure}
 
 \paragraph{Composing linear operators.}
-After canonicalization every expression is affine, so each node of a conic-form tree can be
-written in the vectorized form
+% let's revisit this and try to understand it well. If it's not clear we need to rework on it.
+Each node of a conic-form tree can be written in the vectorized form
 \BEQ\label{eq:linop-form}
 f(x) = A\,x + b
      = \begin{bmatrix} A & b \end{bmatrix} \begin{bmatrix} x \\ 1 \end{bmatrix},
@@ -103,7 +103,8 @@ where $x$ is the stacked vector of all the problem variables, $A$ is the Jacobia
 expression $f$ with respect to $x$, constant since $f$ is affine, and $b$ is a constant vector.
 Each variable occupies a contiguous block of columns of $A$, starting at its \emph{column
 offset} within $x$, and the columns of the variables that do not appear under the node are zero.
-Matrix stuffing computes the augmented matrix $[A\ b]$ of every node in one bottom-up pass. A
+Matrix stuffing computes the augmented matrix $[A\ b]$ of every node in one bottom-up walk of
+the tree. A
 variable leaf contributes an identity block at its own column offset, and a constant leaf
 contributes its value to the last column. An interior atom $g$ with arguments $f_1, \dots, f_k$
 is a linear map $g = \sum_i L_i f_i$, and since each $L_i$ is a constant matrix under the vec
@@ -112,8 +113,7 @@ convention, the chain rule reduces to one matrix product per child:
 \begin{bmatrix} A & b \end{bmatrix}
   = \sum_{i=1}^{k} L_i \begin{bmatrix} A_i & b_i \end{bmatrix}.
 \EEQ
-Computing the problem data thus amounts to composing linear operators over the tree, with no
-differentiation at the nodes. The node matrices of the figures in this section are the matrices
+The node matrices of the figures in this section are the matrices
 $[A\ b]$, and the final result of the walk is the problem data.
 
 \paragraph{Views and copies.}
@@ -450,6 +450,9 @@ the granularity of the expression graph, the mode of differentiation, the assemb
 and its storage.
 This section examines the assembly choice in detail, with emphasis on oracle assembly, the
 standard of the literature \cite{griewank2008evaluating}.
+The input here is the most general of the chapter, an arbitrary differentiable program, and the
+generality is paid for in intermediate steps: the structure of the derivatives is unknown until
+detected from the graph.
 Under oracle assembly, sparsity detection and graph coloring act as compression: they reduce the
 number of oracle sweeps needed to recover the sparse matrix.
 Table~\ref{tab:ad-landscape} gathers recent systems, and the section closes with the system
@@ -689,10 +692,12 @@ $\nabla$SD \cite{shaikhha2023sparse}
 \subsection{\texttt{CasADi}}
 \label{sec:casadi}
 
-\texttt{CasADi} \cite{andersson2019} is an integrated symbolic-AD framework for optimization
-whose quadratic-programming interface extracts the explicit matrices $P$ and $A$ by AD on the
-expression graph; it is the reference implementation of the detect--compress--propagate scheme
-of this section in optimization software.
+\texttt{CasADi} \cite{andersson2019} is a symbolic framework for nonlinear optimization built
+around AD. The user writes vectorized expressions, and every matrix the solvers consume is
+obtained by differentiating them: the problem data of a quadratic program is extracted as the
+derivatives of its objective and constraints. The extraction follows the
+detect--compress--propagate scheme of this section, of which \texttt{CasADi} is the reference
+implementation in optimization software.
 
 \paragraph{Expression types.}
 Expressions come in two types \cite{casadidocs}. An \texttt{SX} graph is scalar, with exact
@@ -730,7 +735,8 @@ row: the column intersection graph restricted to the block is a clique, no color
 fewer than $\min(m,n)$ colors, and the sweep count grows to the full dimension of the block,
 even when the assembled matrix is mostly sparse. Lowered conic
 problems routinely embed dense blocks, so this worst case governs coefficient extraction in
-the setting of this thesis.
+the setting of this thesis. The vectorized input does not spare the sweeps: the structure known
+to the modeling layer is recovered only at runtime.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} covers the theory and practice of
@@ -827,8 +833,8 @@ embedded in Julia; its abstraction layer between models and solvers is
 \ac{MOI} \cite{legat2020mathoptinterface}.
 Where \texttt{AMPL} decouples modeler and solver through a
 file, \texttt{JuMP} decouples them through a typed in-memory interface. For the linear,
-quadratic, and conic problems considered here, coefficients are stored as the user types them,
-and no differentiation occurs anywhere on the problem-data path.
+quadratic, and conic problems considered here, no differentiation occurs anywhere on the
+problem-data path.
 
 \paragraph{Macros and term lists.}
 The macros of \texttt{JuMP} rewrite each expression as it is entered: \texttt{@objective} and
