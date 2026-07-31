@@ -111,11 +111,8 @@ detected and the columns grouped before a single entry of the matrix is obtained
 We review the basics of computing derivatives in \S\ref{sec:bg-derivatives} and present
 sparse AD and graph colouring methods in \S\ref{sec:computing-derivatives}.
 
-% TODO(read-through): with the cross-system benchmarks cut, check this paragraph reads as
-% lit-review positioning only, not as setup for an AMPL/JuMP benchmark.
-% we should also probably add the acronym for AMPL and maybe write it out in full here?
 A modelling language, by contrast, knows which variables enter each constraint.
-\texttt{AMPL} is split into two components: its commercial
+\texttt{AMPL} (A Mathematical Programming Language) is split into two components: its commercial
 translator writes the structure of the model to a \texttt{.nl} file
 \cite{gay2005writing}, and the open source AMPL Solver Library (ASL) evaluates constraints
 and their derivatives from this file inside the solver process \cite{gay1997hooking}.
@@ -123,7 +120,7 @@ and their derivatives from this file inside the solver process \cite{gay1997hook
 among other formats, though it generally writes them more slowly than the \texttt{AMPL}
 translator.
 On the other hand, \texttt{JuMP} has no single standard form to target;
-it decouples modeler and solver through \ac{MOI}, a typed in-memory interface
+it decouples modeller and solver through \ac{MOI}, a typed in-memory interface
 \cite{legat2020mathoptinterface}.
 The model is built constraint by constraint, and each constraint stores its coefficients directly,
 so extraction reduces to copying them into the format of the chosen solver.
@@ -143,9 +140,8 @@ The symbolic phase runs once on the first solve, where it computes the sparsity 
 allocates memory for all intermediate matrices, and caches other computations that remain valid
 across the problem family.
 The numeric phase then fills in new values at every solve.
-This separation between structure and values is inspired by the interfaces of nonlinear
-programming solvers such as \texttt{IPOPT} \cite{wachter2006ipopt}.
-% we should use the NLP tag here and clean it up in the theme2 since it can reuse it there.
+This separation between structure and values is inspired by the interfaces of \ac{NLP}
+solvers such as \texttt{IPOPT} \cite{wachter2006ipopt}.
 
 The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
 numeric phase is often similar in cost to applying the matrix-vector product.
@@ -158,18 +154,17 @@ kernels, rather than always relying on generic sparse formats and routines (we p
 background on dense and sparse matrix computations in \S\ref{sec:intro-matrix}).
 
 \section{Canonicalization}\label{sec:intro-canon}
-% let's try to maybe reduce the semi-colon usage here?
-The problem family \eqref{e:parametric-family} is written in functional form: an objective and
+The problem family \eqref{e:parametric-family} is written in functional form, as an objective and
 constraint functions of the variable and the parameters.
 In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$ are collected
 into a single
 vector $\mvec{x} \in \reals^n$, and likewise the parameters $\gvec{\theta}_1,\ldots,\gvec{\theta}_l$
 into $\gvec{\theta} \in \reals^p$ \cite{boyd2004convex}.
 Users are not required to write constraints with a zero right-hand side as in
-\eqref{e:parametric-family}: modelling languages accept inequalities with a convex left-hand
+\eqref{e:parametric-family}. Modelling languages accept inequalities with a convex left-hand
 side and a concave right-hand side, and equalities with both sides affine.
-% we could say that converting to the parametric family is trivial and just requires moving
-% everything to the left hand side.
+Converting to the form \eqref{e:parametric-family} is trivial and only requires moving every
+term to the left-hand side.
 Internally, each function is represented as an \emph{expression tree}.
 
 Modelling languages for convex optimization are built on top of a library of functions which can be
@@ -226,11 +221,8 @@ drawn as circles and constants (or parameters) as boxes.}
 \label{fig:expr-tree}
 \end{figure}
 
-% maybe we dont need this sentence anymore? since the problem family is already
-% says that these functions must be convex?
-When $f_0$ and all $f_i$ are convex and all $g_j$ are affine,
-\eqref{e:parametric-family} defines a convex optimization problem.
-To certify convexity, DCP-based modelling languages use the DCP composition rules to classify
+To certify the convexity of a problem, DCP-based modelling languages use the DCP composition
+rules to classify
 the curvature of each function \cite{grant2004disciplined}.
 Once all functions are classified, a problem is \emph{DCP-compliant} if the objective and
 each constraint have curvatures compatible with a convex problem: a convex objective,
@@ -308,16 +300,10 @@ the sum of the $k$ largest entries is bounded by $kq + \ones^\top \mvec{u}$ \cit
 
 \texttt{CVXPY} is a DCP-based modelling language embedded in Python \cite{diamond2016cvxpy},
 which began in 2013 as an implementation of the modelling principles of \texttt{CVX} \cite{cvx}.
-Three fundamental design decisions differed from \texttt{CVX} at the beginning.
-The first is modularity: a few core data structures are shared by separate components for
-verification, canonicalization, matrix stuffing, and solver interfaces.
-The second is the expression tree as the central data structure, which is formed
-automatically from user code through Python's operator overloading.
-The third is support for parameters: because canonicalization never looks at the values of
-constants, much of the compilation work can be reused when a problem is solved repeatedly.
-% I am wondering if this is too much detail? Should we maybe clean it up a bit?
-% for the purpose of an intro, maybe we don't need to give so much detail about these design
-% decisions right?
+It differed from \texttt{CVX} in three design decisions: modular components built around a few
+shared data structures, the expression tree formed by Python's operator overloading as the
+central representation, and support for parameters, which lets compilation work be reused when
+a problem is solved repeatedly.
 These ideas matured with version 1.0, which redesigned canonicalization as
 a general reduction-based rewriting system \cite{agrawal2018rewriting}.
 % TODO(advisor): handwritten note here is unclear (reads like "mon doc ... 0.9") — possibly
@@ -331,29 +317,18 @@ The open source project has since grown through contributions from many other en
 developers; a recent paper surveys the new canonicalization and modelling features
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 % TODO(advisor): "ou avez-vous soumis?" — state where the survey paper was submitted.
-The exposition of canonicalization in this chapter follows this survey, with more emphasis on
-the non-DPP path.
-% I am not sure this last sentence is needed anymore, maybe we should point to the matrix stuffing
-% section then?
+The review of matrix stuffing in \S\ref{sec:matrix-stuffing} follows this survey.
 
 The rewriting from the functional form \eqref{e:parametric-family} to the functional conic form
 \eqref{eq:conic-form} is carried out as a sequence of \emph{reductions}. Each reduction provides an
 \texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
 step that recovers a solution of the original problem from a solution of the rewritten one
 \cite{agrawal2018rewriting}.
-% Is this maybe too much detail for an intro?
-% happy to completely cut the examples or maybe shorten their details if needed.
-A first example is \texttt{FlipObjective}, which turns a maximization problem
-into a minimization one by
-flipping the sign of the objective; its \texttt{retrieve} step simply flips the sign back.
-A second example, \texttt{CvxAttr2Constr}, handles variable attributes, which are properties
-declared on a variable that restrict its domain. These include nonnegativity (\texttt{nonneg}),
-positive semidefiniteness (\texttt{PSD}), and explicit variable bounds, amongst others.
-When the target solver supports an attribute natively, \texttt{CVXPY} leaves it for the solver to
-enforce;
-otherwise the reduction creates a new variable that carries no attributes and adds
-explicit constraints that enforce the attribute. Its \texttt{retrieve} step then maps the
-reformulated solution back onto the original attributed variable.
+A first example is \texttt{FlipObjective}, which turns a maximization problem into a
+minimization one by flipping the sign of the objective, and flips it back in its
+\texttt{retrieve} step.
+A second example is \texttt{CvxAttr2Constr}, which replaces variable attributes such as
+nonnegativity with explicit constraints when the target solver does not support them natively.
 
 The main reduction, \texttt{Dcp2Cone}, applies the epigraph reformulation of
 \S\ref{sec:bg-canonicalization} atom by atom: the problem is first rewritten into Smith form,
@@ -668,12 +643,9 @@ oracle sweeps; \S\ref{sec:computing-derivatives} develops both assemblies and lo
 systems of the literature, and our approach, among them.
 
 \section{Matrix computations}\label{sec:intro-matrix}
-% I also don't like referring to this thesis and the overall state of
-% this intro of this section.
-% I think we can bring some more history (without citing necessarily)
-% and say that understanding when to use which operations and storage
-% is an important computational problem and choice to make, etc.
-Matrix computations appear at every stage of this thesis.
+Choosing how a matrix is stored and which algorithms operate on it is a long-standing concern
+of numerical computing, and the same computation can differ in cost by orders of magnitude
+between representations.
 The problem data $\mmat{P}$ and $\mmat{A}$ are sparse matrices, and matrix stuffing assembles
 them from
 smaller intermediate matrices.
@@ -681,66 +653,60 @@ This section reviews the two families of matrix representations, dense and spars
 the standpoint of both storage and algorithms.
 
 \subsection{Dense matrices}\label{sec:bg-blas}
-% maybe let's stay consistent with the rest of the thesis so far and
-% not start subsections with titled paragraphs?
-% should we maybe have a small figure for what a dense matrix looks like and how its stored?
-% we could also talk quickly about the conventions in C vs. Fortran and why that might
-% be important?
 A dense matrix is stored as a single contiguous array of its entries, ordered row by row
-(row-major) or column by column (column-major).
+(row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
 needed, and rows or columns are traversed sequentially in memory.
+C arrays are row-major while Fortran arrays are column-major, a distinction that matters when
+exchanging matrices across languages because the reference dense linear algebra interfaces
+follow the Fortran convention.
 
-% maybe we should have two paragraphs.
-% my understanding is that BLAS is mostly for standardization.
-% like it is not an implementation in itself right? It is more a suite of guidelines or
-% something of that end.
-% and that there are many implementations of it. We could talk about them and how
-% widely used blas is etc. (what you already have).
-% then we could have a separate graph called levels of BLAS operations or something.
-% and mention all three levels there and maybe we should also list the operations
-% that we use in the engine? like dgemm or the scaled copies?
-% also another figure could be nice here? what do you think?
-Dense linear algebra is served by a standardized interface of vector and matrix kernels, the
-Basic Linear Algebra Subprograms (BLAS). The interface is organized in three levels
-\cite{lawson1979blas, dongarra1990level3} by
-the ratio of computation to data: level 1 covers vector operations such as dot products and
-scaled additions, level 2 covers matrix--vector products, and level 3
-covers matrix--matrix products. LAPACK, the library behind dense
-factorizations and linear system solving in most scientific software, is built on top of these
-kernels \cite{anderson1999lapack}. Because the interface is standard, decades of optimization
-effort concentrate behind it: implementations such as \texttt{OpenBLAS}, Intel \texttt{MKL}, and
-Apple \texttt{Accelerate}
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[cell/.style={draw, minimum size=5.5mm, inner sep=0pt, font=\small}]
+  \node[anchor=east] at (1.1, 0) {$\mmat{D} = \begin{bmatrix} 1 & 2 & 3\\ 4 & 5 & 6 \end{bmatrix}$};
+  \node[anchor=west] at (2.0, 0.55) {\small row-major (C)};
+  \foreach [count=\i from 0] \v in {1,2,3,4,5,6}
+    \node[cell] at (7.0 + \i*0.55, 0.55) {$\v$};
+  \node[anchor=west] at (2.0, -0.55) {\small column-major (Fortran)};
+  \foreach [count=\i from 0] \v in {1,4,2,5,3,6}
+    \node[cell] at (7.0 + \i*0.55, -0.55) {$\v$};
+\end{tikzpicture}
+\caption{Dense storage of a $2 \times 3$ matrix: the same entries as one contiguous array in
+row-major and in column-major order.}
+\label{fig:dense-storage}
+\end{figure}
+
+Dense linear algebra is served by the Basic Linear Algebra Subprograms (BLAS), a standardized
+interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
+The BLAS is a specification rather than an implementation.
+Implementations such as \texttt{OpenBLAS}, Intel \texttt{MKL}, and Apple \texttt{Accelerate}
 are tuned to each processor family, and every program calling the interface benefits.
 In practice, an optimized implementation is available on nearly every machine, whether
-shipped with the operating system or bundled by numerical libraries.
+shipped with the operating system or bundled by numerical libraries, and LAPACK, the library
+behind dense factorizations and linear system solving in most scientific software, is built
+on top of these kernels \cite{anderson1999lapack}.
 
-% I think this is a bit too much discussion for the intro.
-% could we maybe have one paragraph here that is short and concise instead?
-% we would call it advantages of blas.
-% we can mention that many developers have optimized these codes to take advantages
-% of low level computation techniques such as memory and cache layout and
-% also mention quickly SIMD maybe? I think showing another figure could be nice actually.
-The performance of optimized BLAS implementations comes from working with, rather than against,
-the memory system. A modern processor multiplies numbers far faster than it loads them from
-main memory, so fast code must reuse data already sitting in its caches and must read memory
-contiguously. Dense storage makes both possible: optimized kernels traverse arrays in memory
-order, process several entries per instruction with \ac{SIMD} units, and tile
-matrix--matrix products into blocks that fit in cache \cite{goto2008anatomy}. Level-3 kernels
-benefit the most: they perform $O(n^3)$ operations on $O(n^2)$ data, so each entry loaded from
-memory is reused many times.
+The interface is organized in three levels by the ratio of computation to data.
+Level 1 covers vector operations such as dot products, scaled copies, and additions, level 2
+covers matrix--vector products, and level 3 covers matrix--matrix products.
+The engine of Chapter~\ref{sec:Theme1} calls the level-3 product \texttt{dgemm} for its dense
+blocks and level-1 scaled copies and additions for its vector work.
+
+A modern processor multiplies numbers far faster than it loads them from main memory.
+Optimized BLAS implementations account for this by reading arrays contiguously, reusing data
+already in cache, processing several entries per instruction with \ac{SIMD} units, and tiling
+matrix--matrix products into blocks that fit in cache \cite{goto2008anatomy}.
+Level-3 kernels benefit the most because they perform $O(n^3)$ operations on $O(n^2)$ data, so
+each entry loaded from memory is reused many times.
 % TODO(advisor): margin note next to the O(n^3)/O(n^2) sentence is partly illegible — likely
 % asks to define the O() notation at first use; confirm.
-% TODO: possible figure — SIMD lanes applying one instruction to adjacent entries, or cache tiling.
-These speeds, however, rely on every entry being stored and processed, zeros included.
-% we also don't needd a transition sentence like this.
 
 \subsection{Sparse matrices}\label{sec:bg-sparse}
-% we could say that the solvers expect the outputs to be sparse?
 In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ contain mostly zero entries; such
-matrices are called sparse.
-% maybe we could have one or two more sentences about the history? That
-% maybe it was attributed to markowitz when he did some research on porftfolios?
+matrices are called sparse, and conic solvers expect their problem data in sparse formats.
+Techniques that store and compute with only the nonzero entries date back to the linear
+programming computations of the 1950s and the work of Markowitz \cite{davis2006direct}.
 The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
@@ -797,19 +763,67 @@ Both compressed formats multiply a dense vector in one pass over the nonzeros, b
 must follow the storage: CSR gathers, computing each output entry as a sparse dot
 product along its row, while CSC scatters, accumulating each column's contribution into
 the output vector.
-% maybe it can be helpful to show a small example here of the differences?
-% otherwise I think the paragraph is a bit too short.
+Figure~\ref{fig:sparse-matvec} traces one product of the matrix in \eqref{eq:sparse-matrix}
+under both formats.
 
-% I dont think the first two sentences are necessary. Let's just describe it in words right away?
-% i also don't like the word underlies, I dont use that. MAybe just say it is the implementation
-% of popular packages? Or it is the standard sparse gemm algorithm>?
-The product of two sparse matrices is harder than a matrix-vector product because the sparsity
-pattern of the result is not known in advance. The standard algorithm is due to Gustavson
-\cite{gustavson1978two}: the result is formed row by row, each row as a combination of the
-rows of the second operand selected by the nonzeros of the first, gathered in a dense
-accumulator before compaction into sparse storage \cite{bank1993smmp}. The algorithm underlies
-the sparse products of widely used linear algebra libraries such as \texttt{Eigen}
-\cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}[cell/.style={draw, minimum size=5.5mm, inner sep=0pt, font=\small},
+                    hit/.style={cell, fill=blue!12}]
+  % S with row 2 highlighted
+  \foreach [count=\r from 0] \row in {{0,1,0,0},{2,0,3,4},{0,5,6,0}}
+    \foreach [count=\c from 0] \v in \row {
+      \ifnum\r=2 \node[hit] at (0.55*\c, -0.55*\r) {$\v$};
+      \else \node[cell] at (0.55*\c, -0.55*\r) {$\v$}; \fi
+    }
+  % vector v
+  \foreach [count=\r from 0] \v in {v_1,v_2,v_3,v_4}
+    \node[cell] at (2.9, -0.55*\r + 0.28) {$\v$};
+  % output y
+  \foreach [count=\r from 0] \v/\s in {y_1/cell, y_2/cell, y_3/hit}
+    \node[\s] at (4.4, -0.55*\r) {$\v$};
+  \node[font=\footnotesize, align=center] at (2.2, -2.2)
+    {$y_3 = 5v_2 + 6v_3$};
+\end{tikzpicture}
+\caption{CSR gathers along a row}
+\end{subfigure}%
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}[cell/.style={draw, minimum size=5.5mm, inner sep=0pt, font=\small},
+                    hit/.style={cell, fill=orange!22}]
+  % S with column 3 highlighted
+  \foreach [count=\r from 0] \row in {{0,1,0,0},{2,0,3,4},{0,5,6,0}}
+    \foreach [count=\c from 0] \v in \row {
+      \ifnum\c=2 \node[hit] at (0.55*\c, -0.55*\r) {$\v$};
+      \else \node[cell] at (0.55*\c, -0.55*\r) {$\v$}; \fi
+    }
+  % vector v with v_3 highlighted
+  \foreach [count=\r from 0] \v/\s in {v_1/cell, v_2/cell, v_3/hit, v_4/cell}
+    \node[\s] at (2.9, -0.55*\r + 0.28) {$\v$};
+  % output y
+  \foreach [count=\r from 0] \v/\s in {y_1/cell, y_2/hit, y_3/hit}
+    \node[\s] at (4.4, -0.55*\r) {$\v$};
+  \node[font=\footnotesize, align=center] at (2.2, -2.2)
+    {$y_2 \mathrel{+}= 3v_3, \quad y_3 \mathrel{+}= 6v_3$};
+\end{tikzpicture}
+\caption{CSC scatters a column}
+\end{subfigure}
+\caption{The product $\mvec{y} = \mmat{S}\mvec{v}$ with the matrix of \eqref{eq:sparse-matrix}.
+In CSR, the nonzeros of one row form a dot product that produces one output entry.
+In CSC, the nonzeros of one column are scaled by one input entry and accumulated into several
+output entries.}
+\label{fig:sparse-matvec}
+\end{figure}
+
+The product of two sparse matrices is formed row by row with Gustavson's algorithm
+\cite{gustavson1978two}: because the sparsity pattern of the result is not known in advance,
+each row is built as a combination of the rows of the second operand selected by the nonzeros
+of the first, gathered in a dense accumulator before compaction into sparse storage
+\cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
+packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
 
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
 but many others exist for different specialized use cases.
@@ -822,11 +836,9 @@ the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 % ("derniere sub-section de l'intro").
 We make the following contributions:
 \begin{enumerate}
-  \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that computes sparse
-  Jacobians and Hessians without graph colouring.
-% I am rethinking if its correct to say without graph coloring here?
-% since it seems like its a separate topic/task. What would be another one liner way to
-% explain how the diffengine takes derivatives differently than others?
+  \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that assembles
+  sparse Jacobians and Hessians directly from the expression structure, with no sparsity
+  detection or graph colouring.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
   \texttt{SparseDiffEngine}; this backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.
