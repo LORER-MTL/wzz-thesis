@@ -10,7 +10,7 @@ MPS~\cite{marceau1971matrix, ibm1976mpsx}.
 Matrix generators were able to remove most of the manual labour, but a gap still remained.
 Modellers naturally think in terms of sets, indices, and algebraic expressions,
 while procedural code constructs the coefficient matrices entry by entry.
-This mismatch between how a model is expressed and how it is implemented made them difficult to
+This mismatch between how a model is expressed and how it is implemented made models difficult to
 verify, modify, and communicate with others \cite{fourer1983modeling}.
 Algebraic modelling languages such as \texttt{AMPL} \cite{fourer1990ampl},
 \texttt{AIMMS} \cite{bisschop2006aimms}, and \texttt{GAMS} \cite{brooke1988gams} closed this gap by
@@ -30,12 +30,12 @@ These DCP-based languages include \texttt{CVX} \cite{cvx} in MATLAB, \texttt{CVX
 R, \texttt{CVXPY} \cite{diamond2016cvxpy} in Python, and \texttt{Convex.jl}
 \cite{udell2014convex} in Julia.
 
-In the meantime, modern general purpose solvers \cite{mosekSolver, ge2022copt, clarabel}
-have mostly transitioned towards conic programming which generalizes linear programming and
+In the meantime, modern general-purpose solvers \cite{mosekSolver, ge2022copt, clarabel}
+have mostly transitioned towards conic programming, which generalizes linear programming and
 can represent nearly every convex program used in practice \cite{bental2001lectures}.
 % TODO(advisor): "but not solve?" — clarify that conic programs can be represented AND solved
 % by these solvers, or reword.
-The translation task remains a responsibility of the modelling languages which now target
+The translation task remains a responsibility of the modelling languages, which now target
 conic problem data instead of \ac{LP} coefficient matrices. In DCP-based languages, this
 translation process is called canonicalization.
 % TODO(advisor): "only DCP?" — is canonicalization specific to DCP-based languages?
@@ -79,7 +79,7 @@ where the \emph{problem data} are the symmetric positive semidefinite matrix
 $\mmat{P}(\gvec{\theta}) \in \symm^n_+$,
 the matrix $\mmat{A}(\gvec{\theta}) \in \reals^{m \times n}$, the vectors
 $\mvec{b}(\gvec{\theta}) \in \reals^m$ and
-$\mvec{c}(\gvec{\theta}) \in \reals^n$ and the non-empty closed convex cone
+$\mvec{c}(\gvec{\theta}) \in \reals^n$, and the non-empty closed convex cone
 $\cone{K} \subseteq \reals^m$.
 Problem \eqref{e:quad-conic-form} generalizes both quadratic programs (QPs), when
 $\cone{K} = \reals^m_+$ is the nonnegative orthant, and standard conic programs, when
@@ -96,7 +96,7 @@ On subsequent solves, new problem data can be obtained with a single matrix-vect
 \cite{agrawal2019dpp}.
 
 For large-scale problems, forming the parameter tensor can be prohibitively expensive, so
-\texttt{CVXPY} lets users opt out of this option entirely.
+\texttt{CVXPY} lets users opt out of it entirely.
 Users must thus choose between paying a large upfront cost on the first solve and repeating
 the full canonicalization, with nothing reused, at every solve.
 We review \texttt{CVXPY} and the frontend of canonicalization in \S\ref{sec:intro-canon},
@@ -158,7 +158,7 @@ kernels, rather than always relying on generic sparse formats and routines (we p
 background on dense and sparse matrix computations in \S\ref{sec:intro-matrix}).
 
 \section{Canonicalization}\label{sec:intro-canon}
-The problem family \eqref{e:parametric-family} is written in functional form, as an objective and
+The problem family \eqref{e:parametric-family} is written in functional form, as objective and
 constraint functions of the variable and the parameters.
 In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$ are collected
 into a single
@@ -297,13 +297,15 @@ epigraph $|x| \le t$ can
 be written as the pair of affine inequalities $-t \le x \le t$.
 A final example is the sum of the $k$ largest entries of $\mvec{x}$, which expands into a small
 \ac{LP}: the epigraph $\mathrm{sum\_largest}(\mvec{x}, k) \le t$ holds if and only if there exist a
-scalar $q \in \reals$ and a vector $\mvec{u} \in \reals^n$ such that
+scalar $q \in \reals$ and a vector $\mvec{w} \in \reals^n$ such that
+% Auxiliary vector renamed u -> w: u_i already denotes the subexpressions of the composition
+% rules above.
 \BEQ\label{eq:sum-largest}
-q\ones + \mvec{u} \ge \mvec{x}, \qquad \mvec{u} \ge 0, \qquad kq + \ones^\top \mvec{u} \le t,
+q\ones + \mvec{w} \ge \mvec{x}, \qquad \mvec{w} \ge 0, \qquad kq + \ones^\top \mvec{w} \le t,
 \EEQ
 where the inequalities are applied element-wise.
-Here $q$ acts as a threshold and each $u_i$ measures how far the entry $x_i$ rises above it, so that
-the sum of the $k$ largest entries is bounded by $kq + \ones^\top \mvec{u}$ \cite{boyd2004convex}.
+Here $q$ acts as a threshold and each $w_i$ measures how far the entry $x_i$ rises above it, so that
+the sum of the $k$ largest entries is bounded by $kq + \ones^\top \mvec{w}$ \cite{boyd2004convex}.
 
 \subsection{\texttt{CVXPY}}\label{sec:canonicalization}
 
