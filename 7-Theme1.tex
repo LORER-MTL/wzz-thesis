@@ -145,7 +145,7 @@ during the symbolic pass; multiplication by dense data allocates a permuted dens
 matrix, for example. After that, every operation on the matrix,
 such as transposition, row indexing, or a chain-rule product, simply dispatches to a
 kernel specific to the representations involved. The default representation is a generic
-sparse matrix stored in the CSR format of \S\ref{sec:bg-sparse}.
+sparse matrix stored in the CSR format of \S\ref{sec:bg-sparse-formats}.
 
 \subsection{The permuted dense matrix}\label{sec:theme1-permuted-dense}
 
@@ -486,7 +486,7 @@ representation through all later products. Eight of the nine kernels are based o
 BLAS calls; in the mixed combinations, the columns of the sparse operand are gathered
 into the dense computation. Only the product of two generic sparse matrices uses
 Gustavson's algorithm \cite{gustavson1978two}, with the symbolic and numeric phases
-discussed in \S\ref{sec:bg-sparse}.
+discussed in \S\ref{sec:bg-sparse-products}.
 
 \subsection{Reusing work across passes}\label{sec:theme1-reusing-work}
 

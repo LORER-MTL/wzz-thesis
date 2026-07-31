@@ -122,7 +122,7 @@ Beyond the default C++ \texttt{cvxcore}, \texttt{CVXPY} ships two pure-Python
 canonicalization backends built on \texttt{scipy.sparse}~\cite{2020SciPy-NMeth}. The
 \texttt{SCIPY} backend represents each slice of the parameter tensor as a two-dimensional
 sparse matrix, while the more recent \texttt{COO} backend (introduced in 2025) keeps the
-whole tensor in coordinate format (\S\ref{sec:bg-sparse}) so that its operations scale with
+whole tensor in coordinate format (\S\ref{sec:bg-sparse-formats}) so that its operations scale with
 the number of stored nonzeros even when the parameters are large. Re-running the cold-compile
 experiment of \S\ref{sec:bench-cpp-single} under these two backends answers whether the
 conclusions above depend on the choice of \texttt{cvxcore} as the baseline

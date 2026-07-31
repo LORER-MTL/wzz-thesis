@@ -674,8 +674,9 @@ smaller intermediate matrices.
 This section reviews the two families of matrix representations, dense and sparse, each from
 the standpoint of both storage and algorithms.
 
-\subsection{Dense matrices}\label{sec:bg-blas}
-% \paragraph{Dense storage.}  (heading removed per advisor; kept for reference)
+\subsection{Dense matrices}\label{sec:bg-dense}
+
+\subsubsection{Storage}
 A dense matrix is stored as a single contiguous array of its entries, ordered row by row
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
@@ -700,7 +701,7 @@ row-major and in column-major order.}
 \label{fig:dense-storage}
 \end{figure}
 
-% \paragraph{The BLAS.}  (heading removed per advisor; kept for reference)
+\subsubsection{The BLAS}\label{sec:bg-blas}
 Dense linear algebra is served by the Basic Linear Algebra Subprograms (BLAS), a standardized
 interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
 The BLAS is a specification rather than an implementation.
@@ -732,6 +733,7 @@ In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ contain mostly 
 matrices are called sparse, and conic solvers expect their problem data in sparse formats.
 Techniques that store and compute with only the nonzero entries date back to the linear
 programming computations of the 1950s and the work of Markowitz \cite{davis2006direct}.
+\subsubsection{Storage formats}\label{sec:bg-sparse-formats}
 The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
@@ -786,6 +788,15 @@ Accessing a column of a CSR matrix instead requires a scan of every row, so algo
 that traverse columns prefer CSC; direct methods for sparse linear systems are the
 standard example \cite{davis2006direct}.
 
+% \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
+% Paragraph moved up from the end of the section: LIL/DOK/BSR belong with the formats.
+The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
+but many others exist for different specialized use cases.
+The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
+allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
+the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
+
+\subsubsection{Matrix products}\label{sec:bg-sparse-products}
 % \paragraph{Matrix-vector products.}  (heading removed per advisor; kept for reference)
 Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop
 must follow the storage: CSR gathers, computing each output entry as a sparse dot
@@ -853,13 +864,6 @@ each row is built as a combination of the rows of the second operand selected by
 of the first, gathered in a dense accumulator before compaction into sparse storage
 \cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
 packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
-
-% \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
-The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
-but many others exist for different specialized use cases.
-The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
-allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
-the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 
 \section{Contributions}
 % Moved to the end of the chapter per the advisor's annotation

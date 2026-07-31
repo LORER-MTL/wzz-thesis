@@ -48,6 +48,11 @@ rule below.
   Ch. 1 keeps only two: "Our approach." and "Example of reformulations." (not struck by advisor).
   Removed headings are preserved as `% \paragraph{...}` comments (ch. 1 + ch. 2, 2026-07-31)
   so they can be brought back if wanted.
+- Fine structure is reintroduced with NUMBERED headings only: `secnumdepth=3` is set in
+  `Document.tex` (2026-07-31), so `\subsubsection` gets numbers (e.g. 1.4.1.2 The BLAS);
+  TOC stays at depth 2. §1.3 differentiation methods are subsections 1.3.1–1.3.3; §1.4 uses
+  subsubsections (Storage / The BLAS; Storage formats / Matrix products). Never unnumbered
+  run-in headings.
 - Contributions + thesis outline are the **last** section of the intro; outline is a
   `\subsection`.
 - Merge short single-example paragraphs into their parent paragraph.
