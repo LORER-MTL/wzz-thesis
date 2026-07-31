@@ -554,9 +554,7 @@ same methods used for the Jacobian, although dedicated methods that compute it d
 The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$ of
 \eqref{e:quad-conic-form}.
 
-% TODO(advisor): "here could be subsub, albeit a bit short" — consider making numerical
-% differentiation (and the following methods) subsubsections.
-% \paragraph{Numerical differentiation.}  (heading removed per advisor; kept for reference)
+\subsection{Numerical differentiation}\label{sec:bg-numerical-diff}
 Other than computing derivatives analytically, the simplest method is to use numerical
 differentiation, which approximates the derivative of a function at a point by evaluating the
 function at nearby points using a finite difference formula such as
@@ -577,7 +575,7 @@ Despite these downsides, numerical differentiation is still widely used in pract
 especially for verifying the correctness of derivative computations, also known as a
 derivative checker \cite{wolfe1982checking}.
 
-% \paragraph{Symbolic differentiation.}  (heading removed per advisor; kept for reference)
+\subsection{Symbolic differentiation}\label{sec:bg-symbolic-diff}
 Mathematical expressions can be manipulated automatically using simple derivative rules of
 calculus, such as the product and sum rule. This symbolic approach to differentiation
 is used in computer algebra systems such as \texttt{Mathematica} \cite{mathematica} and
@@ -596,7 +594,7 @@ the expression is represented with a directed acyclic graph (DAG) instead of a t
 symbolic differentiation performs the same set of operations as reverse mode
 differentiation \cite{Laue2019OnTE}.
 
-% \paragraph{Algorithmic differentiation.}  (heading removed per advisor; kept for reference)
+\subsection{Algorithmic differentiation}\label{sec:bg-ad}
 Algorithmic differentiation (AD) treats the function as a \emph{computational graph} of
 elementary operations, each with a known local derivative rule.
 The chain rule is then applied to combine these local derivatives throughout the graph, giving the
