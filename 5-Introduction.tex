@@ -32,17 +32,12 @@ R, \texttt{CVXPY} \cite{diamond2016cvxpy} in Python, and \texttt{Convex.jl}
 
 In the meantime, modern general-purpose solvers \cite{mosekSolver, ge2022copt, clarabel}
 have mostly transitioned towards conic programming, which generalizes linear programming and
-can represent nearly every convex program used in practice \cite{bental2001lectures}.
-% TODO(advisor): "but not solve?" — clarify that conic programs can be represented AND solved
-% by these solvers, or reword.
+can represent and solve nearly every convex program used in practice \cite{bental2001lectures}.
 The translation task remains a responsibility of the modelling languages, which now target
 conic problem data instead of \ac{LP} coefficient matrices. In DCP-based languages, this
-translation process is called canonicalization.
-% TODO(advisor): "only DCP?" — is canonicalization specific to DCP-based languages?
+translation process is called canonicalization \cite{agrawal2018rewriting}.
 While the time taken to solve an optimization problem is often dominated by the solver, the
-time taken to canonicalize (or compile) it can also be significant.
-% TODO(advisor): "Ref" — add a citation supporting the significant canonicalization time
-% (candidate: \cite{agrawal2019dpp}).
+time taken to canonicalize (or \emph{compile}) it can also be significant \cite{agrawal2019dpp}.
 The main goal of this Master's thesis is to reduce the compilation time of \texttt{CVXPY}.
 % TODO(advisor): "can we be broader?" — consider stating a broader goal than CVXPY compilation
 % time alone.
@@ -88,8 +83,8 @@ $\mmat{P}(\gvec{\theta}) = 0$.
 % \paragraph{Canonicalization in \texttt{CVXPY}.}  (heading removed per advisor; kept for reference)
 Most of the cost of canonicalization lies in the final step, where symbolic
 expression trees are converted to numerical problem data.
-This step is often called matrix stuffing or the backend of canonicalization.
-% TODO(advisor): "[Ref]" — add a citation for the matrix stuffing / backend terminology.
+This step is often called matrix stuffing or the backend of canonicalization
+\cite{zhang2026cvxpy}.
 During the first solve of a problem family, \texttt{CVXPY} forms and caches a
 parameter tensor that maps the parameter vector to the problem data.
 On subsequent solves, new problem data can be obtained with a single matrix-vector product
@@ -123,6 +118,7 @@ and their derivatives from this file inside the solver process \cite{gay1997hook
 \texttt{Pyomo} also interfaces to solvers through \texttt{.nl} files,
 among other formats, though it generally writes them more slowly than the \texttt{AMPL}
 translator.
+
 On the other hand, \texttt{JuMP} has no single standard form to target;
 it decouples modeller and solver through \ac{MOI}, a typed in-memory interface
 \cite{legat2020mathoptinterface}.
@@ -145,7 +141,7 @@ allocates memory for all intermediate matrices, and caches other computations th
 across the problem family.
 The numeric phase then fills in new values at every solve.
 This separation between structure and values is inspired by the interfaces of \ac{NLP}
-solvers such as \texttt{IPOPT} \cite{wachter2006ipopt}.
+solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
 The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
 numeric phase is often similar in cost to applying the matrix-vector product.
@@ -266,9 +262,8 @@ rewrites its functional form \eqref{e:parametric-family} into an equivalent func
 \EEQ
 where $f_0$ is affine or quadratic, each $h_i : \reals^n \times \reals^p \to \reals^{d_i}$ is
 affine, and each $\cone{K}_i \subseteq \reals^{d_i}$ is one of
-the standard convex cones: the zero, nonnegative, second-order, power, exponential, and positive
-semidefinite cones.
-% TODO(advisor): "is that a common wording?" — check the phrase "standard convex cones".
+the standard cones supported by general-purpose conic solvers: the zero, nonnegative,
+second-order, power, exponential, and positive semidefinite cones.
 
 % \paragraph{Conic reformulation.}  (heading removed per advisor; kept for reference)
 Every nonlinear atom is rewritten into conic constraints in three steps.
@@ -317,18 +312,14 @@ central representation, and support for parameters, which lets compilation work 
 a problem is solved repeatedly.
 These ideas matured with version 1.0, which redesigned canonicalization as
 a general reduction-based rewriting system \cite{agrawal2018rewriting}.
-% TODO(advisor): handwritten note here is unclear (reads like "mon doc ... 0.9") — possibly
-% about the pre-1.0 version history; ask what was meant.
 The new design enabled the addition of other disciplined
 grammars \cite{agrawal2019dgp, agrawal2020dqcp, cederberg2025disciplined}, and the early
-parameter support grew into DPP, the restricted grammar
+parameter support grew into DPP, a restricted grammar
 under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
 
 The open source project has since grown through contributions from many other enthusiastic
 developers; a recent paper surveys the new canonicalization and modelling features
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
-% TODO(advisor): "ou avez-vous soumis?" — state where the survey paper was submitted.
-The review of matrix stuffing in \S\ref{sec:matrix-stuffing} follows this survey.
 
 % \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
 The rewriting from the functional form \eqref{e:parametric-family} to the functional conic form
@@ -351,9 +342,8 @@ In practice the three steps are performed at once: each nonlinear atom is replac
 epigraph variable and cone constraints, and the intermediate Smith form and its relaxation
 never appear explicitly.
 
-% \paragraph{Example of canonicalization.}  (heading removed per advisor; kept for reference)
-To show a concrete example of the frontend of canonicalization,
-we consider a simple fitting with regularization problem:
+\subsection{Example}\label{sec:canon-example}
+We consider a simple fitting with regularization problem:
 \BEQ
     \begin{array}{ll}
         \underset{\mvec{x} \in \reals^n}{\text{minimize}} & \|\mmat{F}\mvec{x}-\mvec{g}\|_2 + \mu \|\mvec{x}\|_2\\
@@ -431,8 +421,6 @@ After applying the reductions, the problem has been \emph{canonicalized} to
 & (t_2, \mvec{x}) \in \cone{K}_{\mathrm{soc},n+1} \\
 \end{array}
 \EEQ
-% TODO(advisor): "(t_2, x) other way?" — confirm the (t, x) ordering convention of the
-% second-order cone tuples.
 where $t_1, t_2 \in \reals$ are new epigraph variables, and the cone $\cone{K}$ from
 \eqref{e:quad-conic-form} is the product $\reals_+^n \times \cone{K}_{\mathrm{soc},m+1}
 \times \cone{K}_{\mathrm{soc},n+1}$.
@@ -514,41 +502,36 @@ trees; all occurrences refer to the same variable.}
 
 Computing derivatives is a fundamental task in scientific computing, with many methods that
 differ in cost, in accuracy, and in the form of the result \cite{baydin2017ADsurvey}.
-The derivatives of this thesis are large sparse matrices, the constraint Jacobian~$\mmat{A}$
-and the
-objective Hessian~$\mmat{P}$ of a canonicalized problem, so our focus is on producing sparse
-derivatives.
-Most differentiation software instead targets dense derivatives of scalar expression graphs, and
-this gap organizes both the present section and the survey of \S\ref{sec:computing-derivatives}.
-This section presents the derivative objects, the elementary methods for computing them, and the
-choices that distinguish the software implementations; \S\ref{sec:computing-derivatives} develops
-the sparse case and the systems that compute it.
+The derivatives in this Master's thesis are the constraint Jacobian~$\mmat{A}$ and the objective
+Hessian~$\mmat{P}$ of a canonicalized problem, both large sparse matrices.
+Most differentiation software instead targets dense derivatives of scalar expression graphs.
+This section presents the derivative objects, the elementary methods for computing them, and
+the choices that distinguish the software implementations; \S\ref{sec:computing-derivatives}
+reviews sparse AD and graph colouring methods.
 
 % \paragraph{The Jacobian.}  (heading removed per advisor; kept for reference)
 For a vector-valued map $F : \reals^n \to \reals^m$ of an input $\mvec{x} \in \reals^n$, the
 first-order
-derivative is the \emph{Jacobian} $\mmat{J} \in \reals^{m \times n}$ of partial derivatives of
+derivative is the Jacobian $\mmat{J} \in \reals^{m \times n}$ of partial derivatives of
 the outputs
 with respect to the inputs,
 \BEQ\label{eq:jacobian}
   J_{ij} = \frac{\partial F_i}{\partial x_j}, \qquad i = 1, \dots, m, \quad j = 1, \dots, n.
 \EEQ
-We mainly consider the \emph{constraint function}, which stacks the potentially many affine
+We mainly consider the constraint function, which stacks the potentially many affine
 expressions of a canonicalized problem into a single vector function of the variables.
 Its Jacobian is the constant constraint matrix~$\mmat{A}$ of \eqref{e:quad-conic-form}, whose
 sparsity
 pattern is fixed although its values may change from one solve to the next.
 
 % \paragraph{The Hessian.}  (heading removed per advisor; kept for reference)
-For a scalar function $f : \reals^n \to \reals$, the second-order derivative is the \emph{Hessian}
+For a scalar function $f : \reals^n \to \reals$, the second-order derivative is the Hessian
 $\mmat{H} \in \reals^{n \times n}$ of second partial derivatives,
 \BEQ\label{eq:hessian}
   H_{ij} = \frac{\partial^2 f}{\partial x_i \, \partial x_j}, \qquad i, j = 1, \dots, n.
 \EEQ
-The Hessian is the Jacobian of the gradient of $f$, and is symmetric whenever $f$ is twice
-continuously differentiable.
-% TODO(advisor): "+ transpose" annotation here — strictly the Jacobian of the gradient is
-% $H^\top$; confirm whether to state the transpose relationship explicitly.
+The Jacobian of the gradient of $f$ is $\mmat{H}^\top$; the Hessian is symmetric whenever
+$f$ is twice continuously differentiable, so the two coincide.
 It can therefore be obtained by differentiating the gradient with the
 same methods used for the Jacobian, although dedicated methods that compute it directly also exist.
 The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$ of
@@ -665,18 +648,15 @@ oracle sweeps; \S\ref{sec:computing-derivatives} develops both assemblies and lo
 systems of the literature, and our approach, among them.
 
 \section{Matrix computations}\label{sec:intro-matrix}
-Choosing how a matrix is stored and which algorithms operate on it is a long-standing concern
-of numerical computing, and the same computation can differ in cost by orders of magnitude
-between representations.
+Matrix computations appear at every stage of this thesis.
 The problem data $\mmat{P}$ and $\mmat{A}$ are sparse matrices, and matrix stuffing assembles
 them from
 smaller intermediate matrices.
 This section reviews the two families of matrix representations, dense and sparse, each from
 the standpoint of both storage and algorithms.
 
-\subsection{Dense matrices}\label{sec:bg-dense}
-
-\subsubsection{Storage}
+\subsection{Dense matrices}\label{sec:bg-blas}
+% \paragraph{Dense storage.}  (heading removed per advisor; kept for reference)
 A dense matrix is stored as a single contiguous array of its entries, ordered row by row
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
@@ -701,7 +681,7 @@ row-major and in column-major order.}
 \label{fig:dense-storage}
 \end{figure}
 
-\subsubsection{The BLAS}\label{sec:bg-blas}
+% \paragraph{The BLAS.}  (heading removed per advisor; kept for reference)
 Dense linear algebra is served by the Basic Linear Algebra Subprograms (BLAS), a standardized
 interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
 The BLAS is a specification rather than an implementation.
@@ -723,17 +703,14 @@ A modern processor multiplies numbers far faster than it loads them from main me
 Optimized BLAS implementations account for this by reading arrays contiguously, reusing data
 already in cache, processing several entries per instruction with \ac{SIMD} units, and tiling
 matrix--matrix products into blocks that fit in cache \cite{goto2008anatomy}.
-Level-3 kernels benefit the most because they perform $O(n^3)$ operations on $O(n^2)$ data, so
-each entry loaded from memory is reused many times.
-% TODO(advisor): margin note next to the O(n^3)/O(n^2) sentence is partly illegible — likely
-% asks to define the O() notation at first use; confirm.
+Level-3 kernels benefit the most because they perform a cubic number of operations on a
+quadratic amount of data, so each entry loaded from memory is reused many times.
 
 \subsection{Sparse matrices}\label{sec:bg-sparse}
 In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ contain mostly zero entries; such
 matrices are called sparse, and conic solvers expect their problem data in sparse formats.
 Techniques that store and compute with only the nonzero entries date back to the linear
 programming computations of the 1950s and the work of Markowitz \cite{davis2006direct}.
-\subsubsection{Storage formats}\label{sec:bg-sparse-formats}
 The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
@@ -796,7 +773,6 @@ The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth
 allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
 the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 
-\subsubsection{Matrix products}\label{sec:bg-sparse-products}
 % \paragraph{Matrix-vector products.}  (heading removed per advisor; kept for reference)
 Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop
 must follow the storage: CSR gathers, computing each output entry as a sparse dot
@@ -882,12 +858,10 @@ We make the following contributions:
 All code contributions are open source and available at
 \begin{center}
 \url{https://github.com/SparseDifferentiation/SparseDiffengine} \\
-\url{https://github.com/cvxpy/cvxpy} \\
-% TODO(advisor): "necessaire?" — is the cvxpy repository link necessary here?
 \url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
 \end{center}
 
-\subsection{Thesis outline}
+The rest of this thesis is organized as follows.
 Chapter~\ref{sec:RevLitt} reviews the three existing methods:
 \texttt{CVXPY}'s matrix stuffing (\S\ref{sec:matrix-stuffing}),
 sparse derivatives by detection and colouring (\S\ref{sec:computing-derivatives}), and

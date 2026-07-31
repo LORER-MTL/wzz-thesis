@@ -48,13 +48,16 @@ rule below.
   Ch. 1 keeps only two: "Our approach." and "Example of reformulations." (not struck by advisor).
   Removed headings are preserved as `% \paragraph{...}` comments (ch. 1 + ch. 2, 2026-07-31)
   so they can be brought back if wanted.
-- Fine structure is reintroduced with NUMBERED headings only: `secnumdepth=3` is set in
-  `Document.tex` (2026-07-31), so `\subsubsection` gets numbers (e.g. 1.4.1.2 The BLAS);
-  TOC stays at depth 2. §1.3 differentiation methods are subsections 1.3.1–1.3.3; §1.4 uses
-  subsubsections (Storage / The BLAS; Storage formats / Matrix products). Never unnumbered
-  run-in headings.
-- Contributions + thesis outline are the **last** section of the intro; outline is a
-  `\subsection`.
+- Fine structure is reintroduced with NUMBERED headings only; never unnumbered run-in
+  headings. §1.3 differentiation methods are subsections 1.3.1–1.3.3; a new §1.2.3 Example
+  subsection holds the canonicalization example (2026-07-31).
+  The §1.4 subsubsections (Storage / The BLAS; Storage formats / Matrix products) were tried
+  and REMOVED 2026-07-31 (William's preference: flowing prose there); `secnumdepth=3` in
+  `Document.tex` is now vestigial — no subsubsections remain in any chapter.
+- Contributions + thesis outline are the **last** section of the intro (Antoine:
+  "dernière sub-section de l'intro"). The outline `\subsection` heading was removed
+  2026-07-31 per William; the outline paragraph now opens "The rest of this thesis is
+  organized as follows." — Antoine may ask for the heading back.
 - Merge short single-example paragraphs into their parent paragraph.
 
 ## 4. Cross-references  [ch. 1 DONE; check ch. 2–5]
@@ -74,10 +77,16 @@ rule below.
 - Parenthetical asides the advisor turned into prose: "(also known as X)" → ", also known as X,".
 - Multi-part display equations: commas between the parts, closing punctuation on the equation.
 
-## 6. Open questions (grep `TODO(advisor)` — 13 in ch. 1 files)
+## 6. Open questions (grep `TODO(advisor)` — 2 left as of 2026-07-31)
 
-broader thesis goal · represent-vs-solve for conic solvers · "only DCP?" · matrix-stuffing ref ·
-canonicalization-time ref · survey venue ("où avez-vous soumis?") · cvxpy URL needed? ·
-"standard convex cones" wording · (t, x) SOC tuple order · Hessian transpose remark ·
-numerical-diff subsubsection option · illegible O(·) margin note · unclear "v0.9" note ·
-NSERC/Stanford acknowledgement wording (in `2-Remerciements.tex`).
+broader thesis goal (rebuttal entry written) ·
+NSERC/Stanford acknowledgement wording (`2-Remerciements.tex`).
+
+Resolved 2026-07-31 (see `plans/antoine-rebuttal.md` for the replies to send): represent-vs-solve
+(reworded) · "only DCP?" (kept, rebuttal) · matrix-stuffing ref (cite zhang2026cvxpy) ·
+canonicalization-time ref (cite agrawal2019dpp; also cite agrawal2018rewriting at the term) ·
+survey venue (ACM TOMS, rebuttal) · "standard convex cones" (reworded to solver convention) ·
+Hessian transpose (stated $\mmat{H}^\top$ + symmetry) · "v0.9" note (advisor's PhD-era CVXPY
+version; comment dropped) · (t, x) SOC order (verified correct, solvers put t first; rebuttal) ·
+O(·) margin note (sidestepped: reworded to "cubic number of operations on a quadratic amount
+of data", no big-O) · cvxpy URL (removed from Contributions; backend claim in the list stands).
