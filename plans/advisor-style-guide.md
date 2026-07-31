@@ -23,9 +23,10 @@ rule below.
   (`q \in \reals`, `\mvec{u} \in \reals^n`).
 - Element-wise vector inequalities use `\ge` / `\le`; reserve `\succeq` for PSD/cone orders.
   Say "where the inequalities are applied element-wise" when introducing them.
-- **Pending sweep, ch. 2–5**: bold the problem-data symbols (A, P, b, c, x, θ, F, J, H, …)
-  case by case — needs semantic judgment (S can be a set, u a scalar), do NOT regex it.
-  `\reals`/`\symm` already render `\mathbb` everywhere via `defs.tex`.
+- **Bold sweep status**: ch. 1 DONE; ch. 2 (lit review) DONE 2026-07-31 (incl. figures/tables;
+  interior atom renamed g → φ to avoid clashing with the data vector **g**). REMAINING:
+  `7-Theme1.tex`, `7-Theme2.tex` — case by case, needs semantic judgment (S can be a set,
+  u a scalar), do NOT regex it. `\reals`/`\symm` already render `\mathbb` everywhere.
 
 ## 2. Language  [ch. 1 + mechanical sweep of other chapters DONE]
 
@@ -45,6 +46,8 @@ rule below.
 - **Continuous prose, not run-in `\paragraph{}` headings** ("draft a continuous text instead of
   a sequence of isolated topics"). Fold the heading's content into a topic sentence.
   Ch. 1 keeps only two: "Our approach." and "Example of reformulations." (not struck by advisor).
+  Removed headings are preserved as `% \paragraph{...}` comments (ch. 1 + ch. 2, 2026-07-31)
+  so they can be brought back if wanted.
 - Contributions + thesis outline are the **last** section of the intro; outline is a
   `\subsection`.
 - Merge short single-example paragraphs into their parent paragraph.

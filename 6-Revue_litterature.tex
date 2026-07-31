@@ -30,19 +30,21 @@ operators over the tree. This section reviews these derivative rules and two des
 the \texttt{CVXPY} implementation: how the coefficients are stored during the computation, and
 how the problem data is cached across parameter changes.
 
-\paragraph{Matrix calculus.}
+% \paragraph{Matrix calculus.}  (heading removed per advisor style; kept for reference)
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
 matrices. Systematic rules for such derivatives date back to the 1940s \cite{dwyer1948symbolic}.
 The simplest convention is to vectorize \cite{magnus2019matrix}: every expression is identified
 with
 \BEQ\label{eq:vec}
-\vect(X) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^T,
+\vect(\mmat{X}) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^\top,
 \EEQ
-the vector that stacks the columns of $X \in \reals^{m \times n}$, and the derivative of one
+the vector that stacks the columns of $\mmat{X} \in \reals^{m \times n}$, and the derivative of one
 vectorized expression with respect to another is an ordinary Jacobian matrix. Under this
 convention matrix operations become linear operators on the vectorized arguments, and their
-Jacobians carry structure: the matrix product $FX$ has the Kronecker-structured, block-diagonal
-Jacobian $I \otimes F$. The convention is illustrated in Figure~\ref{fig:vec-variable}.
+Jacobians carry structure: the matrix product $\mmat{F}\mmat{X}$ has the Kronecker-structured,
+block-diagonal
+Jacobian $\mmat{I} \otimes \mmat{F}$. The convention is illustrated in
+Figure~\ref{fig:vec-variable}.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -50,7 +52,7 @@ Jacobian $I \otimes F$. The convention is illustrated in Figure~\ref{fig:vec-var
 \texttt{X = cp.Variable((2, 2))}
 \qquad$\Longrightarrow$\qquad
 $
-\frac{\partial\,\vect(X)}{\partial\,\vect(X)} =
+\frac{\partial\,\vect(\mmat{X})}{\partial\,\vect(\mmat{X})} =
 \begin{blockarray}{ccccc}
        & x_{11}    & x_{21}    & x_{12}    & x_{22}    \\
 \begin{block}{c[cccc]}
@@ -71,7 +73,7 @@ $
 \texttt{Y = F @ X}
 \qquad$\Longrightarrow$\qquad
 $
-\frac{\partial\,\vect(Y)}{\partial\,\vect(X)} = I \otimes F =
+\frac{\partial\,\vect(\mmat{Y})}{\partial\,\vect(\mmat{X})} = \mmat{I} \otimes \mmat{F} =
 \begin{blockarray}{ccccc}
        & x_{11}    & x_{21}    & x_{12}    & x_{22}    \\
 \begin{block}{c[cccc]}
@@ -82,41 +84,49 @@ y_{22} & \plotzero & \plotzero & f_{21}    & f_{22}    \\
 \end{block}
 \end{blockarray}
 $
-\caption{The Jacobian of the product $Y = FX$ is block-diagonal, one copy
-of $F$ per column of $X$.}
+\caption{The Jacobian of the product $\mmat{Y} = \mmat{F}\mmat{X}$ is block-diagonal, one copy
+of $\mmat{F}$ per column of $\mmat{X}$.}
 \label{fig:vec-variable-kron}
 \end{subfigure}
-\caption{The vec convention on a matrix variable $X$ and the product $FX$, with
-$X, F \in \reals^{2 \times 2}$. The entries of $\vect(X)$, in column-major order, index the
+\caption{The vec convention on a matrix variable $\mmat{X}$ and the product $\mmat{F}\mmat{X}$,
+with
+$\mmat{X}, \mmat{F} \in \reals^{2 \times 2}$. The entries of $\vect(\mmat{X})$, in column-major
+order, index the
 columns of the Jacobians.}
 \label{fig:vec-variable}
 \end{figure}
 
-\paragraph{Composing linear operators.}
+% \paragraph{Composing linear operators.}  (heading removed per advisor style; kept for reference)
 % let's revisit this and try to understand it well. If it's not clear we need to rework on it.
 Each node of a conic-form tree can be written in the vectorized form
 \BEQ\label{eq:linop-form}
-f(x) = A\,x + b
-     = \begin{bmatrix} A & b \end{bmatrix} \begin{bmatrix} x \\ 1 \end{bmatrix},
+f(\mvec{x}) = \mmat{A}\,\mvec{x} + \mvec{b}
+     = \begin{bmatrix} \mmat{A} & \mvec{b} \end{bmatrix} \begin{bmatrix} \mvec{x} \\ 1 \end{bmatrix},
 \EEQ
-where $x$ is the stacked vector of all the problem variables, $A$ is the Jacobian of the node's
-expression $f$ with respect to $x$, constant since $f$ is affine, and $b$ is a constant vector.
-Each variable occupies a contiguous block of columns of $A$, starting at its \emph{column
-offset} within $x$, and the columns of the variables that do not appear under the node are zero.
-Matrix stuffing computes the augmented matrix $[A\ b]$ of every node in one bottom-up walk of
+where $\mvec{x}$ is the stacked vector of all the problem variables, $\mmat{A}$ is the Jacobian
+of the node's
+expression $f$ with respect to $\mvec{x}$, constant because $f$ is affine, and $\mvec{b}$ is a
+constant vector.
+Each variable occupies a contiguous block of columns of $\mmat{A}$, starting at its \emph{column
+offset} within $\mvec{x}$, and the columns of the variables that do not appear under the node
+are zero.
+Matrix stuffing computes the augmented matrix $[\mmat{A}\ \mvec{b}]$ of every node in one
+bottom-up walk of
 the tree. A
 variable leaf contributes an identity block at its own column offset, and a constant leaf
-contributes its value to the last column. An interior atom $g$ with arguments $f_1, \dots, f_k$
-is a linear map $g = \sum_i L_i f_i$, and since each $L_i$ is a constant matrix under the vec
+contributes its value to the last column. An interior atom $\phi$ with arguments
+$f_1, \dots, f_k$
+is a linear map $\phi = \sum_i \mmat{L}_i f_i$, and because each $\mmat{L}_i$ is a constant matrix
+under the vec
 convention, the chain rule reduces to one matrix product per child:
 \BEQ\label{eq:linop-chain-rule}
-\begin{bmatrix} A & b \end{bmatrix}
-  = \sum_{i=1}^{k} L_i \begin{bmatrix} A_i & b_i \end{bmatrix}.
+\begin{bmatrix} \mmat{A} & \mvec{b} \end{bmatrix}
+  = \sum_{i=1}^{k} \mmat{L}_i \begin{bmatrix} \mmat{A}_i & \mvec{b}_i \end{bmatrix}.
 \EEQ
 The node matrices of the figures in this section are the matrices
-$[A\ b]$, and the final result of the walk is the problem data.
+$[\mmat{A}\ \mvec{b}]$, and the final result of the walk is the problem data.
 
-\paragraph{Views and copies.}
+% \paragraph{Views and copies.}  (heading removed per advisor style; kept for reference)
 The linear operators divide into \emph{views}, which involve no atom data, and \emph{copies},
 which do. A view reuses the stored coefficients of its argument: negation flips the sign of
 each entry, indexing keeps a subset of the rows, and reshaping leaves the vectorization
@@ -126,38 +136,39 @@ multiplication, or a division, one operand is constant under the DCP rules, and 
 multiplies a Kronecker or diagonal matrix formed from this constant operand with the augmented
 matrix of the other, storing the product as a new coefficient matrix with a new sparsity
 pattern. Table~\ref{tab:views-copies} classifies a subset of the operators, where
-$\mathcal{I}$ denotes an index set and $\diag(v)$ the diagonal matrix with the entries of $v$
+$\mathcal{I}$ denotes an index set and $\diag(\mvec{v})$ the diagonal matrix with the entries
+of $\mvec{v}$
 on its diagonal.
 
 \begin{table}[H]
 \centering
 \caption{A subset of the linear operators, classified as views or copies, applied to an
-argument $f_1$ with augmented matrix $[A_1\ b_1]$.}
+argument $f_1$ with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$.}
 \label{tab:views-copies}
 \begin{tabular}{@{}l l l@{}}
 \toprule
-\textbf{Atom} & \textbf{Operator $L$} & \textbf{Action on $[A_1\ b_1]$} \\
+\textbf{Atom} & \textbf{Operator $\mmat{L}$} & \textbf{Action on $[\mmat{A}_1\ \mvec{b}_1]$} \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{Views}} \\
-$-f_1$ & $-I$ & flip the sign of every stored entry \\
-$f_1^T$ & $P$, the vec-permutation & permute the rows \\
-$f_1[\mathcal{I}]$ & $P_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
-$\operatorname{reshape}(f_1)$ & $I$ & none, the vectorization is unchanged \\
+$-f_1$ & $-\mmat{I}$ & flip the sign of every stored entry \\
+$f_1^\top$ & $\mmat{P}$, the vec-permutation & permute the rows \\
+$f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
+$\operatorname{reshape}(f_1)$ & $\mmat{I}$ & none, the vectorization is unchanged \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{Copies}} \\
-$F f_1$ & $I \otimes F$ & multiply by a block diagonal formed from $F$ \\
-$f_1 B$ & $B^T \otimes I$ & multiply by a Kronecker matrix formed from $B$ \\
-$c \odot f_1$ & $\diag(\vect(c))$ & multiply by a diagonal formed from $c$ \\
-$f_1 / c$ & $\diag(\vect(c))^{-1}$ & multiply by the reciprocal diagonal \\
+$\mmat{F} f_1$ & $\mmat{I} \otimes \mmat{F}$ & multiply by a block diagonal formed from $\mmat{F}$ \\
+$f_1 \mmat{B}$ & $\mmat{B}^\top \otimes \mmat{I}$ & multiply by a Kronecker matrix formed from $\mmat{B}$ \\
+$\mmat{C} \odot f_1$ & $\diag(\vect(\mmat{C}))$ & multiply by a diagonal formed from $\mmat{C}$ \\
+$f_1 / \mmat{C}$ & $\diag(\vect(\mmat{C}))^{-1}$ & multiply by the reciprocal diagonal \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Example.}
+% \paragraph{Example.}  (heading removed per advisor style; kept for reference)
 The walk on the conic-form trees of problem \eqref{eq:example} is traced in
 Figure~\ref{fig:matrix-stuffing}: the leaves contribute their blocks and offsets, the interior nodes
 apply their operators, and the root stacks its children at their constraint row offsets into
-$[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this walk.
+$[\mmat{A}\ \mvec{b}]$. The rest of the section describes how \texttt{CVXPY} implements this walk.
 
 \begin{figure}[H]
 \begin{subfigure}{\textwidth}
@@ -167,7 +178,7 @@ $[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this w
    level 2/.style={sibling distance=15mm},
     every node/.style={align=center},
     edge from parent/.style={draw, -latex}]
-  \node {$c = \begin{bmatrix}
+  \node {$\mvec{c} = \begin{bmatrix}
                   1 &
                   \mu &
                   \plotzero
@@ -203,19 +214,19 @@ $[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this w
 ]
 % Root matrix
 \node {$\begin{bmatrix}
-    A & b
+    \mmat{A} & \mvec{b}
 \end{bmatrix} = \left[\begin{array}{cccc}
-                   \plotzero & \plotzero & -I & \plotzero\\
+                   \plotzero & \plotzero & -\mmat{I} & \plotzero\\
                    \hline
                     -1 & \plotzero & \plotzero & \plotzero\\
-                    \plotzero & \plotzero & -F & -g\\
+                    \plotzero & \plotzero & -\mmat{F} & -\mvec{g}\\
                    \hline
                     \plotzero & -1 & \plotzero & \plotzero\\
-                    \plotzero & \plotzero & -I & \plotzero\\
+                    \plotzero & \plotzero & -\mmat{I} & \plotzero\\
                 \end{array}\right]$}
     % First level children
     child {node {$\begin{bmatrix}
-        \plotzero & \plotzero & -I & \plotzero\\
+        \plotzero & \plotzero & -\mmat{I} & \plotzero\\
         \end{bmatrix}$}
     }
     child {node {$\begin{bmatrix}
@@ -223,21 +234,21 @@ $[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this w
         \end{bmatrix}$}
     }
     child {node {$\begin{bmatrix}
-                    \plotzero & \plotzero & -F & -g
+                    \plotzero & \plotzero & -\mmat{F} & -\mvec{g}
                 \end{bmatrix}$}
         % Second level children
         child {node {$\begin{bmatrix}
-                    \plotzero & \plotzero & -F & \plotzero
+                    \plotzero & \plotzero & -\mmat{F} & \plotzero
             \end{bmatrix}$}
-            child {node {$F$}}
+            child {node {$\mmat{F}$}}
             child {node {$\begin{bmatrix}
-                    \plotzero & \plotzero & -I & \plotzero\\
+                    \plotzero & \plotzero & -\mmat{I} & \plotzero\\
             \end{bmatrix}$}}
         }
         child {node {$\begin{bmatrix}
-                    \plotzero & \plotzero & \plotzero & -g
+                    \plotzero & \plotzero & \plotzero & -\mvec{g}
             \end{bmatrix}$}
-            child {node {$g$}}
+            child {node {$\mvec{g}$}}
             }
     }
     child {node {$\begin{bmatrix}
@@ -245,7 +256,7 @@ $[A\ b]$. The rest of the section describes how \texttt{CVXPY} implements this w
         \end{bmatrix}$}
     }
     child {node {$\begin{bmatrix}
-        \plotzero & \plotzero & -I & \plotzero\\
+        \plotzero & \plotzero & -\mmat{I} & \plotzero\\
         \end{bmatrix}$}
     };
 \end{tikzpicture}
@@ -259,7 +270,7 @@ rows of the three constraints.}
 \label{fig:matrix-stuffing}
 \end{figure}
 
-\paragraph{Local versus global derivatives.}
+% \paragraph{Local versus global derivatives.}  (heading removed per advisor style; kept for reference)
 The augmented matrices of \eqref{eq:linop-form} can be laid out in two ways
 (Figure~\ref{fig:local-vs-global}). \texttt{CVXPY} stores them \emph{locally}: each node keeps
 one coefficient block per variable appearing beneath it, keyed by the variable's identifier, and
@@ -267,10 +278,11 @@ every operator is applied to each block in turn. A block's columns index only th
 own variable, so the column offsets are not needed during the walk. The constant data is stored
 under the key $-1$ and becomes the last column of the assembled matrix. Only after the walk
 completes are the blocks shifted to their variables' column offsets and concatenated into the
-full matrix $[A\ b]$.
+full matrix $[\mmat{A}\ \mvec{b}]$.
 
 In the alternative, \emph{global} layout, each node stores one matrix whose columns span the
-whole stacked vector $x$, and the column offsets are applied from the start rather than at the
+whole stacked vector $\mvec{x}$, and the column offsets are applied from the start rather than
+at the
 end. The local layout keeps the blocks small and skips the variables absent from a subtree, but
 every operator runs once per stored block. The engine of Chapter~\ref{sec:Theme1} uses the global
 layout.
@@ -280,11 +292,11 @@ layout.
 \centering
 $
 \left\{\;
-x \mapsto
+\mvec{x} \mapsto
 \begin{blockarray}{c}
-x \\
+\mvec{x} \\
 \begin{block}{[c]}
--F \\
+-\mmat{F} \\
 \end{block}
 \end{blockarray}
 ,\;\;
@@ -292,7 +304,7 @@ x \\
 \begin{blockarray}{c}
 1 \\
 \begin{block}{[c]}
--g \\
+-\mvec{g} \\
 \end{block}
 \end{blockarray}
 \;\right\}
@@ -305,22 +317,23 @@ $
 \centering
 $
 \begin{blockarray}{cccc}
-t_1        & t_2        & x  & 1  \\
+t_1        & t_2        & \mvec{x}  & 1  \\
 \begin{block}{[cccc]}
-\plotzero  & \plotzero  & -F & -g \\
+\plotzero  & \plotzero  & -\mmat{F} & -\mvec{g} \\
 \end{block}
 \end{blockarray}
 $
 \caption{Global layout.}
 \label{fig:global-layout}
 \end{subfigure}
-\caption{What each layout stores during the walk, at the node $-(Fx - g)$ of problem
+\caption{What each layout stores during the walk, at the node $-(\mmat{F}\mvec{x} - \mvec{g})$
+of problem
 \eqref{eq:example}: a dictionary of narrow per-variable blocks, or a single matrix spanning
 all columns.}
 \label{fig:local-vs-global}
 \end{figure}
 
-\paragraph{Parameters and tensors.}
+% \paragraph{Parameters and tensors.}  (heading removed per advisor style; kept for reference)
 In a problem family the structure is fixed and only the numeric parameter values change
 between solves. \ac{DPP} restricts how parameters may enter such families: only affinely, so
 that the problem data is affine in the parameters \cite{agrawal2019dpp}. \texttt{CVXPY}
@@ -329,46 +342,51 @@ Every coefficient block stores one slice per
 parameter entry plus one slice for the constant part, and the operators of the walk apply to
 each slice. Flattening the slices of the root yields the cached \emph{parameter map}
 \BEQ\label{eq:param-maps}
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta,
+\begin{bmatrix} \mvec{c} \\ d \end{bmatrix} = \mmat{Q}\,\gvec{\tilde\theta},
 \qquad
-\tilde\theta = \begin{bmatrix} \theta \\ 1 \end{bmatrix},
+\gvec{\tilde\theta} = \begin{bmatrix} \gvec{\theta} \\ 1 \end{bmatrix},
 \EEQ
 shown in Figure~\ref{fig:param-map-dpp} for the objective of problem \eqref{eq:example}; the constraint
-data $[A\ b]$ is recovered the same way from its own map. After a parameter change, a re-solve
-costs a single sparse matrix--vector product $Q\tilde\theta$.
+data $[\mmat{A}\ \mvec{b}]$ is recovered the same way from its own map. After a parameter
+change, a re-solve
+costs a single sparse matrix--vector product $\mmat{Q}\gvec{\tilde\theta}$.
 
 \begin{figure}[H]
 \centering
 $
-Q =
+\mmat{Q} =
 \begin{blockarray}{cccc}
-        & g^T & \mu & 1 \\
+        & \mvec{g}^\top & \mu & 1 \\
 \begin{block}{c[ccc]}
   t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
   t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
-  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
+  \mvec{x}     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
   d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
 \end{block}
 \end{blockarray}
 \qquad
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
+\begin{bmatrix} \mvec{c} \\ d \end{bmatrix} = \mmat{Q}\,\gvec{\tilde\theta}
 = \begin{bmatrix}1\\ \mu\\ \plotzero\\ \plotzero\end{bmatrix}
 $
-\caption{The DPP path on the objective data of problem \eqref{eq:example}: the parameter map $Q$
-is built and cached once, and each re-solve recovers $(c, d)$ with the single sparse product
-$Q\tilde\theta$.}
+\caption{The DPP path on the objective data of problem \eqref{eq:example}: the parameter map
+$\mmat{Q}$
+is built and cached once, and each re-solve recovers $(\mvec{c}, d)$ with the single sparse
+product
+$\mmat{Q}\gvec{\tilde\theta}$.}
 \label{fig:param-map-dpp}
 \end{figure}
 
-\paragraph{The \texttt{ignore\_dpp} path.}
+% \paragraph{The \texttt{ignore\_dpp} path.}  (heading removed per advisor style; kept for reference)
 Problems that fall outside the DPP grammar, or that opt out of it by solving with
 \texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
 parameter leaf by a constant holding its current value, and the resulting parameter-free tree
 goes through the walk as if the problem had no parameters
-(Figure~\ref{fig:param-map-evalparams}). The result is the same objective data $c$ as in
+(Figure~\ref{fig:param-map-evalparams}). The result is the same objective data $\mvec{c}$ as in
 Figure~\ref{fig:param-map-dpp}, now obtained by re-walking the tree instead of applying the
-cached product $Q\tilde\theta$. The path is fully general, since arbitrary functions of
-parameters reduce to constants, but every change of $\theta$ repeats the whole symbolic walk
+cached product $\mmat{Q}\gvec{\tilde\theta}$. The path is fully general, because arbitrary
+functions of
+parameters reduce to constants, but every change of $\gvec{\theta}$ repeats the whole symbolic
+walk
 even though the sparsity pattern of the problem data never changes.
 
 \begin{figure}[H]
@@ -385,14 +403,14 @@ even though the sparsity pattern of the problem data never changes.
 \end{tikzpicture}
 
 \vspace{1ex}
-$\Rightarrow\quad c = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
+$\Rightarrow\quad \mvec{c} = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
 \caption{The \texttt{ignore\_dpp} path on the objective of problem \eqref{eq:example}: the
 parameter leaf $\mu$ is replaced by a constant holding its current value $2.5$, and the
 parameter-free tree is re-walked on every change of the parameters.}
 \label{fig:param-map-evalparams}
 \end{figure}
 
-\paragraph{The three backends.}
+% \paragraph{The three backends.}  (heading removed per advisor style; kept for reference)
 \texttt{CVXPY} implements the walk in three canonicalization backends that differ in how they
 represent the parameter axis. The C++ backend \texttt{cvxcore} keeps one sparse matrix per
 parameter slice and loops over the slices at every operator. The \texttt{SciPy} backend stacks
@@ -400,7 +418,7 @@ the slices vertically into a single two-dimensional sparse matrix. The \texttt{C
 not form the tensor; it stores each nonzero with an explicit parameter index alongside its row
 and column.
 
-\paragraph{Code generation.}
+% \paragraph{Code generation.}  (heading removed per advisor style; kept for reference)
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile the problem ahead of
 time: it emits problem-specific C code that embeds the cached parameter map
 \eqref{eq:param-maps} of a DPP problem \cite{schaller2022cvxpygen}, continuing an earlier line
@@ -409,7 +427,7 @@ benchmarks of Chapter~\ref{sec:Theme2} do not compare against it: code generatio
 that fixes the problem structure at compile time, a different deployment model from a runtime
 backend that must accept arbitrary problems.
 
-\paragraph{Implementation details.}
+% \paragraph{Implementation details.}  (heading removed per advisor style; kept for reference)
 Two implementation details, shared by all the backends, limit the current approaches
 in \texttt{CVXPY}.
 \begin{itemize}
@@ -430,10 +448,10 @@ Other design choices matter when comparing with \texttt{SparseDiffEngine}: each 
 dictionary of
 local Jacobian blocks rather than a single global matrix (Figure~\ref{fig:local-vs-global}),
 and the quadratic forms of the objective are removed by substitution and recovered in a
-separate matrix stuffing pass that assembles the objective matrix $P$. In Chapter~\ref{sec:Theme1}
+separate matrix stuffing pass that assembles the objective matrix $\mmat{P}$. In Chapter~\ref{sec:Theme1}
 we revisit these limitations and design choices, which motivate our implementation.
 
-\paragraph{References.}
+% \paragraph{References.}  (heading removed per advisor style; kept for reference)
 Michael Grant's papers and PhD thesis are the standard references on verifying convexity and
 canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
 The implementation details of this section come from the
@@ -458,20 +476,20 @@ number of oracle sweeps needed to recover the sparse matrix.
 Table~\ref{tab:ad-landscape} gathers recent systems, and the section closes with the system
 nearest this thesis, \texttt{CasADi}.
 
-\paragraph{Scalar traces.}
+% \paragraph{Scalar traces.}  (heading removed per advisor style; kept for reference)
 Early AD tools such as ADOL-C \cite{griewank1996adolc} and CppAD \cite{bell2012cppad} record the
 scalar graph as a runtime trace of every elementary operation
 \cite{griewank2008evaluating, Naumann2011}.
-Such a trace can be enormous: a single matrix--vector product $Ax$ unrolls into one scalar
-multiplication for every entry of $A$, together with the additions that sum them, so it quickly
+Such a trace can be enormous: a single matrix--vector product $\mmat{A}\mvec{x}$ unrolls into one scalar
+multiplication for every entry of $\mmat{A}$, together with the additions that sum them, so it quickly
 reaches millions of nodes for a realistic problem.
 
-\paragraph{Oracle-based differentiation.}
-The oracle of \S\ref{sec:bg-derivatives} returns the Jacobian-vector product (JVP) $Jv$ in forward
-mode and the vector-Jacobian product (VJP) $J^\top w$ in reverse mode (for the Hessian, the
-analogous Hessian-vector product $Hv$ comes from one forward sweep over one reverse sweep)
+% \paragraph{Oracle-based differentiation.}  (heading removed per advisor style; kept for reference)
+The oracle of \S\ref{sec:bg-derivatives} returns the Jacobian-vector product (JVP) $\mmat{J}\mvec{v}$ in forward
+mode and the vector-Jacobian product (VJP) $\mmat{J}^\top \mvec{w}$ in reverse mode (for the Hessian, the
+analogous Hessian-vector product $\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep)
 \cite{baydin2017ADsurvey}.
-These matrix-vector products are obtained without ever forming $J$, each by one sweep of the
+These matrix-vector products are obtained without ever forming $\mmat{J}$, each by one sweep of the
 graph at about the cost of one function evaluation; borrowing terminology from numerical linear
 algebra, this is also called the \emph{matrix-free} view of AD.
 Figure~\ref{fig:forward-sweep} traces one forward sweep on a small graph.
@@ -501,24 +519,24 @@ Figure~\ref{fig:forward-sweep} traces one forward sweep on a small graph.
 \[
 \begin{bmatrix} \textcolor{sweepCol}{\dot v_1} \\ \textcolor{sweepCol}{\dot v_2} \end{bmatrix}
 = \begin{bmatrix} \cos x_1 \\ x_2 \end{bmatrix}
-= J e_1,
+= \mmat{J} \mvec{e}_1,
 \qquad
-J = \begin{bmatrix} \cos x_1 & 0 \\ x_2 & x_1 \end{bmatrix}.
+\mmat{J} = \begin{bmatrix} \cos x_1 & 0 \\ x_2 & x_1 \end{bmatrix}.
 \]
 \caption[One forward sweep of a computational graph]{One forward
 sweep of the computational graph of $F(x_1, x_2) = (\sin x_1,\ x_1 x_2)$.
 Alongside its value, each node carries a single extra scalar, its tangent $\dot v$ (in colour),
 updated by the chain rule as the evaluation proceeds. The seed $(\dot x_1, \dot x_2) = (1, 0)$
-delivers the first column of $J$ at the outputs; every further column requires its own sweep.}
+delivers the first column of $\mmat{J}$ at the outputs; every further column requires its own sweep.}
 \label{fig:forward-sweep}
 \end{figure}
 
-\paragraph{Recovering the Jacobian.}
-Recovering $J$ explicitly requires \emph{sweeping} the oracle over a sequence of seed vectors: the $n$
+% \paragraph{Recovering the Jacobian.}  (heading removed per advisor style; kept for reference)
+Recovering $\mmat{J}$ explicitly requires \emph{sweeping} the oracle over a sequence of seed vectors: the $n$
 unit seeds recover it column by column in forward mode, and the $m$ unit seeds recover it row by row
 in reverse mode (the Hessian is recovered the same way, though its symmetry permits fewer seeds)
 \cite{griewank2008evaluating}.
-Seeding the full identity recovers $J$ exactly, $JI = J$, so assembling a dense $J$ is simply
+Seeding the full identity recovers $\mmat{J}$ exactly, $\mmat{J}\mmat{I} = \mmat{J}$, so assembling a dense $\mmat{J}$ is simply
 the oracle batched over the unit seeds.
 When the Jacobian is sparse, most of each sweep is wasted on zeros, and the full identity is
 prohibitively expensive; reducing the number of sweeps is the purpose of graph colouring.
@@ -527,8 +545,8 @@ so even fully vectorized frameworks such as JAX \cite{jax2018github}, whose loca
 Jacobian blocks combined by the rules of matrix calculus \cite{magnus2019matrix}, rely on it when
 they need an assembled sparse Jacobian.
 
-\paragraph{Graph colouring.}
-The number of sweeps drops when several seeds share one. Two columns of $J$ with no nonzero
+% \paragraph{Graph colouring.}  (heading removed per advisor style; kept for reference)
+The number of sweeps drops when several seeds share one. Two columns of $\mmat{J}$ with no nonzero
 in a common row are \emph{structurally orthogonal}, so one seed recovers both without their nonzeros
 colliding. Finding the fewest such groups is a graph-colouring problem on the column intersection
 graph, whose edges join columns that share a row
@@ -546,7 +564,7 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \begin{figure}[htbp]
 \centering
 \[
-\underset{J}{
+\underset{\mmat{J}}{
 \begin{pNiceMatrix}[margin]
 \CodeBefore
   \rectanglecolor{jcColA}{1-1}{2-1}
@@ -571,7 +589,7 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \cdot & \cdot & \cdot & \cdot & \cdot & \cdot & \times & \times
 \end{pNiceMatrix}}
 \;
-\underset{S}{
+\underset{\mmat{S}}{
 \begin{pNiceMatrix}[margin]
 \CodeBefore
   \rectanglecolor{jcColA}{1-1}{1-1}
@@ -593,7 +611,7 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \cdot & 1 & \cdot
 \end{pNiceMatrix}}
 \;=\;
-\underset{B = JS}{
+\underset{\mmat{B} = \mmat{J}\mmat{S}}{
 \begin{pNiceMatrix}[margin]
 \CodeBefore
   \rectanglecolor{jcColA}{1-1}{6-1}
@@ -609,13 +627,13 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \end{pNiceMatrix}}
 \]
 \caption{Graph colouring compresses the sweeps of the oracle. The columns of the sparse Jacobian
-$J$ are grouped into three structurally orthogonal colour classes; the seed matrix $S$ sums the
-unit vectors of each class, and the compressed product $B = JS$ recovers every nonzero of $J$
+$\mmat{J}$ are grouped into three structurally orthogonal colour classes; the seed matrix $\mmat{S}$ sums the
+unit vectors of each class, and the compressed product $\mmat{B} = \mmat{J}\mmat{S}$ recovers every nonzero of $\mmat{J}$
 without collisions, in three sweeps instead of eight.}
 \label{fig:jacobian-coloring}
 \end{figure}
 
-\paragraph{Detect, compress, propagate.}
+% \paragraph{Detect, compress, propagate.}  (heading removed per advisor style; kept for reference)
 An oracle-based sparse Jacobian is obtained in three stages: \emph{detect} the sparsity pattern,
 \emph{compress} it by colouring, and \emph{propagate} the compressed seeds of
 Figure~\ref{fig:jacobian-coloring} through the oracle to recover the nonzero entries
@@ -623,9 +641,9 @@ Figure~\ref{fig:jacobian-coloring} through the oracle to recover the nonzero ent
 cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
 in oracle-based tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
 
-\paragraph{Direct differentiation.}
+% \paragraph{Direct differentiation.}  (heading removed per advisor style; kept for reference)
 Direct assembly (\S\ref{sec:bg-derivatives}) needs neither sweeps nor colouring: each node
-carries its whole derivative object, and one pass over the graph combines them into $J$.
+carries its whole derivative object, and one pass over the graph combines them into $\mmat{J}$.
 On a scalar graph the cost is prohibitive. The derivative work at a node is proportional to
 the gradient it carries, not to the $O(1)$ operation it performs, and every intermediate
 materializes a gradient of its own: the inner product $y = a_1 x_1 + \cdots + a_k x_k$ unrolls
@@ -633,7 +651,7 @@ into $k-1$ running partial sums whose gradients grow from one nonzero to $k$, so
 propagation costs $O(k^2)$ against $O(k)$ for one sweep. The affine expressions of
 canonicalized problems are dominated by such sums.
 Direct assembly on scalar graphs is therefore rare: \emph{vertex elimination} (also called
-\emph{cross-country} accumulation) forms $J$ by eliminating the intermediate vertices of the
+\emph{cross-country} accumulation) forms $\mmat{J}$ by eliminating the intermediate vertices of the
 linearized graph, but the optimal elimination order is intractable
 \cite{griewank2008evaluating, naumann2008optimal}, and the scalar symbolic graphs of
 \texttt{CasADi} build derivative expressions node by node in the same spirit \cite{casadidocs}.
@@ -699,7 +717,7 @@ derivatives of its objective and constraints. The extraction follows the
 detect--compress--propagate scheme of this section, of which \texttt{CasADi} is the reference
 implementation in optimization software.
 
-\paragraph{Expression types.}
+% \paragraph{Expression types.}  (heading removed per advisor style; kept for reference)
 Expressions come in two types \cite{casadidocs}. An \texttt{SX} graph is scalar, with exact
 node-by-node sparsity, at the cost of a graph whose size grows with the problem data. An
 \texttt{MX} graph is vectorized: nodes are whole matrix operations, so large models keep small
@@ -707,9 +725,9 @@ graphs. Either graph is compiled into a flat instruction
 tape over a shared work vector, which enables common-subexpression elimination, constant
 folding, and C code generation.
 
-\paragraph{Jacobian assembly.}
+% \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
 Even on a vectorized graph, the Jacobian is reached through the oracle: a sweep over the tape
-carries a batch of seed directions and returns their products $Jv$, not $J$ itself. Assembly
+carries a batch of seed directions and returns their products $\mmat{J}\mvec{v}$, not $\mmat{J}$ itself. Assembly
 therefore follows the stages of this section: the sparsity is computed by a pattern propagation over
 the tape, compressed by greedy distance-2 colouring, and the compressed seeds are pushed through
 batched forward or reverse sweeps, with the mode chosen by a cost heuristic on the pattern's
@@ -729,7 +747,7 @@ b = cs.substitute(g, z, 0)
 data = cs.Function("data", [th], [P, c, A, b])
 \end{lstlisting}
 
-\paragraph{The dense-block worst case.}
+% \paragraph{The dense-block worst case.}  (heading removed per advisor style; kept for reference)
 A dense $m \times n$ block in the problem data makes every pair of its columns collide in some
 row: the column intersection graph restricted to the block is a clique, no colouring can use
 fewer than $\min(m,n)$ colours, and the sweep count grows to the full dimension of the block,
@@ -738,7 +756,7 @@ problems routinely embed dense blocks, so this worst case governs coefficient ex
 the setting of this thesis. The vectorized input does not spare the sweeps: the structure known
 to the modelling layer is recovered only at runtime.
 
-\paragraph{References.}
+% \paragraph{References.}  (heading removed per advisor style; kept for reference)
 The book by Griewank and Walther \cite{griewank2008evaluating} covers the theory and practice of
 scalar AD, including the graph-elimination view of Jacobian accumulation; the book by Naumann
 \cite{Naumann2011} focuses on implementation by operator overloading and source transformation.
@@ -769,7 +787,7 @@ process: it parses the model and the data, instantiates every constraint, and wr
 resulting instance to a \texttt{.nl} file \cite{gay2005writing}, which the solver, a separate
 executable linking the AMPL Solver Library (ASL), reads back \cite{gay1997hooking}.
 
-\paragraph{The \texttt{.nl} format.}
+% \paragraph{The \texttt{.nl} format.}  (heading removed per advisor style; kept for reference)
 The \texttt{.nl} file is an instance format, not a model format: sets and indexing are resolved
 by the translator, and what remains is one flat record per objective and constraint. A header
 states the dimensions of the problem and the nonzero counts of its Jacobian and gradients; the
@@ -778,7 +796,7 @@ hold the nonlinear parts of constraints and objectives as expression graphs in P
 notation; \texttt{J} and \texttt{G} segments hold their linear parts as explicit lists of
 (variable, coefficient) pairs; the remaining segments hold bounds and nonzero counts.
 
-\paragraph{Example.}
+% \paragraph{Example.}  (heading removed per advisor style; kept for reference)
 The following quadratic program shows the syntax of \texttt{.nl} files.
 \begin{lstlisting}[language=Ampl]
 var x; var y;
@@ -811,14 +829,14 @@ The quadratic terms $x^2 + xy$ appear only as the expression graph of the \textt
 every linear coefficient is spelled out in the \texttt{J} and \texttt{G} segments. For a linear
 program, the file \emph{is} the problem data.
 
-\paragraph{Solver-side evaluation.}
+% \paragraph{Solver-side evaluation.}  (heading removed per advisor style; kept for reference)
 Inside the solver, ASL reads the linear coefficients and bounds directly from the file, so for
 a linear or quadratic-over-linear instance this read is the whole extraction, at a cost linear
 in the number of nonzeros. Only the rebuilt nonlinear graphs are differentiated, by
 reverse-mode AD \cite{gay1991automatic}, with sparse Hessians assembled from partial
 separability \cite{gay1996more}.
 
-\paragraph{Advantages of the file format.}
+% \paragraph{Advantages of the file format.}  (heading removed per advisor style; kept for reference)
 The format has three benefits: any system that writes \texttt{.nl} reaches every solver that
 links ASL; the format has stayed backward compatible since 1990; and an instance is an
 ordinary file that can be archived, shipped to reproduce a bug, and rerun across machines.
@@ -836,7 +854,7 @@ file, \texttt{JuMP} decouples them through a typed in-memory interface. For the 
 quadratic, and conic problems considered here, no differentiation occurs anywhere on the
 problem-data path.
 
-\paragraph{Macros and term lists.}
+% \paragraph{Macros and term lists.}  (heading removed per advisor style; kept for reference)
 The macros of \texttt{JuMP} rewrite each expression as it is entered: \texttt{@objective} and
 \texttt{@constraint} build affine and quadratic expression objects term by term, merging
 duplicates eagerly, so the model never holds an expression tree, only coefficient lists. These
@@ -852,7 +870,7 @@ ScalarAffineFunction([(1.0, x), (2.0, y)], 0.0)   in   GreaterThan(1.0)
 \end{lstlisting}
 a term list, a constant, and a set; the expression itself is gone once the macro returns.
 
-\paragraph{Extraction.}
+% \paragraph{Extraction.}  (heading removed per advisor style; kept for reference)
 Extraction is serialization: when the model is passed to a solver, MOI copies each constraint
 into the solver's own representation (\texttt{copy\_to}); solvers that consume matrix data use
 the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists into one
@@ -864,7 +882,7 @@ rather than by differentiating conic-form trees.
 % TODO(oscar): confirm copy_to + MatrixOfConstraints is the canonical path for conic solver
 % wrappers (SCS.jl, Clarabel.jl), and whether any differentiation can occur on this path.
 
-\paragraph{Bridges.}
+% \paragraph{Bridges.}  (heading removed per advisor style; kept for reference)
 When a solver does not support a constraint type natively, MOI reformulates it through its
 \emph{bridge} system: a bridge is a structural rewrite from one function-set pair to another,
 for instance from a rotated to a plain second-order cone, chosen by a shortest-path search over
@@ -878,7 +896,7 @@ data from a DCP atom tree, which is the work this thesis accelerates.
 derivatives come from sparse AD in the style of \S\ref{sec:computing-derivatives}; it serves
 general nonlinear solvers and is out of scope for this thesis.
 
-\paragraph{References.}
+% \paragraph{References.}  (heading removed per advisor style; kept for reference)
 The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
 design of \texttt{JuMP}'s solver abstraction layer and its bridge system, and the \ac{MOI}
 and \texttt{JuMP} documentation \cite{moidocs, jumpdocs} cover the implementation details.

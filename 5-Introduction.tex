@@ -66,6 +66,7 @@ The parameter $\gvec{\theta} \in \reals^p$ specifies data that can change betwee
 and given when solving an instance of the problem. We call the parametrized problem \eqref{e:parametric-family}
 a problem family; for a fixed value of $\gvec{\theta}$, we call it a problem instance.
 
+% \paragraph{Quadratic conic form.}  (heading removed per advisor; kept for reference)
 Canonicalization converts the high-level description \eqref{e:parametric-family} to a
 quadratic conic form used by many general-purpose convex solvers
 \BEQ \label{e:quad-conic-form}
@@ -84,6 +85,7 @@ Problem \eqref{e:quad-conic-form} generalizes both quadratic programs (QPs), whe
 $\cone{K} = \reals^m_+$ is the nonnegative orthant, and standard conic programs, when
 $\mmat{P}(\gvec{\theta}) = 0$.
 
+% \paragraph{Canonicalization in \texttt{CVXPY}.}  (heading removed per advisor; kept for reference)
 Most of the cost of canonicalization lies in the final step, where symbolic
 expression trees are converted to numerical problem data.
 This step is often called matrix stuffing or the backend of canonicalization.
@@ -100,6 +102,7 @@ the full canonicalization, with nothing reused, at every solve.
 We review \texttt{CVXPY} and the frontend of canonicalization in \S\ref{sec:intro-canon},
 as well as the parameter tensor and matrix stuffing in \S\ref{sec:matrix-stuffing}.
 
+% \paragraph{Matrix stuffing as a derivative.}  (heading removed per advisor; kept for reference)
 The constraint matrix~$\mmat{A}$ is the Jacobian of the stacked constraint expressions and
 $\mmat{P}$ is the
 Hessian of the objective, so matrix stuffing amounts to computing a sparse Jacobian and Hessian.
@@ -111,6 +114,7 @@ detected and the columns grouped before a single entry of the matrix is obtained
 We review the basics of computing derivatives in \S\ref{sec:bg-derivatives} and present
 sparse AD and graph colouring methods in \S\ref{sec:computing-derivatives}.
 
+% \paragraph{Other approaches.}  (heading removed per advisor; kept for reference)
 A modelling language, by contrast, knows which variables enter each constraint.
 \texttt{AMPL} (A Mathematical Programming Language) is split into two components: its commercial
 translator writes the structure of the model to a \texttt{.nl} file
@@ -167,6 +171,7 @@ Converting to the form \eqref{e:parametric-family} is trivial and only requires 
 term to the left-hand side.
 Internally, each function is represented as an \emph{expression tree}.
 
+% \paragraph{Atoms.}  (heading removed per advisor; kept for reference)
 Modelling languages for convex optimization are built on top of a library of functions which can be
 used to describe problems. These functions are known as \emph{atoms} in \texttt{CVXPY} because they
 are the fundamental building blocks of the modelling language \cite{grant2004disciplined}.
@@ -196,6 +201,7 @@ Atom & Definition & Curvature & Monotonicity & Sign \\
 \end{tabular}
 \end{table}
 
+% \paragraph{Expression trees.}  (heading removed per advisor; kept for reference)
 An expression is defined recursively as an atom evaluated at \emph{subexpressions}, each of which is
 itself another expression. Such an expression is naturally stored as an expression tree,
 with atoms at its internal nodes and variables, parameters, and constants at its leaves.
@@ -221,6 +227,7 @@ drawn as circles and constants (or parameters) as boxes.}
 \label{fig:expr-tree}
 \end{figure}
 
+% \paragraph{Disciplined convex programming.}  (heading removed per advisor; kept for reference)
 To certify the convexity of a problem, DCP-based modelling languages use the DCP composition
 rules to classify
 the curvature of each function \cite{grant2004disciplined}.
@@ -234,6 +241,7 @@ but not expressed in a recognized form may still be rejected.
 
 % Subexpressions renamed from f_i to u_i per the advisor's annotation: f_i already denotes the
 % inequality constraints of the problem family.
+% \paragraph{Composition rules.}  (heading removed per advisor; kept for reference)
 The composition $\phi(u_1(\mvec{x}), u_2(\mvec{x}), \dots, u_k(\mvec{x}))$ of an atom
 $\phi : \reals^k \to \reals$ with subexpressions $u_i : \reals^n \to \reals$
 is convex when $\phi$ is convex and, for each argument $i \in \{1, \dots, k\}$, one of the
@@ -262,6 +270,7 @@ the standard convex cones: the zero, nonnegative, second-order, power, exponenti
 semidefinite cones.
 % TODO(advisor): "is that a common wording?" — check the phrase "standard convex cones".
 
+% \paragraph{Conic reformulation.}  (heading removed per advisor; kept for reference)
 Every nonlinear atom is rewritten into conic constraints in three steps.
 The first step rewrites the problem into \emph{Smith form}, where each
 nonlinear atom is replaced by a new variable coupled with an equality constraint; every atom
@@ -319,6 +328,7 @@ introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 % TODO(advisor): "ou avez-vous soumis?" — state where the survey paper was submitted.
 The review of matrix stuffing in \S\ref{sec:matrix-stuffing} follows this survey.
 
+% \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
 The rewriting from the functional form \eqref{e:parametric-family} to the functional conic form
 \eqref{eq:conic-form} is carried out as a sequence of \emph{reductions}. Each reduction provides an
 \texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
@@ -330,6 +340,7 @@ minimization one by flipping the sign of the objective, and flips it back in its
 A second example is \texttt{CvxAttr2Constr}, which replaces variable attributes such as
 nonnegativity with explicit constraints when the target solver does not support them natively.
 
+% \paragraph{The \texttt{Dcp2Cone} reduction.}  (heading removed per advisor; kept for reference)
 The main reduction, \texttt{Dcp2Cone}, applies the epigraph reformulation of
 \S\ref{sec:bg-canonicalization} atom by atom: the problem is first rewritten into Smith form,
 each resulting equality is relaxed to an epigraph (or hypograph) inequality, and each
@@ -338,6 +349,7 @@ In practice the three steps are performed at once: each nonlinear atom is replac
 epigraph variable and cone constraints, and the intermediate Smith form and its relaxation
 never appear explicitly.
 
+% \paragraph{Example of canonicalization.}  (heading removed per advisor; kept for reference)
 To show a concrete example of the frontend of canonicalization,
 we consider a simple fitting with regularization problem:
 \BEQ
@@ -406,6 +418,7 @@ these expression trees. Variables are labelled with a circle, and parameters wit
 \label{fig:dcp-expression-tree}
 \end{figure}
 
+% \paragraph{Conic form expression tree.}  (heading removed per advisor; kept for reference)
 After applying the reductions, the problem has been \emph{canonicalized} to
 \BEQ\label{eq:graph}
 \begin{array}{ll}
@@ -509,6 +522,7 @@ This section presents the derivative objects, the elementary methods for computi
 choices that distinguish the software implementations; \S\ref{sec:computing-derivatives} develops
 the sparse case and the systems that compute it.
 
+% \paragraph{The Jacobian.}  (heading removed per advisor; kept for reference)
 For a vector-valued map $F : \reals^n \to \reals^m$ of an input $\mvec{x} \in \reals^n$, the
 first-order
 derivative is the \emph{Jacobian} $\mmat{J} \in \reals^{m \times n}$ of partial derivatives of
@@ -523,6 +537,7 @@ Its Jacobian is the constant constraint matrix~$\mmat{A}$ of \eqref{e:quad-conic
 sparsity
 pattern is fixed although its values may change from one solve to the next.
 
+% \paragraph{The Hessian.}  (heading removed per advisor; kept for reference)
 For a scalar function $f : \reals^n \to \reals$, the second-order derivative is the \emph{Hessian}
 $\mmat{H} \in \reals^{n \times n}$ of second partial derivatives,
 \BEQ\label{eq:hessian}
@@ -539,6 +554,7 @@ The function we consider is the canonicalized objective, whose Hessian is the ma
 
 % TODO(advisor): "here could be subsub, albeit a bit short" — consider making numerical
 % differentiation (and the following methods) subsubsections.
+% \paragraph{Numerical differentiation.}  (heading removed per advisor; kept for reference)
 Other than computing derivatives analytically, the simplest method is to use numerical
 differentiation, which approximates the derivative of a function at a point by evaluating the
 function at nearby points using a finite difference formula such as
@@ -559,6 +575,7 @@ Despite these downsides, numerical differentiation is still widely used in pract
 especially for verifying the correctness of derivative computations, also known as a
 derivative checker \cite{wolfe1982checking}.
 
+% \paragraph{Symbolic differentiation.}  (heading removed per advisor; kept for reference)
 Mathematical expressions can be manipulated automatically using simple derivative rules of
 calculus, such as the product and sum rule. This symbolic approach to differentiation
 is used in computer algebra systems such as \texttt{Mathematica} \cite{mathematica} and
@@ -577,6 +594,7 @@ the expression is represented with a directed acyclic graph (DAG) instead of a t
 symbolic differentiation performs the same set of operations as reverse mode
 differentiation \cite{Laue2019OnTE}.
 
+% \paragraph{Algorithmic differentiation.}  (heading removed per advisor; kept for reference)
 Algorithmic differentiation (AD) treats the function as a \emph{computational graph} of
 elementary operations, each with a known local derivative rule.
 The chain rule is then applied to combine these local derivatives throughout the graph, giving the
@@ -591,6 +609,7 @@ Its implementations differ in four basic choices: whether the graph is \emph{sca
 derivative is assembled \emph{directly} or accessed through an \emph{oracle} of matrix--vector
 products, and whether the result is stored \emph{sparse} or \emph{dense}.
 
+% \paragraph{Scalar and vectorized graphs.}  (heading removed per advisor; kept for reference)
 The first choice is what a node of the graph represents.
 In most AD tools, every node is a single elementary operation, an addition, a multiplication, or a
 univariate function, and every edge carries a scalar partial derivative
@@ -601,6 +620,7 @@ Nearly all tools operate on scalar graphs; the vectorized exceptions include the
 \texttt{CasADi} \cite{andersson2019} and JAX \cite{jax2018github}, although the latter still stores
 its derivatives densely.
 
+% \paragraph{Modes of differentiation.}  (heading removed per advisor; kept for reference)
 The chain rule can be applied in different orders, all giving the same result.
 Writing the derivative as a product of local derivatives, forward mode (or tangent
 mode) associates the product from the input side, following the order of evaluation, while
@@ -612,6 +632,7 @@ The mode is thus chosen per derivative object rather than fixed by the tool: a g
 single output and calls for reverse mode, a Jacobian for whichever of its two dimensions is
 smaller, and most tools provide both modes.
 
+% \paragraph{Oracle and direct assembly.}  (heading removed per advisor; kept for reference)
 The third choice is what the differentiation returns.
 An \emph{oracle} returns the action of the derivative on a vector, the product $\mmat{J}\mvec{v}$
 in forward
@@ -631,6 +652,7 @@ local derivatives of its arguments.
 The choice between the two matters only when the target matrix is sparse, which is the last of the
 four choices.
 
+% \paragraph{The sparse case.}  (heading removed per advisor; kept for reference)
 When the target matrix is sparse, the two assemblies part ways.
 With an oracle, the sparsity pattern must be detected and \emph{graph colouring} used to
 compress the many sweeps into few.
@@ -653,6 +675,7 @@ This section reviews the two families of matrix representations, dense and spars
 the standpoint of both storage and algorithms.
 
 \subsection{Dense matrices}\label{sec:bg-blas}
+% \paragraph{Dense storage.}  (heading removed per advisor; kept for reference)
 A dense matrix is stored as a single contiguous array of its entries, ordered row by row
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
@@ -677,6 +700,7 @@ row-major and in column-major order.}
 \label{fig:dense-storage}
 \end{figure}
 
+% \paragraph{The BLAS.}  (heading removed per advisor; kept for reference)
 Dense linear algebra is served by the Basic Linear Algebra Subprograms (BLAS), a standardized
 interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
 The BLAS is a specification rather than an implementation.
@@ -693,6 +717,7 @@ covers matrix--vector products, and level 3 covers matrix--matrix products.
 The engine of Chapter~\ref{sec:Theme1} calls the level-3 product \texttt{dgemm} for its dense
 blocks and level-1 scaled copies and additions for its vector work.
 
+% \paragraph{Why dense kernels are fast.}  (heading removed per advisor; kept for reference)
 A modern processor multiplies numbers far faster than it loads them from main memory.
 Optimized BLAS implementations account for this by reading arrays contiguously, reusing data
 already in cache, processing several entries per instruction with \ac{SIMD} units, and tiling
@@ -730,6 +755,7 @@ The coordinate format is the easiest to understand and form, but it is not effec
 operations on sparse matrices; the compressed sparse row (CSR) format is commonly
 used instead.
 
+% \paragraph{Compressed sparse row format.}  (heading removed per advisor; kept for reference)
 The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
 a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
 The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
@@ -749,6 +775,7 @@ because the nonzero entries are stored contiguously in memory.
 For this reason, the CSR format is the default for iterative methods
 to solve sparse linear systems \cite{saad2003iterative}.
 
+% \paragraph{Compressed sparse column format.}  (heading removed per advisor; kept for reference)
 The compressed sparse column (CSC) format applies the same compression to the
 columns instead: \texttt{idxptr} now points into a \texttt{rows} array, and the nonzero
 entries are stored column by column.
@@ -759,6 +786,7 @@ Accessing a column of a CSR matrix instead requires a scan of every row, so algo
 that traverse columns prefer CSC; direct methods for sparse linear systems are the
 standard example \cite{davis2006direct}.
 
+% \paragraph{Matrix-vector products.}  (heading removed per advisor; kept for reference)
 Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop
 must follow the storage: CSR gathers, computing each output entry as a sparse dot
 product along its row, while CSC scatters, accumulating each column's contribution into
@@ -818,6 +846,7 @@ output entries.}
 \label{fig:sparse-matvec}
 \end{figure}
 
+% \paragraph{Matrix-matrix products.}  (heading removed per advisor; kept for reference)
 The product of two sparse matrices is formed row by row with Gustavson's algorithm
 \cite{gustavson1978two}: because the sparsity pattern of the result is not known in advance,
 each row is built as a combination of the rows of the second operand selected by the nonzeros
@@ -825,6 +854,7 @@ of the first, gathered in a dense accumulator before compaction into sparse stor
 \cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
 packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
 
+% \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
 The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
 but many others exist for different specialized use cases.
 The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
