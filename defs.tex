@@ -8,12 +8,18 @@
 \newcommand{\BEAS}{\begin{eqnarray*}}
 \newcommand{\EEAS}{\end{eqnarray*}}
 % std math stuff
+% Notation scheme (advisor, 2026-07-30): number sets in \mathbb, general sets in \mathcal,
+% vectors lowercase \mathbf, matrices uppercase \mathbf, Greek vectors in \bm.
 \newcommand{\ones}{\mathbf 1}
-\newcommand{\reals}{{\mbox{\bf R}}}
-\newcommand{\integers}{{\mbox{\bf Z}}}
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\integers}{\mathbb{Z}}
 \newcommand{\eqbydef}{\mathrel{\stackrel{\Delta}{=}}}
-\newcommand{\complex}{{\mbox{\bf C}}}
-\newcommand{\symm}{{\mbox{\bf S}}}  % symmetric matrices
+\newcommand{\complex}{\mathbb{C}}
+\newcommand{\symm}{\mathbb{S}}  % symmetric matrices
+\newcommand{\mvec}[1]{\mathbf{#1}}   % vectors (latin): \mvec{x}
+\newcommand{\mmat}[1]{\mathbf{#1}}   % matrices: \mmat{A}
+\newcommand{\gvec}[1]{\bm{#1}}       % vectors (greek): \gvec{\theta}
+\newcommand{\cone}[1]{\mathcal{#1}}  % cones and general sets: \cone{K}
 \newcommand{\sign}{{\mbox{\bf sign}}}
 \newcommand{\sinc}{{\mbox{\bf sinc}}} 
 
@@ -77,6 +83,7 @@
 \newcommand{\SURECR}{\textrm{SURE-CR}}
 
 \usepackage{relsize} % Relsize package needed
+\usepackage{bm} % Bold greek for parameter vectors (\gvec)
 
 \newcommand{\hutchpp}{\text{Hutch\raisebox{0.35ex}{\relscale{0.75}++}}}
 

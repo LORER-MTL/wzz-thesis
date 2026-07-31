@@ -4,9 +4,9 @@
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
 This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
-(\S\ref{sec:matrix-stuffing}) and of other modeling language approaches, from sparse AD such as
+(\S\ref{sec:matrix-stuffing}) and of other modelling language approaches, from sparse AD such as
 \texttt{CasADi} (\S\ref{sec:computing-derivatives}) to coefficient extraction in \texttt{AMPL}
-and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modeling languages all produce a
+and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modelling languages all produce a
 similar output to \texttt{CVXPY}, the solver problem data, but with varying inputs and intermediate
 steps. For example, \texttt{CasADi} accepts vectorized expressions as input, but differentiates
 them through matrix--vector products, so the structure of the derivatives is never materialized
@@ -272,7 +272,7 @@ full matrix $[A\ b]$.
 In the alternative, \emph{global} layout, each node stores one matrix whose columns span the
 whole stacked vector $x$, and the column offsets are applied from the start rather than at the
 end. The local layout keeps the blocks small and skips the variables absent from a subtree, but
-every operator runs once per stored block. The engine of \S\ref{sec:Theme1} uses the global
+every operator runs once per stored block. The engine of Chapter~\ref{sec:Theme1} uses the global
 layout.
 
 \begin{figure}[H]
@@ -405,7 +405,7 @@ When canonicalization remains too slow, \texttt{CVXPYgen} can compile the proble
 time: it emits problem-specific C code that embeds the cached parameter map
 \eqref{eq:param-maps} of a DPP problem \cite{schaller2022cvxpygen}, continuing an earlier line
 of work on code generation for embedded second-order cone programs \cite{chu2013codegen}. The
-benchmarks of \S\ref{sec:Theme2} do not compare against it: code generation is an offline step
+benchmarks of Chapter~\ref{sec:Theme2} do not compare against it: code generation is an offline step
 that fixes the problem structure at compile time, a different deployment model from a runtime
 backend that must accept arbitrary problems.
 
@@ -430,7 +430,7 @@ Other design choices matter when comparing with \texttt{SparseDiffEngine}: each 
 dictionary of
 local Jacobian blocks rather than a single global matrix (Figure~\ref{fig:local-vs-global}),
 and the quadratic forms of the objective are removed by substitution and recovered in a
-separate matrix stuffing pass that assembles the objective matrix $P$. In \S\ref{sec:Theme1}
+separate matrix stuffing pass that assembles the objective matrix $P$. In Chapter~\ref{sec:Theme1}
 we revisit these limitations and design choices, which motivate our implementation.
 
 \paragraph{References.}
@@ -453,7 +453,7 @@ standard of the literature \cite{griewank2008evaluating}.
 The input here is the most general of the chapter, an arbitrary differentiable program, and the
 generality is paid for in intermediate steps: the structure of the derivatives is unknown until
 detected from the graph.
-Under oracle assembly, sparsity detection and graph coloring act as compression: they reduce the
+Under oracle assembly, sparsity detection and graph colouring act as compression: they reduce the
 number of oracle sweeps needed to recover the sparse matrix.
 Table~\ref{tab:ad-landscape} gathers recent systems, and the section closes with the system
 nearest this thesis, \texttt{CasADi}.
@@ -507,7 +507,7 @@ J = \begin{bmatrix} \cos x_1 & 0 \\ x_2 & x_1 \end{bmatrix}.
 \]
 \caption[One forward sweep of a computational graph]{One forward
 sweep of the computational graph of $F(x_1, x_2) = (\sin x_1,\ x_1 x_2)$.
-Alongside its value, each node carries a single extra scalar, its tangent $\dot v$ (in color),
+Alongside its value, each node carries a single extra scalar, its tangent $\dot v$ (in colour),
 updated by the chain rule as the evaluation proceeds. The seed $(\dot x_1, \dot x_2) = (1, 0)$
 delivers the first column of $J$ at the outputs; every further column requires its own sweep.}
 \label{fig:forward-sweep}
@@ -521,22 +521,22 @@ in reverse mode (the Hessian is recovered the same way, though its symmetry perm
 Seeding the full identity recovers $J$ exactly, $JI = J$, so assembling a dense $J$ is simply
 the oracle batched over the unit seeds.
 When the Jacobian is sparse, most of each sweep is wasted on zeros, and the full identity is
-prohibitively expensive; reducing the number of sweeps is the purpose of graph coloring.
-Coloring operates on the oracle alone, independently of how the underlying graph is built,
+prohibitively expensive; reducing the number of sweeps is the purpose of graph colouring.
+Colouring operates on the oracle alone, independently of how the underlying graph is built,
 so even fully vectorized frameworks such as JAX \cite{jax2018github}, whose local derivatives are
 Jacobian blocks combined by the rules of matrix calculus \cite{magnus2019matrix}, rely on it when
 they need an assembled sparse Jacobian.
 
-\paragraph{Graph coloring.}
+\paragraph{Graph colouring.}
 The number of sweeps drops when several seeds share one. Two columns of $J$ with no nonzero
 in a common row are \emph{structurally orthogonal}, so one seed recovers both without their nonzeros
-colliding. Finding the fewest such groups is a graph-coloring problem on the column intersection
+colliding. Finding the fewest such groups is a graph-colouring problem on the column intersection
 graph, whose edges join columns that share a row
 \cite{curtis1974estimation, coleman1983estimation, gebremedhin2005color}.
-Figure~\ref{fig:jacobian-coloring} illustrates the compression: one sweep per color group replaces
+Figure~\ref{fig:jacobian-coloring} illustrates the compression: one sweep per colour group replaces
 one sweep per column.
 The Hessian compresses
-further: its symmetry admits dedicated star and acyclic colorings that use fewer colors than the
+further: its symmetry admits dedicated star and acyclic colourings that use fewer colours than the
 general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 
 \colorlet{jcColA}{blue!12}
@@ -608,8 +608,8 @@ general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \times & \times & \cdot
 \end{pNiceMatrix}}
 \]
-\caption{Graph coloring compresses the sweeps of the oracle. The columns of the sparse Jacobian
-$J$ are grouped into three structurally orthogonal color classes; the seed matrix $S$ sums the
+\caption{Graph colouring compresses the sweeps of the oracle. The columns of the sparse Jacobian
+$J$ are grouped into three structurally orthogonal colour classes; the seed matrix $S$ sums the
 unit vectors of each class, and the compressed product $B = JS$ recovers every nonzero of $J$
 without collisions, in three sweeps instead of eight.}
 \label{fig:jacobian-coloring}
@@ -617,14 +617,14 @@ without collisions, in three sweeps instead of eight.}
 
 \paragraph{Detect, compress, propagate.}
 An oracle-based sparse Jacobian is obtained in three stages: \emph{detect} the sparsity pattern,
-\emph{compress} it by coloring, and \emph{propagate} the compressed seeds of
+\emph{compress} it by colouring, and \emph{propagate} the compressed seeds of
 Figure~\ref{fig:jacobian-coloring} through the oracle to recover the nonzero entries
 \cite{hill2025sparser}. The pattern is computed once and reused, so its
 cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
 in oracle-based tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
 
 \paragraph{Direct differentiation.}
-Direct assembly (\S\ref{sec:bg-derivatives}) needs neither sweeps nor coloring: each node
+Direct assembly (\S\ref{sec:bg-derivatives}) needs neither sweeps nor colouring: each node
 carries its whole derivative object, and one pass over the graph combines them into $J$.
 On a scalar graph the cost is prohibitive. The derivative work at a node is proportional to
 the gradient it carries, not to the $O(1)$ operation it performs, and every intermediate
@@ -643,7 +643,7 @@ millions of scalar operations to a few structured nodes, so carrying a sparse ma
 is affordable. Recent works apply this idea in statistics \cite{kwok2025vectorised} and
 optimal control \cite{zou2025vectorized}.
 On a vectorized graph, direct propagation is cheaper when the local blocks are structured and
-intermediate fill-in stays bounded; the oracle with coloring is cheaper when the intermediates
+intermediate fill-in stays bounded; the oracle with colouring is cheaper when the intermediates
 densify.
 Which assembly is preferable follows the solver that consumes the result: the conic
 solvers targeted in this thesis require the matrix explicitly as data, which the direct approach
@@ -658,7 +658,7 @@ type} (scalar or vectorized), the \emph{mode} (forward, reverse, or both), the \
 the Jacobian (formed \emph{directly} by composing local Jacobians, or matrix-free through an
 \emph{oracle} that returns only matrix--vector products and is reconstructed by seeded sweeps), and
 the \emph{data format} (sparse or dense). The vectorized, forward, direct, sparse methods (lower
-block) need no graph coloring, unlike the matrix-free methods above them. The choices are not
+block) need no graph colouring, unlike the matrix-free methods above them. The choices are not
 independent: every direct method in the table operates on a vectorized graph.}
 \label{tab:ad-landscape}
 \begin{tabular}{@{}l c c c c@{}}
@@ -711,10 +711,10 @@ folding, and C code generation.
 Even on a vectorized graph, the Jacobian is reached through the oracle: a sweep over the tape
 carries a batch of seed directions and returns their products $Jv$, not $J$ itself. Assembly
 therefore follows the stages of this section: the sparsity is computed by a pattern propagation over
-the tape, compressed by greedy distance-2 coloring, and the compressed seeds are pushed through
+the tape, compressed by greedy distance-2 colouring, and the compressed seeds are pushed through
 batched forward or reverse sweeps, with the mode chosen by a cost heuristic on the pattern's
 shape. The Hessian is assembled as the Jacobian of the gradient, one forward sweep over the
-reverse tape, with a star coloring. Pattern, coloring, and the compiled
+reverse tape, with a star colouring. Pattern, colouring, and the compiled
 derivative function are cached across evaluations. This is how
 \texttt{CasADi}'s own \texttt{qpsol} interface recovers the problem data of a quadratic
 program, by differentiating the model without invoking a solver:
@@ -731,12 +731,12 @@ data = cs.Function("data", [th], [P, c, A, b])
 
 \paragraph{The dense-block worst case.}
 A dense $m \times n$ block in the problem data makes every pair of its columns collide in some
-row: the column intersection graph restricted to the block is a clique, no coloring can use
-fewer than $\min(m,n)$ colors, and the sweep count grows to the full dimension of the block,
+row: the column intersection graph restricted to the block is a clique, no colouring can use
+fewer than $\min(m,n)$ colours, and the sweep count grows to the full dimension of the block,
 even when the assembled matrix is mostly sparse. Lowered conic
 problems routinely embed dense blocks, so this worst case governs coefficient extraction in
 the setting of this thesis. The vectorized input does not spare the sweeps: the structure known
-to the modeling layer is recovered only at runtime.
+to the modelling layer is recovered only at runtime.
 
 \paragraph{References.}
 The book by Griewank and Walther \cite{griewank2008evaluating} covers the theory and practice of
@@ -745,7 +745,7 @@ scalar AD, including the graph-elimination view of Jacobian accumulation; the bo
 The survey by Baydin et al.\ \cite{baydin2017ADsurvey} covers AD in machine learning.
 For the combinatorial side, the survey of Gebremedhin et al.\ \cite{gebremedhin2005color} is the
 standard entry point, and the illustrated guide of Hill and Dalle \cite{hill2025illustrated} is a
-modern tutorial on the detection--coloring--compression scheme.
+modern tutorial on the detection--colouring--compression scheme.
 The \texttt{CasADi} paper \cite{andersson2019} covers its expression graphs, AD implementation,
 and solver interfaces.
 
@@ -756,7 +756,7 @@ and solver interfaces.
 \label{sec:declared-structure}
 
 The systems of the previous section detect the structure of the problem at runtime and recover
-its coefficients through coloring. \texttt{AMPL} and \texttt{JuMP} need no detection: the
+its coefficients through colouring. \texttt{AMPL} and \texttt{JuMP} need no detection: the
 structure is declared up front and the coefficients are stored as the user types them, so
 extraction reduces to reading off what is already known. This section examines both systems.
 
@@ -828,10 +828,10 @@ its expression graphs in the solver process.
 \subsection{\texttt{JuMP}}
 \label{sec:jump}
 
-\texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modeling language
+\texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modelling language
 embedded in Julia; its abstraction layer between models and solvers is
 \ac{MOI} \cite{legat2020mathoptinterface}.
-Where \texttt{AMPL} decouples modeler and solver through a
+Where \texttt{AMPL} decouples modeller and solver through a
 file, \texttt{JuMP} decouples them through a typed in-memory interface. For the linear,
 quadratic, and conic problems considered here, no differentiation occurs anywhere on the
 problem-data path.
@@ -889,7 +889,7 @@ description of the \texttt{.nl} format and the \texttt{AMPL} solver interface.
 \centering
 \footnotesize
 \setlength{\tabcolsep}{5pt}
-\caption{The reviewed systems and the engine of \S\ref{sec:Theme1}, sorted by the origin of
+\caption{The reviewed systems and the engine of Chapter~\ref{sec:Theme1}, sorted by the origin of
 their problem-data coefficients: stored as the user typed them, detected at runtime, or
 differentiated out of an expression graph.}
 \label{tab:modeling-systems}
@@ -908,11 +908,11 @@ differentiated out of an expression graph.}
 \addlinespace
 Hill and Dalle \cite{hill2025sparser}
   & detected
-  & index-set tracing, then coloring
+  & index-set tracing, then colouring
   & compressed oracle sweeps \\
 \texttt{CasADi} \cite{andersson2019}
   & detected
-  & pattern propagation, then coloring
+  & pattern propagation, then colouring
   & compressed oracle sweeps \\
 \addlinespace
 \texttt{CVXPY} \cite{diamond2016cvxpy}
