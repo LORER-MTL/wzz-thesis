@@ -435,7 +435,7 @@ The three rows of \eqref{eq:graph} remain three separate cone constraints, each 
 affine expressions that must lie in its cone; Figure~\ref{fig:conic-form-tree} accordingly shows
 one expression tree per constraint, rather than a single combined tree.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \begin{subfigure}{\textwidth}
 \centering
@@ -506,8 +506,8 @@ The derivatives in this Master's thesis are the constraint Jacobian~$\mmat{A}$ a
 Hessian~$\mmat{P}$ of a canonicalized problem, both large sparse matrices.
 Most differentiation software instead targets dense derivatives of scalar expression graphs.
 This section presents the Jacobian and the Hessian, the elementary methods for computing them,
-and the choices that distinguish the software implementations; \S\ref{sec:computing-derivatives}
-reviews sparse AD and graph colouring methods.
+and the choices that distinguish the software implementations;
+\S\ref{sec:computing-derivatives} reviews sparse AD and graph colouring methods.
 
 % \paragraph{The Jacobian.}  (heading removed per advisor; kept for reference)
 For a vector-valued map $F : \reals^n \to \reals^m$ of an input $\mvec{x} \in \reals^n$, the
@@ -545,8 +545,8 @@ function at nearby points using a finite difference formula such as
 f'(x) \approx \frac{f(x + h) - f(x)}{h},
 \EEQ
 where $h$ is a small step size.
-Note that the central variant $f'(x) \approx (f(x+h) - f(x-h)) / 2h$ improves accuracy;
-both formulas use two function evaluations, but the forward difference can reuse the already
+Note that the central variant $f'(x) \approx (f(x+h) - f(x-h)) / 2h$ improves accuracy.
+Both formulas use two function evaluations, but the forward difference can reuse the already
 computed value $f(x)$ across directions, while the central variant cannot.
 The approach is simple but has two downsides.
 First, it requires a linear number of function evaluations with respect to the number of
@@ -582,52 +582,108 @@ Algorithmic differentiation (AD) treats the function as a computational graph of
 elementary operations, each with a known local derivative rule.
 The chain rule is then applied to combine these local derivatives throughout the graph, giving the
 derivative of the whole function.
-AD is also commonly referred to as automatic differentiation; we prefer the term
+AD is also commonly referred to as automatic differentiation.
+We prefer the term
 algorithmic to emphasize that AD differentiates the algorithm that computes a function,
 rather than a numerical approximation or a symbolic formula \cite{griewank2008evaluating}.
+
 In this broad sense, AD can refer to any method that applies the chain rule over a computational
 graph.
 Its implementations differ in four basic choices: whether the graph is scalar or
 vectorized, whether the chain rule runs forward or in reverse, whether the
-derivative is assembled directly or accessed through an oracle of matrix--vector
+derivative is assembled directly or accessed matrix-free through matrix--vector
 products, and whether the result is stored sparse or dense.
 
 % \paragraph{Scalar and vectorized graphs.}  (heading removed per advisor; kept for reference)
 In most AD tools, every node is a single elementary operation, an addition, a multiplication, or a
 univariate function, and every edge carries a scalar partial derivative
 \cite{griewank2008evaluating}.
-A vectorized graph coarsens this representation: a node is a whole vector or matrix
-operation, and its local derivative is a matrix, a block of the Jacobian.
+In a vectorized graph, a node is a whole vector or matrix operation, and its local
+derivative is a matrix, a block of the Jacobian.
+Figure~\ref{fig:scalar-vs-vectorized} contrasts the two granularities on a small least
+squares objective.
 Nearly all tools operate on scalar graphs; the vectorized exceptions include the MX expressions of
-\texttt{CasADi} \cite{andersson2019} and JAX \cite{jax2018github}, although the latter still stores
-its derivatives densely.
+\texttt{CasADi} \cite{andersson2019} and JAX \cite{jax2018github}.
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[c]{0.58\textwidth}
+\centering
+\begin{tikzpicture}[>={Stealth}, thick,
+    var/.style={circle, draw, minimum size=7mm, inner sep=1pt, font=\small},
+    op/.style={circle, draw, inner sep=1.5pt, font=\small}]
+  \node[var] (x1) at (0,1.4) {$x_1$};
+  \node[var] (x2) at (0,-1.4) {$x_2$};
+  \node[op] (m11) at (1.5,2.1) {$\times a_{11}$};
+  \node[op] (m12) at (1.5,0.7) {$\times a_{12}$};
+  \node[op] (m21) at (1.5,-0.7) {$\times a_{21}$};
+  \node[op] (m22) at (1.5,-2.1) {$\times a_{22}$};
+  \node[var] (s1) at (3.0,1.4) {$+$};
+  \node[var] (s2) at (3.0,-1.4) {$+$};
+  \node[op] (d1) at (4.3,1.4) {$-\,b_1$};
+  \node[op] (d2) at (4.3,-1.4) {$-\,b_2$};
+  \node[op] (q1) at (5.6,1.4) {$(\cdot)^2$};
+  \node[op] (q2) at (5.6,-1.4) {$(\cdot)^2$};
+  \node[var] (sf) at (6.8,0) {$+$};
+  \node (f) at (7.6,0) {$f$};
+  \draw[->] (x1) -- (m11);
+  \draw[->] (x1) -- (m21);
+  \draw[->] (x2) -- (m12);
+  \draw[->] (x2) -- (m22);
+  \draw[->] (m11) -- (s1);
+  \draw[->] (m12) -- (s1);
+  \draw[->] (m21) -- (s2);
+  \draw[->] (m22) -- (s2);
+  \draw[->] (s1) -- (d1);
+  \draw[->] (s2) -- (d2);
+  \draw[->] (d1) -- (q1);
+  \draw[->] (d2) -- (q2);
+  \draw[->] (q1) -- (sf);
+  \draw[->] (q2) -- (sf);
+  \draw[->] (sf) -- (f);
+\end{tikzpicture}
+\caption{Scalar graph: one node per elementary operation}
+\end{subfigure}%
+\hfill
+\begin{subfigure}[c]{0.38\textwidth}
+\centering
+\begin{tikzpicture}[>={Stealth}, thick,
+    var/.style={circle, draw, minimum size=7mm, inner sep=1pt, font=\small},
+    vop/.style={ellipse, draw, inner sep=2.5pt, font=\small},
+    lab/.style={font=\small}]
+  \node[var] (vx) at (0,0) {$\mvec{x}$};
+  \node[vop] (va) at (2.1,0) {$\mmat{A}\mvec{x}-\mvec{b}$};
+  \node[vop] (vs) at (4.4,0) {$\|\cdot\|_2^2$};
+  \node (vf) at (5.7,0) {$f$};
+  \draw[->] (vx) -- (va);
+  \draw[->] (va) -- (vs);
+  \draw[->] (vs) -- (vf);
+  \node[lab, below=2mm of va] {$\mmat{A}$};
+  \node[lab, below=2mm of vs] {$2\mvec{r}^\top$};
+\end{tikzpicture}
+\caption{Vectorized graph: one node per matrix operation}
+\end{subfigure}
+\caption{The least squares objective $f(\mvec{x}) = \|\mmat{A}\mvec{x}-\mvec{b}\|_2^2$ with
+$\mmat{A} \in \reals^{2 \times 2}$ as a computational graph at two granularities. In the scalar
+graph every edge carries a scalar partial derivative. In the vectorized graph the local
+derivative of each node is a Jacobian block, shown below the node: $\mmat{A}$ for the affine
+node and $2\mvec{r}^\top$ for the sum of squares, where $\mvec{r} = \mmat{A}\mvec{x}-\mvec{b}$.}
+\label{fig:scalar-vs-vectorized}
+\end{figure}
+
 % \paragraph{Modes of differentiation.}  (heading removed per advisor; kept for reference)
 The chain rule can be applied in different orders, all giving the same result.
-Writing the derivative as a product of local derivatives, forward mode (or tangent
-mode) associates the product from the input side, following the order of evaluation, while
-reverse mode (or adjoint mode) associates it from the output side, which requires
+The two best-known orders are forward mode (or tangent mode), which propagates derivatives
+from the inputs toward the outputs following the order of evaluation, and reverse mode (or
+adjoint mode), which propagates them from the outputs back toward the inputs and requires
 storing the intermediate values of the evaluation \cite{baydin2017ADsurvey}.
-The two modes have asymmetric costs: in forward mode the work scales with the number of inputs, and
-in reverse mode with the number of outputs.
-
-% \paragraph{Oracle and direct assembly.}  (heading removed per advisor; kept for reference)
-An oracle returns the action of the derivative, the product $\mmat{J}\mvec{v}$ in
-forward mode or $\mmat{J}^\top \mvec{w}$ in reverse mode, without ever forming $\mmat{J}$;
-a direct method assembles $\mmat{J}$ itself, each node combining the local derivatives
-of its arguments.
-Either result can be stored dense or sparse.
-For a sparse matrix, an oracle requires the sparsity pattern to be detected and
-graph colouring to recover the matrix in few products; direct assembly carries sparse
-local derivatives through the graph and needs neither.
-Direct assembly is practical only on vectorized graphs, whose few coarse nodes make carrying
-a matrix per node affordable.
-This thesis assembles the sparse Jacobian and Hessian directly on a vectorized graph, without
-oracle sweeps or colouring.
+In forward mode the work scales with the number of input variables, and in reverse mode with
+the number of output variables.
 
 \section{Matrix computations}\label{sec:intro-matrix}
-The derivatives of \S\ref{sec:bg-derivatives} are matrices, and every matrix is stored in one
-of two representations: dense, which stores all entries in a single array, or sparse, which
-stores only the nonzero entries alongside their positions.
+The derivatives of \S\ref{sec:bg-derivatives} are matrices, and every matrix is stored in
+either a dense representation, which keeps all entries in a single array, or a sparse
+representation, which keeps only the nonzero entries alongside their positions.
 The representation determines the memory a matrix occupies and the algorithms that operate on
 it, and each has its own use cases.
 This section reviews the storage formats, the conventions, and some of the history behind both
@@ -639,9 +695,8 @@ A dense matrix is stored as a single contiguous array of its entries, ordered ro
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
 needed, and rows or columns are traversed sequentially in memory.
-C arrays are row-major while Fortran arrays are column-major, a distinction that matters when
-exchanging matrices across languages because the reference dense linear algebra interfaces
-follow the Fortran convention.
+C arrays are row-major and Fortran arrays are column-major.
+Most dense linear algebra interfaces follow the Fortran convention.
 
 \begin{figure}[ht]
 \centering
@@ -660,35 +715,34 @@ row-major and in column-major order.}
 \end{figure}
 
 % \paragraph{The BLAS.}  (heading removed per advisor; kept for reference)
-Dense linear algebra is served by the Basic Linear Algebra Subprograms (BLAS), a standardized
+Dense linear algebra is standardized by the Basic Linear Algebra Subprograms (BLAS), an
 interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
 The BLAS is a specification rather than an implementation.
 Implementations such as \texttt{OpenBLAS}, Intel \texttt{MKL}, and Apple \texttt{Accelerate}
-are tuned to each processor family, and every program calling the interface benefits.
-In practice, an optimized implementation is available on nearly every machine, whether
-shipped with the operating system or bundled by numerical libraries, and LAPACK, the library
-behind dense factorizations and linear system solving in most scientific software, is built
-on top of these kernels \cite{anderson1999lapack}.
+are specialized for their respective processors, and nearly every machine has one available,
+whether shipped with the operating system or bundled by numerical libraries.
+LAPACK, the library behind dense factorizations and linear system solving in most scientific
+software, is built on top of the BLAS kernels \cite{anderson1999lapack}.
 
-The interface is organized in three levels by the ratio of computation to data.
+The BLAS interface is organized in three levels by the ratio of computation to data.
 Level 1 covers vector operations such as dot products, scaled copies, and additions, level 2
 covers matrix--vector products, and level 3 covers matrix--matrix products.
-The routine names abbreviate the precision and the operation: \texttt{dgemv} is the
-double-precision general matrix--vector product, and \texttt{dgemm} is the double-precision
-general matrix--matrix product.
+The routine names abbreviate the precision and the operation.
+For example, \texttt{dgemv} is the double-precision general matrix--vector product, and
+\texttt{dgemm} is the double-precision general matrix--matrix product.
 
 % \paragraph{Why dense kernels are fast.}  (heading removed per advisor; kept for reference)
-A modern processor multiplies numbers far faster than it loads them from main memory.
-Optimized BLAS implementations account for this by organizing the computation to reuse data
-already in cache and by processing several entries per instruction with \ac{SIMD} units
-\cite{goto2008anatomy}.
+BLAS implementations are fast because they are organized around the memory hierarchy.
+A modern processor multiplies numbers far faster than it loads them from main memory, so
+optimized kernels reuse data already in cache and process several entries per instruction
+with \ac{SIMD} units \cite{goto2008anatomy}.
 Level-3 kernels benefit the most because they perform a cubic number of operations on a
 quadratic amount of data, so each entry loaded from memory is reused many times.
 
 \subsection{Sparse matrices}\label{sec:bg-sparse}
 In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ often contain mostly zero
-entries; such
-matrices are called sparse, and conic solvers expect their problem data in sparse formats.
+entries.
+Such matrices are called sparse, and conic solvers expect their problem data in sparse formats.
 Techniques that store and compute with only the nonzero entries date back to the linear
 programming computations of the 1950s and the work of Markowitz \cite{markowitz1957elimination}.
 The simplest sparse matrix data structure is the coordinate or triplet
@@ -711,8 +765,8 @@ double vals[] = {1,  2,  3,  4,  5,  6};
 where we use zero-based indexing and array declaration notation from the C programming
 language \cite{Kernighan1988}.
 The coordinate format is the easiest to understand and form, but it is not effective for most
-operations on sparse matrices; the compressed sparse row (CSR) format is commonly
-used instead.
+operations on sparse matrices.
+The compressed sparse row (CSR) format is commonly used instead.
 
 % \paragraph{Compressed sparse row format.}  (heading removed per advisor; kept for reference)
 The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
@@ -757,9 +811,9 @@ the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 \subsection{Sparse matrix products}\label{sec:bg-sparse-products}
 % \paragraph{Matrix-vector products.}  (heading removed per advisor; kept for reference)
 Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop
-must follow the storage: CSR gathers, computing each output entry as a sparse dot
-product along its row, while CSC scatters, accumulating each column's contribution into
-the output vector.
+must follow the storage.
+CSR gathers, computing each output entry as a sparse dot product along its row, while CSC
+scatters, accumulating each column's contribution into the output vector.
 Figure~\ref{fig:sparse-matvec} traces one product of the matrix in \eqref{eq:sparse-matrix}
 under both formats.
 
@@ -817,18 +871,21 @@ output entries.}
 
 % \paragraph{Matrix-matrix products.}  (heading removed per advisor; kept for reference)
 The product of two sparse matrices is formed row by row with Gustavson's algorithm
-\cite{gustavson1978two}: because the sparsity pattern of the result is not known in advance,
-each row is built as a combination of the rows of the second operand selected by the nonzeros
-of the first, gathered in a dense accumulator before compaction into sparse storage
-\cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
+\cite{gustavson1978two}.
+Because the sparsity pattern of the result is not known in advance, each row is built as a
+combination of the rows of the second operand selected by the nonzeros of the first, gathered
+in a dense accumulator before compaction into sparse storage \cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
 packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
 
 In contrast to the BLAS kernels of \S\ref{sec:bg-blas}, sparse products access memory
-irregularly: the loops traverse the index arrays, so every nonzero costs an index load and an
-indirect access, and contiguous reads, \ac{SIMD}, and cache tiling do not apply.
-Sparse formats are also a poor fit for dense data: a dense block stored in coordinate format
-triples its storage, one index pair per entry, and multiplying it through the sparse loop is
-far slower than the equivalent BLAS call.
+irregularly.
+The loops traverse the index arrays, so every nonzero costs an index load and an indirect
+access, and contiguous reads, \ac{SIMD}, and cache tiling do not apply.
+Sparse formats are also a poor fit for dense data.
+A dense block stored in coordinate format triples its storage, one index pair per entry, and
+multiplying it through the sparse loop is far slower than the equivalent BLAS call.
+A sparse BLAS standard was specified by the BLAS Technical Forum \cite{duff2002sparse}, but
+implementations are few and far less widely adopted than the dense BLAS.
 
 \section{Contributions}
 % Moved to the end of the chapter per the advisor's annotation
@@ -841,7 +898,7 @@ We make the following contributions:
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
   \texttt{SparseDiffEngine}; this backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.
-  \item We benchmark this backend against \texttt{CVXPY}'s existing canonicalization
+  \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
   backends.
 \end{enumerate}
 All code contributions are open source and available at

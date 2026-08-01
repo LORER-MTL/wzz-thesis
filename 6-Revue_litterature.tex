@@ -470,17 +470,17 @@ The implementation details of this section come from the
 The introduction (\S\ref{sec:bg-derivatives}) organized differentiation software by four choices:
 the granularity of the expression graph, the mode of differentiation, the assembly of the result,
 and its storage.
-We focus here on the assembly choice, and in particular on oracle assembly, the standard
+We focus here on the assembly choice, and in particular on matrix-free assembly, the standard
 approach in the literature \cite{griewank2008evaluating}.
 The input, an arbitrary differentiable program, is the most general of this chapter. This
 generality requires extra intermediate steps, because the structure of the derivatives is
 unknown until it is detected from the graph.
-Under oracle assembly, sparsity detection and graph colouring reduce the
-number of oracle sweeps needed to recover the sparse matrix.
+Under matrix-free assembly, sparsity detection and graph colouring reduce the
+number of seeded sweeps needed to recover the sparse matrix.
 Table~\ref{tab:ad-landscape} lists recent systems, and \texttt{CasADi}, the system nearest
 this thesis, is described in \S\ref{sec:casadi}.
 
-\subsection{Oracle differentiation}\label{sec:oracle-diff}
+\subsection{Matrix-free differentiation}\label{sec:matrix-free-diff}
 % \paragraph{Scalar traces.}  (heading removed per advisor style; kept for reference)
 Early AD tools such as ADOL-C \cite{griewank1996adolc} and CppAD \cite{bell2012cppad} record the
 scalar graph as a runtime trace of every elementary operation
@@ -491,80 +491,15 @@ trace of a realistic problem quickly reaches millions of nodes.
 Figure~\ref{fig:scalar-vs-vectorized} contrasts the scalar graph of a small least squares
 objective with its vectorized counterpart, in which each node is a whole matrix operation.
 
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[c]{0.58\textwidth}
-\centering
-\begin{tikzpicture}[>={Stealth}, thick,
-    var/.style={circle, draw, minimum size=7mm, inner sep=1pt, font=\small},
-    op/.style={circle, draw, inner sep=1.5pt, font=\small}]
-  \node[var] (x1) at (0,1.4) {$x_1$};
-  \node[var] (x2) at (0,-1.4) {$x_2$};
-  \node[op] (m11) at (1.5,2.1) {$\times a_{11}$};
-  \node[op] (m12) at (1.5,0.7) {$\times a_{12}$};
-  \node[op] (m21) at (1.5,-0.7) {$\times a_{21}$};
-  \node[op] (m22) at (1.5,-2.1) {$\times a_{22}$};
-  \node[var] (s1) at (3.0,1.4) {$+$};
-  \node[var] (s2) at (3.0,-1.4) {$+$};
-  \node[op] (d1) at (4.3,1.4) {$-\,b_1$};
-  \node[op] (d2) at (4.3,-1.4) {$-\,b_2$};
-  \node[op] (q1) at (5.6,1.4) {$(\cdot)^2$};
-  \node[op] (q2) at (5.6,-1.4) {$(\cdot)^2$};
-  \node[var] (sf) at (6.8,0) {$+$};
-  \node (f) at (7.6,0) {$f$};
-  \draw[->] (x1) -- (m11);
-  \draw[->] (x1) -- (m21);
-  \draw[->] (x2) -- (m12);
-  \draw[->] (x2) -- (m22);
-  \draw[->] (m11) -- (s1);
-  \draw[->] (m12) -- (s1);
-  \draw[->] (m21) -- (s2);
-  \draw[->] (m22) -- (s2);
-  \draw[->] (s1) -- (d1);
-  \draw[->] (s2) -- (d2);
-  \draw[->] (d1) -- (q1);
-  \draw[->] (d2) -- (q2);
-  \draw[->] (q1) -- (sf);
-  \draw[->] (q2) -- (sf);
-  \draw[->] (sf) -- (f);
-\end{tikzpicture}
-\caption{Scalar graph: one node per elementary operation}
-\end{subfigure}%
-\hfill
-\begin{subfigure}[c]{0.38\textwidth}
-\centering
-\begin{tikzpicture}[>={Stealth}, thick,
-    var/.style={circle, draw, minimum size=7mm, inner sep=1pt, font=\small},
-    vop/.style={ellipse, draw, inner sep=2.5pt, font=\small},
-    lab/.style={font=\small}]
-  \node[var] (vx) at (0,0) {$\mvec{x}$};
-  \node[vop] (va) at (2.1,0) {$\mmat{A}\mvec{x}-\mvec{b}$};
-  \node[vop] (vs) at (4.4,0) {$\|\cdot\|_2^2$};
-  \node (vf) at (5.7,0) {$f$};
-  \draw[->] (vx) -- (va);
-  \draw[->] (va) -- (vs);
-  \draw[->] (vs) -- (vf);
-  \node[lab, below=2mm of va] {$\mmat{A}$};
-  \node[lab, below=2mm of vs] {$2\mvec{r}^\top$};
-\end{tikzpicture}
-\caption{Vectorized graph: one node per matrix operation}
-\end{subfigure}
-\caption{The least squares objective $f(\mvec{x}) = \|\mmat{A}\mvec{x}-\mvec{b}\|_2^2$ with
-$\mmat{A} \in \reals^{2 \times 2}$ as a computational graph at two granularities. In the scalar
-graph every edge carries a scalar partial derivative. In the vectorized graph the local
-derivative of each node is a Jacobian block, shown below the node: $\mmat{A}$ for the affine
-node and $2\mvec{r}^\top$ for the sum of squares, where $\mvec{r} = \mmat{A}\mvec{x}-\mvec{b}$.}
-\label{fig:scalar-vs-vectorized}
-\end{figure}
-
-% \paragraph{Oracle-based differentiation.}  (heading removed per advisor style; kept for reference)
-The oracle of \S\ref{sec:bg-derivatives} returns the Jacobian-vector product (JVP) $\mmat{J}\mvec{v}$ in forward
-mode and the vector-Jacobian product (VJP) $\mmat{J}^\top \mvec{w}$ in reverse mode (for the Hessian, the
-analogous Hessian-vector product $\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep)
-\cite{baydin2017ADsurvey}.
-These matrix-vector products are obtained without ever forming $\mmat{J}$, each by one sweep of the
-graph at about the cost of one function evaluation; borrowing terminology from numerical linear
-algebra, this is also called the \emph{matrix-free} view of AD.
+% \paragraph{Matrix-free differentiation.}  (heading removed per advisor style; kept for reference)
+A \emph{matrix-free} method returns only the action of the derivative: the Jacobian-vector
+product (JVP) $\mmat{J}\mvec{v}$ in forward mode and the vector-Jacobian product (VJP)
+$\mmat{J}^\top \mvec{w}$ in reverse mode (for the Hessian, the analogous Hessian-vector product
+$\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep) \cite{baydin2017ADsurvey}.
+These matrix-vector products are obtained without ever forming $\mmat{J}$, each by one sweep of
+the graph at about the cost of one function evaluation; the term is borrowed from numerical
+linear algebra, where a method that accesses a matrix only through its products is called
+matrix-free.
 Figure~\ref{fig:ad-modes} traces one sweep of each mode on a small graph.
 
 \colorlet{sweepCol}{blue!55!black}
@@ -644,15 +579,16 @@ one sweep per row in reverse mode.}
 \end{figure}
 
 % \paragraph{Recovering the Jacobian.}  (heading removed per advisor style; kept for reference)
-Recovering $\mmat{J}$ explicitly requires \emph{sweeping} the oracle over a sequence of seed vectors. The $n$
+Recovering $\mmat{J}$ explicitly requires \emph{sweeping} over a sequence of seed vectors. The $n$
 unit seeds recover it column by column in forward mode, and the $m$ unit seeds recover it row by row
 in reverse mode (the Hessian is recovered the same way, though its symmetry permits fewer seeds)
 \cite{griewank2008evaluating}.
 Seeding the full identity recovers $\mmat{J}$ exactly, $\mmat{J}\mmat{I} = \mmat{J}$, so a dense $\mmat{J}$ can be assembled
-by batching the oracle over the unit seeds.
+by batching the sweeps over the unit seeds.
 When the Jacobian is sparse, most of each sweep is wasted on zeros, and the full identity is
 prohibitively expensive; graph colouring is used to reduce the number of sweeps.
-Colouring operates on the oracle alone, independently of how the underlying graph is built,
+Colouring operates on the matrix-free products alone, independently of how the underlying graph is
+built,
 so even fully vectorized frameworks such as JAX \cite{jax2018github}, whose local derivatives are
 Jacobian blocks combined by the rules of matrix calculus \cite{magnus2019matrix}, rely on it when
 they need an assembled sparse Jacobian.
@@ -739,7 +675,7 @@ colours than the general Jacobian case \cite{Gebremedhin2009SparseHessians}.
 \times & \times & \cdot
 \end{pNiceMatrix}}
 \]
-\caption{Graph colouring compresses the sweeps of the oracle. The columns of the sparse Jacobian
+\caption{Graph colouring compresses the seeded sweeps. The columns of the sparse Jacobian
 $\mmat{J}$ are grouped into three structurally orthogonal colour classes; the seed matrix $\mmat{S}$ sums the
 unit vectors of each class, and the compressed product $\mmat{B} = \mmat{J}\mmat{S}$ recovers every nonzero of $\mmat{J}$
 without collisions, in three sweeps instead of eight.}
@@ -747,16 +683,16 @@ without collisions, in three sweeps instead of eight.}
 \end{figure}
 
 % \paragraph{Detect, compress, propagate.}  (heading removed per advisor style; kept for reference)
-An oracle-based sparse Jacobian is obtained in three stages: \emph{detect} the sparsity pattern,
+A matrix-free sparse Jacobian is obtained in three stages: \emph{detect} the sparsity pattern,
 \emph{compress} it by colouring, and \emph{propagate} the compressed seeds of
-Figure~\ref{fig:jacobian-coloring} through the oracle to recover the nonzero entries
+Figure~\ref{fig:jacobian-coloring} through seeded sweeps to recover the nonzero entries
 \cite{hill2025sparser}. The pattern is computed once and reused, so its
 cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
-in oracle-based tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
+in matrix-free tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
 
 % \paragraph{Direct differentiation.}  (heading removed per advisor style; kept for reference)
-The alternative is direct assembly (\S\ref{sec:bg-derivatives}), which needs neither sweeps
-nor colouring. Each node stores its whole local derivative, and one pass over the graph
+The alternative is \emph{direct} assembly, which forms $\mmat{J}$ itself and needs neither
+sweeps nor colouring. Each node stores its whole local derivative, and one pass over the graph
 combines them into $\mmat{J}$.
 On a scalar graph the stored derivatives grow with every intermediate and the cost is
 prohibitive; there the method is known as \emph{vertex elimination}, and its optimal order is
@@ -775,8 +711,8 @@ alternatives.
 \setlength{\tabcolsep}{6pt}
 \caption{Differentiation methods classified by the four choices of \S\ref{sec:bg-derivatives}: the \emph{expression
 type} (scalar or vectorized), the \emph{mode} (forward, reverse, or both), the \emph{assembly} of
-the Jacobian (formed \emph{directly} by composing local Jacobians, or matrix-free through an
-\emph{oracle} that returns only matrix--vector products and is reconstructed by seeded sweeps), and
+the Jacobian (formed \emph{directly} by composing local Jacobians, or accessed \emph{matrix-free}
+through matrix--vector products and reconstructed by seeded sweeps), and
 the \emph{data format} (sparse or dense). The vectorized, forward, direct, sparse methods (lower
 block) need no graph colouring, unlike the matrix-free methods above them. The choices are not
 independent: every direct method in the table operates on a vectorized graph.}
@@ -787,15 +723,15 @@ independent: every direct method in the table operates on a vectorized graph.}
 \textbf{Data format} \\
 \midrule
 ADOL-C, CppAD \cite{griewank1996adolc, bell2012cppad}
-  & scalar & both & oracle & dense \\
+  & scalar & both & matrix-free & dense \\
 \texttt{CasADi} \cite{andersson2019}
-  & scalar / vectorized & both & oracle & sparse \\
+  & scalar / vectorized & both & matrix-free & sparse \\
 JAX \cite{jax2018github}
-  & vectorized & both & oracle & dense \\
+  & vectorized & both & matrix-free & dense \\
 \texttt{torch-sla} \cite{chi2026torchsla}
-  & vectorized & reverse & oracle & sparse \\
+  & vectorized & reverse & matrix-free & sparse \\
 Hill and Dalle \cite{hill2025sparser}
-  & scalar & both & oracle & sparse \\
+  & scalar & both & matrix-free & sparse \\
 \addlinespace
 Zou and Jiang \cite{zou2025vectorized}
   & vectorized & forward & direct & sparse \\
@@ -829,7 +765,7 @@ tape over a shared work vector, which enables common-subexpression elimination, 
 folding, and C code generation.
 
 % \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
-Even on a vectorized graph, the Jacobian is computed through the oracle. A sweep over the tape
+Even on a vectorized graph, the Jacobian is computed matrix-free. A sweep over the tape
 propagates a batch of seed directions and returns the products $\mmat{J}\mvec{v}$ rather than $\mmat{J}$ itself. Assembly
 therefore follows the stages of this section: the sparsity is computed by a pattern propagation over
 the tape, compressed by greedy distance-2 colouring, and the compressed seeds are pushed through
@@ -1032,11 +968,11 @@ differentiated out of an expression graph.}
 Hill and Dalle \cite{hill2025sparser}
   & detected
   & index-set tracing, then colouring
-  & compressed oracle sweeps \\
+  & compressed matrix-free sweeps \\
 \texttt{CasADi} \cite{andersson2019}
   & detected
   & pattern propagation, then colouring
-  & compressed oracle sweeps \\
+  & compressed matrix-free sweeps \\
 \addlinespace
 \texttt{CVXPY} \cite{diamond2016cvxpy}
   & differentiated

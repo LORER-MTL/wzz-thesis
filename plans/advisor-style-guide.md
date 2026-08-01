@@ -39,7 +39,8 @@ pass DONE 2026-07-31 — \emph{kernel} now lives at its §3.3 definition, not th
 - Causal **"since" → "because"** ("since" only for time).
 - No italic `\emph` on ordinary terms (family, instance, lossless, sparse, cache-friendly,
   forward/reverse mode, curvature, …). Italics survive only for truly load-bearing definitions
-  (atoms, epigraph, Smith form, reductions, oracle) — when in doubt, drop it.
+  (atoms, epigraph, Smith form, reductions, matrix-free, direct assembly) — when in doubt, drop
+  it. [2026-08-01: "oracle" retired from ch. 1–2; the assembly axis is now matrix-free vs direct]
 - Avoid GenAI-sounding filler ("tedious and error-prone", "practitioners of optimization");
   prefer plain, specific wording ("the math" → "the mathematical formulation").
 - "black box" → "blackbox"; "split in two" → "split into two"; "by hand" (for derivations) →
