@@ -1,0 +1,31 @@
+Upstream cvxpy/benchmarks suite: canonicalization backends + ignore_dpp
+=======================================================================
+Source:  https://github.com/cvxpy/benchmarks (cloned, run as is)
+cvxpy:   1.10.0.dev93+g4402def70.d20260705   python: 3.14.4   platform: darwin
+timeout: 1200s/problem   solver=CLARABEL (uniform, for comparability)
+
+Table 1 = COLD first-compile time (s) of each problem under each canon backend
+  (fresh setup + get_problem_data per backend). CPP is the default backend;
+  DIFFENG is the ignore_dpp=True path; DE_DPP is explicit canon_backend=DIFFENGINE
+  on the normal DPP path (no fold, capsule cached; non-DPP rows fall back to the
+  ignore_dpp path). 'd/CPP' = DIFFENG / CPP (<1 = diffengine faster).
+Table 2 = re-compile time (s) with changing parameters (parametric problems only),
+  mean of 3, fresh instance per strategy: dpp=default (cached DPP tensor),
+  diffengine=ignore_dpp (capsule rebuilt
+  per solve), de_cached=canon_backend=DIFFENGINE on the DPP path (cached C problem,
+  re-evaluates the expression tree only).
+
+Table 1 -- cold first-compile (s) by canon backend
+benchmark                                        n_vars  dpp?       CPP     SCIPY       COO   DIFFENG    DE_DPP   d/CPP         status
+--------------------------------------------------------------------------------------------------------------------------------------
+high_dim_convex_plasticity.ConvexPlasticity      15,000   yes    2.1292         -         -    2.1723    2.1490   1.02x             ok
+semidefinite_programming.SemidefiniteProgramming     40,000   yes    5.3469         -         -  430.6257  608.0990  80.54x             ok
+simple_LP_benchmarks.SimpleFullyParametrizedLPBenchmark  1,000,000   yes    2.0919         -         -    0.4732    0.4805   0.23x             ok
+simple_QP_benchmarks.ParametrizedQPBenchmark      2,400   yes   10.2062         -         -    2.3481    2.9299   0.23x             ok
+
+Table 2 -- re-compile (s) with changing parameters (parametric problems only)
+benchmark                                        n_vars        dpp   eval_par    diffeng  de_cached  dec vs dpp
+---------------------------------------------------------------------------------------------------------------
+high_dim_convex_plasticity.ConvexPlasticity      15,000     0.6645     0.6671     0.6601       0.99x
+simple_LP_benchmarks.SimpleFullyParametrizedLPBenchmark  1,000,000     0.2236     0.1235     0.1214       0.54x
+simple_QP_benchmarks.ParametrizedQPBenchmark      2,400     1.3352     1.0692     1.0377       0.78x

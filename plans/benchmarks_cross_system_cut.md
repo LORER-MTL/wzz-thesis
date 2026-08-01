@@ -1,0 +1,328 @@
+# Cross-system benchmark sections cut from 7-Theme2.tex
+
+Removed 2026-07-24. Reason: the CasADi/Julia/AMPL/JuMP comparisons are cross-paradigm and
+invite methodology questions rather than support the thesis claim (diffengine is a faster
+drop-in canonicalization backend for CVXPY), which the cvxcore comparison proves on its own.
+The harness code and recorded timings remain at
+https://github.com/SparseDifferentiation/Jacobian-accumulation under `canonicalization/`.
+Kept here verbatim in case the numbers are needed at the defense.
+
+## Removed from the Benchmark Setup section
+
+Timing-convention sentences:
+
+```latex
+For \texttt{CasADi} and the Julia sparse-AD stack, we time the
+extraction of the same $(A,b,c,P)$ by differentiation of an equivalent expression graph,
+following the conventions described in Section~\ref{sec:bench-casadi}. For \texttt{JuMP} and
+\texttt{AMPL}, we time the assembly of the same data from an equivalent declared-structure
+model, following the conventions described in Section~\ref{sec:bench-declared}.
+```
+
+Software-version bullets:
+
+```latex
+  \item \texttt{CasADi} 3.7.2~\cite{andersson2019},
+  \item the Julia sparse-AD stack~\cite{hill2025sparser, hill2025sct} on
+        \texttt{Julia} 1.10.5 (single-threaded):\\
+        \texttt{SparseConnectivityTracer} 1.2.2, \texttt{SparseMatrixColorings} 0.4.27,\\
+        \texttt{DifferentiationInterface} 0.7.20, and \texttt{ForwardDiff} 1.4.1,
+  \item \texttt{JuMP} 1.30.1 on \texttt{MathOptInterface}
+        1.51.2~\cite{dunning2017jump, legat2020mathoptinterface},
+  \item \texttt{amplpy} with the AMPL Community Edition engine (2026), read back through an
+        ASL interface built from source (\texttt{Pyomo} 6.10.1 /
+        \texttt{PyNumero})~\cite{amplpy, gay1997hooking}.
+```
+
+Coverage sentence:
+
+```latex
+The \texttt{cvxcore} and \texttt{CasADi} comparisons cover all $25$ problems; the
+Julia harness ports four representative problems; the \texttt{JuMP} and \texttt{AMPL}
+comparisons cover the $21$-problem subset that has been ported to a tool-neutral lowered
+form (the three \texttt{kron}-based problems and \textsc{CVaR} are not ported).
+```
+
+## Removed section: structure discovery (CasADi and Julia sparse AD)
+
+```latex
+\section{Comparison against structure discovery: \texttt{CasADi} and Julia sparse AD}
+\label{sec:bench-casadi}
+% this paragraph is very run-on, let's break it up into clean sentences.
+\texttt{CasADi}~\cite{andersson2019} extracts problem data by algorithmic differentiation of a
+symbolic
+expression graph. Since \texttt{CasADi} has no notion of disciplined convex programming, it cannot
+canonicalize the high-level models; for a fair comparison we hand it the \emph{already-lowered}
+formulation: the same epigraph variables and the same conic rows that \texttt{CVXPY}'s
+canonicalization frontend
+produces, written as \texttt{CasADi} \texttt{MX} expressions $f(z, \theta)$ (objective) and
+$g(z, \theta) = b - Az$ (constraint slacks), where $z$ stacks the original and epigraph variables
+and $\theta$ collects the parameters.
+
+% can we not call directly qpsol? maybe there's some hidden performance benefits there?
+The problem data are recovered exactly the way \texttt{CasADi}'s own quadratic-programming interface
+\texttt{qpsol} does~\cite{casadidocs}, by differentiating the graph without invoking any
+solver:
+\[
+c = \nabla_z f \,\big|_{z=0}, \qquad
+P = \frac{\partial (\nabla_z f)}{\partial z}, \qquad
+A = -\frac{\partial g}{\partial z}, \qquad
+b = g \,\big|_{z=0}.
+\]
+These four quantities are wrapped in a \texttt{casadi.Function} which maps $\theta$ to
+$(P, c, A, b)$. Computing $P$ as the Jacobian of the gradient is \texttt{CasADi}'s fastest path on
+these problems.
+
+For \texttt{CasADi}, the single-solve timing covers differentiation, function construction, and the
+first
+numeric evaluation on a freshly built graph, while a re-solve is one further evaluation of
+the compiled function at the new parameter values. Graph construction itself is excluded,
+mirroring the \texttt{diffengine} timing, which also starts from a built expression tree. We
+verified on every benchmark that the two systems produce identical $(P, c, A, b)$ at full
+benchmark size, so the tables below time the construction of the same matrices. All $25$
+problems are compared, with \textsc{CVaR} reported as a did-not-finish.
+
+\begin{sloppypar}
+The same lowered formulations also drive the generic Julia sparse-AD stack of
+\S\ref{sec:julia-ad}: the sparsity patterns of $A$ and $P$ are traced by
+\texttt{SparseConnectivityTracer}, compressed by \texttt{SparseMatrixColorings}
+(unidirectional distance-2 coloring for $A$, star coloring for $P$), and the values are
+then recovered with compressed \texttt{ForwardDiff} sweeps driven by
+\texttt{DifferentiationInterface}. The harness ports four representative problems:
+\textsc{SimpleQP}, \textsc{LeastSquares}, and \textsc{ParametrizedQP} at their benchmark
+sizes, plus \textsc{CVaR} at a reduced slice of $8192$ scenarios (the full
+$131\,072$-scenario instance exceeds the machine's memory through every Julia path).
+Julia's JIT compilation is warmed up on a small instance and excluded, and each problem
+reports the faster of the two Hessian routes (native sparse Hessian versus Jacobian of the
+gradient), mirroring the \texttt{CasADi} rule.
+\end{sloppypar}
+
+% I'll rework this at some point later on.
+These benchmarks are not the most favorable showcase for \texttt{CasADi}. It is built to
+differentiate
+arbitrary programs, whose derivatives genuinely change with the evaluation point, and the
+canonicalization of affine and quadratic problems, where every derivative is constant, is a
+degenerate special case of that task. \texttt{CasADi} is also designed for workflows which construct
+a
+function once and then evaluate it many times, so the one-time extraction cost measured here
+is amortized away in its intended use.
+
+\begin{table}[htbp]
+\centering
+\caption{Single problem-data extraction, \texttt{diffengine} versus the two
+structure-discovery systems: the Julia sparse-AD stack on its four ported problems and
+\texttt{CasADi} on all 25 benchmarks. Dashes in the Julia column mark problems not
+ported to the Julia harness. The ratio is \texttt{diffengine}/\texttt{CasADi}; values below
+$1$ favor \texttt{diffengine}. The final row is the geometric mean of the per-problem
+ratios.}
+\label{tab:casadi-single}
+\begin{tabular}{l r r r r}
+\toprule
+Benchmark & Julia (s) & \texttt{CasADi} (s) & \texttt{diffengine} (s) & Ratio \\
+\midrule
+ParametrizedQP              & 111.5 & 771.5  & 2.52 & \textbf{0.003} \\
+FactorCovarianceModel       & ---   & 250.4  & 2.05 & 0.008 \\
+SVMWithL1Regularization     & ---   & 145.5  & 1.79 & 0.012 \\
+SemidefiniteProgramming     & ---   & 66.4   & 2.07 & 0.031 \\
+SimpleQP                    & 85.5  & 53.7   & 1.70 & 0.032 \\
+LeastSquares                & 90.5  & 36.6   & 1.62 & 0.044 \\
+HuberRegression             & ---   & 42.4   & 1.88 & 0.044 \\
+Yitzhaki                    & ---   & 8.72   & 0.47 & 0.054 \\
+SlowPruning                 & ---   & 38.8   & 2.80 & 0.072 \\
+SimpleLP                    & ---   & 38.1   & 5.02 & 0.132 \\
+TvInpainting                & ---   & 8.49   & 1.14 & 0.134 \\
+Murray                      & ---   & 25.9   & 3.52 & 0.136 \\
+SimpleFullyParametrizedLP   & ---   & 2.36   & 0.48 & 0.204 \\
+SimpleScalarParametrizedLP  & ---   & 4.57   & 0.98 & 0.214 \\
+Cajas                       & ---   & 4.88   & 1.12 & 0.229 \\
+ConeMatrixStuffing          & ---   & 6.10   & 3.94 & 0.646 \\
+OptimalAdvertising          & ---   & 9.47   & 6.16 & 0.650 \\
+SDPSegfault1132             & ---   & 17.65  & 14.61 & 0.83 \\
+SmallMatrixStuffing         & ---   & 2.77   & 2.75 & 0.99  \\
+QuantumHilbertMatrix        & ---   & 1.41   & 1.57 & 1.11  \\
+UnconstrainedQP             & ---   & 0.021  & 0.074 & 3.49 \\
+ConvexPlasticity            & ---   & 0.13   & 2.29 & 17.3  \\
+ParamSmallMatrixStuffing    & ---   & 0.007  & 0.21 & 30.8  \\
+ParamConeMatrixStuffing     & ---   & 0.004  & 0.14 & \textbf{39.7} \\
+CVaR                        & ---   & DNF & 25.3 & --- \\
+\midrule
+\textbf{Geometric mean}     &       &        &      & \textbf{0.24} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\texttt{diffengine} is fastest where the lowered matrices contain large dense blocks: it knows
+every atom's Jacobian block and its sparsity pattern in closed form, while \texttt{CasADi} must
+discover
+the pattern and reconstruct the values through seeded derivative sweeps, whose number a dense
+block forces to the full dimension. \textsc{CVaR} is the extreme case: its constraint matrix
+contains a dense $131\,072 \times 768$ scenario block, which forces roughly $770$ derivative
+sweeps during the Jacobian construction, and the extraction did not finish within
+\SI{10}{\hour}.
+
+The Julia column shows that this cost belongs to the paradigm, not to
+\texttt{CasADi}'s implementation of it: the state-of-the-art generic stack is slower still
+on all three shared problems, and its stage instrumentation places the bulk of the time in
+the greedy coloring itself (\SI{52}{\second} of the \SI{85.5}{\second} on
+\textsc{SimpleQP}, \SI{86}{\second} of the \SI{111.5}{\second} on \textsc{ParametrizedQP}).
+A dense $m \times n$ block makes every pair of columns collide, so its column-intersection
+graph is a clique: no coloring can compress it and the sweep count equals $n$ at any
+implementation quality. Even the reduced \textsc{CVaR} slice costs the stack
+\SI{51.3}{\second}, because the epigraph-sum row makes all $8\,193$ columns of the scenario
+block pairwise conflict.
+
+On the subset of parametric problems, we report both the first extraction and the subsequent
+re-solve time after reassigning random parameter values (Table~\ref{tab:casadi-param}),
+mirroring Table~\ref{tab:param-compile}.
+
+\begin{table}[htbp]
+\centering
+\caption{Parametric extraction, \texttt{diffengine} versus \texttt{CasADi}: first extraction and
+warm
+re-solve. The ratio is \texttt{diffengine}/\texttt{CasADi} on the re-solve; values below $1$ favor
+\texttt{diffengine}. The final row is the geometric mean of the per-problem ratios.}
+\label{tab:casadi-param}
+\small
+\begin{tabular}{l r r r r r r}
+\toprule
+ & & \multicolumn{2}{c}{First (s)} & \multicolumn{2}{c}{Re-solve (s)} & \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Benchmark & \#par & \texttt{CasADi} & \texttt{diffengine} & \texttt{CasADi} & \texttt{diffengine} &
+Ratio \\
+\midrule
+FactorCovarianceModel       & 2 & 250.4 & 2.05 & 3.956  & 0.567  & \textbf{0.14} \\
+SVMWithL1Regularization     & 1 & 145.5 & 1.79 & 0.548  & 0.491  & 0.90 \\
+ParametrizedQP              & 2 & 771.5 & 2.52 & 0.938  & 0.942  & 1.00 \\
+\midrule
+SimpleScalarParametrizedLP  & 1 & 4.57  & 0.98 & 0.124  & 0.236  & 1.90 \\
+SimpleFullyParametrizedLP   & 1 & 2.36  & 0.48 & 0.062  & 0.120  & 1.95 \\
+ParamSmallMatrixStuffing    & 3 & 0.007 & 0.21 & 0.0007 & 0.0020 & 3.0 \\
+ParamConeMatrixStuffing     & 3 & 0.004 & 0.14 & 0.0003 & 0.0011 & 3.5 \\
+ConvexPlasticity            & 3 & 0.13  & 2.29 & 0.0067 & 0.707  & \textbf{105.5} \\
+\midrule
+\textbf{Geometric mean}     &   &       &      &        &        & \textbf{2.19} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The re-solve plays to \texttt{CasADi}'s strengths. A re-solve only runs the compiled function: the
+constant values are baked in at construction time, so only the entries which actually depend
+on $\theta$ are recomputed, with no Python in the loop. This is about $2\times$ faster in
+geometric mean than the \texttt{diffengine} re-solve, which still traverses \texttt{CVXPY}'s solve
+path, and dramatically faster when the parameters only change $b$ (\textsc{ConvexPlasticity}).
+\texttt{diffengine} remains faster when a parameter reshapes the quadratic itself
+(\textsc{FactorCovarianceModel}), where \texttt{CasADi} must re-gather a large parameter-dependent
+$P$
+on every evaluation.
+The Julia sparse-AD stack sits at the opposite end: it compiles no parametric function at all,
+so a warm re-solve re-runs its compressed sweeps with cached pattern and coloring, costing
+\SI{17.9}{\second} on \textsc{ParametrizedQP} where both \texttt{CasADi} and
+\texttt{diffengine} re-solve in under a second.
+```
+
+## Removed section: declared structure (AMPL and JuMP)
+
+```latex
+\section{Comparison against declared structure: \texttt{AMPL} and \texttt{JuMP}}
+\label{sec:bench-declared}
+
+The two modeling systems of \S\ref{sec:declared-structure} never discover structure: their
+input contract is the explicit coefficient blocks themselves, assembled at model-build time
+from the user's data arrays. They therefore do strictly less work than either backend of
+\texttt{CVXPY}, which starts from a DCP atom tree, and less than the AD tools, which must
+recover the coefficients from an expression graph. The comparison is still informative in
+both directions: it establishes the floor that pure data-structure assembly sets for
+problem-data construction, and it prices the interface through which each system reaches
+that floor. As everywhere in this chapter, model construction itself is excluded from the
+headline and reported alongside the raw results: for \texttt{JuMP} this excluded macro
+build is where the coefficient gathering actually happens (7--9\,\si{\second} on typical
+problems, 29 minutes for \textsc{SimpleLP} at $n = 10^7$), and for \texttt{AMPL} it is the
+transfer of the data arrays into the AMPL engine.
+
+\begin{sloppypar}
+The \texttt{JuMP} measurement is one \texttt{MOI.copy\_to} call into a
+\texttt{MatrixOfConstraints} cache — the assembly step that conic solver wrappers such as
+\texttt{Clarabel.jl} execute inside \texttt{attach\_optimizer}; no differentiation occurs
+anywhere on this path. The \texttt{AMPL} measurement covers its full pipeline to the same
+numeric data: the C translator emits a binary \texttt{.nl} file (with presolve disabled so
+the instance stays verbatim), the ASL parses it back and builds its evaluation tapes, and
+the derivative system produces the constraint values, Jacobian, Hessian of the Lagrangian,
+and objective gradient. The file round trip is included in the headline because the
+\texttt{.nl} file \emph{is} ASL's interface — no in-memory API exists — and
+Table~\ref{tab:declared-single} splits it into its write, read, and derivative-evaluation
+stages. Both systems reproduce \texttt{CVXPY}'s data bit-identically before timing.
+Coverage: \texttt{JuMP} completes 20 of the 21 ported problems and \texttt{AMPL} 19
+(\textsc{SlowPruning}'s $8.4$-million-nonzero \texttt{kron} block exceeds this machine's
+memory through both modeling layers, and \texttt{AMPL} \emph{rejects} the
+\textsc{OptimalAdvertising} instance, whose generator produces a non-finite coefficient at
+benchmark size — it is the only compared system that refuses the poisoned data rather than
+propagating \texttt{NaN}).
+\end{sloppypar}
+
+\begin{table}[htbp]
+\centering
+\caption{Single problem-data extraction against the declared-structure systems, on the
+21-problem ported subset. The \texttt{AMPL} pipeline is split into its stages: binary
+\texttt{.nl} write by the C translator, ASL read (parse and tape build), and derivative
+evaluations (constraints, Jacobian, Hessian of the Lagrangian, gradient). Stage columns
+come from one instrumented run while totals are medians of three, so stages need not sum
+exactly to the total; on the millisecond-scale problems the instrumented cold-cache stages
+exceed the warmer median total. Dashes: \textsc{SlowPruning} exceeds memory in both
+systems; \texttt{AMPL} rejects \textsc{OptimalAdvertising} (non-finite coefficient).}
+\label{tab:declared-single}
+\small
+\begin{tabular}{l r r r r r r}
+\toprule
+ & \multicolumn{4}{c}{\texttt{AMPL} (s)} & & \\
+\cmidrule(lr){2-5}
+Benchmark & write & read & deriv. & total & \texttt{JuMP} (s) & \texttt{diffengine} (s) \\
+\midrule
+SimpleLP                    & 58.7  & 49.1  & 9.72  & 120.6 & 42.0   & 5.02 \\
+SVMWithL1Regularization     & 25.8  & 24.0  & 1.06  & 50.0  & 0.59   & 1.79 \\
+SimpleQP                    & 16.2  & 16.5  & 1.98  & 35.6  & 0.76   & 1.70 \\
+FactorCovarianceModel       & 11.6  & 13.3  & 0.72  & 26.1  & 0.37   & 2.05 \\
+SimpleScalarParametrizedLP  & 11.1  & 8.94  & 0.32  & 21.1  & 1.16   & 0.98 \\
+LeastSquares                & 8.71  & 8.32  & 0.42  & 18.9  & 0.79   & 1.62 \\
+ParametrizedQP              & 9.34  & 8.76  & 0.53  & 18.6  & 0.79   & 2.52 \\
+Yitzhaki                    & 3.48  & 7.44  & 0.37  & 18.3  & 0.16   & 0.47 \\
+HuberRegression             & 8.55  & 8.09  & 0.48  & 17.5  & 0.71   & 1.88 \\
+TvInpainting                & 8.21  & 6.42  & 0.22  & 14.9  & 0.85   & 1.14 \\
+Cajas                       & 6.54  & 6.99  & 0.25  & 13.8  & 0.11   & 1.12 \\
+Murray                      & 5.97  & 5.54  & 0.20  & 11.7  & 0.17   & 3.52 \\
+SimpleFullyParametrizedLP   & 4.48  & 4.48  & 0.17  & 9.08  & 0.53   & 0.48 \\
+SemidefiniteProgramming     & 1.53  & 1.48  & 0.11  & 3.13  & 0.12   & 2.07 \\
+ConvexPlasticity            & 0.20  & 0.22  & 0.02  & 0.41  & 0.017  & 2.29 \\
+SmallMatrixStuffing         & 0.011 & 0.027 & 0.001 & 0.039 & 0.001  & 2.75 \\
+ConeMatrixStuffing          & 0.044 & 0.096 & 0.003 & 0.031 & 0.002  & 3.94 \\
+ParamSmallMatrixStuffing    & 0.006 & 0.054 & 0.001 & 0.013 & 0.0002 & 0.21 \\
+ParamConeMatrixStuffing     & 0.005 & 0.054 & 0.001 & 0.012 & 0.0002 & 0.14 \\
+OptimalAdvertising          & ---   & ---   & ---   & ---   & 0.16   & 6.16 \\
+SlowPruning                 & ---   & ---   & ---   & ---   & ---    & 2.80 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two observations structure the table. First, \texttt{JuMP}'s \texttt{copy\_to} is the
+assembly floor: faster than \texttt{diffengine} on 17 of the 20 problems it completes, and
+sub-second on every problem except \textsc{SimpleLP} at $n = 10^7$. The gap to
+\texttt{diffengine} is nevertheless a few seconds at most in absolute terms, and it buys
+very different amounts of work: \texttt{copy\_to} serializes coefficients that the excluded
+macro build already gathered, while \texttt{diffengine} performs the full canonicalization
+of Chapter~\ref{sec:Theme1} from the DCP atom tree within a small factor of that floor.
+
+Second, the \texttt{AMPL} split makes the cost of the file interface explicit: the
+\texttt{.nl} write and read together account for 95--99\,\% of the pipeline on every
+problem of consequence, at roughly one second per 10--20\,\si{\mega\byte} in each
+direction, while the \emph{derivative} work — the stage that corresponds to what the
+structure-discovery systems pay tens or hundreds of seconds for — stays below
+\SI{2}{\second} everywhere except the $10^7$-variable \textsc{SimpleLP}
+(\SI{9.7}{\second}, linear in the problem size). This is the quantitative form of the
+positioning in \S\ref{sec:ampl}: declared structure makes derivative extraction essentially
+free, and what \texttt{AMPL} pays instead is its 1990 process-decoupling design, a price
+that is invisible when one instance is solved once and decisive when canonicalization
+repeats. The same file interface is also why \texttt{AMPL} scales: its translator streams,
+where \texttt{Pyomo}'s object-graph modeling layer cannot instantiate \textsc{SimpleLP} at
+$n = 10^7$ on this machine at all. Overall, \texttt{diffengine} is faster than the full
+\texttt{AMPL} pipeline on 14 of the 19 completed problems (geometric-mean ratio $0.37$),
+while doing the canonicalization work that \texttt{AMPL} assumes already done.
+```

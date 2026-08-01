@@ -1,0 +1,72 @@
+% SAVED (not compiled into the thesis): the detailed version of the AD landscape table,
+% including the one-line "Contribution" gist column. The version kept in
+% 6-Revue_litterature.tex was simplified to the four bare axes
+% (expression type, mode, assembly = accumulation/oracle, data format) per author preference.
+% Restore from here if the annotated version is wanted again.
+%
+% Note: "Jax, Pytorch" were a single row here; in the simplified table they are split
+% (Jax = both modes; Pytorch = reverse-first). "CVXPY matrix stuffing" was dropped from the
+% simplified table (it is not an AD method and has no mode); it is covered in
+% \S\ref{sec:matrix-stuffing}.
+
+\begin{table}[ht]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Differentiation methods placed along two axes---graph granularity and how the Jacobian is
+obtained---with the sparsity mechanism and a one-line summary of each. The vectorized,
+directly-accumulated, structurally-sparse methods (lower block) need no graph coloring, in contrast
+to the scalar, oracle-based methods (upper block).}
+\label{tab:ad-landscape-full}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}p{1.5cm}
+  >{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.0cm}
+  >{\raggedright\arraybackslash}p{5.1cm}@{}}
+\toprule
+\textbf{Method / work} & \textbf{Graph} & \textbf{Jacobian} & \textbf{Sparsity} &
+\textbf{Contribution} \\
+\midrule
+ADOL-C, CppAD \cite{griewank1996adolc, bell2012cppad}
+  & scalar & action & detection $+$ coloring
+  & Operator-overloading trace-based AD for \texttt{C/C++}. \\
+Tapenade, Enzyme \cite{hascoet2013tapenade, moses2020enzyme}
+  & scalar & action & ---
+  & Source- and IR-level AD of compiled programs. \\
+CasADi \cite{andersson2019}
+  & scalar / vector & materialize & coloring
+  & Symbolic-graph AD extracting sparse $H$, $A$ for QP/conic. \\
+Jax, Pytorch \cite{jax2018github, pytorch2019}
+  & vectorized & action & dense
+  & Composable and dynamic-graph reverse mode for ML. \\
+\texttt{torch-sla} \cite{chi2026torchsla}
+  & vectorized & action (adjoint) & sparse
+  & Adjoint autograd through sparse linear solves. \\
+\addlinespace
+CPR, Coleman--Moré \cite{curtis1974estimation, coleman1983estimation}
+  & scalar & action (seeded) & coloring
+  & Recover a sparse Jacobian from few seeds via coloring. \\
+Hill--Dalle \cite{hill2025sparser}
+  & scalar & action (compressed) & detection $+$ coloring
+  & Automatic sparsity detection for compressed sparse AD. \\
+Vector forward mode \cite{huckelheim2020vector}
+  & scalar & action (many seeds) & coloring
+  & Pack seed directions into SIMD/SIMT lanes. \\
+\addlinespace
+Zou and Jiang \cite{zou2025vectorized}
+  & vectorized & materialize & structured
+  & Vectorized sparse forward AD for optimal control. \\
+Kwok et al. \cite{kwok2025vectorised}
+  & vectorized & materialize & structured (Kron.)
+  & Matrix-calculus vectorised AD for statistics. \\
+$\nabla$SD \cite{shaikhha2023sparse}
+  & vectorized & materialize & structured
+  & Compiler-based tensorized forward AD for sparse tensors. \\
+\addlinespace
+CVXPY matrix stuffing
+  & vectorized & materialize & structured
+  & Affine-tree stuffing with a cached parameter map (\S\ref{sec:matrix-stuffing}). \\
+\textbf{This thesis}
+  & \textbf{vectorized} & \textbf{materialize} & \textbf{structured}
+  & Forward sparse Jacobian accumulation over a vectorized DCP tree. \\
+\bottomrule
+\end{tabular}
+\end{table}

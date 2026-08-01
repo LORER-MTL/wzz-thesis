@@ -247,3 +247,14 @@ risk aversion) is the ideal case for the tensor product.
 % TODO(read-through): chapter ends on table commentary; add a short closing paragraph tying
 % both results back to the claims of \S\ref{sec:Theme1}. Decide also whether memory-usage
 % measurements belong in this chapter.
+% TODO(idea): analyze compilation time against the sparsity of the final problem data.
+% Cross-problem scatter is weak (time also depends on tree size/atom mix, not just nnz).
+% Stronger design: pick one or two problem families, sweep the problem dimension so nnz of
+% the stuffed matrix [A b] grows while the expression tree's shape stays fixed, and plot
+% compile time vs. nnz (log-log, one curve per family per system). Slope ~1 for diffengine
+% = linear in output size; a baseline curve bending upward makes the contrast visual.
+% Families: SimpleLP (sparse, nnz ~ n) + SimpleQP (dense P, nnz ~ n^2; sweep harness exists,
+% probe_simpleqp_scaling.py, m = 5n) or LeastSquares (dense block, nnz ~ mn). If the engine's
+% two family curves collapse onto one line vs. nnz, that shows cost tracks data produced,
+% not dimension. Avoid parametric rows (DPP tensor compile pathology), kron/SDP (lowering
+% muddies nnz). Caveat: engine's fixed ~0.2 s CVXPY Python overhead flattens small sizes.

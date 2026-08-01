@@ -1,0 +1,58 @@
+Upstream cvxpy/benchmarks suite: canonicalization backends + ignore_dpp
+=======================================================================
+Source:  https://github.com/cvxpy/benchmarks (cloned, run as is)
+cvxpy:   1.10.0.dev93+g4402def70.d20260705   python: 3.14.4   platform: darwin
+timeout: 240s/problem   solver=CLARABEL (uniform, for comparability)
+
+Table 1 = COLD first-compile time (s) of each problem under each canon backend
+  (fresh setup + get_problem_data per backend). CPP is the default backend;
+  DIFFENG is the ignore_dpp=True path; DE_DPP is explicit canon_backend=DIFFENGINE
+  on the normal DPP path (no fold, capsule cached; non-DPP rows fall back to the
+  ignore_dpp path). 'd/CPP' = DIFFENG / CPP (<1 = diffengine faster).
+Table 2 = re-compile time (s) with changing parameters (parametric problems only),
+  mean of 3, fresh instance per strategy: dpp=default (cached DPP tensor),
+  diffengine=ignore_dpp (capsule rebuilt
+  per solve), de_cached=canon_backend=DIFFENGINE on the DPP path (cached C problem,
+  re-evaluates the expression tree only).
+
+Table 1 -- cold first-compile (s) by canon backend
+benchmark                                        n_vars  dpp?       CPP     SCIPY       COO   DIFFENG    DE_DPP   d/CPP         status
+--------------------------------------------------------------------------------------------------------------------------------------
+finance.CVaRBenchmark                               769   yes   36.5554         -         -   24.0494   27.6145   0.66x             ok
+finance.FactorCovarianceModel                    25,250   yes    5.1663         -         -    3.4346    3.4823   0.66x             ok
+gini_portfolio.Cajas                              2,450   yes   19.9680         -         -    1.0808    1.1053   0.05x             ok
+gini_portfolio.Murray                           245,400   yes    5.6686         -         -    5.3802    5.3759   0.95x             ok
+gini_portfolio.Yitzhaki                          44,900   yes    2.9700         -         -    0.4719    0.4617   0.16x             ok
+high_dim_convex_plasticity.ConvexPlasticity      15,000   yes ERR:ValueError         -         -    2.0597    2.1512       -             ok
+huber_regression.HuberRegression                  3,000   yes   10.7116         -         -    1.6169    1.8121   0.15x             ok
+matrix_stuffing.ConeMatrixStuffingBench           5,000   yes   10.4890         -         -    3.6760    3.8238   0.35x             ok
+matrix_stuffing.ParamConeMatrixStuffing             200   yes    3.2313         -         -    0.1361    0.1233   0.04x             ok
+matrix_stuffing.ParamSmallMatrixStuffing            300   yes    7.8413         -         -    0.2033    0.1915   0.03x             ok
+matrix_stuffing.SmallMatrixStuffing               4,000   yes    6.5096         -         -    2.8006    2.7727   0.43x             ok
+optimal_advertising.OptimalAdvertising          250,000   yes    6.1187         -         -    5.1280    7.6101   0.84x             ok
+quantum_hilbert_matrix.QuantumHilbertMatrix       4,096   yes    3.8827         -         -   22.5234   22.3578   5.80x             ok
+sdp_segfault_1132_benchmark.SDPSegfault1132Benchmark      9,801   yes   59.6274         -         -   15.9562   20.4321   0.27x             ok
+semidefinite_programming.SemidefiniteProgramming          -     -    5.3786         -         -         -         -       - TIMEOUT(>240s)
+simple_LP_benchmarks.SimpleFullyParametrizedLPBenchmark          -     -         -         -         -         -         -       - TIMEOUT(>240s)
+simple_LP_benchmarks.SimpleLPBenchmark       10,000,000   yes   90.5558         -         -   16.2916   18.2984   0.18x             ok
+simple_LP_benchmarks.SimpleScalarParametrizedLPBenchmark  2,000,000   yes   14.5962         -         -    2.7270    2.8727   0.19x             ok
+simple_QP_benchmarks.LeastSquares                 2,000   yes   26.1708         -         -    4.4137    6.0797   0.17x             ok
+simple_QP_benchmarks.ParametrizedQPBenchmark          -     -         -         -         -         -         -       - TIMEOUT(>240s)
+simple_QP_benchmarks.SimpleQPBenchmark            1,600   yes   10.5888         -         -    1.7343    1.9312   0.16x             ok
+simple_QP_benchmarks.UnconstrainedQP                 18   yes    9.2711         -         -    0.0762    0.0691   0.01x             ok
+slow_pruning_1668_benchmark.SlowPruningBenchmark      2,000   yes    6.8053         -         -    2.1895    2.2072   0.32x             ok
+svm_l1_regularization.SVMWithL1Regularization        501   yes   11.7245         -         -    1.8046    1.8739   0.15x             ok
+tv_inpainting.TvInpainting                      786,432   yes    3.5231         -         -    1.0441    1.0868   0.30x             ok
+
+Table 2 -- re-compile (s) with changing parameters (parametric problems only)
+benchmark                                        n_vars        dpp   eval_par    diffeng  de_cached  dec vs dpp
+---------------------------------------------------------------------------------------------------------------
+finance.FactorCovarianceModel                    25,250     0.1449     0.2737     0.2747       1.90x
+high_dim_convex_plasticity.ConvexPlasticity      15,000     0.6624     0.6618     0.6598       1.00x
+matrix_stuffing.ParamConeMatrixStuffing             200     0.0029     0.0008     0.0008       0.28x
+matrix_stuffing.ParamSmallMatrixStuffing            300     0.0049     0.0015     0.0015       0.30x
+simple_LP_benchmarks.SimpleScalarParametrizedLPBenchmark  2,000,000     0.8953     0.6594     0.6624       0.74x
+svm_l1_regularization.SVMWithL1Regularization        501     0.2713     0.4986     0.5090       1.88x
+
+Errors:
+  cold high_dim_convex_plasticity.ConvexPlasticity [CPP]: ERR:ValueError

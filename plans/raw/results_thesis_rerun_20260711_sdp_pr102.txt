@@ -1,0 +1,27 @@
+Upstream cvxpy/benchmarks suite: canonicalization backends + ignore_dpp
+=======================================================================
+Source:  https://github.com/cvxpy/benchmarks (cloned, run as is)
+cvxpy:   1.10.0.dev93+g4402def70.d20260705   python: 3.14.4   platform: darwin
+timeout: 1200s/problem   solver=CLARABEL (uniform, for comparability)
+
+Table 1 = COLD first-compile time (s) of each problem under each canon backend
+  (fresh setup + get_problem_data per backend). CPP is the default backend;
+  DIFFENG is the ignore_dpp=True path; DE_DPP is explicit canon_backend=DIFFENGINE
+  on the normal DPP path (no fold, capsule cached; non-DPP rows fall back to the
+  ignore_dpp path). 'd/CPP' = DIFFENG / CPP (<1 = diffengine faster).
+Table 2 = re-compile time (s) with changing parameters (parametric problems only),
+  mean of 3, fresh instance per strategy: dpp=default (cached DPP tensor),
+  diffengine=ignore_dpp (capsule rebuilt
+  per solve), de_cached=canon_backend=DIFFENGINE on the DPP path (cached C problem,
+  re-evaluates the expression tree only).
+
+Table 1 -- cold first-compile (s) by canon backend
+benchmark                                        n_vars  dpp?       CPP     SCIPY       COO   DIFFENG    DE_DPP   d/CPP         status
+--------------------------------------------------------------------------------------------------------------------------------------
+quantum_hilbert_matrix.QuantumHilbertMatrix       4,096   yes    3.9198         -         -    1.6640    1.6624   0.42x             ok
+sdp_segfault_1132_benchmark.SDPSegfault1132Benchmark      9,801   yes   63.9526         -         -   14.7489   18.4823   0.23x             ok
+semidefinite_programming.SemidefiniteProgramming     40,000   yes    5.4855         -         -    1.9333    1.9083   0.35x             ok
+
+Table 2 -- re-compile (s) with changing parameters (parametric problems only)
+benchmark                                        n_vars        dpp   eval_par    diffeng  de_cached  dec vs dpp
+---------------------------------------------------------------------------------------------------------------
