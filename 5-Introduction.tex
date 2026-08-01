@@ -505,8 +505,8 @@ differ in cost, in accuracy, and in the form of the result \cite{baydin2017ADsur
 The derivatives in this Master's thesis are the constraint Jacobian~$\mmat{A}$ and the objective
 Hessian~$\mmat{P}$ of a canonicalized problem, both large sparse matrices.
 Most differentiation software instead targets dense derivatives of scalar expression graphs.
-This section presents the derivative objects, the elementary methods for computing them, and
-the choices that distinguish the software implementations; \S\ref{sec:computing-derivatives}
+This section presents the Jacobian and the Hessian, the elementary methods for computing them,
+and the choices that distinguish the software implementations; \S\ref{sec:computing-derivatives}
 reviews sparse AD and graph colouring methods.
 
 % \paragraph{The Jacobian.}  (heading removed per advisor; kept for reference)
@@ -578,7 +578,7 @@ symbolic differentiation performs the same set of operations as reverse mode
 differentiation \cite{Laue2019OnTE}.
 
 \subsection{Algorithmic differentiation}\label{sec:bg-ad}
-Algorithmic differentiation (AD) treats the function as a \emph{computational graph} of
+Algorithmic differentiation (AD) treats the function as a computational graph of
 elementary operations, each with a known local derivative rule.
 The chain rule is then applied to combine these local derivatives throughout the graph, giving the
 derivative of the whole function.
@@ -587,22 +587,20 @@ algorithmic to emphasize that AD differentiates the algorithm that computes a fu
 rather than a numerical approximation or a symbolic formula \cite{griewank2008evaluating}.
 In this broad sense, AD can refer to any method that applies the chain rule over a computational
 graph.
-Its implementations differ in four basic choices: whether the graph is \emph{scalar} or
-\emph{vectorized}, whether the chain rule runs \emph{forward} or in \emph{reverse}, whether the
-derivative is assembled \emph{directly} or accessed through an \emph{oracle} of matrix--vector
-products, and whether the result is stored \emph{sparse} or \emph{dense}.
+Its implementations differ in four basic choices: whether the graph is scalar or
+vectorized, whether the chain rule runs forward or in reverse, whether the
+derivative is assembled directly or accessed through an oracle of matrix--vector
+products, and whether the result is stored sparse or dense.
 
 % \paragraph{Scalar and vectorized graphs.}  (heading removed per advisor; kept for reference)
-The first choice is what a node of the graph represents.
 In most AD tools, every node is a single elementary operation, an addition, a multiplication, or a
 univariate function, and every edge carries a scalar partial derivative
 \cite{griewank2008evaluating}.
-A \emph{vectorized} graph coarsens this representation: a node is a whole vector or matrix
+A vectorized graph coarsens this representation: a node is a whole vector or matrix
 operation, and its local derivative is a matrix, a block of the Jacobian.
 Nearly all tools operate on scalar graphs; the vectorized exceptions include the MX expressions of
 \texttt{CasADi} \cite{andersson2019} and JAX \cite{jax2018github}, although the latter still stores
 its derivatives densely.
-
 % \paragraph{Modes of differentiation.}  (heading removed per advisor; kept for reference)
 The chain rule can be applied in different orders, all giving the same result.
 Writing the derivative as a product of local derivatives, forward mode (or tangent
@@ -611,49 +609,29 @@ reverse mode (or adjoint mode) associates it from the output side, which require
 storing the intermediate values of the evaluation \cite{baydin2017ADsurvey}.
 The two modes have asymmetric costs: in forward mode the work scales with the number of inputs, and
 in reverse mode with the number of outputs.
-The mode is thus chosen per derivative object rather than fixed by the tool: a gradient has a
-single output and calls for reverse mode, a Jacobian for whichever of its two dimensions is
-smaller, and most tools provide both modes.
 
 % \paragraph{Oracle and direct assembly.}  (heading removed per advisor; kept for reference)
-The third choice is what the differentiation returns.
-An \emph{oracle} returns the action of the derivative on a vector, the product $\mmat{J}\mvec{v}$
-in forward
-mode or $\mmat{J}^\top \mvec{w}$ in reverse mode, without ever forming $\mmat{J}$.
-One product costs one \emph{sweep} of the graph: the function is evaluated once, and every node
-carries one extra scalar, its derivative along the seed direction $\mvec{v}$, updated by the chain
-rule as the evaluation proceeds. A sweep thus costs about one function evaluation, and the
-per-node state stays a single scalar; recovering $\mmat{J}$ column by column takes one sweep per
-column, because propagating all $n$ directions at once means every node carries a whole
-gradient rather than a scalar.
-Many applications need only the action of the derivative, as in training neural networks or in
-iterative linear solvers, but the conic solvers targeted in this thesis consume the matrix
-itself as problem data.
-A \emph{direct} method accepts exactly that trade: it assembles $\mmat{J}$ in a single sweep that
-carries whole derivative objects, dense or sparse, through the graph, each node combining the
-local derivatives of its arguments.
-The choice between the two matters only when the target matrix is sparse, which is the last of the
-four choices.
-
-% \paragraph{The sparse case.}  (heading removed per advisor; kept for reference)
-When the target matrix is sparse, the two assemblies part ways.
-With an oracle, the sparsity pattern must be detected and \emph{graph colouring} used to
-compress the many sweeps into few.
-With direct assembly, the local derivatives are carried through the graph as sparse matrices
-and combined into the result, so there is nothing to compress.
-The four choices are not independent: direct assembly is practical only on vectorized graphs,
-whose few coarse nodes make carrying a matrix per node affordable.
+An oracle returns the action of the derivative, the product $\mmat{J}\mvec{v}$ in
+forward mode or $\mmat{J}^\top \mvec{w}$ in reverse mode, without ever forming $\mmat{J}$;
+a direct method assembles $\mmat{J}$ itself, each node combining the local derivatives
+of its arguments.
+Either result can be stored dense or sparse.
+For a sparse matrix, an oracle requires the sparsity pattern to be detected and
+graph colouring to recover the matrix in few products; direct assembly carries sparse
+local derivatives through the graph and needs neither.
+Direct assembly is practical only on vectorized graphs, whose few coarse nodes make carrying
+a matrix per node affordable.
 This thesis assembles the sparse Jacobian and Hessian directly on a vectorized graph, without
-oracle sweeps; \S\ref{sec:computing-derivatives} develops both assemblies and locates the
-systems of the literature, and our approach, among them.
+oracle sweeps or colouring.
 
 \section{Matrix computations}\label{sec:intro-matrix}
-Matrix computations appear at every stage of this thesis.
-The problem data $\mmat{P}$ and $\mmat{A}$ are sparse matrices, and matrix stuffing assembles
-them from
-smaller intermediate matrices.
-This section reviews the two families of matrix representations, dense and sparse, each from
-the standpoint of both storage and algorithms.
+The derivatives of \S\ref{sec:bg-derivatives} are matrices, and every matrix is stored in one
+of two representations: dense, which stores all entries in a single array, or sparse, which
+stores only the nonzero entries alongside their positions.
+The representation determines the memory a matrix occupies and the algorithms that operate on
+it, and each has its own use cases.
+This section reviews the storage formats, the conventions, and some of the history behind both
+types of matrices.
 
 \subsection{Dense matrices}\label{sec:bg-blas}
 % \paragraph{Dense storage.}  (heading removed per advisor; kept for reference)
@@ -695,23 +673,25 @@ on top of these kernels \cite{anderson1999lapack}.
 The interface is organized in three levels by the ratio of computation to data.
 Level 1 covers vector operations such as dot products, scaled copies, and additions, level 2
 covers matrix--vector products, and level 3 covers matrix--matrix products.
-The engine of Chapter~\ref{sec:Theme1} calls the level-3 product \texttt{dgemm} for its dense
-blocks and level-1 scaled copies and additions for its vector work.
+The routine names abbreviate the precision and the operation: \texttt{dgemv} is the
+double-precision general matrix--vector product, and \texttt{dgemm} is the double-precision
+general matrix--matrix product.
 
 % \paragraph{Why dense kernels are fast.}  (heading removed per advisor; kept for reference)
 A modern processor multiplies numbers far faster than it loads them from main memory.
-Optimized BLAS implementations account for this by reading arrays contiguously, reusing data
-already in cache, processing several entries per instruction with \ac{SIMD} units, and tiling
-matrix--matrix products into blocks that fit in cache \cite{goto2008anatomy}.
+Optimized BLAS implementations account for this by organizing the computation to reuse data
+already in cache and by processing several entries per instruction with \ac{SIMD} units
+\cite{goto2008anatomy}.
 Level-3 kernels benefit the most because they perform a cubic number of operations on a
 quadratic amount of data, so each entry loaded from memory is reused many times.
 
 \subsection{Sparse matrices}\label{sec:bg-sparse}
-In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ contain mostly zero entries; such
+In optimization problems, the matrices $\mmat{P}$ and $\mmat{A}$ often contain mostly zero
+entries; such
 matrices are called sparse, and conic solvers expect their problem data in sparse formats.
 Techniques that store and compute with only the nonzero entries date back to the linear
-programming computations of the 1950s and the work of Markowitz \cite{davis2006direct}.
-The simplest sparse matrix data structure is the \emph{coordinate} or \emph{triplet}
+programming computations of the 1950s and the work of Markowitz \cite{markowitz1957elimination}.
+The simplest sparse matrix data structure is the coordinate or triplet
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
 For example, the matrix
@@ -756,7 +736,8 @@ to solve sparse linear systems \cite{saad2003iterative}.
 
 % \paragraph{Compressed sparse column format.}  (heading removed per advisor; kept for reference)
 The compressed sparse column (CSC) format applies the same compression to the
-columns instead: \texttt{idxptr} now points into a \texttt{rows} array, and the nonzero
+columns instead.
+The pointer array \texttt{idxptr} now points into a \texttt{rows} array, and the nonzero
 entries are stored column by column.
 The CSC arrays of a matrix read exactly as the CSR arrays of its transpose, so transposition
 is a conversion between the two formats, computable without sorting in one counting pass over
@@ -773,6 +754,7 @@ The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth
 allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
 the dictionary of keys (DOK) matrix, and the block-sparse row (BSR) matrix.
 
+\subsection{Sparse matrix products}\label{sec:bg-sparse-products}
 % \paragraph{Matrix-vector products.}  (heading removed per advisor; kept for reference)
 Both compressed formats multiply a dense vector in one pass over the nonzeros, but the loop
 must follow the storage: CSR gathers, computing each output entry as a sparse dot
@@ -840,6 +822,13 @@ each row is built as a combination of the rows of the second operand selected by
 of the first, gathered in a dense accumulator before compaction into sparse storage
 \cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
 packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
+
+In contrast to the BLAS kernels of \S\ref{sec:bg-blas}, sparse products access memory
+irregularly: the loops traverse the index arrays, so every nonzero costs an index load and an
+indirect access, and contiguous reads, \ac{SIMD}, and cache tiling do not apply.
+Sparse formats are also a poor fit for dense data: a dense block stored in coordinate format
+triples its storage, one index pair per entry, and multiplying it through the sparse loop is
+far slower than the equivalent BLAS call.
 
 \section{Contributions}
 % Moved to the end of the chapter per the advisor's annotation
