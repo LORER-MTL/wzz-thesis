@@ -39,8 +39,6 @@ translation process is called canonicalization \cite{agrawal2018rewriting}.
 While the time taken to solve an optimization problem is often dominated by the solver, the
 time taken to canonicalize (or \emph{compile}) it can also be significant \cite{agrawal2019dpp}.
 The main goal of this Master's thesis is to reduce the compilation time of \texttt{CVXPY}.
-% TODO(advisor): "can we be broader?" — consider stating a broader goal than CVXPY compilation
-% time alone.
 
 \section{Problem statement}\label{sec:problem-statement}
 
@@ -175,7 +173,7 @@ Alongside its numerical definition, each atom declares useful attributes such as
 its curvature, monotonicity with respect to each argument, and the
 sign of its output. A selection of common atoms is shown in Table~\ref{tab:atoms}.
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
 \caption{A selection of \texttt{CVXPY} atoms with their DCP attributes: curvature, monotonicity in
 each argument, and sign of the output.}
@@ -204,7 +202,7 @@ with atoms at its internal nodes and variables, parameters, and constants at its
 In Python, this tree can be formed automatically from user code through operator overloading.
 Most operations on an expression, from evaluation to verifying convexity to
 differentiation, traverse the tree and combine the intermediate results at each node.
-\begin{figure}
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
   [level 1/.style={sibling distance=25mm},
@@ -372,7 +370,7 @@ where we also use the numerical computation library \texttt{NumPy} \cite{numpy} 
 the data arrays. The expression tree representation of the problem
 is shown in Figure~\ref{fig:dcp-expression-tree}.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \begin{subfigure}[t]{0.65\textwidth}
 \begin{tikzpicture}
@@ -504,7 +502,6 @@ Computing derivatives is a fundamental task in scientific computing, with many m
 differ in cost, in accuracy, and in the form of the result \cite{baydin2017ADsurvey}.
 The derivatives in this Master's thesis are the constraint Jacobian~$\mmat{A}$ and the objective
 Hessian~$\mmat{P}$ of a canonicalized problem, both large sparse matrices.
-Most differentiation software instead targets dense derivatives of scalar expression graphs.
 This section presents the Jacobian and the Hessian, the elementary methods for computing them,
 and the choices that distinguish the software implementations;
 \S\ref{sec:computing-derivatives} reviews sparse AD and graph colouring methods.
@@ -600,12 +597,12 @@ univariate function, and every edge carries a scalar partial derivative
 \cite{griewank2008evaluating}.
 In a vectorized graph, a node is a whole vector or matrix operation, and its local
 derivative is a matrix, a block of the Jacobian.
-Figure~\ref{fig:scalar-vs-vectorized} contrasts the two granularities on a small least
+Figure~\ref{fig:scalar-vs-vectorized} contrasts the two on a small least
 squares objective.
-Nearly all tools operate on scalar graphs; the vectorized exceptions include the MX expressions of
-\texttt{CasADi} \cite{andersson2019} and JAX \cite{jax2018github}.
+\texttt{CasADi} \cite{andersson2019} offers both, through its scalar SX and
+vectorized MX expressions.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
 \centering
 \begin{subfigure}[c]{0.58\textwidth}
 \centering
@@ -664,7 +661,7 @@ Nearly all tools operate on scalar graphs; the vectorized exceptions include the
 \caption{Vectorized graph: one node per matrix operation}
 \end{subfigure}
 \caption{The least squares objective $f(\mvec{x}) = \|\mmat{A}\mvec{x}-\mvec{b}\|_2^2$ with
-$\mmat{A} \in \reals^{2 \times 2}$ as a computational graph at two granularities. In the scalar
+$\mmat{A} \in \reals^{2 \times 2}$ as a scalar and as a vectorized computational graph. In the scalar
 graph every edge carries a scalar partial derivative. In the vectorized graph the local
 derivative of each node is a Jacobian block, shown below the node: $\mmat{A}$ for the affine
 node and $2\mvec{r}^\top$ for the sum of squares, where $\mvec{r} = \mmat{A}\mvec{x}-\mvec{b}$.}
@@ -672,11 +669,11 @@ node and $2\mvec{r}^\top$ for the sum of squares, where $\mvec{r} = \mmat{A}\mve
 \end{figure}
 
 % \paragraph{Modes of differentiation.}  (heading removed per advisor; kept for reference)
-The chain rule can be applied in different orders, all giving the same result.
-The two best-known orders are forward mode (or tangent mode), which propagates derivatives
-from the inputs toward the outputs following the order of evaluation, and reverse mode (or
-adjoint mode), which propagates them from the outputs back toward the inputs and requires
-storing the intermediate values of the evaluation \cite{baydin2017ADsurvey}.
+The modes of AD differ in the order in which the local derivatives are accumulated.
+Forward mode (or tangent mode) propagates derivatives from the inputs toward the outputs,
+following the order of evaluation.
+Reverse mode (or adjoint mode) propagates them from the outputs back toward the inputs, and
+requires storing the intermediate values of the evaluation \cite{baydin2017ADsurvey}.
 In forward mode the work scales with the number of input variables, and in reverse mode with
 the number of output variables.
 
@@ -686,7 +683,7 @@ either a dense representation, which keeps all entries in a single array, or a s
 representation, which keeps only the nonzero entries alongside their positions.
 The representation determines the memory a matrix occupies and the algorithms that operate on
 it, and each has its own use cases.
-This section reviews the storage formats, the conventions, and some of the history behind both
+This section reviews the storage formats, algorithms, and some of the history behind both
 types of matrices.
 
 \subsection{Dense matrices}\label{sec:bg-blas}
@@ -698,7 +695,7 @@ needed, and rows or columns are traversed sequentially in memory.
 C arrays are row-major and Fortran arrays are column-major.
 Most dense linear algebra interfaces follow the Fortran convention.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[cell/.style={draw, minimum size=5.5mm, inner sep=0pt, font=\small}]
   \node[anchor=east] at (1.1, 0) {$\mmat{D} = \begin{bmatrix} 1 & 2 & 3\\ 4 & 5 & 6 \end{bmatrix}$};
@@ -817,7 +814,7 @@ scatters, accumulating each column's contribution into the output vector.
 Figure~\ref{fig:sparse-matvec} traces one product of the matrix in \eqref{eq:sparse-matrix}
 under both formats.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
 \centering
 \begin{subfigure}[t]{0.48\textwidth}
 \centering
@@ -872,15 +869,17 @@ output entries.}
 % \paragraph{Matrix-matrix products.}  (heading removed per advisor; kept for reference)
 The product of two sparse matrices is formed row by row with Gustavson's algorithm
 \cite{gustavson1978two}.
-Because the sparsity pattern of the result is not known in advance, each row is built as a
-combination of the rows of the second operand selected by the nonzeros of the first, gathered
-in a dense accumulator before compaction into sparse storage \cite{bank1993smmp}. It is the standard sparse matrix product, implemented in popular
+Each row of the result is a combination of rows of the second operand, weighted by the
+nonzeros of the corresponding row of the first.
+Because the sparsity pattern of the result is not known in advance, the row is summed in a
+dense work array and then written back to sparse form \cite{bank1993smmp}.
+It is the standard sparse matrix product, implemented in popular
 packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.sparse}.
 
 In contrast to the BLAS kernels of \S\ref{sec:bg-blas}, sparse products access memory
 irregularly.
 The loops traverse the index arrays, so every nonzero costs an index load and an indirect
-access, and contiguous reads, \ac{SIMD}, and cache tiling do not apply.
+access. Contiguous reads, \ac{SIMD}, and cache tiling do not apply.
 Sparse formats are also a poor fit for dense data.
 A dense block stored in coordinate format triples its storage, one index pair per entry, and
 multiplying it through the sparse loop is far slower than the equivalent BLAS call.
@@ -908,13 +907,10 @@ All code contributions are open source and available at
 \end{center}
 
 The rest of this thesis is organized as follows.
-Chapter~\ref{sec:RevLitt} reviews the three existing methods:
-\texttt{CVXPY}'s matrix stuffing (\S\ref{sec:matrix-stuffing}),
-sparse derivatives by detection and colouring (\S\ref{sec:computing-derivatives}), and
-problem data from declared structure in \texttt{AMPL} and \texttt{JuMP}
-(\S\ref{sec:declared-structure}).
+Chapter~\ref{sec:RevLitt} reviews how \texttt{CVXPY} and other modelling languages compute
+the problem data.
 In Chapter~\ref{sec:Theme1} we present an overview of the main data structures and
 algorithms in \texttt{SparseDiffEngine} as well as its interface in \texttt{CVXPY}.
 Finally, Chapter~\ref{sec:Theme2} benchmarks this engine against \texttt{CVXPY}'s three
-canonicalization backends, and we conclude with a summary of our contributions and future
-improvements to the canonicalization backend in Chapter~\ref{sec:Conclusion}.
+canonicalization backends, and finally, we conclude with a summary of our contributions
+and future improvements in Chapter~\ref{sec:Conclusion}.
