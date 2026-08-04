@@ -24,12 +24,12 @@ in Chapter~\ref{sec:Theme2}).
 
 Matrix stuffing converts the conic-form expression trees into the problem data. After
 canonicalization every expression is affine, so the Jacobian of
-each node is a constant matrix, and matrix calculus \cite{magnus2019matrix} gives the Jacobian
-of each atom in closed form. Computing the problem data reduces to composing these linear
-operators over the tree. This section reviews these derivative rules, along with two design
-choices of the \texttt{CVXPY} implementation, the storage of the coefficients during the
-pass and the caching of the problem data across parameter changes. Finally,
-we describe \texttt{CVXPY}'s current backends and some of their limitations.
+each node is a constant matrix, which matrix calculus \cite{magnus2019matrix} gives in
+closed form. Computing the problem data reduces to composing these constant Jacobians over
+the tree. This section reviews the derivative rules along with two design
+choices of the \texttt{CVXPY} implementation: the storage of the coefficients during the
+pass, and the caching of the problem data across parameter changes. Finally,
+we describe \texttt{CVXPY}'s current backends and their limitations.
 
 % \paragraph{Matrix calculus.}  (heading removed per advisor style; kept for reference)
 Matrix calculus extends differentiation to functions whose arguments and values are vectors and
@@ -41,9 +41,10 @@ with
 \EEQ
 the vector that stacks the columns of $\mmat{X} \in \reals^{m \times n}$, and the derivative of one
 vectorized expression with respect to another is an ordinary Jacobian matrix. Under this
-convention, matrix operations become linear operators on the vectorized arguments, and their
-Jacobians are structured. For example, the matrix product $\mmat{F}\mmat{X}$ has the
-Kronecker-structured, block-diagonal 
+convention, matrix operations become
+linear operators on the vectorized arguments, and their Jacobians are structured.
+For example, the matrix product $\mmat{F}\mmat{X}$ has the
+Kronecker-structured, block-diagonal
 Jacobian $\mmat{I} \otimes \mmat{F}$ (Figure~\ref{fig:vec-variable}).
 
 \begin{figure}[htbp]
@@ -106,7 +107,7 @@ f(\mvec{z}) = \mmat{A}_f\,\mvec{z} + \mvec{b}_f
       \mvec{z} \\ 1 \end{bmatrix},
 \EEQ
 where $\mvec{z}$ is the stacked vector of all the problem variables, $\mmat{A}_f$ is the
-Jacobian of the node's expression $f$ with respect to $\mvec{z}$ and $\mvec{b}_f$ is a
+Jacobian of $f$ with respect to $\mvec{z}$, and $\mvec{b}_f$ is a
 constant vector. Stacking the augmented matrices of the constraint trees yields the problem
 data $[\mmat{A}\ \mvec{b}]$ of \eqref{e:quad-conic-form}.
 
@@ -130,12 +131,12 @@ $f = \sum_{i=1}^{k} \mmat{L}_i f_i$, which gives
 so the node costs one matrix product per argument.
 
 % \paragraph{Views and copies.}  (heading removed per advisor style; kept for reference)
-In \texttt{CVXPY}, the linear operators divide into views and copies. A view performs a
-simple manipulation of the coefficients of its argument. Atoms with two arguments, such as
-\texttt{matmul} and \texttt{multiply}, make copies instead. One argument is constant and
-the other is variable-dependent. The operator is a constant matrix built from the constant
-argument. Its product with the augmented matrix of the variable-dependent argument is
-stored as a new coefficient matrix.
+In \texttt{CVXPY}, the linear operators divide into views and copies \cite{cvxpy2026source}. A view performs a
+simple manipulation of the coefficients of its argument. Atoms with one constant argument,
+such as
+\texttt{matmul} and \texttt{multiply}, make copies instead. The operator is a constant
+matrix built from the constant argument, and its product with the augmented matrix of the
+other argument is stored as a new coefficient matrix.
 Table~\ref{tab:views-copies} classifies a subset of the operators.
 
 \begin{table}[htbp]
@@ -153,7 +154,7 @@ $\mvec{v}$ on its diagonal.}
 \midrule
 \multicolumn{3}{@{}l}{\emph{Views}} \\
 $-f_1$ & $-\mmat{I}$ & flip the sign of every stored entry \\
-$f_1^\top$ & $\mmat{P}$, the vec-permutation & permute the rows \\
+$f_1^\top$ & $\mmat{K}$, the vec-permutation & permute the rows \\
 $f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
 $\operatorname{reshape}(f_1)$ & $\mmat{I}$ & none, the vectorization is unchanged \\
 \midrule
@@ -167,13 +168,14 @@ $f_1 / \mmat{C}$ & $\diag(\vect(\mmat{C}))^{-1}$ & multiply by the reciprocal di
 \end{table}
 
 \subsection{Example}\label{sec:ms-example}
-Problem \eqref{eq:example} canonicalizes into the conic-form trees of
-Figure~\ref{fig:conic-form-tree}, with the variables stacked into
-$\mvec{z} = (t_1, t_2, \mvec{x})$. Each variable occupies a contiguous block of columns of
-$\mmat{A}_f$, starting at its column offset within $\mvec{z}$, the total dimension of the
-variables that precede it. The columns of the variables
+We continue the example of \S\ref{sec:canon-example}, which canonicalized problem
+\eqref{eq:example} into the conic-form trees of Figure~\ref{fig:conic-form-tree}. We now
+compute the problem data of these trees. The variables are first stacked into
+$\mvec{z} = (t_1, t_2, \mvec{x})$. Each variable then occupies a contiguous block of columns of
+$\mmat{A}_f$, starting at its column offset within $\mvec{z}$. The columns of the variables
 that do not appear in the expression $f$ are zero, because $f$ does not depend on their
-entries. Figure~\ref{fig:column-offsets} shows the offsets on a three-variable stack.
+entries. Figure~\ref{fig:column-offsets} gives an example of column offsets
+on another set of variables.
 
 \begin{figure}[htbp]
 \centering
@@ -196,9 +198,13 @@ $[\mmat{A}_f\ \mvec{b}_f]$.}
 \label{fig:column-offsets}
 \end{figure}
 
-Figure~\ref{fig:matrix-stuffing} traces the pass on these trees. The leaves contribute their blocks and offsets, the interior nodes
-apply their operators, and the root stacks its children at their constraint row offsets into
-$[\mmat{A}\ \mvec{b}]$.
+Matrix stuffing then runs bottom-up over the objective and the three constraint trees
+(Figure~\ref{fig:matrix-stuffing}). Each leaf of $\mvec{x}$
+contributes an identity block of size $n$ at the column offset of $\mvec{x}$, and the constant
+leaf $\mvec{g}$ contributes its value to the last column. The interior nodes apply their
+operators to the matrices of their children; the product node $\mmat{F}\mvec{x}$, for example,
+multiplies the identity block of its argument by $\mmat{F}$. Finally, the root stacks the
+augmented matrices of its children at their constraint row offsets into $[\mmat{A}\ \mvec{b}]$.
 
 \begin{figure}[htbp]
 \begin{subfigure}{\textwidth}
@@ -306,20 +312,15 @@ separate the rows of the three constraints.}
 
 % \paragraph{Local versus global derivatives.}  (heading removed per advisor style; kept for reference)
 The augmented matrices of \eqref{eq:linop-form} can be stored in two ways
-(Figure~\ref{fig:local-vs-global}). In practice, \texttt{CVXPY} stores them locally. Each node keeps
-one coefficient block per variable appearing beneath it, keyed by the variable's identifier, and
-every operator is applied to each block in turn. A block's columns index only the entries of its
-own variable, so the column offsets are not needed during the pass. The constant data is stored
-under the key $-1$ and becomes the last column of the assembled matrix. Only after the pass
-completes are the blocks shifted to their variables' column offsets and concatenated into the
-full matrix $[\mmat{A}\ \mvec{b}]$.
-
-In the alternative, global layout, drawn in Figure~\ref{fig:matrix-stuffing}, each node stores
-one matrix whose columns span the
-whole stacked vector $\mvec{z}$, and the column offsets are applied from the start rather than
-at the
-end. The local layout keeps the blocks small and skips the variables absent from a subtree, but
-every operator must be applied to every stored block.
+(Figure~\ref{fig:local-vs-global}). In the global layout, drawn in
+Figure~\ref{fig:matrix-stuffing}, each node stores one matrix whose columns span the whole
+stacked vector $\mvec{z}$, with the column offsets applied from the start. In the local
+layout, which \texttt{CVXPY} uses \cite{cvxpy2026source}, each node keeps one coefficient block per variable in its
+subtree, and one for the constant data. The offsets are applied only after the pass, when
+each block is placed at its variable's columns and the blocks are concatenated into the full
+matrix $[\mmat{A}\ \mvec{b}]$. The local layout stores only the columns of the variables
+present in a subtree; the tradeoff is that each interior node applies its operator once per
+stored block, rather than once per argument.
 
 \begin{figure}[htbp]
 \begin{subfigure}{0.48\textwidth}
@@ -370,10 +371,11 @@ all columns.}
 \subsection{Parameter caching}\label{sec:ms-parameters}
 % \paragraph{Parameters and tensors.}  (heading removed per advisor style; kept for reference)
 In a problem family the structure is fixed and only the numeric parameter values change
-between solves. \ac{DPP} requires the problem data to be affine in the parameters
-\cite{agrawal2019dpp}. \texttt{CVXPY} handles this by adding a third axis to every coefficient
-block, indexed by the parameter entries, and running the same pass on the resulting tensors.
-The roots then yield the cached parameter maps
+between solves. Under additional rules on how the parameters enter the expressions, known as
+\ac{DPP}, the problem data is affine in the parameters \cite{agrawal2019dpp}.
+To keep track of the parameter dependence, \texttt{CVXPY} adds a third dimension to the
+problem data, indexed by the parameter entries. Every coefficient matrix throughout the
+bottom-up pass becomes a tensor. At the root nodes we thus get the cached parameter maps
 \BEQ\label{eq:param-maps}
 \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta},
 \qquad
@@ -381,8 +383,9 @@ The roots then yield the cached parameter maps
 \qquad
 \gvec{\tilde\theta} = \begin{bmatrix} \gvec{\theta} \\ 1 \end{bmatrix},
 \EEQ
-where the objective map $\mmat{Q}$ is shown in Figure~\ref{fig:param-map-dpp} for
-problem \eqref{eq:example}. After a parameter change, a
+where $\mmat{Q} \in \reals^{n \times (p+1)}$ and
+$\mmat{R} \in \reals^{m(n+1) \times (p+1)}$. The objective map $\mmat{Q}$ is shown in
+Figure~\ref{fig:param-map-dpp} for problem \eqref{eq:example}. After a parameter change, a
 re-solve costs one sparse matrix--vector product per map.
 
 \begin{figure}[htbp]
@@ -410,16 +413,15 @@ $\mmat{Q}\gvec{\tilde\theta}$.}
 \end{figure}
 
 % \paragraph{The \texttt{ignore\_dpp} path.}  (heading removed per advisor style; kept for reference)
-Problems that fall outside the DPP grammar, or that opt out of it with
-\texttt{ignore\_dpp=True}, take a simpler path. The reduction \texttt{EvalParams} replaces each
+Problems that do not conform to the DPP grammar, or that opt out of it with
+\texttt{ignore\_dpp=True}, take a different approach to matrix stuffing.
+The reduction \texttt{EvalParams} replaces each
 parameter leaf by a constant holding its current value, and the resulting parameter-free tree
 goes through the pass as if the problem had no parameters
 (Figure~\ref{fig:param-map-evalparams}). The result is the same objective data $\mvec{c}$ as in
-Figure~\ref{fig:param-map-dpp}, now obtained by repeating the pass instead of applying the
-cached product $\mmat{Q}\gvec{\tilde\theta}$. The path is fully general, because arbitrary
-functions of
-parameters reduce to constants, but every change of $\gvec{\theta}$ repeats the whole
-pass even though the sparsity pattern of the problem data never changes.
+Figure~\ref{fig:param-map-dpp}, now obtained by repeating the whole matrix stuffing instead
+of applying the cached product $\mmat{Q}\gvec{\tilde\theta}$. The \texttt{ignore\_dpp} path is
+more general, as it supports arbitrary functions of the parameters.
 
 \begin{figure}[htbp]
 \centering
@@ -444,40 +446,41 @@ is repeated on the parameter-free tree on every change of the parameters.}
 
 % \paragraph{The three backends.}  (heading removed per advisor style; kept for reference)
 % (subsection heading "The canonicalization backends" merged into Parameter caching, 2026-08-03)
-\texttt{CVXPY} implements the pass in three canonicalization backends that differ in how they
-represent the parameter axis \cite{cvxpydocs}. The C++ backend \texttt{cvxcore} keeps one sparse matrix per
-parameter slice and loops over the slices at every operator. The \texttt{SciPy} backend stacks
-the slices vertically into a single strided two-dimensional sparse matrix.
-The \texttt{COO} backend does not form the tensor explicitly, instead
-it stores each nonzero with an explicit parameter index alongside rows and columns.
-
-% \paragraph{Code generation.}  (heading removed per advisor style; kept for reference)
+\texttt{CVXPY} implements the pass in three canonicalization backends that differ in how
+they represent the parameter axis \cite{cvxpydocs}:
+\begin{itemize}
+\item the C++ backend \texttt{cvxcore} keeps one sparse matrix per parameter slice and
+loops over the slices at every operator;
+\item the \texttt{SciPy} backend stacks the slices vertically into a single strided
+two-dimensional sparse matrix;
+\item the \texttt{COO} backend does not form the tensor explicitly, and instead stores
+each nonzero with an explicit parameter index alongside its row and column.
+\end{itemize}
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile the problem ahead of
-time. It emits problem-specific C code that embeds the cached parameter maps
-\eqref{eq:param-maps} of a DPP problem \cite{schaller2022cvxpygen}, continuing an earlier line
-of work on code generation for embedded second-order cone programs \cite{chu2013codegen}.
+time \cite{schaller2022cvxpygen}. It emits problem-specific C code that embeds the cached
+parameter maps \eqref{eq:param-maps} of a DPP problem.
+
+The pass of this section produces the affine data $\mvec{c}$ and $[\mmat{A}\ \mvec{b}]$.
+For a quadratic objective, \texttt{CVXPY} replaces the affine argument of each quadratic
+atom by a new variable, adding the corresponding equality constraint; the objective becomes
+a sum of quadratic forms with constant matrices. A second matrix stuffing pass then
+assembles these matrices into the diagonal blocks of the matrix $\mmat{P}$ of
+\eqref{e:quad-conic-form} \cite{cvxpy2026source}.
 
 % \paragraph{Implementation details.}  (heading removed per advisor style; kept for reference)
 All three backends share two limitations. Firstly, they delegate their matrix operations to a
 general-purpose sparse library, Eigen \cite{guennebaud2010eigen} in \texttt{cvxcore} and
-\texttt{scipy.sparse} \cite{2020SciPy-NMeth} in the Python backends. Although the
-\texttt{COO} backend
-stores no \texttt{scipy.sparse} matrices, it still converts to them for sparse operations such
-as matrix products and Kronecker products. The storage formats and kernels are fixed by the
+\texttt{scipy.sparse} \cite{2020SciPy-NMeth} in the Python backends.
+The storage formats and kernels are fixed by the
 library, so structure known at canonicalization time cannot be exploited. In
 \texttt{cvxcore} the views of Table~\ref{tab:views-copies} also materialize explicit sparse
-operators. For example, a reshape builds a sparse identity matrix that is then multiplied.
+operators. For example, a reshape builds a sparse identity matrix and multiplies the
+coefficients by it.
 
-Secondly, all coefficient data is treated as sparse. Dense atom data
-is converted to a sparse matrix on entry, and no operator implements a dense or block special
-case, so dense blocks incur sparse-format overhead and no BLAS kernel (\S\ref{sec:bg-blas}) is
-used. Chapter~\ref{sec:Theme1} returns to these limitations.
-
-\paragraph{References.}
-Michael Grant's papers and PhD thesis are the standard references on verifying convexity and
-canonicalization \cite{grant2004disciplined, grant2006disciplined, grant2008graph}.
-The implementation details of this section come from the
-\texttt{CVXPY} source code \cite{cvxpy2026source}.
+Secondly, the canonicalization backends store dense constant matrices as sparse matrices.
+When dense blocks appear in the problem data, they are both stored in an inconvenient format
+and computed without the optimized BLAS kernels of \S\ref{sec:bg-blas}.
+Our approach in Chapter~\ref{sec:Theme1} addresses both limitations.
 
 %%
 %%  COMPUTING DERIVATIVES
@@ -794,17 +797,6 @@ problems routinely contain dense blocks, so this worst case determines the cost 
 extraction in the setting of this thesis. Vectorized input does not reduce the number of
 sweeps, because the structure known to the modelling layer is only recovered at runtime.
 
-% \paragraph{References.}  (heading removed per advisor style; kept for reference)
-The book by Griewank and Walther \cite{griewank2008evaluating} covers the theory and practice of
-scalar AD, including the graph-elimination view of Jacobian accumulation; the book by Naumann
-\cite{Naumann2011} focuses on implementation by operator overloading and source transformation.
-The survey by Baydin et al.\ \cite{baydin2017ADsurvey} covers AD in machine learning.
-For the combinatorial side, the survey of Gebremedhin et al.\ \cite{gebremedhin2005color} is the
-standard entry point, and the illustrated guide of Hill and Dalle \cite{hill2025illustrated} is a
-modern tutorial on the detection--colouring--compression scheme.
-The \texttt{CasADi} paper \cite{andersson2019} covers its expression graphs, AD implementation,
-and solver interfaces.
-
 %%
 %%  DECLARED STRUCTURE
 %%
@@ -934,13 +926,6 @@ data from a DCP atom tree; producing this data is the work this thesis accelerat
 \texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and
 derivatives come from sparse AD in the style of \S\ref{sec:computing-derivatives}; it serves
 general nonlinear solvers and is out of scope for this thesis.
-
-% \paragraph{References.}  (heading removed per advisor style; kept for reference)
-The MathOptInterface paper \cite{legat2020mathoptinterface} is the best reference on the
-design of \texttt{JuMP}'s solver abstraction layer and its bridge system, and the \ac{MOI}
-and \texttt{JuMP} documentation \cite{moidocs, jumpdocs} cover the implementation details.
-David Gay's technical reports \cite{gay1997hooking, gay2005writing} remain the primary
-description of the \texttt{.nl} format and the \texttt{AMPL} solver interface.
 
 \begin{table}[htbp]
 \centering

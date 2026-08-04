@@ -333,7 +333,8 @@ nonnegativity with explicit constraints when the target solver does not support 
 
 % \paragraph{The \texttt{Dcp2Cone} reduction.}  (heading removed per advisor; kept for reference)
 The main reduction, \texttt{Dcp2Cone}, applies the epigraph reformulation of
-\S\ref{sec:bg-canonicalization} atom by atom: the problem is first rewritten into Smith form,
+\S\ref{sec:bg-canonicalization} in a bottom-up pass over the expression trees. The problem is
+first rewritten into Smith form,
 each resulting equality is relaxed to an epigraph (or hypograph) inequality, and each
 inequality is finally expressed as a cone membership \cite{smith1996, grant2008graph}.
 In practice the three steps are performed at once: each nonlinear atom is replaced directly by its
@@ -341,7 +342,7 @@ epigraph variable and cone constraints, and the intermediate Smith form and its 
 never appear explicitly.
 
 \subsection{Example}\label{sec:canon-example}
-We consider a simple fitting with regularization problem:
+We consider the following simple fitting with regularization problem
 \BEQ
     \begin{array}{ll}
         \underset{\mvec{x} \in \reals^n}{\text{minimize}} & \|\mmat{F}\mvec{x}-\mvec{g}\|_2 + \mu \|\mvec{x}\|_2\\
