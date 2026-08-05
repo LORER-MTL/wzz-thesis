@@ -481,96 +481,111 @@ Secondly, the canonicalization backends store dense constant matrices as sparse 
 When dense blocks appear in the problem data, they are both stored in an inconvenient format
 and computed without the optimized BLAS kernels of \S\ref{sec:bg-blas}.
 Our approach in Chapter~\ref{sec:Theme1} addresses both limitations.
-
+% TODO maybe add another limitation in that these backends are all tensor based
+% and that it can be expensive to compute.
+% we can also consider moving the example after this section.
+% so that in there we can say that each parameter extends in a new dimension
+% which is exactly the parameter map we are looking for?
+% we would need to move the example because all the parameter related notation
+% is introduced after it.
 %%
 %%  COMPUTING DERIVATIVES
 %%
 \section{Sparse derivatives from detected structure}
 \label{sec:computing-derivatives}
 
-The introduction (\S\ref{sec:bg-derivatives}) organized differentiation software by four choices.
-We focus here on the assembly choice, and in particular on matrix-free assembly, the standard
-approach in the literature \cite{griewank2008evaluating}.
-The input is an arbitrary differentiable program, the most general of this chapter, so the
-structure of the derivatives is unknown until it is detected from the graph.
-Under matrix-free assembly, sparsity detection and graph colouring reduce the
-number of seeded sweeps needed to recover the sparse matrix.
+This section reviews methods that compute the full sparse Jacobian of a vector-valued
+function, given as an arbitrary program in a general-purpose language. No modelling language
+declares the structure of the program, so the sparsity of the derivatives must be
+detected \cite{hill2025sparser}. Modern surveys of AD address dense derivatives, or the
+gradient of a scalar function, which reverse mode computes in a single sweep over the
+computational graph \cite{baydin2017ADsurvey, blondel2024elements}. In those
+settings, AD refers to the evaluation of matrix--vector products with the Jacobian or the
+Hessian, and the explicit matrix is never formed. Factorizations, direct linear solves, and
+many optimization solvers instead require the explicit matrix \cite{hill2025sparser}.
+The methods of this section recover the full sparse matrix from multiple matrix--vector
+products. To reduce the number of products, graph colouring groups the vectors that can be
+propagated together, so that one product recovers several columns at once.
 
-\subsection{Matrix-free differentiation}\label{sec:matrix-free-diff}
-% \paragraph{Scalar traces.}  (heading removed per advisor style; kept for reference)
-Early AD tools such as ADOL-C \cite{griewank1996adolc} and CppAD \cite{bell2012cppad} record the
-scalar graph as a runtime trace of every elementary operation
-\cite{griewank2008evaluating, Naumann2011}.
-A single matrix--vector product $\mmat{A}\mvec{x}$ unrolls into one scalar
-multiplication for every entry of $\mmat{A}$, together with the additions that sum them, so the
-trace of a realistic problem reaches millions of nodes
-(Figure~\ref{fig:scalar-vs-vectorized}).
-
-% \paragraph{Matrix-free differentiation.}  (heading removed per advisor style; kept for reference)
-A \emph{matrix-free} method returns only the action of the derivative: the Jacobian-vector
-product (JVP) $\mmat{J}\mvec{v}$ in forward mode and the vector-Jacobian product (VJP)
-$\mmat{J}^\top \mvec{w}$ in reverse mode (for the Hessian, the analogous Hessian-vector product
-$\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep) \cite{baydin2017ADsurvey}.
-These matrix-vector products are obtained without ever forming $\mmat{J}$, each by one sweep of
-the graph at about the cost of one function evaluation (Figure~\ref{fig:ad-modes}); the term
-is borrowed from numerical linear algebra.
+\subsection{Matrix-vector products and accumulation}\label{sec:matrix-free-diff}
+% \paragraph{Modes and products.}  (heading removed per advisor style; kept for reference)
+AD computes one matrix--vector product with the derivative per sweep of the computational
+graph, a traversal that applies the chain rule node by node at about the cost of one function
+evaluation \cite{griewank2008evaluating}. Forward mode starts from a seed vector $\mvec{v}$ at
+the inputs and propagates tangents, and the \ac{JVP} $\mmat{J}\mvec{v}$ appears at the outputs.
+Reverse mode starts from a seed $\mvec{w}$ at the outputs and propagates adjoints, and the
+\ac{VJP} $\mmat{J}^\top \mvec{w}$ appears at the inputs
+(Figures~\ref{fig:forward-sweep} and~\ref{fig:reverse-sweep}). For the Hessian, the analogous
+Hessian-vector product $\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep.
 
 \colorlet{sweepCol}{blue!55!black}
 \colorlet{adjCol}{red!55!black}
+\colorlet{accCol}{green!45!black}
 \begin{figure}[htbp]
-\centering
-\begin{subfigure}{\textwidth}
 \centering
 \begin{tikzpicture}[>={Stealth}, thick,
     var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
     lab/.style={font=\small, align=center}]
   \node[var] (x1) at (0,0) {$x_1$};
   \node[var] (x2) at (0,-2.6) {$x_2$};
-  \node[var] (v1) at (4.2,0) {$v_1$};
-  \node[var] (v2) at (4.2,-2.6) {$v_2$};
-  \draw[->] (x1) -- (v1);
-  \draw[->] (x1) -- (v2);
-  \draw[->] (x2) -- (v2);
+  \node[var] (w)  at (2.4,-1.3) {$w$};
+  \node[var] (v1) at (5.4,0) {$v_1$};
+  \node[var] (v2) at (5.4,-2.6) {$v_2$};
+  \draw[->] (x1) -- (w);
+  \draw[->] (x2) -- (w);
+  \draw[->] (w) -- (v1);
+  \draw[->] (w) -- (v2);
   \node[lab, below=1.5mm of x1] {\textcolor{sweepCol}{$\dot x_1 = 1$}};
   \node[lab, below=1.5mm of x2] {\textcolor{sweepCol}{$\dot x_2 = 0$}};
+  \node[lab, right=2mm of w]
+    {$w = x_1 x_2$\\[0.3ex]
+     \textcolor{sweepCol}{$\dot w = x_2\,\dot x_1 + x_1\,\dot x_2 = x_2$}};
   \node[lab, right=2mm of v1]
-    {$v_1 = \sin x_1$\\[0.3ex]
-     \textcolor{sweepCol}{$\dot v_1 = \cos(x_1)\,\dot x_1 = \cos x_1$}};
+    {$v_1 = \sin w$\\[0.3ex]
+     \textcolor{sweepCol}{$\dot v_1 = \cos(w)\,\dot w = x_2 \cos w$}};
   \node[lab, right=2mm of v2]
-    {$v_2 = x_1 x_2$\\[0.3ex]
-     \textcolor{sweepCol}{$\dot v_2 = x_2\,\dot x_1 + x_1\,\dot x_2 = x_2$}};
+    {$v_2 = w$\\[0.3ex]
+     \textcolor{sweepCol}{$\dot v_2 = \dot w = x_2$}};
 \end{tikzpicture}
 \[
 \begin{bmatrix} \textcolor{sweepCol}{\dot v_1} \\ \textcolor{sweepCol}{\dot v_2} \end{bmatrix}
-= \begin{bmatrix} \cos x_1 \\ x_2 \end{bmatrix}
+= \begin{bmatrix} x_2 \cos w \\ x_2 \end{bmatrix}
 = \mmat{J} \mvec{e}_1,
 \qquad
-\mmat{J} = \begin{bmatrix} \cos x_1 & 0 \\ x_2 & x_1 \end{bmatrix}.
+\mmat{J} = \begin{bmatrix} x_2 \cos w & x_1 \cos w \\ x_2 & x_1 \end{bmatrix}.
 \]
-\caption{Forward sweep: tangents $\dot v$ follow the order of evaluation}
-\end{subfigure}
+\caption[Forward sweep of a computational graph]{Forward sweep of the computational graph of
+$F(x_1, x_2) = (\sin(x_1 x_2),\ x_1 x_2)$, with the intermediate value $w = x_1 x_2$.
+Alongside its value, each node carries one tangent
+$\dot v$ (in blue), updated by the chain rule following the order of evaluation. The seed
+$(\dot x_1, \dot x_2) = (1, 0)$ delivers the first column of $\mmat{J}$ at the outputs.}
+\label{fig:forward-sweep}
+\end{figure}
 
-\vspace{4ex}
-\begin{subfigure}{\textwidth}
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>={Stealth}, thick,
     var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
     lab/.style={font=\small, align=center}]
   \node[var] (x1) at (0,0) {$x_1$};
   \node[var] (x2) at (0,-2.6) {$x_2$};
-  \node[var] (v1) at (4.2,0) {$v_1$};
-  \node[var] (v2) at (4.2,-2.6) {$v_2$};
-  \draw[->] (x1) -- (v1);
-  \draw[->] (x1) -- (v2);
-  \draw[->] (x2) -- (v2);
-  \node[lab, left=2mm of x1]
-    {\textcolor{adjCol}{$\bar x_1 = \cos(x_1)\,\bar v_1 + x_2\,\bar v_2 = x_2$}};
-  \node[lab, left=2mm of x2] {\textcolor{adjCol}{$\bar x_2 = x_1\,\bar v_2 = x_1$}};
+  \node[var] (w)  at (2.4,-1.3) {$w$};
+  \node[var] (v1) at (5.4,0) {$v_1$};
+  \node[var] (v2) at (5.4,-2.6) {$v_2$};
+  \draw[->] (x1) -- (w);
+  \draw[->] (x2) -- (w);
+  \draw[->] (w) -- (v1);
+  \draw[->] (w) -- (v2);
+  \node[lab, left=2mm of x1] {\textcolor{adjCol}{$\bar x_1 = x_2\,\bar w = x_2$}};
+  \node[lab, left=2mm of x2] {\textcolor{adjCol}{$\bar x_2 = x_1\,\bar w = x_1$}};
+  \node[lab, right=2mm of w]
+    {$w = x_1 x_2$\\[0.3ex]
+     \textcolor{adjCol}{$\bar w = \cos(w)\,\bar v_1 + \bar v_2 = 1$}};
   \node[lab, right=2mm of v1]
-    {$v_1 = \sin x_1$\\[0.3ex]
+    {$v_1 = \sin w$\\[0.3ex]
      \textcolor{adjCol}{$\bar v_1 = 0$}};
   \node[lab, right=2mm of v2]
-    {$v_2 = x_1 x_2$\\[0.3ex]
+    {$v_2 = w$\\[0.3ex]
      \textcolor{adjCol}{$\bar v_2 = 1$}};
 \end{tikzpicture}
 \[
@@ -578,38 +593,96 @@ is borrowed from numerical linear algebra.
 = \begin{bmatrix} x_2 & x_1 \end{bmatrix}
 = \mvec{e}_2^\top \mmat{J}.
 \]
-\caption{Reverse sweep: adjoints $\bar v$ run against the order of evaluation}
-\end{subfigure}
-\caption[Forward and reverse sweeps of a computational graph]{Forward and reverse sweeps of the
-computational graph of $F(x_1, x_2) = (\sin x_1,\ x_1 x_2)$. Alongside its value, each node
-carries one extra scalar, updated by the chain rule. The forward sweep propagates tangents
-$\dot v$ (in blue) from the inputs, and the seed $(\dot x_1, \dot x_2) = (1, 0)$ delivers the
-first column of $\mmat{J}$ at the outputs. The reverse sweep propagates adjoints $\bar v$ (in
-red) from the outputs, and the seed $(\bar v_1, \bar v_2) = (0, 1)$ delivers the second row of
-$\mmat{J}$ at the inputs.}
-\label{fig:ad-modes}
+\caption[Reverse sweep of a computational graph]{Reverse sweep of the computational graph of
+Figure~\ref{fig:forward-sweep}. Each node carries one adjoint $\bar v$ (in red), updated by
+the chain rule against the order of evaluation. The seed $(\bar v_1, \bar v_2) = (0, 1)$
+delivers the second row of $\mmat{J}$ at the inputs.}
+\label{fig:reverse-sweep}
 \end{figure}
 
 % \paragraph{Recovering the Jacobian.}  (heading removed per advisor style; kept for reference)
-Recovering $\mmat{J}$ explicitly requires \emph{sweeping} over a sequence of seed vectors. The $n$
-unit seeds recover it column by column in forward mode, and the $m$ unit seeds recover it row by row
-in reverse mode (the Hessian is recovered the same way, though its symmetry permits fewer seeds)
-\cite{griewank2008evaluating}.
-When the Jacobian is sparse, most of each sweep is wasted on zeros, and sweeping all the unit
-seeds is prohibitively expensive; graph colouring is used to reduce the number of sweeps.
+Recovering the full matrix takes a sequence of sweeps, one per seed vector. The $n$ unit seed
+vectors recover $\mmat{J}$ column by column in forward mode,
+and the $m$ unit seed vectors recover it row by
+row in reverse mode \cite{griewank2008evaluating}. The other approach is accumulation, which
+combines the local derivatives of the graph directly into $\mmat{J}$ by eliminating one
+intermediate vertex at a time (Figure~\ref{fig:vertex-elimination})
+\cite{griewank1991markowitz}; finding the optimal elimination
+order is NP-complete \cite{naumann2008optimal, griewank2008evaluating}. Batching the $n$
+unit seeds into one forward sweep gives each node a whole tangent, the derivative of that
+node with respect to all the inputs. Eliminating the vertices in the order of evaluation
+stores the same derivative at each node, so the batched sweep and forward-order elimination
+perform the same computation.
 
-\subsection{Graph colouring}\label{sec:graph-colouring}
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[c]{0.48\textwidth}
+\centering
+\begin{tikzpicture}[>={Stealth}, thick,
+    var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
+    elab/.style={font=\small}]
+  \node[var] (x1) at (0,0) {$x_1$};
+  \node[var] (x2) at (0,-2.2) {$x_2$};
+  \node[var] (w)  at (1.9,-1.1) {$w$};
+  \node[var] (v1) at (3.8,0) {$v_1$};
+  \node[var] (v2) at (3.8,-2.2) {$v_2$};
+  \draw[->] (x1) -- node[elab, above, sloped] {$x_2$} (w);
+  \draw[->] (x2) -- node[elab, below, sloped] {$x_1$} (w);
+  \draw[->] (w) -- node[elab, above, sloped] {$\cos w$} (v1);
+  \draw[->] (w) -- node[elab, below, sloped] {$1$} (v2);
+\end{tikzpicture}
+\caption{Each edge carries a local derivative.}
+\end{subfigure}
+\hfill
+\begin{subfigure}[c]{0.48\textwidth}
+\centering
+\begin{tikzpicture}[>={Stealth}, thick,
+    var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
+    elab/.style={font=\small}]
+  \node[var] (x1) at (0,0) {$x_1$};
+  \node[var] (x2) at (0,-2.2) {$x_2$};
+  \node[var] (v1) at (3.8,0) {$v_1$};
+  \node[var] (v2) at (3.8,-2.2) {$v_2$};
+  \draw[->] (x1) -- node[elab, above] {\textcolor{accCol}{$x_2 \cos w$}} (v1);
+  \draw[->] (x2) -- node[elab, below] {\textcolor{accCol}{$x_1$}} (v2);
+  \draw[->] (x1) -- node[elab, pos=0.22, below, sloped] {\textcolor{accCol}{$x_2$}} (v2);
+  \draw[->] (x2) -- node[elab, pos=0.22, above, sloped]
+    {\textcolor{accCol}{$x_1 \cos w$}} (v1);
+\end{tikzpicture}
+\caption{After eliminating $w$, the edges are the entries of $\mmat{J}$.}
+\end{subfigure}
+\caption[Accumulation by vertex elimination]{Accumulation of the Jacobian by vertex
+elimination, on the graph of Figure~\ref{fig:forward-sweep}. Eliminating the intermediate
+vertex $w$ connects each of its predecessors to each of its successors and multiplies the
+local derivatives along the path (in green); parallel edges, when they arise, are summed.
+Once every intermediate vertex is eliminated, the graph is bipartite and its edges are the
+entries of $\mmat{J}$.}
+\label{fig:vertex-elimination}
+\end{figure}
+
+In practice, AD tools such as ADOL-C \cite{griewank1996adolc} and CppAD \cite{bell2012cppad}
+record the scalar graph as a runtime trace, one record per elementary operation
+\cite{griewank2008evaluating, Naumann2011}. A single matrix--vector product
+unrolls into one scalar multiplication for every entry of the matrix, together with the
+additions that sum them, so the trace of a realistic problem can sometimes reach millions of nodes.
+On such a trace, every intermediate vertex would store its derivative with respect to all
+the inputs, so accumulation is rarely used in practice.
+When $\mmat{J}$ is sparse, most of each sweep is then wasted on
+zeros, and the cost of recovering the matrix scales with its dimension rather than with its
+number of nonzeros.
+
+\subsection{Compression by graph colouring}\label{sec:graph-colouring}
 % \paragraph{Graph colouring.}  (heading removed per advisor style; kept for reference)
-The number of sweeps drops when several columns share one seed
-(Figure~\ref{fig:jacobian-coloring}). Two columns of $\mmat{J}$ with no nonzero
-in a common row are \emph{structurally orthogonal}, so one seed recovers both without their nonzeros
-colliding. Finding the fewest such groups is a graph-colouring problem on the column intersection
-graph, whose edges join columns that share a row
-\cite{curtis1974estimation, coleman1983estimation, gebremedhin2005color}.
-The Hessian compresses
-further because its symmetry admits dedicated star and acyclic colourings, which use fewer
-colours than the general Jacobian case \cite{Gebremedhin2009SparseHessians}.
-Colouring operates on the matrix-free products alone, so even fully vectorized frameworks such
+Curtis, Powell, and Reid \cite{curtis1974estimation} observed that several columns of a
+sparse Jacobian can share one seed (Figure~\ref{fig:jacobian-coloring}). Two columns with no
+nonzero in a common row are \emph{structurally orthogonal}, and one sweep recovers both
+without their nonzeros colliding. This compression of the seeds was later formalized as a
+graph-colouring problem on the column intersection graph, whose edges join columns that
+share a row \cite{coleman1983estimation, gebremedhin2005color}. Powell and Toint
+\cite{powell1979estimation} extended the approach to the Hessian, which compresses further
+because its symmetry admits dedicated star and acyclic colourings
+\cite{Gebremedhin2009SparseHessians}.
+Colouring operates on the products alone, so even fully vectorized frameworks such
 as JAX \cite{jax2018github} rely on it when they need an assembled sparse Jacobian.
 
 \colorlet{jcColA}{blue!12}
@@ -681,7 +754,7 @@ as JAX \cite{jax2018github} rely on it when they need an assembled sparse Jacobi
 \times & \times & \cdot
 \end{pNiceMatrix}}
 \]
-\caption{Graph colouring compresses the seeded sweeps. The columns of the sparse Jacobian
+\caption{Graph colouring compresses the seeds. The columns of the sparse Jacobian
 $\mmat{J}$ are grouped into three structurally orthogonal colour classes; the seed matrix $\mmat{S}$ sums the
 unit vectors of each class, and the compressed product $\mmat{B} = \mmat{J}\mmat{S}$ recovers every nonzero of $\mmat{J}$
 without collisions, in three sweeps instead of eight.}
@@ -689,113 +762,65 @@ without collisions, in three sweeps instead of eight.}
 \end{figure}
 
 % \paragraph{Detect, compress, propagate.}  (heading removed per advisor style; kept for reference)
-A matrix-free sparse Jacobian is obtained in three stages: \emph{detect} the sparsity pattern,
-\emph{compress} it by colouring, and \emph{propagate} the compressed seeds of
-Figure~\ref{fig:jacobian-coloring} through seeded sweeps to recover the nonzero entries
-\cite{hill2025sparser}. The pattern is computed once and reused, so its
-cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
-in matrix-free tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
-
-% \paragraph{Direct differentiation.}  (heading removed per advisor style; kept for reference)
-The alternative is \emph{direct} assembly, which forms $\mmat{J}$ itself and needs neither
-sweeps nor colouring. Each node stores its whole local derivative, and one pass over the graph
-combines them into $\mmat{J}$.
-On a scalar graph the stored derivatives grow with every intermediate and the cost is
-prohibitive; there the method is known as \emph{vertex elimination}, and its optimal order is
-intractable \cite{griewank2008evaluating, naumann2008optimal}.
-On a vectorized graph the local derivatives are structured blocks and the graph has few
-nodes, so storing a sparse matrix per node is affordable; recent works apply this in
-statistics \cite{kwok2025vectorised} and optimal control \cite{zou2025vectorized}.
-The conic solvers targeted in this thesis consume the matrix explicitly, which direct assembly
-produces.
-Table~\ref{tab:ad-landscape} classifies the systems of this section and the direct
-alternatives.
-
-\begin{table}[htbp]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{6pt}
-\caption{Differentiation methods classified by the four choices of \S\ref{sec:bg-derivatives}.
-The methods of the lower block are direct and need no graph colouring, unlike the matrix-free
-methods above them; every direct method in the table operates on a vectorized graph.}
-\label{tab:ad-landscape}
-\begin{tabular}{@{}l c c c c@{}}
-\toprule
-\textbf{Method / work} & \textbf{Expression type} & \textbf{Mode} & \textbf{Assembly} &
-\textbf{Data format} \\
-\midrule
-ADOL-C, CppAD \cite{griewank1996adolc, bell2012cppad}
-  & scalar & both & matrix-free & dense \\
-\texttt{CasADi} \cite{andersson2019}
-  & scalar / vectorized & both & matrix-free & sparse \\
-JAX \cite{jax2018github}
-  & vectorized & both & matrix-free & dense \\
-\texttt{torch-sla} \cite{chi2026torchsla}
-  & vectorized & reverse & matrix-free & sparse \\
-Hill and Dalle \cite{hill2025sparser}
-  & scalar & both & matrix-free & sparse \\
-\addlinespace
-Zou and Jiang \cite{zou2025vectorized}
-  & vectorized & forward & direct & sparse \\
-Kwok et al. \cite{kwok2025vectorised}
-  & vectorized & forward & direct & sparse \\
-$\nabla$SD \cite{shaikhha2023sparse}
-  & vectorized & forward & direct & sparse \\
-\textbf{This thesis}
-  & \textbf{vectorized} & \textbf{forward} & \textbf{direct} & \textbf{sparse} \\
-\bottomrule
-\end{tabular}
-\end{table}
+The sparse Jacobian is obtained from the products in three stages: detect the sparsity
+pattern, compress it by colouring, and propagate the compressed seeds of
+Figure~\ref{fig:jacobian-coloring} through the graph to recover the nonzero entries
+\cite{hill2025sparser}. Detection propagates sparsity patterns instead of values through the
+same graph, a boolean analogue of AD \cite{griewank2008evaluating}. The pattern is computed
+once and reused, so its cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
+in tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
+% (Direct-assembly paragraph + tab:ad-landscape cut 2026-08-04; archived in
+% plans/direct_assembly_cut.md, candidate for Theme 1.)
 
 \subsection{\texttt{CasADi}}
 \label{sec:casadi}
 
-\texttt{CasADi} \cite{andersson2019} is a symbolic framework for nonlinear optimization built
-around AD. The user writes vectorized expressions, and every matrix the solvers consume is
-obtained by differentiating them. For example, the problem data of a quadratic program is
-extracted as the
-derivatives of its objective and constraints. The extraction follows the
-detect--compress--propagate scheme of this section; among optimization software,
-\texttt{CasADi} is its most complete implementation.
+\texttt{CasADi} \cite{andersson2019} is an open-source framework for nonlinear optimization
+and optimal control built around AD. Its core is written in C++ and is used from Python,
+MATLAB, or Octave. Rather than a turnkey solver, it provides the building blocks of
+gradient-based optimization: symbolic expressions, derivatives, integrators, and interfaces
+to NLP and QP solvers. Every matrix a solver consumes is obtained by differentiating the
+model. It is widely used in academia and industry, notably for model predictive control,
+trajectory optimization, robotics, and energy systems \cite{casadidocs}.
+% (qpsol listing + dense-block worst-case ¶ cut 2026-08-04; archived in
+% plans/casadi_qp_extraction_cut.md.)
 
 % \paragraph{Expression types.}  (heading removed per advisor style; kept for reference)
-Expressions come in two types \cite{casadidocs}. An \texttt{SX} graph is scalar, with exact
-node-by-node sparsity, at the cost of a graph whose size grows with the problem data. An
-\texttt{MX} graph is vectorized. Its nodes are whole matrix operations, so the graph stays
-small even when the model is large. Either graph is compiled into a flat instruction
-tape over a shared work vector, which enables common-subexpression elimination, constant
-folding, and C code generation.
+Expressions come in two types, and both store their matrices sparse \cite{casadidocs}. An
+\texttt{SX} graph is scalar, with exact node-by-node sparsity, at the cost of a graph whose
+size grows with the problem data. An \texttt{MX} graph is vectorized. Its nodes are whole
+matrix operations, so the graph stays small even when the model is large. Either graph is
+compiled into a flat instruction tape over a shared work vector, which enables
+common-subexpression elimination, constant folding, and the generation of self-contained C
+code, compiled ahead of time for embedded targets or just in time.
 
 % \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
-Even on a vectorized graph, the Jacobian is computed matrix-free. A sweep over the tape
-propagates a batch of seed directions and returns the products $\mmat{J}\mvec{v}$ rather than $\mmat{J}$ itself. The
-sparsity is computed by a pattern propagation over
+Even on a vectorized graph, the Jacobian is computed through matrix--vector products. A
+sweep over the tape
+propagates a batch of seed directions and returns the products $\mmat{J}\mvec{v}$ rather than
+$\mmat{J}$ itself. The sparsity is computed by a pattern propagation over
 the tape, compressed by greedy distance-2 colouring, and the compressed seeds are pushed through
 batched forward or reverse sweeps, with the mode chosen by a cost heuristic on the pattern's
 shape. The Hessian is assembled as the Jacobian of the gradient, one forward sweep over the
-reverse tape, with a star colouring. Pattern, colouring, and the compiled
-derivative function are cached across evaluations. This is how
-\texttt{CasADi}'s own \texttt{qpsol} interface recovers the problem data of a quadratic
-program, by differentiating the model without invoking a solver:
+reverse tape, with a star colouring. Pattern, colouring, and the compiled derivative function
+are cached across evaluations. Among optimization software, this is the most complete
+implementation of the detect--compress--propagate scheme of this section. The whole scheme
+sits behind a single call.
 \begin{lstlisting}[language=Python]
 import casadi as cs
-z, th = cs.MX.sym("z", n), cs.MX.sym("th", p)
-f, g = objective(z, th), slacks(z, th)  # lowered conic model
-c = cs.substitute(cs.gradient(f, z), z, 0)
-P = cs.jacobian(cs.gradient(f, z), z)   # Jacobian of the gradient
-A = -cs.jacobian(g, z)
-b = cs.substitute(g, z, 0)
-data = cs.Function("data", [th], [P, c, A, b])
+x = cs.MX.sym("x", n)              # vectorized symbol
+g = cs.sin(x[1:]) - x[:-1]         # any vectorized expression
+J = cs.jacobian(g, x)              # sparse Jacobian, detected and coloured
+F = cs.Function("F", [x], [g, J])  # compiled; pattern and colouring cached
+F.generate("F.c")                  # self-contained C code
 \end{lstlisting}
 
-% \paragraph{The dense-block worst case.}  (heading removed per advisor style; kept for reference)
-A dense $m \times n$ block in the problem data makes every pair of its columns collide in some
-row, so the column intersection graph restricted to the block is a clique and no colouring can
-use fewer than $\min(m,n)$ colours. The sweep count therefore grows to the full dimension of
-the block, even when the assembled matrix is mostly sparse. Lowered conic
-problems routinely contain dense blocks, so this worst case determines the cost of coefficient
-extraction in the setting of this thesis. Vectorized input does not reduce the number of
-sweeps, because the structure known to the modelling layer is only recovered at runtime.
+The derivatives extend past explicit expressions: \texttt{CasADi} wraps the SUNDIALS
+integrators CVODES and IDAS, deriving their forward and adjoint sensitivity equations
+automatically, and differentiates through the implicit functions defined by its rootfinders
+\cite{andersson2019}. In the setting of this thesis, the conic interfaces obtain the problem
+data of a quadratic program the same way, as derivatives of the model's objective and
+constraints.
 
 %%
 %%  DECLARED STRUCTURE
@@ -951,11 +976,11 @@ differentiated out of an expression graph.}
 Hill and Dalle \cite{hill2025sparser}
   & detected
   & index-set tracing, then colouring
-  & compressed matrix-free sweeps \\
+  & compressed sweeps \\
 \texttt{CasADi} \cite{andersson2019}
   & detected
   & pattern propagation, then colouring
-  & compressed matrix-free sweeps \\
+  & compressed sweeps \\
 \addlinespace
 \texttt{CVXPY} \cite{diamond2016cvxpy}
   & differentiated

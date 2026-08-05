@@ -528,8 +528,8 @@ $\mmat{H} \in \reals^{n \times n}$ of second partial derivatives,
 \BEQ\label{eq:hessian}
   H_{ij} = \frac{\partial^2 f}{\partial x_i \, \partial x_j}, \qquad i, j = 1, \dots, n.
 \EEQ
-The Jacobian of the gradient of $f$ is $\mmat{H}^\top$; the Hessian is symmetric whenever
-$f$ is twice continuously differentiable, so the two coincide.
+The Hessian is symmetric whenever $f$ is twice continuously differentiable, and it is then
+the Jacobian of the gradient of $f$.
 It can therefore be obtained by differentiating the gradient with the
 same methods used for the Jacobian, although dedicated methods that compute it directly also exist.
 The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$ of
@@ -589,7 +589,7 @@ In this broad sense, AD can refer to any method that applies the chain rule over
 graph.
 Its implementations differ in four basic choices: whether the graph is scalar or
 vectorized, whether the chain rule runs forward or in reverse, whether the
-derivative is assembled directly or accessed matrix-free through matrix--vector
+derivative is assembled directly or accessed through matrix--vector
 products, and whether the result is stored sparse or dense.
 
 % \paragraph{Scalar and vectorized graphs.}  (heading removed per advisor; kept for reference)
