@@ -673,23 +673,46 @@ number of nonzeros.
 
 \subsection{Compression by graph colouring}\label{sec:graph-colouring}
 % \paragraph{Graph colouring.}  (heading removed per advisor style; kept for reference)
-Curtis, Powell, and Reid \cite{curtis1974estimation} observed that several columns of a
-sparse Jacobian can share one seed (Figure~\ref{fig:jacobian-coloring}). Two columns with no
-nonzero in a common row are \emph{structurally orthogonal}, and one sweep recovers both
-without their nonzeros colliding. This compression of the seeds was later formalized as a
-graph-colouring problem on the column intersection graph, whose edges join columns that
-share a row \cite{coleman1983estimation, gebremedhin2005color}. Powell and Toint
-\cite{powell1979estimation} extended the approach to the Hessian, which compresses further
-because its symmetry admits dedicated star and acyclic colourings
-\cite{Gebremedhin2009SparseHessians}.
-Colouring operates on the products alone, so even fully vectorized frameworks such
-as JAX \cite{jax2018github} rely on it when they need an assembled sparse Jacobian.
+Several columns of a sparse Jacobian can share one seed \cite{curtis1974estimation}. Two
+columns with no nonzero in a common row are structurally orthogonal, and one sweep
+recovers both, each entry landing in a distinct row of the product. Finding the fewest
+such groups was later formalized as a colouring of the column intersection graph, which
+has one vertex per column and an edge between two columns that share a row
+\cite{coleman1983estimation, gebremedhin2005color}.
+Figure~\ref{fig:jacobian-coloring} colours the graph of a $6 \times 8$ Jacobian and
+recovers the matrix in three sweeps instead of eight. The approach extends to the Hessian,
+which compresses further because its symmetry allows dedicated star and acyclic colourings
+\cite{powell1979estimation, Gebremedhin2009SparseHessians}.
 
 \colorlet{jcColA}{blue!12}
 \colorlet{jcColB}{green!16!white}
 \colorlet{jcColC}{orange!22!white}
 
 \begin{figure}[htbp]
+\centering
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tikzpicture}[thick,
+    vtx/.style={circle, draw, minimum size=7mm, inner sep=1pt, font=\small}]
+  \node[vtx, fill=jcColA] (c1) at (90:1.9)   {$1$};
+  \node[vtx, fill=jcColB] (c2) at (45:1.9)   {$2$};
+  \node[vtx, fill=jcColA] (c4) at (0:1.9)    {$4$};
+  \node[vtx, fill=jcColB] (c8) at (-45:1.9)  {$8$};
+  \node[vtx, fill=jcColC] (c6) at (-90:1.9)  {$6$};
+  \node[vtx, fill=jcColB] (c5) at (-135:1.9) {$5$};
+  \node[vtx, fill=jcColA] (c7) at (180:1.9)  {$7$};
+  \node[vtx, fill=jcColC] (c3) at (135:1.9)  {$3$};
+  \draw (c1)--(c2) (c2)--(c4) (c4)--(c8) (c8)--(c6) (c6)--(c5) (c5)--(c7) (c7)--(c3)
+        (c3)--(c1);
+  \draw (c2)--(c3) (c1)--(c5) (c1)--(c6) (c4)--(c6) (c3)--(c5) (c7)--(c8);
+\end{tikzpicture}
+\caption{The column intersection graph of $\mmat{J}$, with one vertex per column and an edge
+between two columns that share a row, coloured with three colours.}
+\label{fig:jacobian-coloring-graph}
+\end{subfigure}
+\vspace{2ex}
+
+\begin{subfigure}{\textwidth}
 \centering
 \[
 \underset{\mmat{J}}{
@@ -754,10 +777,15 @@ as JAX \cite{jax2018github} rely on it when they need an assembled sparse Jacobi
 \times & \times & \cdot
 \end{pNiceMatrix}}
 \]
-\caption{Graph colouring compresses the seeds. The columns of the sparse Jacobian
-$\mmat{J}$ are grouped into three structurally orthogonal colour classes; the seed matrix $\mmat{S}$ sums the
-unit vectors of each class, and the compressed product $\mmat{B} = \mmat{J}\mmat{S}$ recovers every nonzero of $\mmat{J}$
-without collisions, in three sweeps instead of eight.}
+\caption{The seed matrix $\mmat{S}$ sums the unit vectors of each colour class, and the
+compressed product $\mmat{B} = \mmat{J}\mmat{S}$ recovers every nonzero of $\mmat{J}$,
+each in a distinct row of its compressed column.}
+\label{fig:jacobian-coloring-seeds}
+\end{subfigure}
+\caption[Graph colouring compresses the seeds]{Graph colouring compresses the seeds.
+Colouring the column intersection graph groups the columns of the sparse Jacobian
+$\mmat{J}$ into three structurally orthogonal classes, and the matrix is recovered in three
+sweeps instead of eight.}
 \label{fig:jacobian-coloring}
 \end{figure}
 
@@ -766,9 +794,9 @@ The sparse Jacobian is obtained from the products in three stages: detect the sp
 pattern, compress it by colouring, and propagate the compressed seeds of
 Figure~\ref{fig:jacobian-coloring} through the graph to recover the nonzero entries
 \cite{hill2025sparser}. Detection propagates sparsity patterns instead of values through the
-same graph, a boolean analogue of AD \cite{griewank2008evaluating}. The pattern is computed
-once and reused, so its cost is amortized across repeated evaluations of the same function. This scheme underlies sparse AD
-in tools such as \texttt{CasADi} (\S\ref{sec:casadi}).
+same graph, replacing each arithmetic operation by a union of index sets
+\cite{griewank2008evaluating}. The pattern and its colouring are computed once and reused,
+so their cost is amortized across repeated evaluations of the same function.
 % (Direct-assembly paragraph + tab:ad-landscape cut 2026-08-04; archived in
 % plans/direct_assembly_cut.md, candidate for Theme 1.)
 
