@@ -804,51 +804,52 @@ so their cost is amortized across repeated evaluations of the same function.
 \label{sec:casadi}
 
 \texttt{CasADi} \cite{andersson2019} is an open-source framework for nonlinear optimization
-and optimal control built around AD. Its core is written in C++ and is used from Python,
-MATLAB, or Octave. Rather than a turnkey solver, it provides the building blocks of
-gradient-based optimization: symbolic expressions, derivatives, integrators, and interfaces
-to NLP and QP solvers. Every matrix a solver consumes is obtained by differentiating the
-model. It is widely used in academia and industry, notably for model predictive control,
-trajectory optimization, robotics, and energy systems \cite{casadidocs}.
+and optimal control built around AD. It is widely used in academia and industry, notably for
+model predictive control, trajectory optimization, robotics, and energy systems
+\cite{casadidocs}. Its core is written in C++ and is used from Python, MATLAB, or Octave. It
+provides the building blocks of gradient-based optimization: symbolic expressions,
+derivatives, integrators, and interfaces to NLP and QP solvers. The
+gradients, Jacobians, and Hessians these solvers require are obtained by differentiating the
+model.
 % (qpsol listing + dense-block worst-case ¶ cut 2026-08-04; archived in
 % plans/casadi_qp_extraction_cut.md.)
 
 % \paragraph{Expression types.}  (heading removed per advisor style; kept for reference)
-Expressions come in two types, and both store their matrices sparse \cite{casadidocs}. An
-\texttt{SX} graph is scalar, with exact node-by-node sparsity, at the cost of a graph whose
-size grows with the problem data. An \texttt{MX} graph is vectorized. Its nodes are whole
-matrix operations, so the graph stays small even when the model is large. Either graph is
-compiled into a flat instruction tape over a shared work vector, which enables
-common-subexpression elimination, constant folding, and the generation of self-contained C
-code, compiled ahead of time for embedded targets or just in time.
+\texttt{CasADi} supports two types of expressions, and both return the matrix derivatives in
+a sparse format, which is expected by most solvers \cite{casadidocs}. An
+\texttt{SX} graph is scalar, with exact node-by-node sparsity, but its size grows with the
+problem data. An \texttt{MX} graph is vectorized. Its nodes are whole
+matrix operations, so the graph stays small even when the model is large. Either graph can
+be exported as self-contained C code and compiled ahead of time for embedded applications.
 
 % \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
-Even on a vectorized graph, the Jacobian is computed through matrix--vector products. A
-sweep over the tape
-propagates a batch of seed directions and returns the products $\mmat{J}\mvec{v}$ rather than
-$\mmat{J}$ itself. The sparsity is computed by a pattern propagation over
-the tape, compressed by greedy distance-2 colouring, and the compressed seeds are pushed through
-batched forward or reverse sweeps, with the mode chosen by a cost heuristic on the pattern's
-shape. The Hessian is assembled as the Jacobian of the gradient, one forward sweep over the
-reverse tape, with a star colouring. Pattern, colouring, and the compiled derivative function
-are cached across evaluations. Among optimization software, this is the most complete
-implementation of the detect--compress--propagate scheme of this section. The whole scheme
-sits behind a single call.
+\texttt{CasADi} computes its derivatives by the detection, colouring, and batched sweeps of
+this section, and caches the pattern, the colouring, and the compiled derivative function
+across evaluations. The following listing rebuilds the conic-form trees of
+Figure~\ref{fig:conic-form-tree}, obtained after canonicalization, as \texttt{MX}
+expressions; differentiating them recovers the problem data that matrix stuffing assembles
+in \S\ref{sec:ms-example}.
 \begin{lstlisting}[language=Python]
 import casadi as cs
-x = cs.MX.sym("x", n)              # vectorized symbol
-g = cs.sin(x[1:]) - x[:-1]         # any vectorized expression
-J = cs.jacobian(g, x)              # sparse Jacobian, detected and coloured
-F = cs.Function("F", [x], [g, J])  # compiled; pattern and colouring cached
-F.generate("F.c")                  # self-contained C code
+t1, t2 = cs.MX.sym("t1"), cs.MX.sym("t2")
+x = cs.MX.sym("x", n)
+g, mu = cs.MX.sym("g", m), cs.MX.sym("mu")
+z = cs.vertcat(t1, t2, x)                   # stacked variables
+expr = cs.vertcat(x, t1, F @ x - g, t2, x)  # stacked affine expressions
+A = -cs.jacobian(expr, z)                   # the matrix A
+b = cs.substitute(expr, z, 0)               # the vector b
+c = cs.gradient(t1 + mu * t2, z)            # the objective vector c
 \end{lstlisting}
-
-The derivatives extend past explicit expressions: \texttt{CasADi} wraps the SUNDIALS
-integrators CVODES and IDAS, deriving their forward and adjoint sensitivity equations
-automatically, and differentiates through the implicit functions defined by its rootfinders
-\cite{andersson2019}. In the setting of this thesis, the conic interfaces obtain the problem
-data of a quadratic program the same way, as derivatives of the model's objective and
-constraints.
+The Jacobian with respect to the stacked variable $\mvec{z}$ recovers the matrix $\mmat{A}$
+of Figure~\ref{fig:matrix-stuffing} entry by entry; differentiation is the equivalent of matrix
+stuffing, with the coefficients obtained by those sweeps rather than by a bottom-up pass
+over the tree. The parameters remain symbols, so $\mvec{b}$ and $\mvec{c}$
+are expressions of $\mvec{g}$ and $\mu$, re-evaluated for each parameter value. This is how
+the \texttt{qpsol} interface builds its problem data internally, for problems with a
+quadratic objective and affine constraints. A model written at the same high level as in
+\texttt{CVXPY}, with the norms of \eqref{eq:example} kept in the expression graph, is solved
+through \texttt{nlpsol} instead. The same sweeps assemble the gradient, constraint
+Jacobian, and Hessian of the Lagrangian that the NLP solver queries at each iteration.
 
 %%
 %%  DECLARED STRUCTURE
