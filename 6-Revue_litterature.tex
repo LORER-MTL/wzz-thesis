@@ -893,6 +893,8 @@ solvers receive nonlinear problems.
 
 The \texttt{.nl} file is an instance format rather than a model format. Sets and indexing are
 resolved by the translator, and what remains is one flat record per objective and constraint.
+An indexed declaration such as \texttt{var x \{1..n\}} becomes $n$ scalar variables, and an
+indexed constraint becomes one record per index, so the file has no notion of a vector.
 The linear part of each record is an explicit list of (variable, coefficient) pairs, stored
 alongside the bounds and the nonzero counts of the instance. Only the nonlinear parts are kept
 as expression graphs, written in prefix notation \cite{gay2005writing}.
@@ -956,26 +958,26 @@ any expression graphs from scratch.
 \subsection{\texttt{JuMP}}
 \label{sec:jump}
 
-\texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an algebraic modelling language
-embedded in Julia; its abstraction layer between models and solvers is
-\ac{MOI} \cite{legat2020mathoptinterface}.
-Where \texttt{AMPL} decouples modeller and solver through a
-file, \texttt{JuMP} decouples them through a typed in-memory interface.
+\texttt{JuMP} \cite{dunning2017jump, lubin2023jump10recent} is an open-source algebraic
+modelling language embedded in Julia, developed at MIT and first released in 2013. It is the
+most widely used modelling language in Julia, applied in academia and industry to power
+systems, portfolio optimization, scheduling, and routing. A model is written with the macros
+\texttt{@variable}, \texttt{@constraint}, and \texttt{@objective}, and the same model can be
+passed to any of more than fifty supported solvers \cite{jumpdocs}. The abstraction layer
+between models and solvers is \ac{MOI} \cite{legat2020mathoptinterface}.
 
-% \paragraph{Macros and term lists.}  (heading removed per advisor style; kept for reference)
 The macros of \texttt{JuMP} rewrite each expression as it is entered. \texttt{@objective} and
-\texttt{@constraint} build affine and quadratic expression objects term by term, merging
-duplicates eagerly, so the model stores coefficient lists instead of an expression tree. These
-lists are typed by MOI. A \texttt{VectorAffineFunction} is a list of (row, coefficient,
-variable) terms plus a constant vector; a \texttt{ScalarQuadraticFunction} adds a list of
-(coefficient, variable, variable) triples. A constraint pairs one such function with a set, for
-instance a nonnegative orthant or a second-order cone. This is the functional conic form of
-\S\ref{sec:bg-canonicalization}.
+\texttt{@constraint} build affine and quadratic expression objects term by term, so the model
+stores coefficient lists instead of an expression tree. These lists are typed by MOI. A
+\texttt{VectorAffineFunction} is a list of (row, coefficient, variable) terms plus a constant
+vector. A \texttt{ScalarQuadraticFunction} adds a list of (coefficient, variable, variable)
+triples. A constraint states that one such function lies in a set. For a nonnegative orthant
+or a second-order cone, this is exactly the functional conic form
+of \S\ref{sec:bg-canonicalization}. MOI also supports other sets, such as integrality,
+special ordered sets, and indicator constraints \cite{moidocs}.
 
-% \paragraph{Example.}  (heading removed per advisor style; kept for reference)
-The following model states problem \eqref{eq:example} in \texttt{JuMP}. The conic path has no
-norm atom, so the user writes the epigraph variables and cone memberships of \eqref{eq:graph}
-directly.
+The following model states problem \eqref{eq:example} in \texttt{JuMP}. The user declares the
+epigraph variables and cone memberships of \eqref{eq:graph} directly.
 \begin{lstlisting}
 using JuMP
 model = Model()
@@ -985,84 +987,30 @@ model = Model()
 @constraint(model, [t2; x] in SecondOrderCone())
 @objective(model, Min, t1 + mu * t2)
 \end{lstlisting}
-The model is problem \eqref{eq:graph} verbatim; the user types the conic form that
-canonicalization derives in \texttt{CVXPY}. The first cone constraint is stored as the pair
+The first cone constraint is stored as
 \begin{lstlisting}
 VectorAffineFunction([(1, 1.0, t1), (2, F[1,1], x[1]), ...],
                      [0.0, -g[1], ..., -g[m]])   in   SecondOrderCone(m + 1)
 \end{lstlisting}
-a list of (row, coefficient, variable) terms, a constant vector, and a set; the expression
-itself is not retained after the macro returns.
+and the expression itself is not retained after the macro returns.
 
-% \paragraph{Extraction.}  (heading removed per advisor style; kept for reference)
-When the model is passed to a solver, MOI copies each constraint
-into the solver's own representation (\texttt{copy\_to}). Solvers that consume matrix data use
-the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists into one
-sparse matrix in the solver's format. The cost of extraction is the cost of this copy, which
-is linear in the number of terms and requires no analysis of any graph.
-For the model above, the concatenated term lists form the same problem data
-$[\mmat{A}\ \mvec{b}]$ that matrix stuffing assembles in Figure~\ref{fig:matrix-stuffing},
-reached by copying stored coefficients rather than by a pass over conic-form trees.
-% TODO(oscar): confirm copy_to + MatrixOfConstraints is the canonical path for conic solver
-% wrappers (SCS.jl, Clarabel.jl), and whether any differentiation can occur on this path.
+When the model is passed to a solver, MOI copies each constraint into the solver's own
+representation with \texttt{copy\_to}. Solvers that want matrix data commonly implement that
+copy through the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists
+into one sparse matrix in the solver's format \cite{moidocs}. Coefficient extraction passes
+once over the stored terms and forms the sparse matrix, with no traversal of an expression
+graph and no differentiation.
+% TODO(oscar): MOI docs list Clp.jl, Cbc.jl, ECOS.jl and SCS.jl as backing copy_to with
+% MatrixOfConstraints (verified 2026-08-07 against moidocs). Confirm Clarabel.jl does the same.
 
-% \paragraph{Bridges.}  (heading removed per advisor style; kept for reference)
 When a solver does not support a constraint type natively, MOI reformulates it through its
-\emph{bridge} system. A bridge is a structural rewrite from one function-set pair to another,
-for instance from a rotated to a plain second-order cone, chosen by a shortest-path search over
-the graph of available bridges \cite{legat2020mathoptinterface}. Bridging manipulates stored
-coefficients and adds auxiliary variables and constraints. It is similar to
-\texttt{CVXPY}'s canonicalization (\S\ref{sec:canonicalization}), except that
-\texttt{JuMP} rewrites
-problems whose data is already in matrix form, while \texttt{CVXPY} must first produce that
-data from a DCP atom tree; producing this data is the work this thesis accelerates.
+bridge system. A bridge is a structural rewrite from one function-set pair to another, for
+instance from a rotated to a standard second-order cone. MOI selects and composes them
+automatically \cite{legat2020mathoptinterface}. Bridging manipulates stored coefficients and
+adds auxiliary variables and constraints.
 
-\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and
-derivatives come from sparse AD in the style of \S\ref{sec:computing-derivatives}; it serves
-general nonlinear solvers and is out of scope for this thesis.
-
-Table~\ref{tab:modeling-systems} closes the chapter by classifying the reviewed systems by the
-origin of their coefficients.
-
-\begin{table}[htbp]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{5pt}
-\caption{The reviewed systems and the engine of Chapter~\ref{sec:Theme1}, grouped by the origin of
-their problem-data coefficients: stored as the user typed them, detected at runtime, or
-differentiated out of an expression graph.}
-\label{tab:modeling-systems}
-\begin{tabular}{@{}l l p{4.6cm} p{4.6cm}@{}}
-\toprule
-\textbf{System} & \textbf{Coefficients} & \textbf{Sparsity known from} & \textbf{Extraction cost} \\
-\midrule
-\texttt{JuMP}
-  & stored
-  & the stored term lists
-  & one copy of the term lists (\texttt{copy\_to}) \\
-\texttt{AMPL}
-  & stored\textsuperscript{a}
-  & partial separability of the expression graphs
-  & \texttt{.nl} write and ASL read \\
-\addlinespace
-\texttt{CasADi} \cite{andersson2019}
-  & detected
-  & pattern propagation, then colouring
-  & compressed sweeps \\
-\addlinespace
-\texttt{CVXPY} \cite{diamond2016cvxpy}
-  & differentiated
-  & carried by the sparse coefficient matrices
-  & bottom-up pass over the conic-form trees \\
-\textbf{This thesis}
-  & \textbf{differentiated}
-  & \textbf{closed form, per atom}
-  & \textbf{bottom-up pass over the conic-form trees} \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.5ex}
-\raggedright\footnotesize
-\textsuperscript{a}\,Linear parts only; the nonlinear parts are matched to cones or
-differentiated in the solver process.
-\end{table}
+\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and derivatives
+are computed by sparse AD. The MOI representation is general, and a new problem class enters as
+a new function or set rather than as a change to the interface. However, vectorized expressions
+written in the model are stored as scalar coefficients, and each is expanded into one term per
+nonzero as the macro runs.
