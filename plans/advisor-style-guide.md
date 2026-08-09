@@ -41,6 +41,16 @@ pass DONE 2026-07-31 — \emph{kernel} now lives at its §3.3 definition, not th
   forward/reverse mode, curvature, …). Italics survive only for truly load-bearing definitions
   (atoms, epigraph, Smith form, reductions, matrix-free, direct assembly) — when in doubt, drop
   it. [2026-08-01: "oracle" retired from ch. 1–2; the assembly axis is now matrix-free vs direct]
+  **SWEEP COMPLETE across ch. 1–4 (2026-08-07)**: 15 of 25 dropped. Gone from ch. 1: compile,
+  subexpressions, DCP-compliant, `\emph{e.g.}` (now roman `e.g.`, the `\eg`/`\ie` macros in
+  `defs.tex` are unused thesis-wide), epigraph variable, hypograph variable, canonicalized.
+  Gone from ch. 3: forward / symbolic / numeric pass (the three atom operations, William's call
+  — three italics in one sentence), variable. Gone from ch. 4: single, re-solve (ch. 4 already
+  wrote them unmarked elsewhere). In ch. 2 the two `tab:views-copies` sub-headers became
+  `\textbf{Views}` / `\textbf{Copies}`, matching the `\textbf` header row — a tabular sub-header
+  needs some marker, so bold rather than plain. THE ONLY SURVIVORS, do not re-litigate:
+  ch. 1 problem data, expression tree, atoms, Smith form, epigraph, reductions;
+  ch. 3 factored form, permuted dense, stacked permuted dense, kernel.
 - Avoid GenAI-sounding filler ("tedious and error-prone", "practitioners of optimization");
   prefer plain, specific wording ("the math" → "the mathematical formulation").
 - "black box" → "blackbox"; "split in two" → "split into two"; "by hand" (for derivations) →
@@ -63,7 +73,9 @@ subsubsections per William); check ch. 4–5]
   a sequence of isolated topics"). Fold the heading's content into a topic sentence.
   Ch. 1 keeps only two: "Our approach." and "Example of reformulations." (not struck by advisor).
   Removed headings are preserved as `% \paragraph{...}` comments (ch. 1 + ch. 2, 2026-07-31)
-  so they can be brought back if wanted.
+  so they can be brought back if wanted. Ch. 3's markers were stripped from the source
+  2026-08-09 along with the whole review record; both now live in
+  `plans/theme1-comment-archive.md`.
 - Fine structure is reintroduced with NUMBERED headings only; never unnumbered run-in
   headings. §1.3 differentiation methods are subsections 1.3.1–1.3.3; a new §1.2.3 Example
   subsection holds the canonicalization example (2026-07-31).

@@ -152,13 +152,13 @@ $\mvec{v}$ on its diagonal.}
 \toprule
 \textbf{Atom} & \textbf{Operator $\mmat{L}$} & \textbf{Action on $[\mmat{A}_1\ \mvec{b}_1]$} \\
 \midrule
-\multicolumn{3}{@{}l}{\emph{Views}} \\
+\multicolumn{3}{@{}l}{\textbf{Views}} \\
 $-f_1$ & $-\mmat{I}$ & flip the sign of every stored entry \\
 $f_1^\top$ & $\mmat{K}$, the vec-permutation & permute the rows \\
 $f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
 $\operatorname{reshape}(f_1)$ & $\mmat{I}$ & none, the vectorization is unchanged \\
 \midrule
-\multicolumn{3}{@{}l}{\emph{Copies}} \\
+\multicolumn{3}{@{}l}{\textbf{Copies}} \\
 $\mmat{F} f_1$ & $\mmat{I} \otimes \mmat{F}$ & multiply by a block diagonal formed from $\mmat{F}$ \\
 $f_1 \mmat{B}$ & $\mmat{B}^\top \otimes \mmat{I}$ & multiply by a Kronecker matrix formed from $\mmat{B}$ \\
 $\mmat{C} \odot f_1$ & $\diag(\vect(\mmat{C}))$ & multiply by a diagonal formed from $\mmat{C}$ \\

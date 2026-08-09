@@ -37,7 +37,7 @@ The translation task remains a responsibility of the modelling languages, which 
 conic problem data instead of \ac{LP} coefficient matrices. In DCP-based languages, this
 translation process is called canonicalization \cite{agrawal2018rewriting}.
 While the time taken to solve an optimization problem is often dominated by the solver, the
-time taken to canonicalize (or \emph{compile}) it can also be significant \cite{agrawal2019dpp}.
+time taken to canonicalize (or compile) it can also be significant \cite{agrawal2019dpp}.
 The main goal of this Master's thesis is to reduce the compilation time of \texttt{CVXPY}.
 
 \section{Problem statement}\label{sec:problem-statement}
@@ -196,7 +196,7 @@ Atom & Definition & Curvature & Monotonicity & Sign \\
 \end{table}
 
 % \paragraph{Expression trees.}  (heading removed per advisor; kept for reference)
-An expression is defined recursively as an atom evaluated at \emph{subexpressions}, each of which is
+An expression is defined recursively as an atom evaluated at subexpressions, each of which is
 itself another expression. Such an expression is naturally stored as an expression tree,
 with atoms at its internal nodes and variables, parameters, and constants at its leaves.
 In Python, this tree can be formed automatically from user code through operator overloading.
@@ -225,10 +225,10 @@ drawn as circles and constants (or parameters) as boxes.}
 To certify the convexity of a problem, DCP-based modelling languages use the DCP composition
 rules to classify
 the curvature of each function \cite{grant2004disciplined}.
-Once all functions are classified, a problem is \emph{DCP-compliant} if the objective and
+Once all functions are classified, a problem is DCP-compliant if the objective and
 each constraint have curvatures compatible with a convex problem: a convex objective,
 convex $\leq$ concave inequalities, and affine equalities.
-Otherwise, if a curvature is incompatible (\emph{e.g.}, $f_0$ is concave) or cannot be
+Otherwise, if a curvature is incompatible (e.g., $f_0$ is concave) or cannot be
 determined, the modelling language raises an error and terminates.
 Because these rules are only sufficient for convexity, a problem that is genuinely convex
 but not expressed in a recognized form may still be rejected.
@@ -275,8 +275,8 @@ The DCP rules allow a convex atom only where its value is minimized or upper-bou
 always prefers $t$ as small as possible; the relaxation is therefore lossless.
 The pair $(\mvec{x}, t)$ then lies in the \emph{epigraph}
 $\{(\mvec{x}, t) \in \reals^n \times \reals : \phi(\mvec{x}) \le t\}$ of $\phi$, so we
-often refer to $t$ as an \emph{epigraph variable}.
-A concave atom relaxes to $\phi(\mvec{x}) \ge t$ instead, giving a \emph{hypograph variable}.
+often refer to $t$ as an epigraph variable.
+A concave atom relaxes to $\phi(\mvec{x}) \ge t$ instead, giving a hypograph variable.
 The third and final step expresses each epigraph (hypograph) inequality as the membership of
 an affine function of $(\mvec{x}, t)$ in a convex cone \cite{grant2008graph}.
 
@@ -410,7 +410,7 @@ these expression trees. Variables are labelled with a circle, and parameters wit
 \end{figure}
 
 % \paragraph{Conic form expression tree.}  (heading removed per advisor; kept for reference)
-After applying the reductions, the problem has been \emph{canonicalized} to
+After applying the reductions, the problem has been canonicalized to
 \BEQ\label{eq:graph}
 \begin{array}{ll}
   \underset{t_1,\, t_2,\, \mvec{x}}{\mbox{minimize}}  & t_1 + \mu t_2 \\
