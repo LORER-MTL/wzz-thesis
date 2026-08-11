@@ -27,7 +27,7 @@ We then present the matrix representations used for the derivative computations,
 focus much of our attention on the \texttt{permuted-dense} matrix. Next we describe the
 algorithms, or kernels, which operate on and combine these matrix representations.
 Finally, we show how \texttt{SparseDiffEngine} is used within \texttt{CVXPY}, and how the
-problem data is extracted and refreshed when parameters change.
+problem data is obtained and updated when parameters change.
 
 \section{Overview of the engine}\label{sec:theme1-overview}
 
@@ -126,6 +126,12 @@ and most operations, such as
 indexing, broadcasting, and stacking, operate on those rows. Each row is stored contiguously
 and reached in constant time.
 For this reason we chose the CSR format over the CSC format.
+In \texttt{SparseDiffEngine} the column indices within each row are kept sorted. The CSR
+format does not necessarily require this order. \texttt{Eigen} keeps its indices sorted as well
+\cite{guennebaud2010eigen}, while \texttt{scipy.sparse} does not always enforce it
+\cite{2020SciPy-NMeth}. The merges
+and intersections of the symbolic pass depend on this sorted order guarantee.
+
 The symbolic pass allocates the row pointer and column index arrays, and the numeric pass
 writes only the value array. We
 provide more details on the benefits of this split between the sparsity pattern and the values
@@ -365,9 +371,7 @@ An atom does not operate on the representations of
 implementation of one operation for one matrix representation. The ten operations of
 Table~\ref{tab:kernel-operations} cover the whole library, so every atom computes its
 derivatives through a small set of shared routines. Each kernel is a pair of functions, one
-called by the symbolic pass and one by the numeric pass. The same kernels carry the
-computation to the problem level, where the constraint Jacobians are assembled into the
-problem data and refreshed when parameters change (\S\ref{sec:theme1-problem-assembly}).
+called by the symbolic pass and one by the numeric pass.
 \begin{table}[htbp]
 \caption{The kernels, the operation each computes, and the atoms of the conic path that
 call them, grouped into unary and binary operations.}
@@ -402,7 +406,8 @@ call on a Jacobian runs the corresponding implementation. The kernel
 of a binary operation is determined by the representations of both operands.
 
 For example, on a generic sparse matrix the symbolic pass of the \texttt{index} kernel
-allocates a new CSR pattern and copies the column indices of the selected rows. On a permuted dense matrix
+allocates a new CSR pattern and copies the column indices of the selected rows.
+On a permuted dense matrix
 it intersects the selected rows with the row index vector, as in
 Figure~\ref{fig:permuted-dense-index}. On a stacked matrix the permuted dense kernel is
 applied to each block, and the blocks left with no selected rows are dropped. In all three
@@ -495,82 +500,120 @@ both~$\mvec{r}_B$ and~$\mvec{r}_A$, and the outer selectors place the product at
 rows~$\mvec{c}_B$ and the columns~$\mvec{c}_A$, so the result is again one dense block at
 permuted positions. In practice the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
-one \texttt{dgemm}, and no selector matrix is formed. The cost depends on the sizes of
-the blocks and not on the global dimensions~$m$ and~$n$.
+one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
+on the sizes of the blocks and not on the global dimensions~$m$ and~$n$.
 
-\subsection{Reusing work across solves}\label{sec:theme1-reusing-work}
+\subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
-The Jacobian of an affine atom does not depend on the values of the variables. For the
-structural atoms, such as indexing, transposition, reshaping, stacking, and summation, it is
-determined by shapes and index sets alone. The remaining affine atoms, such as
-\texttt{left\_matmul}, \texttt{scalar\_mult}, \texttt{convolve}, and \texttt{kron}, place
-problem data in the Jacobian, whose values change only when a parameter is updated.
+Most of the Jacobians in a graph are fixed between solves. The Jacobian of an affine atom
+does not depend on the values of the variables. For the structural atoms, such as
+\texttt{index}, \texttt{transpose}, and \texttt{sum}, it is determined by shapes and index
+sets alone. The other binary affine atoms place problem data in the Jacobian, whose
+values change only when a parameter is updated. An atom whose data is
+constant therefore fills its Jacobian at the first evaluation and never touches it again,
+and a parameter update recomputes only the subtrees that depend on that parameter. The
+symbolic pass makes this possible by saving the structure of the problem.
 
-The numeric pass never allocates memory. Every buffer, including the scratch space of the
-kernels, is allocated during the symbolic pass. Beyond allocation, several other kinds of
-work are done only once and reused by every later solve. Sparsity patterns are computed
-symbolically, in that \texttt{add} merges the patterns of its children with a sorted merge
-and the sparse products run the symbolic phase of Gustavson's algorithm \cite{bank1993smmp}.
-Index maps are also precomputed. Transposition stores its row permutation and \texttt{kron}
-its per-row copy maps, so the numeric pass performs no index arithmetic. Finally, values
-that cannot change are written once.
+In addition, every buffer is allocated during the symbolic pass, including the work arrays
+used inside the kernels, so the numeric pass never allocates memory.
+\texttt{add} merges the patterns of its operands with a sorted
+merge, and the sparse products run the symbolic phase of Gustavson's algorithm
+\cite{bank1993smmp}, which finds the pattern of the product row by row. Finding the
+pattern is the irregular part of both operations, and the numeric phase only fills the
+stored pattern with values.
 
-Figure~\ref{fig:sum-idx-map} illustrates this for the \texttt{sum} atom. During the symbolic
-pass, the representation of the child allocates the output and fills \texttt{idx\_map}, an
-array that maps each nonzero of the child Jacobian to the output entry it is added to. The
-axis convention and all other index decisions are handled at this point. The numeric pass is
-a single loop, the same for every axis and every representation. Indexing, transposition,
-and \texttt{kron} work the same way, with a copy instead of an addition.
+The dense representations follow the same split, with the block layout in place of the
+sparsity pattern. The permuted dense kernels intersect the index vectors of their operands
+during the symbolic phase, and the stacked kernels also determine which pairs of blocks
+have intersecting row sets. The numeric phase gathers the matching rows, multiplies them
+with \texttt{dgemm}, and scatters the products to fixed positions.
+
+Finally, the structural atoms save an index map during the symbolic pass. The Jacobian of
+\texttt{sum} is a sum of groups of rows of the child Jacobian. The symbolic pass records,
+for each of their nonzeros, the output entry it is added to.
+The numeric pass is a single loop that performs
+one addition per nonzero, and the choice of axis and of representation affects only how
+the map is built. Figure~\ref{fig:sum-idx-map} shows the two passes. \texttt{index},
+\texttt{transpose}, and \texttt{kron} save their maps in the same way, with a copy in place
+of an addition.
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
-  slot/.style={draw=black!60, minimum width=1.05cm, minimum height=0.5cm,
+  nz/.style={draw=black!60, fill=blue!12, minimum width=0.78cm, minimum height=0.5cm,
+             font=\small\ttfamily, anchor=center},
+  outc/.style={draw=black!60, minimum width=0.78cm, minimum height=0.5cm,
                font=\small\ttfamily, anchor=center},
-  src/.style={slot, fill=blue!12},
-  dst/.style={slot},
+  zero/.style={font=\normalsize, text=black!50, anchor=center},
   map/.style={-{Stealth[length=2mm]}, black!55},
   ttl/.style={font=\small\itshape, anchor=center},
+  brk/.style={black!70, line width=0.5pt},
 ]
-\def\dy{0.62}
+\def\dx{1.05}
+\def\dy{0.72}
+\def\oy{-2.95}
 % ---------- left panel: symbolic ----------
-\node[ttl] at (1.15, 1.0) {symbolic pass, once};
-\foreach \j in {0,...,4}
-  \node[src] (L\j) at (0, -\j*\dy) {$v_\j$};
-\node[dst] (M0) at (2.3, -0.62) {$w_0$};
-\node[dst] (M1) at (2.3, -1.24) {$w_1$};
-\node[dst] (M2) at (2.3, -1.86) {$w_2$};
-\draw[map] (L0.east) -- (M0.west);
-\draw[map] (L1.east) -- (M1.west);
-\draw[map] (L2.east) -- (M0.west);
-\draw[map] (L3.east) -- (M2.west);
-\draw[map] (L4.east) -- (M1.west);
-\node[font=\small, anchor=north] at (1.15, -3.35)
-  {$\mathtt{idx\_map} = (0, 1, 0, 2, 1)$};
-% ---------- right panel: eval ----------
-\begin{scope}[xshift=6.4cm]
-\node[ttl] at (1.15, 1.0) {numeric pass, every evaluation};
-\node[src] (R0) at (0, 0)        {2.0};
-\node[src] (R1) at (0, -\dy)     {3.0};
-\node[src] (R2) at (0, -2*\dy)   {1.5};
-\node[src] (R3) at (0, -3*\dy)   {0.5};
-\node[src] (R4) at (0, -4*\dy)   {4.0};
-\node[dst] (S0) at (2.3, -0.62)  {3.5};
-\node[dst] (S1) at (2.3, -1.24)  {7.0};
-\node[dst] (S2) at (2.3, -1.86)  {0.5};
-\draw[map] (R0.east) -- (S0.west);
-\draw[map] (R1.east) -- (S1.west);
-\draw[map] (R2.east) -- (S0.west);
-\draw[map] (R3.east) -- (S2.west);
-\draw[map] (R4.east) -- (S1.west);
-\node[font=\small, anchor=north] at (1.15, -3.35)
-  {$\mathtt{out[idx\_map[}j\mathtt{]]} \mathrel{+}= \mathtt{vals[}j\mathtt{]}$};
+\node[ttl] at (\dx, 0.9) {symbolic pass, once};
+\node[nz] (L0) at (0, 0)          {$v_0$};
+\node[nz] (L1) at (\dx, 0)        {$v_1$};
+\node[zero] at (2*\dx, 0)         {$\cdot$};
+\node[nz] (L2) at (0, -\dy)       {$v_2$};
+\node[zero] at (\dx, -\dy)        {$\cdot$};
+\node[nz] (L3) at (2*\dx, -\dy)   {$v_3$};
+\node[zero] at (0, -2*\dy)        {$\cdot$};
+\node[nz] (L4) at (\dx, -2*\dy)   {$v_4$};
+\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
+\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
+\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
+        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
+\node[outc] (M0) at (0, \oy)      {$w_0$};
+\node[outc] (M1) at (\dx, \oy)    {$w_1$};
+\node[outc] (M2) at (2*\dx, \oy)  {$w_2$};
+\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
+\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
+        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
+\draw[map] (L0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (M0.north east);
+\draw[map] (L1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (M1.north east);
+\draw[map] (L2.south) to[bend right=12] (M0.north west);
+\draw[map] (L3.south) to[bend right=12] (M2.north west);
+\draw[map] (L4.south) -- (M1.north);
+\node[font=\small, anchor=north] at (\dx, \oy-0.5)
+  {$\mathtt{map} = (0, 1, 0, 2, 1)$};
+% ---------- right panel: numeric ----------
+\begin{scope}[xshift=6.6cm]
+\node[ttl] at (\dx, 0.9) {numeric pass, every evaluation};
+\node[nz] (R0) at (0, 0)          {2.0};
+\node[nz] (R1) at (\dx, 0)        {3.0};
+\node[zero] at (2*\dx, 0)         {$\cdot$};
+\node[nz] (R2) at (0, -\dy)       {1.5};
+\node[zero] at (\dx, -\dy)        {$\cdot$};
+\node[nz] (R3) at (2*\dx, -\dy)   {0.5};
+\node[zero] at (0, -2*\dy)        {$\cdot$};
+\node[nz] (R4) at (\dx, -2*\dy)   {4.0};
+\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
+\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
+\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
+        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
+\node[outc] (S0) at (0, \oy)      {3.5};
+\node[outc] (S1) at (\dx, \oy)    {7.0};
+\node[outc] (S2) at (2*\dx, \oy)  {0.5};
+\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
+\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
+        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
+\draw[map] (R0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (S0.north east);
+\draw[map] (R1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (S1.north east);
+\draw[map] (R2.south) to[bend right=12] (S0.north west);
+\draw[map] (R3.south) to[bend right=12] (S2.north west);
+\draw[map] (R4.south) -- (S1.north);
+\node[font=\small, anchor=north] at (\dx, \oy-0.5)
+  {$\mathtt{out[map[}j\mathtt{]]} \mathrel{+}= \mathtt{vals[}j\mathtt{]}$};
 \end{scope}
 \end{tikzpicture}
-\caption{The two passes of the \texttt{sum} atom. During the symbolic pass,
-\texttt{idx\_map} is built, shown as arrows from the nonzeros $v_j$ of the child Jacobian to
-the output entries $w_i$. At every evaluation, the values are accumulated along the fixed
-arrows.}
+\caption{The two passes of the \texttt{sum} atom for the sum of an expression with three
+entries. The Jacobian of the sum is the sum of the three rows of the child Jacobian, whose
+nonzeros $v_j$ are numbered row by row. The symbolic pass computes the pattern of the
+summed row and the map from each nonzero to the output entry $w_i$ it is added to, shown
+as arrows. The numeric pass accumulates the values along the fixed arrows.}
 \label{fig:sum-idx-map}
 \end{figure}
 
@@ -582,8 +625,8 @@ declares one function per atom constructor and the problem-level entry points. T
 lines of binding code cover the engine, and none of them mention \texttt{CVXPY}.
 
 Everything specific to \texttt{CVXPY} is in a converter that turns a canonicalized problem
-into an engine graph, on two paths that build the graph in the same way and differ in what
-they ask of it. The nonlinear programming interface \cite{cederberg2025disciplined} builds a
+into an engine graph. Two paths build the graph in the same way and differ in what they
+read from it. The nonlinear programming interface \cite{cederberg2025disciplined} builds a
 graph from the smooth reformulation of a problem. The canonicalization backend, named
 \texttt{diffengine} and selected by passing \texttt{ignore\_dpp=True} to \texttt{CVXPY},
 builds a graph from the conic form and extracts the problem data from it, in place of the
@@ -592,26 +635,26 @@ matrix stuffing pass of \S\ref{sec:matrix-stuffing}.
 \subsection{Converting a problem}\label{sec:theme1-conversion}
 
 The conversion is a single pass over the tree. The children of a node are converted first,
-and the name of the atom then selects the engine constructor to call on the resulting
-handles, through a table with about fifty entries, one for each atom of \texttt{CVXPY} that
-the engine implements. A subtree that contains neither a variable nor a parameter is
+and the name of the atom selects the engine constructor to call on their handles. The
+table behind this selection has about fifty entries, one for each atom of \texttt{CVXPY}
+that the engine implements. A subtree that contains neither a variable nor a parameter is
 evaluated once and folded into a constant leaf, because canonicalization leaves such subtrees
 in place.
 
-The two leaf dictionaries are built before the pass, from the inverse data that
-\texttt{CVXPY} produces when it stacks the variables of the problem. A variable leaf is
-created with its column offset in the stacked variable vector, the offsets of
-Figure~\ref{fig:column-offsets}, which the engine uses as the first column of its selection
-Jacobian. A parameter leaf is created with its offset in the flattened parameter
-vector~$\gvec{\theta}$, where \texttt{update\_params} reads its new values. Because the
-dictionaries are looked up by identity, every occurrence of a variable converts to the same
+Variable and parameter leaves are looked up in two dictionaries, built before the pass
+from the inverse data that \texttt{CVXPY} produces when it stacks the variables of the
+problem. A variable leaf stores its column offset in the stacked variable vector, the
+offsets of Figure~\ref{fig:column-offsets}, and the engine uses this offset as the first
+column of the selection Jacobian. A parameter leaf stores its offset in the flattened
+parameter vector~$\gvec{\theta}$, where \texttt{update\_params} reads its new values. The
+dictionaries are keyed by identity, so every occurrence of a variable converts to the same
 node, and the trees of the objective and of the constraints become one graph.
 
-The conversion is also where the representations of
-\S\ref{sec:theme1-matrix-representations} are chosen. A multiplication by problem data passes
+The conversion also chooses the representations of
+\S\ref{sec:theme1-matrix-representations}. A multiplication by problem data passes
 sparse data as a CSR triple and dense data as a dense block, which the atom later places in a
-permuted dense Jacobian. A dense array whose entries are mostly zeros is counted and passed
-as a CSR triple instead. A sum of several terms is converted to a balanced tree of binary
+permuted dense Jacobian. A dense array with mostly zero entries is passed as a CSR triple
+instead. A sum of several terms converts to a balanced tree of binary
 additions, so the depth of the graph grows with the logarithm of the number of terms.
 
 The objective converts to one root, and each constraint contributes one root per argument,
@@ -641,7 +684,7 @@ vals = oracles.jacobian(x)      # aligned with (rows, cols)
 \end{lstlisting}
 The pattern is determined when the graph is built, and every later call returns a value array
 aligned with it. Within an iterate the forward values are computed by the first two calls and
-reused by the other two, and the Hessian of the Lagrangian is queried the same way.
+reused by the other two. The Hessian of the Lagrangian is queried the same way.
 
 The canonicalization backend makes the same calls exactly once, and at the origin. Write
 $f_0$ for the objective root and $\mvec{h}$ for the stack of constraint roots. After
@@ -657,8 +700,8 @@ the origin gives
 which is the problem data of \eqref{e:quad-conic-form}. These are the matrices that
 Figure~\ref{fig:matrix-stuffing} assembles by matrix stuffing, obtained instead as the
 derivatives of \S\ref{sec:bg-derivatives}. The sign convention of the cone form and the
-reordering of the rows inside each cone are applied afterwards, by the step that formats the
-constraints for the other backends as well.
+reordering of the rows inside each cone are applied afterwards, in the step that formats the
+constraints for the other backends.
 
 A parameter update only involves the numeric pass. The function \texttt{update\_params}
 writes the new values into the parameter leaves and sets a refresh flag on each affected
@@ -667,7 +710,7 @@ On the \texttt{ignore\_dpp} path of \S\ref{sec:ms-parameters}, \texttt{CVXPY} in
 repeats the whole matrix stuffing pass, recomputing every sparsity pattern and reallocating
 every buffer, each time a parameter changes.
 
-New parameter values go through one method.
+On the \texttt{CVXPY} side, new parameter values enter through one method.
 \begin{lstlisting}[language=Python]
 def apply_parameters(self, id_to_value):
     theta = flatten_and_concatenate(id_to_value)
