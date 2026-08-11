@@ -825,11 +825,12 @@ be exported as self-contained C code and compiled ahead of time for embedded app
 % \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
 \texttt{CasADi} computes its derivatives by the detection, colouring, and batched sweeps of
 this section, and caches the pattern, the colouring, and the compiled derivative function
-across evaluations. The following listing rebuilds the conic-form trees of
+across evaluations. Listing~\ref{lst:casadi-conic} rebuilds the conic-form trees of
 Figure~\ref{fig:conic-form-tree}, obtained after canonicalization, as \texttt{MX}
 expressions; differentiating them recovers the problem data that matrix stuffing assembles
 in \S\ref{sec:ms-example}.
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python, caption={The conic form of the running example in
+\texttt{CasADi}.}, label=lst:casadi-conic]
 import casadi as cs
 t1, t2 = cs.MX.sym("t1"), cs.MX.sym("t2")
 x = cs.MX.sym("x", n)
@@ -899,12 +900,12 @@ The linear part of each record is an explicit list of (variable, coefficient) pa
 alongside the bounds and the nonzero counts of the instance. Only the nonlinear parts are kept
 as expression graphs, written in prefix notation \cite{gay2005writing}.
 
-The following model states problem \eqref{eq:example} in \texttt{AMPL}. The language has no
-norm atom and no canonicalization step, so the norms are entered as square roots of sums of
-squares. What the solver receives depends on its driver. An \texttt{MP}-based driver rewrites
+The language has no norm atom and no canonicalization step, so the norms of problem
+\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives depends on its driver. An \texttt{MP}-based driver rewrites
 the two norms into second-order cones for a conic solver, and an ASL-based driver passes on a
 general nonlinear program.
-\begin{lstlisting}[language=Ampl]
+\begin{lstlisting}[language=Ampl, caption={The running example \eqref{eq:example} in
+\texttt{AMPL}.}, label=lst:ampl-example]
 param m; param n;
 param F {1..m, 1..n};
 param g {1..m};
@@ -915,9 +916,10 @@ minimize obj:
   + mu * sqrt(sum {j in 1..n} x[j]^2);
 \end{lstlisting}
 For an instance with $m = 3$, $n = 2$, and $\mu = 0.1$, the translator writes the following
-\texttt{.nl} file, shown here in abbreviated form. The comments are added by hand to make the
+\texttt{.nl} file. The comments are added by hand to make the
 records readable and are not written by the translator.
-\begin{lstlisting}[language={}]
+\begin{lstlisting}[language={}, caption={An abbreviated \texttt{.nl} file for an instance
+of the running example.}, label=lst:nl-file]
 g3 1 1 0     # text format; 9 more header lines follow
  2 0 1 0 0   # 2 vars, 0 constraints, 1 objective, 0 ranges, 0 eqns
 ...
@@ -976,9 +978,10 @@ or a second-order cone, this is exactly the functional conic form
 of \S\ref{sec:bg-canonicalization}. MOI also supports other sets, such as integrality,
 special ordered sets, and indicator constraints \cite{moidocs}.
 
-The following model states problem \eqref{eq:example} in \texttt{JuMP}. The user declares the
-epigraph variables and cone memberships of \eqref{eq:graph} directly.
-\begin{lstlisting}
+The user declares the epigraph variables and cone memberships of \eqref{eq:graph}
+directly.
+\begin{lstlisting}[caption={The running example \eqref{eq:example} in \texttt{JuMP}.},
+label=lst:jump-example]
 using JuMP
 model = Model()
 @variable(model, x[1:n] >= 0)
@@ -988,7 +991,8 @@ model = Model()
 @objective(model, Min, t1 + mu * t2)
 \end{lstlisting}
 The first cone constraint is stored as
-\begin{lstlisting}
+\begin{lstlisting}[caption={The first cone constraint as stored by \texttt{MOI}.},
+label=lst:moi-storage]
 VectorAffineFunction([(1, 1.0, t1), (2, F[1,1], x[1]), ...],
                      [0.0, -g[1], ..., -g[m]])   in   SecondOrderCone(m + 1)
 \end{lstlisting}

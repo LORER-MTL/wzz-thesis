@@ -115,7 +115,12 @@
   xleftmargin=1em,
   xrightmargin=1em,
   numbers=none,
+  captionpos=b,
 }
+\usepackage{etoolbox}
+% Keep code listings on one page: wrap every lstlisting in an unbreakable box.
+\BeforeBeginEnvironment{lstlisting}{\par\noindent\begin{minipage}{\linewidth}}
+\AfterEndEnvironment{lstlisting}{\end{minipage}\par}
 \usepackage{tikz} % TikZ graphics
 \usetikzlibrary{arrows.meta,positioning,shapes,calc} % Common TikZ libraries
 \usepackage{nicematrix} % Cell-level shading for the permuted-dense figures

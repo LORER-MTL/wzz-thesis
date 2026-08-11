@@ -26,8 +26,8 @@ the engine, describing how expressions are represented and how the code is organ
 We then present the matrix representations used for the derivative computations, where we
 focus much of our attention on the \texttt{permuted-dense} matrix. Next we describe the
 algorithms, or kernels, which operate on and combine these matrix representations.
-Finally, we show how \texttt{SparseDiffEngine} is used within \texttt{CVXPY}, and how the
-problem data is obtained and updated when parameters change.
+Finally, we describe the problem interface of the engine, and how \texttt{CVXPY} obtains
+and updates the problem data through it.
 
 \section{Overview of the engine}\label{sec:theme1-overview}
 
@@ -83,8 +83,8 @@ stores pointers to these three functions in the expression node.
 An expression node stores its dimensions, pointers to at most two children, a buffer for
 its value, and its derivative matrices. Every derivative matrix has \texttt{n\_vars}
 columns, the total number of entries of all the variables of the problem.
-A simplified version of the definition in \texttt{expr.h} is shown below.
-\begin{lstlisting}[language=C]
+\begin{lstlisting}[language=C, caption={A simplified version of the expression
+node in \texttt{expr.h}.}, label=lst:expr-node]
 typedef struct expr
 {
     int d1, d2, size, n_vars, refcount, var_id;
@@ -533,7 +533,8 @@ Finally, the structural atoms save an index map during the symbolic pass. The Ja
 for each of their nonzeros, the output entry it is added to.
 The numeric pass is a single loop that performs
 one addition per nonzero, and the choice of axis and of representation affects only how
-the map is built. Figure~\ref{fig:sum-idx-map} shows the two passes. \texttt{index},
+the map is built. Figure~\ref{fig:sum-idx-map} shows the two passes. Other structural
+atoms such as \texttt{index},
 \texttt{transpose}, and \texttt{kron} save their maps in the same way, with a copy in place
 of an addition.
 
@@ -617,65 +618,157 @@ as arrows. The numeric pass accumulates the values along the fixed arrows.}
 \label{fig:sum-idx-map}
 \end{figure}
 
-\section{\texttt{CVXPY} interface}\label{sec:theme1-api}
+\section{Problem interface}\label{sec:theme1-api}
 
-The engine is a C library, and \texttt{sparsediffpy} is the Python extension module that
-exposes it, written against the C interfaces of \texttt{Python} and \texttt{NumPy}. It
-declares one function per atom constructor and the problem-level entry points. Three thousand
-lines of binding code cover the engine, and none of them mention \texttt{CVXPY}.
-
-Everything specific to \texttt{CVXPY} is in a converter that turns a canonicalized problem
-into an engine graph. Two paths build the graph in the same way and differ in what they
-read from it. The nonlinear programming interface \cite{cederberg2025disciplined} builds a
-graph from the smooth reformulation of a problem. The canonicalization backend, named
-\texttt{diffengine} and selected by passing \texttt{ignore\_dpp=True} to \texttt{CVXPY},
-builds a graph from the conic form and extracts the problem data from it, in place of the
+The engine collects the objective root and the constraint roots of a problem in one
+object, defined in \texttt{problem.c}, which answers the queries of a solver. The Python
+extension module \texttt{sparsediffpy} exposes the atom constructors and the problem
+entry points. Everything specific to \texttt{CVXPY} is in a converter, which builds the
+graph in one pass over the canonicalized problem with one constructor call per node, and
+in a canonicalization backend named \texttt{diffengine}, selected by passing
+\texttt{ignore\_dpp=True}, which extracts the problem data from the graph in place of the
 matrix stuffing pass of \S\ref{sec:matrix-stuffing}.
 
-\subsection{Converting a problem}\label{sec:theme1-conversion}
+\subsection{Stacking the constraint Jacobians}\label{sec:theme1-problem-interface}
 
-The conversion is a single pass over the tree. The children of a node are converted first,
-and the name of the atom selects the engine constructor to call on their handles. The
-table behind this selection has about fifty entries, one for each atom of \texttt{CVXPY}
-that the engine implements. A subtree that contains neither a variable nor a parameter is
-evaluated once and folded into a constant leaf, because canonicalization leaves such subtrees
-in place.
+The problem object stores the constraint roots in the order in which they are registered.
+Block~$i$ of the stacked constraint values, row block~$i$ of the constraint Jacobian, and
+slice~$i$ of the multiplier vector all belong to the $i$-th root. The engine knows
+nothing about cones, and the cone of each row block is recorded on the \texttt{CVXPY}
+side.
 
-Variable and parameter leaves are looked up in two dictionaries, built before the pass
-from the inverse data that \texttt{CVXPY} produces when it stacks the variables of the
-problem. A variable leaf stores its column offset in the stacked variable vector, the
-offsets of Figure~\ref{fig:column-offsets}, and the engine uses this offset as the first
-column of the selection Jacobian. A parameter leaf stores its offset in the flattened
-parameter vector~$\gvec{\theta}$, where \texttt{update\_params} reads its new values. The
-dictionaries are keyed by identity, so every occurrence of a variable converts to the same
-node, and the trees of the objective and of the constraints become one graph.
+The split between structure and values of \S\ref{sec:theme1-reusing-work} is applied at
+the problem level as well. The solver receives one global CSR matrix, which the symbolic
+pass builds once by stacking the sparsity patterns of the Jacobians. The row pointers of
+each root are shifted by the number of nonzeros of the roots before it, and the column
+indices are copied unchanged, because every Jacobian already has \texttt{n\_vars} columns
+(\S\ref{sec:theme1-expression-node}). The numeric pass copies the values of each root
+into a fixed slice of the global value array, and skips an affine root after the first
+evaluation, because its values cannot change until a parameter does.
+Figure~\ref{fig:jacobian-stacking} shows the two passes.
 
-The conversion also chooses the representations of
-\S\ref{sec:theme1-matrix-representations}. A multiplication by problem data passes
-sparse data as a CSR triple and dense data as a dense block, which the atom later places in a
-permuted dense Jacobian. A dense array with mostly zero entries is passed as a CSR triple
-instead. A sum of several terms converts to a balanced tree of binary
-additions, so the depth of the graph grows with the logarithm of the number of terms.
-
-The objective converts to one root, and each constraint contributes one root per argument,
-in the order in which \texttt{CVXPY} groups the cones: zero, nonnegative, second-order,
-semidefinite, exponential, and power. That order fixes the row blocks of the constraint
-Jacobian assembled in \S\ref{sec:theme1-problem-assembly}, and the cone of each block is
-recorded on the \texttt{CVXPY} side rather than in the engine.
-The five constraint roots of the running example \eqref{eq:example} yield the row blocks
-of~$[\mmat{A}\ \mvec{b}]$ in Figure~\ref{fig:matrix-stuffing}.
-
-\subsection{Problem data and parameter updates}\label{sec:theme1-problem-assembly}
-
-The split between structure and values of \S\ref{sec:theme1-reusing-work} is applied at the
-problem level as well. The solver receives one global CSR matrix, formed by
-concatenating the constraint Jacobians, whose layout is fixed during the symbolic pass.
-An evaluation only copies the values of each constraint root into this matrix at a fixed
-offset. Affine constraints are skipped entirely after the first evaluation, because their
-values cannot change until the parameters do.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  cell/.style={draw=black!60, minimum width=0.55cm, minimum height=0.55cm,
+               font=\small, anchor=center},
+  cellA/.style={cell, fill=blue!12},
+  cellB/.style={cell, fill=orange!25},
+  cellC/.style={cell, fill=green!17},
+  skp/.style={cell, fill=black!6, text=black!45},
+  zero/.style={font=\normalsize, text=black!50, anchor=center},
+  map/.style={-{Stealth[length=2mm]}, black!55},
+  ttl/.style={font=\small\itshape, anchor=center},
+  note/.style={font=\small, anchor=north},
+  brk/.style={black!70, line width=0.5pt},
+]
+\def\cw{0.55}
+% ---------- top panel: symbolic ----------
+\node[ttl] at (2.75, 0.9) {symbolic pass, once};
+% J1: rows 0-1
+\node[font=\small, anchor=east] at (-0.55, -0.5*\cw) {$\mmat{J}_1$};
+\node[cellA] at (0, 0)      {$v_0$};
+\node[zero]  at (\cw, 0)    {$\cdot$};
+\node[cellA] at (2*\cw, 0)  {$v_1$};
+\node[zero]  at (3*\cw, 0)  {$\cdot$};
+\node[zero]  at (0, -\cw)     {$\cdot$};
+\node[cellA] at (\cw, -\cw)   {$v_2$};
+\node[zero]  at (2*\cw, -\cw) {$\cdot$};
+\node[zero]  at (3*\cw, -\cw) {$\cdot$};
+\draw[brk] (-0.33, 0.31) -- (-0.44, 0.31) -- (-0.44, -\cw-0.31) -- (-0.33, -\cw-0.31);
+\draw[brk] (3*\cw+0.33, 0.31) -- (3*\cw+0.44, 0.31)
+        -- (3*\cw+0.44, -\cw-0.31) -- (3*\cw+0.33, -\cw-0.31);
+% J2: one row
+\node[font=\small, anchor=east] at (-0.55, -2.55*\cw) {$\mmat{J}_2$};
+\node[zero]  at (0, -2.55*\cw)     {$\cdot$};
+\node[cellB] at (\cw, -2.55*\cw)   {$v_3$};
+\node[zero]  at (2*\cw, -2.55*\cw) {$\cdot$};
+\node[cellB] at (3*\cw, -2.55*\cw) {$v_4$};
+\draw[brk] (-0.33, -2.55*\cw+0.31) -- (-0.44, -2.55*\cw+0.31)
+        -- (-0.44, -2.55*\cw-0.31) -- (-0.33, -2.55*\cw-0.31);
+\draw[brk] (3*\cw+0.33, -2.55*\cw+0.31) -- (3*\cw+0.44, -2.55*\cw+0.31)
+        -- (3*\cw+0.44, -2.55*\cw-0.31) -- (3*\cw+0.33, -2.55*\cw-0.31);
+% J3: rows 0-1
+\node[font=\small, anchor=east] at (-0.55, -4.6*\cw) {$\mmat{J}_3$};
+\node[zero]  at (0, -4.1*\cw)     {$\cdot$};
+\node[zero]  at (\cw, -4.1*\cw)   {$\cdot$};
+\node[cellC] at (2*\cw, -4.1*\cw) {$v_5$};
+\node[zero]  at (3*\cw, -4.1*\cw) {$\cdot$};
+\node[cellC] at (0, -5.1*\cw)     {$v_6$};
+\node[zero]  at (\cw, -5.1*\cw)   {$\cdot$};
+\node[zero]  at (2*\cw, -5.1*\cw) {$\cdot$};
+\node[cellC] at (3*\cw, -5.1*\cw) {$v_7$};
+\draw[brk] (-0.33, -4.1*\cw+0.31) -- (-0.44, -4.1*\cw+0.31)
+        -- (-0.44, -5.1*\cw-0.31) -- (-0.33, -5.1*\cw-0.31);
+\draw[brk] (3*\cw+0.33, -4.1*\cw+0.31) -- (3*\cw+0.44, -4.1*\cw+0.31)
+        -- (3*\cw+0.44, -5.1*\cw-0.31) -- (3*\cw+0.33, -5.1*\cw-0.31);
+% stacked global matrix: 5 rows, columns at 4.1..5.75
+\def\gx{4.1}
+\def\gy{-0.16}
+\node[cellA] at (\gx, \gy)          {$v_0$};
+\node[zero]  at (\gx+\cw, \gy)      {$\cdot$};
+\node[cellA] at (\gx+2*\cw, \gy)    {$v_1$};
+\node[zero]  at (\gx+3*\cw, \gy)    {$\cdot$};
+\node[zero]  at (\gx, \gy-\cw)      {$\cdot$};
+\node[cellA] at (\gx+\cw, \gy-\cw)  {$v_2$};
+\node[zero]  at (\gx+2*\cw, \gy-\cw){$\cdot$};
+\node[zero]  at (\gx+3*\cw, \gy-\cw){$\cdot$};
+\node[zero]  at (\gx, \gy-2*\cw)      {$\cdot$};
+\node[cellB] at (\gx+\cw, \gy-2*\cw)  {$v_3$};
+\node[zero]  at (\gx+2*\cw, \gy-2*\cw){$\cdot$};
+\node[cellB] at (\gx+3*\cw, \gy-2*\cw){$v_4$};
+\node[zero]  at (\gx, \gy-3*\cw)      {$\cdot$};
+\node[zero]  at (\gx+\cw, \gy-3*\cw)  {$\cdot$};
+\node[cellC] at (\gx+2*\cw, \gy-3*\cw){$v_5$};
+\node[zero]  at (\gx+3*\cw, \gy-3*\cw){$\cdot$};
+\node[cellC] at (\gx, \gy-4*\cw)      {$v_6$};
+\node[zero]  at (\gx+\cw, \gy-4*\cw)  {$\cdot$};
+\node[zero]  at (\gx+2*\cw, \gy-4*\cw){$\cdot$};
+\node[cellC] at (\gx+3*\cw, \gy-4*\cw){$v_7$};
+\draw[brk] (\gx-0.33, \gy+0.31) -- (\gx-0.44, \gy+0.31)
+        -- (\gx-0.44, \gy-4*\cw-0.31) -- (\gx-0.33, \gy-4*\cw-0.31);
+\draw[brk] (\gx+3*\cw+0.33, \gy+0.31) -- (\gx+3*\cw+0.44, \gy+0.31)
+        -- (\gx+3*\cw+0.44, \gy-4*\cw-0.31) -- (\gx+3*\cw+0.33, \gy-4*\cw-0.31);
+\draw[map] (3*\cw+0.6, -2.55*\cw) -- (\gx-0.6, -2.55*\cw);
+% global row pointers under the stacked matrix
+\def\py{-3.35}
+\node[font=\small, anchor=east] at (\gx-0.7, \py) {\texttt{p}};
+\node[cell]  at (\gx-0.35, \py)        {0};
+\node[cellA] at (\gx-0.35+\cw, \py)    {2};
+\node[cellA] at (\gx-0.35+2*\cw, \py)  {3};
+\node[cellB] (PB) at (\gx-0.35+3*\cw, \py)  {5};
+\node[cellC] (PC) at (\gx-0.35+4*\cw, \py)  {6};
+\node[cellC] at (\gx-0.35+5*\cw, \py)  {8};
+\node[note, text=black!55] at ($(PB.south) + (0,-0.06)$) {$+3$};
+\node[note, text=black!55] at ($(PC.south) + (0.3,-0.06)$) {$+5$};
+% ---------- bottom panel: numeric ----------
+\def\oy{-5.0}
+\node[ttl] at (2.75, \oy+0.62) {numeric pass, per evaluation};
+\node[font=\small, anchor=east] at (0.35, \oy) {\texttt{x}};
+\node[cellA] (X0) at (0.7, \oy)        {$v_0$};
+\node[cellA] at (0.7+\cw, \oy)    {$v_1$};
+\node[cellA] (X2) at (0.7+2*\cw, \oy)  {$v_2$};
+\node[skp] (X3) at (0.7+3*\cw, \oy)    {$v_3$};
+\node[skp] (X4) at (0.7+4*\cw, \oy)    {$v_4$};
+\node[cellC] (X5) at (0.7+5*\cw, \oy)  {$v_5$};
+\node[cellC] at (0.7+6*\cw, \oy)  {$v_6$};
+\node[cellC] (X7) at (0.7+7*\cw, \oy)  {$v_7$};
+\node[note] at ($(X0.south)!0.5!(X2.south)$) {copied};
+\node[note, text=black!55] at ($(X3.south)!0.5!(X4.south)$) {skipped};
+\node[note] at ($(X5.south)!0.5!(X7.south)$) {copied};
+\end{tikzpicture}
+\caption{The Jacobians of three constraint roots stack into the global constraint
+Jacobian. The symbolic pass fixes the pattern and the layout once, and the row pointer
+array~\texttt{p} concatenates the pointers of the roots, shifted by the number of
+nonzeros of the blocks before them. The numeric pass copies the values of each root into
+its slice of the value array~\texttt{x}, which stores the nonzeros row by row. The second
+root is affine, so the copy is skipped after the first evaluation.}
+\label{fig:jacobian-stacking}
+\end{figure}
 
 A solver reaches the graph through an oracle interface.
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python, caption={The oracle interface of the problem
+object.}, label=lst:oracle-interface]
 rows, cols = oracles.jacobianstructure()  # once, fixed afterwards
 f    = oracles.objective(x)     # at each iterate
 h    = oracles.constraints(x)
@@ -686,44 +779,43 @@ The pattern is determined when the graph is built, and every later call returns 
 aligned with it. Within an iterate the forward values are computed by the first two calls and
 reused by the other two. The Hessian of the Lagrangian is queried the same way.
 
-The canonicalization backend makes the same calls exactly once, and at the origin. Write
-$f_0$ for the objective root and $\mvec{h}$ for the stack of constraint roots. After
-canonicalization $\mvec{h}$ is affine and $f_0$ is affine or quadratic, so the evaluation at
-the origin gives
-\BEQ\label{eq:extract-at-zero}
-  d = f_0(\mvec{0}), \qquad
-  \mvec{c} = \nabla f_0(\mvec{0}), \qquad
-  \mmat{P} = \nabla^2 f_0, \qquad
-  \mvec{b} = \mvec{h}(\mvec{0}), \qquad
-  \mmat{A} = \nabla \mvec{h}(\mvec{0}),
-\EEQ
-which is the problem data of \eqref{e:quad-conic-form}. These are the matrices that
-Figure~\ref{fig:matrix-stuffing} assembles by matrix stuffing, obtained instead as the
-derivatives of \S\ref{sec:bg-derivatives}. The sign convention of the cone form and the
-reordering of the rows inside each cone are applied afterwards, in the step that formats the
+\subsection{\texttt{CVXPY} interface}\label{sec:theme1-backend}
+
+The converter maps a variable leaf to its column offset in the stacked variable vector,
+the offsets of Figure~\ref{fig:column-offsets}, and a parameter leaf to its offset in the
+flattened parameter vector~$\gvec{\theta}$. Each constraint contributes one root per
+argument, in the order in which \texttt{CVXPY} groups the cones: zero, nonnegative,
+second-order, semidefinite, exponential, and power. The five constraint roots of the
+running example \eqref{eq:example} yield the row blocks of~$[\mmat{A}\ \mvec{b}]$ in
+Figure~\ref{fig:matrix-stuffing}.
+
+The backend wraps the graph in one class, which takes the place of the problem
+representation that matrix stuffing produces, so the rest of the solving chain is
+unchanged.
+\begin{lstlisting}[language=Python, caption={A simplified version of the
+\texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
+class DiffengineConeProgram(ParamProb):
+    """minimize c'x + d + (1/2) x'Px  subject to  Ax + b in K"""
+
+    extractor               # owns the engine graph and its buffers
+    c, d, A, b, P           # problem data, refreshed in place
+    constraints, cone_dims  # cone metadata, kept outside the engine
+
+    def apply_parameters(self, id_to_param_value): ...
+    def split_solution(self, solution): ...
+\end{lstlisting}
+The class is built once per problem family. Its constructor converts the problem, runs
+the symbolic pass, and makes each oracle call once, at the origin. After canonicalization
+the constraints are affine and the objective is affine or quadratic, so this single
+evaluation recovers the problem data of \eqref{e:quad-conic-form}: the forward values
+give $d$ and~$\mvec{b}$, the gradient and the Jacobian give $\mvec{c}$ and~$\mmat{A}$,
+and the Hessian gives~$\mmat{P}$. The sign convention of the cone form and the reordering
+of the rows inside each cone are applied afterwards, in the step that formats the
 constraints for the other backends.
 
-A parameter update only involves the numeric pass. The function \texttt{update\_params}
-writes the new values into the parameter leaves and sets a refresh flag on each affected
-subtree, and the next evaluation recomputes the values through the fixed maps and kernels.
-On the \texttt{ignore\_dpp} path of \S\ref{sec:ms-parameters}, \texttt{CVXPY} instead
-repeats the whole matrix stuffing pass, recomputing every sparsity pattern and reallocating
-every buffer, each time a parameter changes.
-
-On the \texttt{CVXPY} side, new parameter values enter through one method.
-\begin{lstlisting}[language=Python]
-def apply_parameters(self, id_to_value):
-    theta = flatten_and_concatenate(id_to_value)
-    if np.array_equal(theta, self.extracted_theta):  # unchanged values:
-        return self.P, self.c, self.d, self.A, self.b  # reuse everything
-    self.extractor.update_parameters(theta)          # numeric pass only
-    self.c, self.d, self.A, self.b, self.P = self.extractor.extract()
-    self.extracted_theta = theta
-    return self.P, self.c, self.d, self.A, self.b
-\end{lstlisting}
-Repeated solves at unchanged parameter values return the cached matrices. An actual update
-costs one numeric pass over the graph and one evaluation of
-\eqref{eq:extract-at-zero}, while the graph, its sparsity patterns and its buffers are built
-once and live as long as the problem family.
-Chapter~\ref{sec:Theme2} measures what this is worth against \texttt{CVXPY}'s
-canonicalization backends.
+A parameter update only involves the numeric pass. The method \texttt{apply\_parameters}
+writes the new values into the parameter leaves through \texttt{update\_params} and
+repeats the evaluation at the origin, which runs through the fixed maps and kernels of
+\S\ref{sec:theme1-reusing-work} while the graph, its sparsity patterns, and its buffers
+are reused. An atom whose data contains no parameter is left alone, and keeps the values
+written at the first evaluation.

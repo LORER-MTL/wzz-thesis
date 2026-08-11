@@ -357,7 +357,8 @@ parameters
 $\mvec{g}\in \reals^m$ and $\mu \geq 0$; the constraint $\mvec{x} \ge 0$ requires every entry of
 $\mvec{x}$ to be nonnegative.
 The problem formulation in \texttt{CVXPY} code is
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[language=Python, caption={The running example \eqref{eq:example} in
+\texttt{CVXPY}.}, label=lst:cvxpy-example]
 import cvxpy as cp
 import numpy as np
 F = np.random.randn(m, n)
@@ -755,7 +756,8 @@ For example, the matrix
   \end{bmatrix}
 \EEQ
 can be represented in coordinate format as
-\begin{lstlisting}[language=C]
+\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in coordinate
+format.}, label=lst:coo-format]
 int    rows[] = {0,  1,  1,  1,  2,  2};
 int    cols[] = {1,  0,  2,  3,  1,  2};
 double vals[] = {1,  2,  3,  4,  5,  6};
@@ -772,7 +774,8 @@ a row pointer array \texttt{idxptr} of length equal to the number of rows plus o
 The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
 For example, the matrix in \eqref{eq:sparse-matrix}
 can be represented in CSR format as
-\begin{lstlisting}[language=C]
+\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in CSR
+format.}, label=lst:csr-format]
 int  idxptr[] = {0,  1,          4,      6};
 int    cols[] = {1,  0,  2,  3,  1,  2};
 double vals[] = {1,  2,  3,  4,  5,  6};
