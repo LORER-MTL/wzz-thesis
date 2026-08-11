@@ -999,7 +999,8 @@ VectorAffineFunction([(1, 1.0, t1), (2, F[1,1], x[1]), ...],
 and the expression itself is not retained after the macro returns.
 
 When the model is passed to a solver, MOI copies each constraint into the solver's own
-representation with \texttt{copy\_to}. Solvers that want matrix data commonly implement that
+representation with a \texttt{copy\_to} function.
+Solvers that want matrix data commonly implement that
 copy through the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists
 into one sparse matrix in the solver's format \cite{moidocs}. Coefficient extraction passes
 once over the stored terms and forms the sparse matrix, with no traversal of an expression

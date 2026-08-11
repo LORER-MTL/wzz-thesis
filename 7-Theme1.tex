@@ -106,7 +106,7 @@ which case the tree becomes a directed acyclic graph. Nodes are therefore refere
 counted, and the symbolic pass returns early if a node was already initialized.
 
 Unlike \texttt{CVXPY}, there are only two leaf nodes, variables and parameters. A variable
-occupies a contiguous slice of the global variable vector, starting at the column offset
+occupies a contiguous slice of the stacked variable vector, starting at the column offset
 \texttt{var\_id}. Its Jacobian is an identity block at the columns of the variable, written
 once during the symbolic pass. The Jacobian of a parameter is empty, because parameters are
 fixed during a solve. A constant is a parameter whose value cannot be updated between solves.
@@ -505,10 +505,11 @@ on the sizes of the blocks and not on the global dimensions~$m$ and~$n$.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
-Most of the Jacobians in a graph are fixed between solves. The Jacobian of an affine atom
-does not depend on the values of the variables. For the structural atoms, such as
-\texttt{index}, \texttt{transpose}, and \texttt{sum}, it is determined by shapes and index
-sets alone. The other binary affine atoms place problem data in the Jacobian, whose
+Most of the Jacobians in the expression graph of a problem are fixed between solves, since
+the Jacobian of an affine atom does not depend on the values of the variables.
+For the structural atoms, such as
+\texttt{index}, \texttt{transpose}, and \texttt{sum}, the Jacobian is determined by shapes
+and index sets alone. The other binary affine atoms place problem data in the Jacobian, whose
 values change only when a parameter is updated. An atom whose data is
 constant therefore fills its Jacobian at the first evaluation and never touches it again,
 and a parameter update recomputes only the subtrees that depend on that parameter. The
@@ -530,10 +531,11 @@ with \texttt{dgemm}, and scatters the products to fixed positions.
 
 Finally, the structural atoms save an index map during the symbolic pass. The Jacobian of
 \texttt{sum} is a sum of groups of rows of the child Jacobian. The symbolic pass records,
-for each of their nonzeros, the output entry it is added to.
+for each of their nonzeros, the output entry it is added to
+(Figure~\ref{fig:sum-idx-map}).
 The numeric pass is a single loop that performs
 one addition per nonzero, and the choice of axis and of representation affects only how
-the map is built. Figure~\ref{fig:sum-idx-map} shows the two passes. Other structural
+the map is built. Other structural
 atoms such as \texttt{index},
 \texttt{transpose}, and \texttt{kron} save their maps in the same way, with a copy in place
 of an addition.
@@ -582,7 +584,7 @@ of an addition.
   {$\mathtt{map} = (0, 1, 0, 2, 1)$};
 % ---------- right panel: numeric ----------
 \begin{scope}[xshift=6.6cm]
-\node[ttl] at (\dx, 0.9) {numeric pass, every evaluation};
+\node[ttl] at (\dx, 0.9) {numeric pass, per evaluation};
 \node[nz] (R0) at (0, 0)          {2.0};
 \node[nz] (R1) at (\dx, 0)        {3.0};
 \node[zero] at (2*\dx, 0)         {$\cdot$};
@@ -620,32 +622,35 @@ as arrows. The numeric pass accumulates the values along the fixed arrows.}
 
 \section{Problem interface}\label{sec:theme1-api}
 
-The engine collects the objective root and the constraint roots of a problem in one
-object, defined in \texttt{problem.c}, which answers the queries of a solver. The Python
-extension module \texttt{sparsediffpy} exposes the atom constructors and the problem
-entry points. Everything specific to \texttt{CVXPY} is in a converter, which builds the
-graph in one pass over the canonicalized problem with one constructor call per node, and
-in a canonicalization backend named \texttt{diffengine}, selected by passing
-\texttt{ignore\_dpp=True}, which extracts the problem data from the graph in place of the
-matrix stuffing pass of \S\ref{sec:matrix-stuffing}.
+\texttt{SparseDiffEngine} collects the objective and constraint trees in one
+\texttt{problem} object, defined in \texttt{problem.c}. The Python
+extension module \texttt{sparsediffpy} exposes the atom constructors and the functions
+that build and evaluate the \texttt{problem} object. 
+Everything specific to \texttt{CVXPY} is in a converter and a canonicalization backend
+named \texttt{diffengine}. The converter builds the equivalent C trees in one pass
+over the canonicalized problem, with one constructor call per node. The backend obtains the
+problem data as the values and derivatives of the trees, in place of the matrix stuffing
+pass of \S\ref{sec:matrix-stuffing}.
 
 \subsection{Stacking the constraint Jacobians}\label{sec:theme1-problem-interface}
 
-The problem object stores the constraint roots in the order in which they are registered.
-Block~$i$ of the stacked constraint values, row block~$i$ of the constraint Jacobian, and
-slice~$i$ of the multiplier vector all belong to the $i$-th root. The engine knows
-nothing about cones, and the cone of each row block is recorded on the \texttt{CVXPY}
-side.
+The \texttt{problem} object stores the constraint trees in the order in which they are
+registered, and the row blocks of the constraint Jacobian follow that order. Conic
+solvers expect the constraints grouped and ordered by cone, but the engine knows nothing
+about cones. Registering the trees in the right order and recording the cone of each row
+block are both handled by \texttt{CVXPY}.
 
 The split between structure and values of \S\ref{sec:theme1-reusing-work} is applied at
 the problem level as well. The solver receives one global CSR matrix, which the symbolic
-pass builds once by stacking the sparsity patterns of the Jacobians. The row pointers of
-each root are shifted by the number of nonzeros of the roots before it, and the column
-indices are copied unchanged, because every Jacobian already has \texttt{n\_vars} columns
-(\S\ref{sec:theme1-expression-node}). The numeric pass copies the values of each root
-into a fixed slice of the global value array, and skips an affine root after the first
-evaluation, because its values cannot change until a parameter does.
-Figure~\ref{fig:jacobian-stacking} shows the two passes.
+pass builds once by stacking the sparsity patterns of the constraint Jacobians
+(Figure~\ref{fig:jacobian-stacking}).
+The numeric pass copies the values of each tree into a fixed slice of the global value
+array, and skips an affine tree after the first evaluation, because its values cannot
+change until a parameter does.
+
+The Hessian follows the same split. An affine tree contributes nothing to it, so for a
+canonicalized problem only the objective is evaluated. The matrix is symmetric, and only
+its lower triangle is passed to the solver.
 
 \begin{figure}[htbp]
 \centering
@@ -757,65 +762,57 @@ Figure~\ref{fig:jacobian-stacking} shows the two passes.
 \node[note, text=black!55] at ($(X3.south)!0.5!(X4.south)$) {skipped};
 \node[note] at ($(X5.south)!0.5!(X7.south)$) {copied};
 \end{tikzpicture}
-\caption{The Jacobians of three constraint roots stack into the global constraint
-Jacobian. The symbolic pass fixes the pattern and the layout once, and the row pointer
-array~\texttt{p} concatenates the pointers of the roots, shifted by the number of
-nonzeros of the blocks before them. The numeric pass copies the values of each root into
-its slice of the value array~\texttt{x}, which stores the nonzeros row by row. The second
-root is affine, so the copy is skipped after the first evaluation.}
+\caption{The Jacobians of three constraint trees stack into the global constraint
+Jacobian. The row pointer array~\texttt{p} concatenates the pointers of the trees,
+shifted by the nonzeros of the blocks before them. The numeric pass copies the values of
+each tree into its slice of the value array~\texttt{x}; the second tree is affine, so the
+copy is skipped after the first evaluation.}
 \label{fig:jacobian-stacking}
 \end{figure}
-
-A solver reaches the graph through an oracle interface.
-\begin{lstlisting}[language=Python, caption={The oracle interface of the problem
-object.}, label=lst:oracle-interface]
-rows, cols = oracles.jacobianstructure()  # once, fixed afterwards
-f    = oracles.objective(x)     # at each iterate
-h    = oracles.constraints(x)
-grad = oracles.gradient(x)      # reuses the cached forward values
-vals = oracles.jacobian(x)      # aligned with (rows, cols)
-\end{lstlisting}
-The pattern is determined when the graph is built, and every later call returns a value array
-aligned with it. Within an iterate the forward values are computed by the first two calls and
-reused by the other two. The Hessian of the Lagrangian is queried the same way.
 
 \subsection{\texttt{CVXPY} interface}\label{sec:theme1-backend}
 
 The converter maps a variable leaf to its column offset in the stacked variable vector,
-the offsets of Figure~\ref{fig:column-offsets}, and a parameter leaf to its offset in the
-flattened parameter vector~$\gvec{\theta}$. Each constraint contributes one root per
+and a parameter leaf to its offset in the flattened parameter vector~$\gvec{\theta}$.
+Each constraint contributes one tree per
 argument, in the order in which \texttt{CVXPY} groups the cones: zero, nonnegative,
-second-order, semidefinite, exponential, and power. The five constraint roots of the
-running example \eqref{eq:example} yield the row blocks of~$[\mmat{A}\ \mvec{b}]$ in
-Figure~\ref{fig:matrix-stuffing}.
+second-order, semidefinite, exponential, and power.
 
-The backend wraps the graph in one class, which takes the place of the problem
-representation that matrix stuffing produces, so the rest of the solving chain is
+The \texttt{diffengine} backend wraps the \texttt{problem} object in one class, which has
+the same interface as the output of matrix stuffing, so the rest of \texttt{CVXPY} is
 unchanged.
 \begin{lstlisting}[language=Python, caption={A simplified version of the
 \texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
-class DiffengineConeProgram(ParamProb):
+class DiffengineConeProgram:
     """minimize c'x + d + (1/2) x'Px  subject to  Ax + b in K"""
 
-    extractor               # owns the engine graph and its buffers
-    c, d, A, b, P           # problem data, refreshed in place
-    constraints, cone_dims  # cone metadata, kept outside the engine
+    C_problem               # the problem object and its buffers
+    c, d, A, b, P           # problem data, updated in place
+    constraints, cone_dims  # cone info
 
+    def __init__(self, cvxpy_problem): ...
     def apply_parameters(self, id_to_param_value): ...
     def split_solution(self, solution): ...
 \end{lstlisting}
 The class is built once per problem family. Its constructor converts the problem, runs
-the symbolic pass, and makes each oracle call once, at the origin. After canonicalization
-the constraints are affine and the objective is affine or quadratic, so this single
-evaluation recovers the problem data of \eqref{e:quad-conic-form}: the forward values
-give $d$ and~$\mvec{b}$, the gradient and the Jacobian give $\mvec{c}$ and~$\mmat{A}$,
-and the Hessian gives~$\mmat{P}$. The sign convention of the cone form and the reordering
-of the rows inside each cone are applied afterwards, in the step that formats the
-constraints for the other backends.
+the symbolic pass, and evaluates the \texttt{problem} object once, at the origin, which
+recovers the problem data of \eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
+convention of the cone form afterwards, by negating~$\mmat{A}$.
+\begin{lstlisting}[language=Python, caption={A simplified version of the evaluations at
+the origin that recover the problem data.}, label=lst:extract-at-origin]
+problem.init_derivatives()               # symbolic pass, once
+A.rows, A.cols = problem.jacobian_sparsity()
+P.rows, P.cols = problem.hessian_sparsity()
+
+x0 = np.zeros(n_vars)                    # numeric pass, at the origin
+d = problem.objective_forward(x0)        # objective constant
+c = problem.gradient()                   # objective gradient
+b = problem.constraint_forward(x0)       # constraint constants
+A.vals = problem.jacobian_values()       # fill the fixed patterns
+P.vals = problem.hessian_values()
+\end{lstlisting}
+After the solve, \texttt{split\_solution} slices the
+solution of the stacked variable vector back into the variables of the original problem.
 
 A parameter update only involves the numeric pass. The method \texttt{apply\_parameters}
-writes the new values into the parameter leaves through \texttt{update\_params} and
-repeats the evaluation at the origin, which runs through the fixed maps and kernels of
-\S\ref{sec:theme1-reusing-work} while the graph, its sparsity patterns, and its buffers
-are reused. An atom whose data contains no parameter is left alone, and keeps the values
-written at the first evaluation.
+writes the new values into the parameter leaves and repeats the evaluations at the origin.
