@@ -590,7 +590,7 @@ In this broad sense, AD can refer to any method that applies the chain rule over
 graph.
 Its implementations differ in four basic choices: whether the graph is scalar or
 vectorized, whether the chain rule runs forward or in reverse, whether the
-derivative is assembled directly or accessed through matrix--vector
+derivative is assembled directly or accessed through matrix-vector
 products, and whether the result is stored sparse or dense.
 
 % \paragraph{Scalar and vectorized graphs.}  (heading removed per advisor; kept for reference)
@@ -693,7 +693,7 @@ types of matrices.
 A dense matrix is stored as a single contiguous array of its entries, ordered row by row
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
-needed, and rows or columns are traversed sequentially in memory.
+needed, and rows or columns are read sequentially in memory.
 C arrays are row-major and Fortran arrays are column-major.
 Most dense linear algebra interfaces follow the Fortran convention.
 
@@ -725,10 +725,10 @@ software, is built on top of the BLAS kernels \cite{anderson1999lapack}.
 
 The BLAS interface is organized in three levels by the ratio of computation to data.
 Level 1 covers vector operations such as dot products, scaled copies, and additions, level 2
-covers matrix--vector products, and level 3 covers matrix--matrix products.
+covers matrix-vector products, and level 3 covers matrix-matrix products.
 The routine names abbreviate the precision and the operation.
-For example, \texttt{dgemv} is the double-precision general matrix--vector product, and
-\texttt{dgemm} is the double-precision general matrix--matrix product.
+For example, \texttt{dgemv} is the double-precision general matrix-vector product, and
+\texttt{dgemm} is the double-precision general matrix-matrix product.
 
 % \paragraph{Why dense kernels are fast.}  (heading removed per advisor; kept for reference)
 BLAS implementations are fast because they are organized around the memory hierarchy.
@@ -798,7 +798,7 @@ The CSC arrays of a matrix read exactly as the CSR arrays of its transpose, so t
 is a conversion between the two formats, computable without sorting in one counting pass over
 the nonzeros \cite{gustavson1978two}.
 Accessing a column of a CSR matrix instead requires a scan of every row, so algorithms
-that traverse columns prefer CSC; direct methods for sparse linear systems are the
+that read columns prefer CSC; direct methods for sparse linear systems are the
 standard example \cite{davis2006direct}.
 
 % \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
@@ -882,7 +882,7 @@ packages such as \texttt{Eigen} \cite{guennebaud2010eigen} and \texttt{scipy.spa
 
 In contrast to the BLAS kernels of \S\ref{sec:bg-blas}, sparse products access memory
 irregularly.
-The loops traverse the index arrays, so every nonzero costs an index load and an indirect
+The loops run over the index arrays, so every nonzero costs an index load and an indirect
 access. Contiguous reads, \ac{SIMD}, and cache tiling do not apply.
 Sparse formats are also a poor fit for dense data.
 A dense block stored in coordinate format triples its storage, one index pair per entry, and

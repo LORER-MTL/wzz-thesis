@@ -1,72 +1,82 @@
 \Chapter{BENCHMARK RESULTS}\label{sec:Theme2}
 
-This chapter presents benchmark results which compare the \texttt{diffengine} backend
-(the \texttt{CVXPY} implementation based on \texttt{SparseDiffEngine}) against
-\texttt{CVXPY}'s own canonicalization backends: the default \texttt{cvxcore} backend, the
-matrix-stuffing baseline of \S\ref{sec:matrix-stuffing}, and the two pure-Python backends,
-\texttt{SCIPY} and \texttt{COO}, that \texttt{CVXPY} ships as alternatives to it. The
-comparison is restricted to \texttt{CVXPY}'s own backends
-because that is the claim under test: \texttt{diffengine} is a drop-in replacement for the
-canonicalization backend, and the relevant question is whether it constructs the same
-problem data faster.
-All backends run on the $25$ problems of \texttt{CVXPY}'s public benchmark suite
-(\url{https://github.com/cvxpy/benchmarks}). These convex optimization problems cover many
-fields, ranging from portfolio models, robust regression, and semidefinite programs to simple
-LPs and QPs that are close to standard form.
+This chapter compares the \texttt{diffengine} backend of Chapter~\ref{sec:Theme1} against
+\texttt{CVXPY}'s three canonicalization backends: the default \texttt{cvxcore}
+backend of \S\ref{sec:matrix-stuffing}, denoted \texttt{CPP}, and the two pure-Python
+backends \texttt{SCIPY} and \texttt{COO}. The comparison is restricted to \texttt{CVXPY}'s
+own backends because \texttt{diffengine} is a drop-in replacement for them, and the
+relevant question is whether it constructs the same problem data faster. All measurements
+use the $25$ problems of \texttt{CVXPY}'s public benchmark suite \cite{cvxpybenchmarks},
+which range from LPs and QPs close to standard form to portfolio, regression, and
+semidefinite models. Seventeen problems have constant data; the other eight contain
+parameters.
 
-\section{Benchmark Setup}
+\section{Experimental setup}
 \label{sec:bench-setup}
 
-Every benchmark measures the construction of the problem data $(A,b,c,P)$; no solver is
-invoked. For all backends this corresponds to a call to \texttt{get\_problem\_data}
-with the target solver fixed to \texttt{Clarabel}~\cite{clarabel}, and that single call is
-the entire timed region. The \texttt{SCIPY} and \texttt{COO} backends are selected through
-the \texttt{canon\_backend} argument of the same call, and \texttt{diffengine} by passing
-\texttt{ignore\_dpp=True}.
+Every benchmark measures the construction of the problem data $(P, c, A, b)$; no solver is
+invoked. The timed region is a single call to \texttt{get\_problem\_data} with the target
+solver fixed to \texttt{Clarabel}~\cite{clarabel}. The \texttt{SCIPY} and \texttt{COO}
+backends are selected through the \texttt{canon\_backend} argument of that call, and
+\texttt{diffengine} by passing \texttt{ignore\_dpp=True}.
 
-On the parametric problems the default path does not build the same object as
-\texttt{diffengine}. \texttt{CVXPY}'s \emph{disciplined parametrized programming} (DPP)
-path builds a parameter-to-data tensor, while \texttt{diffengine} emits the concrete
-matrices directly. Every parametric measurement is therefore also taken with
-\texttt{ignore\_dpp=True} on \texttt{CVXPY}'s backends, on which path each parameter is
-substituted by its value and the backend builds the same matrices \texttt{diffengine}
-does.
+On the parametric problems the default path and \texttt{diffengine} build different
+objects. The \ac{DPP} path builds the parameter-to-data tensor of
+\S\ref{sec:ms-parameters}, while \texttt{diffengine} emits the concrete matrices for the
+current parameter values. \texttt{CVXPY}'s backends are therefore measured twice on these
+problems, once on the default DPP path and once with \texttt{ignore\_dpp=True}, on which
+each parameter is substituted by its value and the backend builds the same matrices
+\texttt{diffengine} does.
 
 \texttt{CVXPY} also does not always use the backend it is asked for. When no
 \texttt{canon\_backend} is given and the total parameter size reaches $1000$ entries, it
-silently substitutes \texttt{COO} for \texttt{cvxcore}. The \texttt{CPP} column is
+silently substitutes \texttt{COO} for \texttt{cvxcore}. The \texttt{CPP} columns are
 therefore obtained by passing \texttt{canon\_backend="CPP"} explicitly.
 
-Each cold construction is measured in a fresh process, single-threaded, on a 2018 MacBook
-Pro. The parametric measurements of \texttt{CVXPY}'s backends require unmodified
-\texttt{CVXPY}, so they are taken in a second environment running \texttt{CVXPY} 1.9.2 as
-released. That environment is slightly
-faster than the one carrying the \texttt{diffengine} fork, so every comparison that
-crosses the two is conservative, working against \texttt{diffengine}.
-The benchmark scripts and all recorded timings are available in the
-\texttt{canonicalization/} directory of the \texttt{Jacobian-accumulation}
-repository\footnote{\url{https://github.com/SparseDifferentiation/Jacobian-accumulation}};
-every ratio quoted in this chapter is reproducible from the committed result files.
+All measurements run single-threaded on a MacBook Pro (15-inch, 2018) with a 6-core Intel
+Core i7-8850H and \SI{16}{\giga\byte} of RAM. Each cold construction is measured in a
+fresh process, and a measurement is abandoned after \SI{2400}{\second} or when the process
+is killed by the operating system. Entries are medians of three replications unless a
+table marks them otherwise. \texttt{CPP}, \texttt{SCIPY}, and \texttt{COO} require
+unmodified \texttt{CVXPY}, so their measurements are taken in a second environment
+running \texttt{CVXPY} 1.9.2 as released,
+while \texttt{diffengine} runs on the fork that carries it. The upstream environment is
+slightly faster on control problems, so every comparison that crosses the two works
+against \texttt{diffengine}. The benchmark scripts and all recorded timings are available
+in the \texttt{canonicalization/} directory of the \texttt{Jacobian-accumulation}
+repository\footnote{\url{https://github.com/SparseDifferentiation/Jacobian-accumulation}}.
 
-\section{Non-parametric problems}
-\label{sec:bench-nonparam}
+Speed is summarized in two ways. In the tables, the ratio on each problem is
+\texttt{diffengine}'s time over the fastest of \texttt{CVXPY}'s three backends on that
+problem, so values below $1$ mean \texttt{diffengine} beats all three, and the final row
+is the geometric mean of the per-problem ratios. The figures report performance profiles
+\cite{dolan2002}. With $t_{p,s}$ the time of backend $s$ on problem $p$ and $n$ the
+number of problems, the profile of backend $s$ is the fraction of problems on which it is
+within a factor $\tau$ of the fastest backend,
+\BEQ\label{eq:perf-profile}
+f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{p,b}
+\,\}\bigr|,
+\EEQ
+the minimum running over all four backends. The same profile is reported for memory, with
+$t_{p,s}$ replaced by the growth of the process's peak resident memory over the timed
+call.
 
-On the $17$ problems whose data are constants no parameter tensor exists, so all four
-systems construct the same object and the comparison needs no adjustment
-(Table~\ref{tab:cold-compile}). \texttt{cvxcore} is frequently not the fastest of
-\texttt{CVXPY}'s own backends; the pure-Python \texttt{SCIPY} backend beats it on $14$ of
-the $17$ problems. The ratio is therefore taken against the fastest of the three on each
-problem. Against \texttt{cvxcore} alone the geometric mean
-would be $0.20$ rather than $0.32$, a difference attributable to the choice of baseline
-rather than to \texttt{diffengine}.
+\section{Cold canonicalization}
+\label{sec:bench-cold}
+
+Table~\ref{tab:cold-compile} reports the cold times on the $17$ problems without
+parameters, where all four backends construct the same object. \texttt{cvxcore} is
+frequently not the fastest of \texttt{CVXPY}'s backends; \texttt{SCIPY} beats it on $14$ of the $17$
+problems. Against \texttt{cvxcore} alone the geometric-mean ratio would be $0.20$ rather
+than $0.32$, a difference attributable to the choice of baseline rather than to
+\texttt{diffengine}.
 
 \begin{table}[htbp]
 \centering
-\caption[Cold compilation time on the non-parametric problems]{Cold compilation time on
-the $17$ non-parametric problems. Bold marks the fastest of the four systems on each
-problem. The ratio is \texttt{diffengine} over the best of \texttt{CVXPY}'s three
-backends, so values below $1$ mean \texttt{diffengine} beats all three. The final row is
-the geometric mean of the per-problem ratios.}
+\caption[Cold canonicalization time on the non-parametric problems]{Cold canonicalization
+time in seconds on the $17$ non-parametric problems. Bold marks the fastest of the four
+backends on each problem. The ratio is \texttt{diffengine} over the best of \texttt{CVXPY}'s
+three backends; the final row is the geometric mean of the per-problem ratios.}
 \label{tab:cold-compile}
 \begin{tabular}{l r r r r r}
 \toprule
@@ -98,97 +108,130 @@ SDPSegfault1132             & 64.84 &  \textbf{9.51} & 43.00 & 13.21 & 1.39 \\
 
 \texttt{diffengine} is the fastest of the four on $14$ of the $17$ problems, with a
 geometric-mean ratio of $0.32$, that is, $3.1\times$ faster than an oracle that picks the
-best \texttt{CVXPY} backend for each problem. The largest margins occur where the
-baselines' per-expression tensor construction dominates, as in the portfolio and
-regression models with many scalar constraints; \textsc{UnconstrainedQP}, a tiny problem
-wrapped in a large \texttt{kron} expression, is the extreme case at $121\times$ against
-the best backend ($146\times$ against \texttt{cvxcore}).
+best \texttt{CVXPY} backend for each problem. The margins are largest where computing coefficients
+dominates the construction; \textsc{UnconstrainedQP}, a small problem wrapped in a large
+\texttt{kron} expression, is the extreme case at $121\times$. The three exceptions,
+\textsc{CVaR}, \textsc{OptimalAdvertising}, and \textsc{SDPSegfault1132}, are the problems
+whose construction is dominated by moving one large block of constant data into the
+problem matrices. Where there are no coefficients to compute, structural knowledge of the
+atoms buys nothing, and the comparison reduces to how efficiently each backend copies
+memory.
 
-The three exceptions share a mechanism. \textsc{CVaR} ($1.01$),
-\textsc{OptimalAdvertising} ($1.05$) and \textsc{SDPSegfault1132} ($1.39$) are the
-problems whose compilation is dominated by moving one large block of constant data into
-the problem matrices rather than by computing coefficients. Where there are no
-coefficients to derive, structural knowledge of the atoms buys nothing, and the comparison
-reduces to how efficiently each system copies memory.
-
-\section{Parametric problems}
-\label{sec:bench-param}
-
-On the $8$ parametric problems \texttt{CVXPY}'s backends are measured on the
-\texttt{ignore\_dpp} path, so that all four systems construct the same matrices
-(Table~\ref{tab:param-cold}). The DPP path is not a usable baseline here. Building the
-parameter-to-data tensor costs \texttt{cvxcore} and \texttt{SCIPY} $18$--$60\times$ their
-direct construction time on the problems with tens of thousands of parameter entries, and
-on the two largest, \textsc{SimpleFullyParametrizedLP} and \textsc{ParametrizedQP}, both
-backends fail to complete at all. Only \texttt{COO}, whose coordinate-format tensor
-scales with the number of stored nonzeros rather than with the parameter dimension
+Table~\ref{tab:param-cold} reports the cold times on the $8$ parametric problems, each
+\texttt{CVXPY} backend measured on both paths. The gap between a backend's two columns is the cost
+of the tensor. Building it costs \texttt{cvxcore} and \texttt{SCIPY} $18$--$58\times$
+their direct construction time on the two matrix-stuffing problems with tens of thousands
+of parameter entries, and neither completes it on the two problems with more than $10^6$
+parameter entries. Only \texttt{COO}, whose coordinate-format tensor scales with the
+number of stored nonzeros rather than with the parameter dimension
 (\S\ref{sec:bg-sparse}), builds the tensor at no extra cost; this degradation is what the
 substitution rule of \S\ref{sec:bench-setup} avoids.
 
 \begin{table}[htbp]
 \centering
 \caption[Cold construction on the parametric problems]{Cold construction time in seconds
-on the parametric problems, \texttt{CVXPY}'s backends running with \texttt{ignore\_dpp=True} so
-that all systems produce the same non-parametric matrices. Bold marks the fastest of the
-four systems on each problem; the ratio is \texttt{diffengine} over the best of
-\texttt{CVXPY}'s three backends. Entries are medians of three replications except where
-marked; a dash marks a measurement that did not complete, see the text.}
+on the parametric problems. For each \texttt{CVXPY} backend the DPP column is the default path,
+which also builds the parameter-to-data tensor; the no-DPP column runs with
+\texttt{ignore\_dpp=True}, so that all backends produce the same non-parametric matrices.
+Bold marks the fastest of the four backends on each problem, \texttt{diffengine} against
+the no-DPP columns; the ratio is \texttt{diffengine} over the best no-DPP backend.
+Entries are medians of three replications except where marked; a dash marks a measurement
+that did not complete.}
 \label{tab:param-cold}
-\begin{tabular}{l r r r r r}
+{\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l rr rr rr r r}
 \toprule
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO}
+& \multicolumn{2}{c}{\texttt{CPP}} & \multicolumn{2}{c}{\texttt{SCIPY}}
+& \multicolumn{2}{c}{\texttt{COO}} & & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Benchmark & DPP & no DPP & DPP & no DPP & DPP & no DPP
 & \texttt{diffengine} & Ratio \\
 \midrule
-FactorCovarianceModel       &  5.32 &  4.32 &  4.67 & \textbf{0.87} & 0.20 \\
-SVMWithL1Regularization     & 11.21 &  8.31 &  9.79 & \textbf{1.87} & 0.22 \\
-SimpleScalarParametrizedLP  &  4.56 &  4.12 &  4.25 & \textbf{1.03} & 0.25 \\
+FactorCovarianceModel       &  5.12 &  5.32 &  4.25 &  4.32 &  4.76 &  4.67 & \textbf{0.87} & 0.20 \\
+SVMWithL1Regularization     & 11.13 & 11.21 &  8.21 &  8.31 &  9.63 &  9.79 & \textbf{1.87} & 0.22 \\
+SimpleScalarParametrizedLP  &  4.68 &  4.56 &  4.15 &  4.12 &  4.49 &  4.25 & \textbf{1.03} & 0.25 \\
 SimpleFullyParametrizedLP\rlap{$^\dagger$}
-                            &   --- &  2.16 &  2.22 & \textbf{0.54} & 0.25 \\
+                            &   --- &  2.29 &   --- &  2.16 &  2.17 &  2.22 & \textbf{0.54} & 0.25 \\
 ParametrizedQP\rlap{$^\dagger$}
-                            &   --- &  9.68 & 10.76 & \textbf{2.53} & 0.26 \\
-ParamSmallMatrixStuffing    &  0.28 &  0.50 &  0.49 & \textbf{0.21} & 0.76 \\
-ParamConeMatrixStuffing     &  0.18 &  0.32 &  0.32 & \textbf{0.14} & 0.79 \\
-ConvexPlasticity            &  \textbf{0.35} &  \textbf{0.35} &  \textbf{0.35} & 2.07 & 5.97 \\
+                            &   --- & 11.89 &   --- &  9.68 & 10.87 & 10.76 & \textbf{2.53} & 0.26 \\
+ParamSmallMatrixStuffing    &  7.83 &  0.28 & 29.20 &  0.50 &  0.40 &  0.49 & \textbf{0.21} & 0.76 \\
+ParamConeMatrixStuffing     &  3.18 &  0.18 &  7.69 &  0.32 &  0.27 &  0.32 & \textbf{0.14} & 0.79 \\
+ConvexPlasticity            &  0.36 & \textbf{0.35} &  0.36 & \textbf{0.35} &  0.35 & \textbf{0.35} & 2.07 & 5.97 \\
 \midrule
-\textbf{Geometric mean}     &       &       &       &      & \textbf{0.48} \\
+\textbf{Geometric mean}     &       &       &       &       &       &       &      & \textbf{0.48} \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 
 \vspace{0.5em}
 {\footnotesize $^\dagger$ Single measurement; all other rows are medians of three
 replications.}
 \end{table}
 
-\texttt{diffengine} is fastest on seven of the eight problems, with a geometric mean of
-$0.48$, that is, $2.1\times$ faster than the best \texttt{CVXPY} backend. The two dashes
-are the two problems on which pinned \texttt{cvxcore} does not complete; their ratios,
-taken against \texttt{SCIPY} and \texttt{COO}, are upper bounds on
-\texttt{diffengine}'s advantage.
-
-% TODO(william): ConvexPlasticity discussion in your own words. Facts: only clear loss in
-% the suite (2.07 s vs 0.35 s); cause is materialization, not derivative computation
-% (diffengine emits P with 9,048,000 stored entries, 33,000 nonzero, which SciPy must
-% re-canonicalize); remedy known, see sec:Limitations. Longer cut prose archived in
-% plans/theme2_tensor_amortization_cut.md.
+Against the no-DPP columns \texttt{diffengine} is fastest on seven of the eight problems,
+with a geometric mean of $0.48$, that is, $2.1\times$ faster than the best \texttt{CVXPY} backend.
 \textsc{ConvexPlasticity} is the one problem in the suite where \texttt{diffengine} is
-clearly beaten, and the cause is a sparse materialization defect rather than derivative
+clearly beaten. The cause is a sparse materialization defect rather than derivative
 computation; it is discussed in \S\ref{sec:Limitations}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{performance_profile_thesis}
+\caption[Performance profile of cold canonicalization time]{Dolan--Mor\'e performance
+profile \eqref{eq:perf-profile} of cold canonicalization time over all $25$ problems,
+every backend on the \texttt{ignore\_dpp} path.}
+\label{fig:perf-profile}
+\end{figure}
+
+Figure~\ref{fig:perf-profile} reads the same cold data across the whole suite.
+\texttt{diffengine} is the fastest backend on $21$ of the $25$ problems, within $2\times$
+of the best on $23$, and within $7\times$ on all. No \texttt{CVXPY} backend is fastest on
+more than two problems, each needs $\tau \approx 8$ to cover $88$--$96\%$ of the suite,
+and each has a tail past $\tau = 100$ on the \texttt{kron} problem of
+Table~\ref{tab:cold-compile}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{memory_profile_thesis}
+\caption[Performance profile of peak memory]{Dolan--Mor\'e profile
+\eqref{eq:perf-profile} of peak memory during cold canonicalization over $24$ problems,
+every backend on the \texttt{ignore\_dpp} path. \textsc{ConvexPlasticity} is excluded;
+the memory growth of \texttt{CVXPY}'s backends there falls below what the measurement
+resolves, so no ratio exists.}
+\label{fig:mem-profile}
+\end{figure}
+
+Figure~\ref{fig:mem-profile} reports the same profile for peak memory. \texttt{SCIPY} is
+the leanest backend, using the least memory on $15$ of the $24$ problems.
+\texttt{diffengine} is leanest on $7$, matches \texttt{cvxcore} and \texttt{COO} within a
+few percent in geometric mean, and uses about half again as much memory as \texttt{SCIPY}.
+Its tail is again the problems dominated by one large block of constant data; on
+\textsc{OptimalAdvertising} its memory grows by \SI{5.1}{\giga\byte} against
+\SI{0.14}{\giga\byte} for the leanest backend, and on \textsc{CVaR} by
+\SI{4.6}{\giga\byte} against \SI{0.33}{\giga\byte}. At the other end, on
+\textsc{UnconstrainedQP} \texttt{diffengine} uses $18\times$ less memory than any
+\texttt{CVXPY} backend. On the excluded
+\textsc{ConvexPlasticity} its growth of \SI{1.2}{\giga\byte} stems from the
+materialization defect noted above.
+
+\section{Parametric re-solve}
+\label{sec:bench-resolve}
 
 A parametric problem is re-solved as its parameter values change. After a parameter
 update \texttt{CVXPY} re-applies the cached parameter-to-data tensor, while
-\texttt{diffengine} re-runs the numeric pass on its cached program;
-Table~\ref{tab:param-resolve} compares the two. \texttt{diffengine} re-solves faster on
-three of the five problems where both were measured; the tensor is about twice as fast on
-the two problems whose parameters enter as small dense maps.
+\texttt{diffengine} re-runs the numeric pass on its cached program.
+Table~\ref{tab:param-resolve} compares the two on the seven problems with a tensor to
+re-apply; \textsc{ConvexPlasticity} is not \ac{DPP} as the solving chain evaluates it, so
+\texttt{CVXPY} rebuilds it from scratch on every re-solve.
 
 \begin{table}[htbp]
 \centering
 \caption[Re-solve time on the parametric problems]{Re-solve time in seconds after a
 parameter update. The tensor column re-applies \texttt{CVXPY}'s cached parameter-to-data
 tensor; \texttt{diffengine} re-runs the numeric pass on its cached program. Each entry is
-the mean of three re-solves; bold marks the faster of the two, and the ratio is
-\texttt{diffengine} over the tensor. A dash marks a problem without a tensor measurement,
-see the text.}
+the mean of three re-solves; bold marks the faster of the two, the ratio is
+\texttt{diffengine} over the tensor, and the final row is the geometric mean of the
+ratios.}
 \label{tab:param-resolve}
 \begin{tabular}{l r r r}
 \toprule
@@ -198,12 +241,13 @@ FactorCovarianceModel       & \textbf{0.141} & 0.287 & 2.03 \\
 SVMWithL1Regularization     & \textbf{0.254} & 0.496 & 1.96 \\
 SimpleScalarParametrizedLP  & 0.304 & \textbf{0.249} & 0.82 \\
 SimpleFullyParametrizedLP\rlap{$^\dagger$}
-                            &   --- & 0.126 &  --- \\
+                            & 0.261 & \textbf{0.126} & 0.48 \\
 ParametrizedQP\rlap{$^\dagger$}
-                            &   --- & 0.985 &  --- \\
+                            & 1.485 & \textbf{0.985} & 0.66 \\
 ParamSmallMatrixStuffing    & 0.005 & \textbf{0.001} & 0.29 \\
 ParamConeMatrixStuffing     & 0.003 & \textbf{0.001} & 0.29 \\
-ConvexPlasticity            &   --- & 0.657 &  --- \\
+\midrule
+\textbf{Geometric mean}     &       &       & \textbf{0.71} \\
 \bottomrule
 \end{tabular}
 
@@ -212,21 +256,26 @@ ConvexPlasticity            &   --- & 0.657 &  --- \\
 replications.}
 \end{table}
 
-The dashes have two causes. \textsc{ConvexPlasticity} has no tensor to re-apply, because
-it is not DPP as the solving chain evaluates it, so \texttt{CVXPY} substitutes the
-parameter values and rebuilds from scratch on every re-solve. On
-\textsc{SimpleFullyParametrizedLP} and \textsc{ParametrizedQP} the tensor exists, but the
-re-solve measurement did not complete on unmodified \texttt{CVXPY}.
-\texttt{diffengine} re-solves all three.
+\texttt{diffengine} re-solves faster on five of the seven problems, with a geometric mean
+of $0.71$. The tensor is about twice as fast on \textsc{Factor\-Covariance\-Model} and
+\textsc{SVMWith\-L1\-Regularization}, the two problems whose parameters enter as small
+dense maps. On \textsc{Simple\-Fully\-Parametrized\-LP} and \textsc{ParametrizedQP} the
+tensor is the one \texttt{COO} builds, the only backend that completes it, and
+\texttt{diffengine} is faster still.
 
-% TODO(idea): analyze compilation time against the sparsity of the final problem data.
-% Cross-problem scatter is weak (time also depends on tree size/atom mix, not just nnz).
-% Stronger design: pick one or two problem families, sweep the problem dimension so nnz of
-% the stuffed matrix [A b] grows while the expression tree's shape stays fixed, and plot
-% compile time vs. nnz (log-log, one curve per family per system). Slope ~1 for diffengine
-% = linear in output size; a baseline curve bending upward makes the contrast visual.
-% Families: SimpleLP (sparse, nnz ~ n) + SimpleQP (dense P, nnz ~ n^2; sweep harness exists,
-% probe_simpleqp_scaling.py, m = 5n) or LeastSquares (dense block, nnz ~ mn). If the engine's
-% two family curves collapse onto one line vs. nnz, that shows cost tracks data produced,
-% not dimension. Avoid parametric rows (DPP tensor compile pathology), kron/SDP (lowering
-% muddies nnz). Caveat: engine's fixed ~0.2 s CVXPY Python overhead flattens small sizes.
+\section{Summary}
+\label{sec:bench-summary}
+
+On cold canonicalization \texttt{diffengine} beats an oracle that picks the best \texttt{CVXPY}
+backend for each problem by $3.1\times$ on the non-parametric half of the suite and by
+$2.1\times$ on the parametric half. Its losses are confined to the problems whose
+construction reduces to copying one large block of constant data and to the
+materialization defect of \textsc{ConvexPlasticity}. Peak memory is at parity with
+\texttt{cvxcore} and \texttt{COO} and above \texttt{SCIPY}, heaviest on those same
+problems.
+
+On re-solves the comparison is closer. The cached numeric pass beats re-applying the
+parameter tensor by $1.4\times$ in geometric mean, and the tensor keeps a $2\times$
+advantage where the parameters enter as small dense maps. The tensor must first be built,
+however, and on the largest parametric problems \texttt{COO} is the only \texttt{CVXPY} backend
+that manages to do so.

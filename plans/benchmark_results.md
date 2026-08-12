@@ -591,3 +591,33 @@ parameter-dependent coefficient entries.
   lowering cost), ConvexPlasticity and Murray (engine slower cold); CVaR and
   FactorCovarianceModel near parity.
 - §4.1 typo in the .tex: `\SI{24} GB` → `\SI{24}{\giga\byte}`.
+
+## 2026-08-11 — CPP no-DPP dashes were wrong; cells filled
+
+The `tab:param-cold` no-DPP CPP dashes for SimpleFullyParametrizedLP and ParametrizedQP
+did not hold up: they were a carry-over of DPP-path failures (the "ran past 240 s" note
+above concerns the CPP DPP-tensor compile, and pre-pinning "CPP" completions were silently
+COO). Pinned `canon_backend="CPP"` with `ignore_dpp=True` was never actually measured on
+these two problems — the 20260808 bigparam upstream run requested only
+COO_ND,SCIPY_ND,COO,CPP_DEFAULT,SCIPY.
+
+Measured live 2026-08-11 (.venv-upstream cvxpy 1.9.2, fresh process per shot, protocol of
+`_cold_compile`, single measurements consistent with the rows' dagger):
+- SimpleFullyParametrizedLP CPP_ND = 2.29 s (vs SCIPY_ND 2.16, COO_ND 2.22)
+- ParametrizedQP CPP_ND = 11.89 s (vs SCIPY_ND 9.68, COO_ND 10.76)
+Both now in `tab:param-cold`; ratios/geomean unchanged (best no-DPP backend is still
+SCIPY on both rows). Note today's environment ran ~4-10 % slower than the 20260808
+replicates on control problems (FactorCov CPP_ND 5.50 vs 5.32).
+
+The DPP-path dashes were re-verified the same day: CPP DPP on SimpleFullyParametrizedLP
+was SIGKILLed by the system (exit 137, OOM) after ~12 min, vs 2.29 s no-DPP. Chapter
+prose now states the 2400 s (40 min) per-problem limit of the harness instead of the
+77-minute anecdote.
+
+Addendum, same day: the two missing tensor re-solve cells in `tab:param-resolve` were also
+filled live (upstream venv, `dpp` strategy protocol: untimed warmup compile, then mean of 3
+re-solves with fresh parameter values): SimpleFullyParametrizedLP tensor = 0.261 s (vs
+diffengine 0.126, ratio 0.48), ParametrizedQP tensor = 1.485 s (vs 0.985, ratio 0.66). The
+tensor is the COO-built one (only backend that completes it); warmup colds 2.26 s / 10.86 s
+reproduce the table's COO DPP cells. ConvexPlasticity row removed from the re-solve table
+(not DPP, nothing to compare); headline updated to "faster on five of the seven".
