@@ -8,7 +8,8 @@ This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
 \texttt{CasADi} (\S\ref{sec:computing-derivatives}) to coefficient extraction in \texttt{AMPL}
 and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modelling languages all produce the
 same output as \texttt{CVXPY}, the solver problem data, but differ in the inputs they accept
-and in how they compute the coefficients. For example, \texttt{CasADi} accepts vectorized expressions as input, but differentiates
+and in how they compute the coefficients. For example, \texttt{CasADi} accepts vectorized expressions
+as input, but differentiates
 them through matrix-vector products, so the structure of the derivatives is never materialized
 and must be detected at runtime, over many sweeps of the expression graph.
 \texttt{AMPL} and \texttt{JuMP} let the user declare vectorized expressions but scalarize them
@@ -461,10 +462,11 @@ each nonzero with an explicit parameter index alongside its row and column.
 %  cvxcore: ", so the work of every operator grows with the number of parameter entries";
 %  SciPy: ", so every operation acts on a matrix whose row dimension is multiplied by the
 %  number of parameter entries";
-%  COO: ", so its cost follows the number of stored nonzeros and not the parameter count".
-%  Also trimmed the default-selection sentence: "When no backend is requested,
-%  \texttt{CVXPY} uses \texttt{cvxcore}, and selects \texttt{COO} for a DPP problem once
-%  the total parameter size reaches $1000$ entries.")
+%  COO: ", so its cost follows the number of stored nonzeros and not the parameter count".)
+% (default-selection sentence reinstated 2026-08-12: ch. 4 cut its Backend substitution
+%  paragraph and now references this passage.)
+When no backend is requested, \texttt{CVXPY} uses \texttt{cvxcore}, and substitutes
+\texttt{COO} for a DPP problem once the total parameter size reaches $1000$ entries.
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile a DPP problem ahead of
 time~\cite{schaller2022cvxpygen}. It generates C code specific to the problem family, with
 the entries of the cached maps \eqref{eq:param-maps} written into the source as constants,

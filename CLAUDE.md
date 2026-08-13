@@ -76,23 +76,10 @@ For thesis content, edit only:
 - When adding a new acronym, update **both** the `\begin{acronym}...\end{acronym}` block **and** the `longtable` in `4-Sigles_Abrev.tex` — they are not auto-synced.
 - `\include{}` adds a `\clearpage`; use `\input{}` for mid-chapter includes (e.g., `defs.tex`).
 
-## Front Matter Files
-
-These files are included via `Document.tex` but rarely need editing after initial setup:
-- `1-Dedicace.tex` — Dedication page
-- `2-Remerciements.tex` — Acknowledgements
-- `3-Resume_sujet.tex` — French abstract
-- `3-Abstract.tex` — English abstract
-
 ## Other Notes
 
-- All `.tex` files use UTF-8 encoding
 - `plans/` contains working notes and outline drafts (not compiled into the thesis)
 - `Document_bib_avec_explications_with_explanations.bib` — Annotated bib file with format examples (reference only, not used in compilation)
 - `images/` — Static images (prefer vector formats: EPS, SVG)
 - For end-of-line overflow caused by unrecognized words, use manual hyphenation hints: `sté\-réo\-pho\-ni\-que`
 - The document class is `book` with `letterpaper,12pt,oneside` options; toggle `draft`/`final` via `make draft`/`make final` (which edits line 1 of `Document.tex`)
-
-## Dependencies
-
-Required: pdflatex, bibtex, dia (for diagrams), gnuplot (for plots)
