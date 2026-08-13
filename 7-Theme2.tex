@@ -1,30 +1,31 @@
-\Chapter{BENCHMARK RESULTS}\label{sec:Theme2}
+\Chapter{RESULTS}\label{sec:Theme2}
 
-This chapter compares \texttt{diffengine}, the \texttt{CVXPY} canonicalization backend of
+This chapter compares \texttt{diffengine}, the canonicalization backend of
 Chapter~\ref{sec:Theme1} built on \texttt{SparseDiffEngine}, against \texttt{CVXPY}'s
 three existing backends: the default \texttt{cvxcore} backend (which we refer to as
-\texttt{CPP}) and the two pure-Python backends \texttt{SCIPY} and \texttt{COO}, all
-described in \S\ref{sec:matrix-stuffing}. The central question is whether the symbolic
-and numeric split of Chapter~\ref{sec:Theme1} can take the place of the
-parameter-to-data tensor on parametric problems. A second motivation is the state of
-\texttt{cvxcore} itself. It is the oldest of the backends and \texttt{CVXPY} has
-deprecated it, so the project needs a replacement. All four backends build the same
-problem data from the same expression trees. A replacement must build that data at least
-as fast.
+\texttt{CPP}) and the two Python backends \texttt{SCIPY} and \texttt{COO}, all
+described in \S\ref{sec:matrix-stuffing}. There are two main reasons for these comparisons.
+First, we want to know the relative benefit of our proposed symbolic and numeric split
+against the parameter-to-data tensor. Both approaches store results of the first
+canonicalization so that subsequent parameter updates are cheap.
+If the split matches the tensor's re-solve
+times at a lower upfront cost, building the tensor becomes harder to justify.
+Second, the \texttt{CVXPY} developers have deprecated \texttt{cvxcore} and plan
+to remove it from the library~\cite{zhang2026cvxpy}. It nevertheless remains the default
+backend, in part because neither Python backend has shown a decisive speedup on the first
+canonicalization. These comparisons allow us to assess whether
+\texttt{diffengine} could be a suitable replacement.
 
 We use the $25$ problems of \texttt{CVXPY}'s public benchmark suite
 \cite{cvxpybenchmarks}. The suite includes problems from portfolio selection, regression
 and classification, image inpainting, and many more applications in convex optimization.
 On parametric problems canonicalization follows either
-the \ac{DPP} path or the \texttt{ignore\_dpp} path of \S\ref{sec:ms-parameters}. We conduct numerical
-experiments on both. First, \S\ref{sec:bench-oneshot} compares the first
-canonicalization time of all $25$ problems on the \texttt{ignore\_dpp} path. Second,
+the \ac{DPP} path or the \texttt{ignore\_dpp} path, both described in
+\S\ref{sec:ms-parameters}. We conduct numerical experiments on both. \S\ref{sec:bench-oneshot} compares the first
+canonicalization time of all $25$ problems on the \texttt{ignore\_dpp} path.
 \S\ref{sec:bench-param} compares the parameter-to-data tensor against the symbolic and
-numeric split on the seven \ac{DPP} parametric problems.
+numeric split on the seven \ac{DPP} parametric problems of the suite.
 
-Each measurement runs \texttt{get\_problem\_data} once with
-\texttt{Clarabel}~\cite{clarabel} as the target solver. The method canonicalizes the
-problem for that solver and returns the resulting problem data without calling the solver.
 All measurements run single-threaded on a 2018 MacBook
 Pro with a 6-core Intel Core i7-8850H and \SI{16}{\giga\byte} of memory. \texttt{CVXPY}'s
 backends run on the released
@@ -33,6 +34,10 @@ available as a pull request:
 \begin{center}
   \url{https://github.com/cvxpy/cvxpy/pull/3448}
 \end{center}
+Each measurement runs \texttt{get\_problem\_data} once with
+\texttt{Clarabel}~\cite{clarabel} as the target solver. The method canonicalizes the
+problem and returns the resulting problem data without calling the solver. A time limit
+of \SI{20}{\minute} applies to each measurement.
 The benchmark scripts and all recorded timings are available at
 \begin{center}
   \url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
@@ -43,7 +48,7 @@ The benchmark scripts and all recorded timings are available at
 
 Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
 fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
-$0.37$, and on seventeen problems it is more than twice as fast as the best
+$0.37$, and on $17$ problems it is more than twice as fast as the best
 \texttt{CVXPY} backend. On the four problems where it is slower, canonicalization is
 dominated by moving large blocks of constant data into the problem matrices.
 
@@ -56,25 +61,26 @@ f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{
 \,\}\bigr|,
 \EEQ
 the minimum running over all four backends. \texttt{diffengine} is within $7\times$ of
-the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than two,
+the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than two problems,
 and each needs $\tau \approx 8$ to cover $88$--$96\%$ of the suite.
 
-The bottom panel of Figure~\ref{fig:profiles} reports the same profile for peak memory,
+Figure~\ref{fig:profiles} (bottom) reports the same profile for peak memory,
 with $t_{p,s}$ replaced by the growth of the process's peak resident memory during
 canonicalization, read with \texttt{getrusage}. \texttt{SCIPY} has the lowest peak memory on
-$16$ of the $25$ problems. On one problem \texttt{CVXPY}'s backends report zero growth, as canonicalization never
-pushes the process above the peak reached during setup; the ratio is undefined there and
-the problem is excluded. Over
-the remaining $24$ problems, \texttt{diffengine} matches \texttt{cvxcore} and
+$16$ of the $25$ problems. On one problem \texttt{CVXPY}'s backends report zero growth,
+as canonicalization never
+pushes the process above the peak reached while constructing the problem. The ratio is
+undefined there and the problem is excluded. Over
+the remaining $24$ problems, \texttt{diffengine} matches \texttt{CPP} and
 \texttt{COO} in geometric mean and uses about $1.5\times$ the memory of \texttt{SCIPY}.
-
+% TODO maybe need to change this once we add the sparse quad form path conversion.
 \begin{table}[htbp]
 \centering
-\caption[Canonicalization time on all problems]{Canonicalization time in seconds on all
-$25$ problems, every backend on the \texttt{ignore\_dpp} path, medians of three
-replications except where marked. Bold marks the fastest of the four backends on each
+\caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
+time in seconds on all $25$ problems. Entries are medians of
+three runs except where marked. Bold denotes the fastest of the four backends on each
 problem. The ratio is \texttt{diffengine} over the best of \texttt{CVXPY}'s three
-backends; the final row is the geometric mean of the per-problem ratios.}
+backends. The final row is the geometric mean of the per-problem ratios.}
 \label{tab:oneshot-compile}
 {\small
 \begin{tabular}{l r r r r r}
@@ -115,8 +121,8 @@ ConvexPlasticity            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  
 \end{tabular}}
 
 \vspace{0.5em}
-{\footnotesize $^\dagger$ Single measurement; all other rows are medians of three
-replications.}
+{\footnotesize $^\dagger$ denotes a single measurement. All other rows are medians of three
+runs.}
 \end{table}
 
 \begin{figure}[htbp]
@@ -133,26 +139,22 @@ memory (bottom) over all $25$ problems, every backend on the \texttt{ignore\_dpp
 \section{Parametric canonicalization}
 \label{sec:bench-param}
 
-\texttt{diffengine} builds no tensor. Its first canonicalization caches the sparsity
-patterns and intermediate allocations of the symbolic pass, and a parameter update
-re-runs only the numeric pass on the cached program. Table~\ref{tab:param-tensor}
-compares the two strategies on both workloads, the first canonicalization and the
-re-solve. \textsc{ConvexPlasticity} is not \ac{DPP} as the solving chain evaluates it
-and is excluded; its construction appears in Table~\ref{tab:oneshot-compile}, and its
-$6\times$ loss there stems from a sparse materialization defect discussed in
-\S\ref{sec:Limitations}.
+Table~\ref{tab:param-tensor} reports first canonicalization and re-solve times on the
+seven \ac{DPP} parametric problems. On the first
+canonicalization, each \texttt{CVXPY} backend runs the default path and also builds the
+parameter-to-data tensor. \texttt{diffengine} is the fastest on every problem, and among
+the \texttt{CVXPY} backends only \texttt{COO} completes the build on all seven. On a
+parameter update, the three \texttt{CVXPY} backends re-solve by applying the cached
+parameter map, so the tensor column is common to all three. \texttt{diffengine} re-runs the
+numeric pass.
 
 \begin{table}[htbp]
 \centering
 \caption[First canonicalization and re-solve on the parametric problems]{First
 canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric problems.
-The first canonicalization of each \texttt{CVXPY} backend runs the default path, which
-also builds the parameter-to-data tensor; a dash marks a build that did not complete.
-After a parameter update, the tensor column re-applies the cached tensor, built by
-whichever backend completes it, and \texttt{diffengine} re-runs the numeric pass. Bold
-marks the faster of the two; the ratio is \texttt{diffengine} over the tensor. Entries
-are medians of three replications except where marked; each re-solve averages three
-consecutive solves.}
+Entries are medians of three runs except where marked. Each re-solve averages three
+consecutive solves. A dash denotes a parameter map that did not finish building. Bold
+denotes the faster re-solve. The ratio is \texttt{diffengine} over the tensor parameter map.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -176,40 +178,52 @@ FactorCovarianceModel       &  5.12 &  4.25 &  4.76 & 0.87 & \textbf{0.141} & 0.
 \end{tabular}}
 
 \vspace{0.5em}
-{\footnotesize $^\dagger$ Single measurement; all other rows are medians of three
-replications.}
+{\footnotesize $^\dagger$ denotes a single measurement. All other rows are medians of three
+runs.}
 \end{table}
+
+On the two problems where the parameter map re-solves faster, the problem data is almost
+entirely constant and the parameters are a few scalars. A parameter update forces the
+numeric pass to recompute the entire constant part, which can be costly.
 
 \FloatBarrier
 
 \section{Discussion}
 \label{sec:bench-summary}
 
-% TODO(william): rewrite this opening paragraph. Cut 2026-08-13 (loss-shape clause moved
-% to §4.1; the rest cut at William's ask, he will rewrite). The cut points were:
-% margins widest where computing coefficients dominates (2 orders of magnitude extreme);
-% losses = one large constant block, atom structure buys nothing, same problems are the
-% peak-memory tail; SCIPY beats cvxcore on most problems, lowest peak memory of the four.
-\texttt{diffengine} is the fastest backend on the large majority of the suite, on
-parametric and non-parametric problems alike.
+This chapter compared the canonicalization backend of Chapter~\ref{sec:Theme1} against
+\texttt{CVXPY}'s three backends on the first canonicalization, and against the
+parameter-to-data tensor on parametric re-solves. The experiments support three
+observations.
+\begin{itemize}
+\item \texttt{diffengine} has the fastest first canonicalization on $21$ of the $25$
+problems, and on $17$ it is more than twice as fast as the best \texttt{CVXPY} backend
+(Table~\ref{tab:oneshot-compile}, Figure~\ref{fig:profiles}).
+\item Building the tensor adds a large surcharge to the first canonicalization, and only
+one of the three backends completes the build on all seven parametric problems. The
+split stores its cached program as a byproduct of the first canonicalization at no
+comparable cost (Table~\ref{tab:param-tensor}).
+\item Once built, applying the tensor is not decisively faster than re-running the
+numeric pass. The split re-solves faster on five of the seven problems, and the tensor
+keeps about a $2\times$ advantage where the problem data is almost entirely constant
+(Table~\ref{tab:param-tensor}).
+\end{itemize}
 
-The parametric results bear on the choice posed in \S\ref{sec:problem-statement}, between
-paying the tensor's upfront cost and repeating the full canonicalization at every solve.
-Building the tensor costs the dense-tensor backends far more than direct construction and
-fails outright at the largest parameter counts; only the coordinate-format tensor, which
-scales with the stored nonzeros rather than the parameter dimension
-(\S\ref{sec:bg-sparse}), builds at no extra cost, and this degradation is what the
-backend substitution of \S\ref{sec:ms-parameters} avoids. The symbolic and numeric split
-pays no comparable price; the cached program is a byproduct of the first canonicalization.
-Once built, re-applying the tensor is not decisively faster than re-running the numeric
-pass; it keeps a roughly $2\times$ advantage where the parameters enter as small dense
-maps and loses elsewhere.
+The tensor exists to amortize canonicalization, paying an upfront cost so that parameter
+updates are cheap. The results question both halves of that trade. The upfront cost is
+large and sometimes prohibitive, and the re-solve advantage it buys is mostly absent.
+Neither approach re-solves in time proportional to the size of the update. Applying the
+tensor is a product over the full problem data (\S\ref{sec:ms-parameters}), and the
+numeric pass re-evaluates the full cached program, so both scale with the problem rather
+than with the parameters. For a user who canonicalizes, solves, and re-solves under new
+parameter values, forming the tensor is mostly overkill. With \texttt{cvxcore} deprecated
+and no \texttt{CVXPY} backend decisively faster, these results make the split a candidate
+for the default path, with the tensor as an option rather than the default.
 
-The tensor makes the map from parameters to problem data an explicit affine object, and
-dependent packages consume that object directly: \texttt{cvxpylayers} differentiates
-through it \cite{agrawal2019dpp} and \texttt{CVXPYgen} writes it into generated C code
-\cite{schaller2022cvxpygen}. For a user who canonicalizes, solves, and re-solves under
-new parameter values, the explicit map buys little; on the observed results it is mostly
-overkill for standard parametric optimization. A direct extractor reaches the same
-problem data at a fraction of the first-solve cost, re-solves at a comparable or better
-rate, and applies unchanged to problems the \ac{DPP} ruleset rejects.
+The tensor still earns its cost beyond re-solving. It makes the map from parameters to
+problem data an explicit affine object, and dependent packages consume that object
+directly. \texttt{cvxpylayers} differentiates through it \cite{agrawal2019dpp} and
+\texttt{CVXPYgen} writes it into generated C code \cite{schaller2022cvxpygen}. Where
+those uses matter, or where nearly constant problem data meets many re-solves, building
+the tensor remains the right choice.
+
