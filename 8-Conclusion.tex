@@ -3,17 +3,23 @@
 %%
 %%  SYNTHESE DES TRAVAUX / SUMMARY OF WORKS
 %%
-\section{Summary of Works}
+\section{Summary}
 % TODO(read-through): unwritten; summarize the three intro contributions and the
-% cvxcore-only benchmark results (faster on 24/25 cold compiles, geometric mean 4.2x;
-% re-solve geomean ratio 0.78).
+% benchmark results vs all three CVXPY backends (fastest first canonicalization on 21/25,
+% geometric-mean ratio 0.37 vs best CVXPY backend; re-solve faster on 5/7 DPP problems,
+% geomean ratio 0.71 vs the tensor). State §4.3's outcomes as settled findings, one
+% sentence each (split as default on parametric problems; diffengine a suitable
+% replacement for deprecated cvxcore); do not re-argue them here.
+% should we try to bring back the tables which compare cvxpy against the other
+% modeling languages and also diffengine vs. the other sparse AD methods?
 %%
 %%  LIMITATIONS
 %%
 \section{Limitations}\label{sec:Limitations}
 % TODO(read-through): unwritten; candidates: DPP's cached tensor still wins on small dense
 % parameter maps (SVM, FactorCovariance), Python-side reductions dominate some problems
-% (ConvexPlasticity), benchmarks limited to one machine and one solver target.
+% (ConvexPlasticity), benchmarks limited to a single 25-problem suite, one machine, and
+% one solver target (the "first indication, not a verdict" caveat cut from §4.3 lives here).
 % Also: peak memory (measured by the same harness, not reported in ch. 4) does not follow
 % the timing results; diffengine is markedly heavier on several problems.
 
@@ -23,5 +29,7 @@
 \section{Future Research}
 % TODO(read-through): unwritten; include block-aware factorization (factorize directly from
 % the known permuted-dense blocks, skipping CSR conversion and the solver's structure
-% re-detection); optionally a qualitative positioning vs CasADi/AMPL/JuMP now that the
-% cross-system benchmarks are cut.
+% re-detection); a numeric pass that skips constant subtrees, making re-solve cost scale
+% with the update rather than the problem (§4.3 observes neither system achieves this;
+% staged plan in SparseDiffEngine/plan_resolve_constant_skip.md); optionally a qualitative
+% positioning vs CasADi/AMPL/JuMP now that the cross-system benchmarks are cut.

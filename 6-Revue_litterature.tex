@@ -420,7 +420,7 @@ parameter leaf by a constant holding its current value, and the resulting parame
 goes through the pass as if the problem had no parameters, as shown in
 Figure~\ref{fig:param-map-evalparams}. The result is the same objective data $\mvec{c}$ as in
 Figure~\ref{fig:param-map-dpp}, now obtained by repeating the whole matrix stuffing instead
-of applying the cached product $\mmat{Q}\gvec{\tilde\theta}$. The \texttt{ignore\_dpp} path is
+of applying the cached parameter map $\mmat{Q}\gvec{\tilde\theta}$. The \texttt{ignore\_dpp} path is
 more general, as it supports arbitrary functions of the parameters.
 
 \begin{figure}[htbp]
@@ -452,9 +452,9 @@ is repeated on the parameter-free tree on every change of the parameters.}
 they represent the parameter axis~\cite{cvxpydocs}:
 \begin{itemize}
 \item the C++ backend \texttt{cvxcore} keeps one sparse matrix per parameter slice and
-loops over the slices at every operator;
+loops over the slices at every operator.
 \item the \texttt{SciPy} backend stacks the slices vertically into a single strided
-two-dimensional sparse matrix;
+two-dimensional sparse matrix.
 \item the \texttt{COO} backend does not form the tensor explicitly, and instead stores
 each nonzero with an explicit parameter index alongside its row and column.
 \end{itemize}

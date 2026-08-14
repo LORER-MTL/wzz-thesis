@@ -4,9 +4,21 @@
 \chapter*{RÉSUMÉ}\thispagestyle{headings}
 \addcontentsline{toc}{compteur}{RÉSUMÉ}
 
-% TODO(read-through): template boilerplate; write the French résumé (it precedes the
-% English abstract in the compiled order).
-Le résumé est un bref exposé du sujet traité, des objectifs visés, des hypothèses émises, des méthodes expérimentales utilisées et de l'analyse des résultats obtenus. On y présente également les principales conclusions de la recherche ainsi que ses applications éventuelles. En général, un résumé ne dépasse pas trois pages.
-
-Le résumé doit donner une idée exacte du contenu du mémoire ou de la thèse. Ce ne peut pas être une simple énumération des parties du manuscrit. Le but est de présenter de façon précise et concise la nature, l’envergure de la recherche, les sujets traités, les questions de recherche ou les hypothèses soulevées, les méthodes utilisées, les principaux résultats ainsi que les conclusions retenues. Un résumé ne doit jamais comporter de références ou de figures. 
-
+Le sujet de ce mémoire est la compilation des problèmes d'optimisation convexe dans
+\texttt{CVXPY}, un langage de modélisation. L'utilisateur écrit son problème sous une forme
+proche des mathématiques et le langage le traduit en données numériques acceptées par un
+solveur. Le coût de cette compilation tient surtout à la construction des matrices creuses
+du problème à partir d'arbres d'expressions symboliques. Ces matrices correspondent à la
+jacobienne des contraintes et à la hessienne de l'objectif. Leur construction revient donc à
+un calcul de dérivées creuses. Nous proposons une nouvelle implémentation de la canonicalisation
+qui est basée sur \texttt{SparseDiffEngine}, une librairie C \emph{open source} qui forme les deux
+matrices directement à partir de la structure des expressions. 
+Le calcul se déroule en deux
+phases. La phase symbolique s'exécute une seule fois par famille de problèmes et détermine
+les structures creuses des matrices. La phase numérique remplit les valeurs à chaque résolution. Pour un
+problème paramétré, seule la phase numérique est répétée d'une résolution à l'autre. Cette
+approche constitue une solution de rechange à la mise en cache déjà offerte par
+\texttt{CVXPY} et ne limite pas la manière dont les paramètres interviennent dans le
+problème. Sur une suite de problèmes de référence, la première compilation est nettement
+plus rapide qu'avec les trois implémentations existantes de \texttt{CVXPY}, et résoudre de
+nouveau un problème paramétré prend un temps comparable.

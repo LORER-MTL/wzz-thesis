@@ -8,21 +8,19 @@
 %
 \begin{otherlanguage}{english}
 
-% TODO: draft the abstract. Intended opening (framing moved out of the introduction):
-% "Almost all of optimization practice can be divided into two activities, modelling and
-% solving." Modelling languages serve as the bridge between the two; crossing the bridge has a
-% cost, compilation (matrix stuffing in CVXPY); this thesis makes that crossing cheap by
-% computing the problem data as a sparse derivative, fast on first compile and cheap on
-% re-compiles.
-
-% TODO(read-through): body below is template boilerplate; replace with the real abstract
-% (opening already drafted in the comment above).
-Written in English, the abstract is a brief summary similar to the previous
-section {\selectlanguage{french}(Résumé)}. However, this section is not a
-word for word translation of the abstract in French.
-
-The abstract is a brief statement of the subject matter, objectives, research questions or hypotheses, experimental methods and analysis of results. It also presents the main research conclusions and their possible applications. In general, an abstract should not exceed three pages.
-
-The abstract should provide an exact idea of the thesis or dissertation’s contents and it cannot be a simple enumeration of the manuscript’s parts. The goal is to precisely and concisely present the nature and scope of the research. An abstract should never include references or figures. If the thesis or the dissertation is in English, the résumé (French-language abstract) should come first followed by the abstract.
+We present a new canonicalization backend for \texttt{CVXPY}, a modelling language for convex
+optimization. \texttt{CVXPY} compiles a problem written in a form close to the mathematics into
+the numerical data a solver accepts. Most of the cost of this compilation lies in converting
+symbolic expression trees into the sparse constraint and objective matrices. Since the
+constraint matrix is a Jacobian and the objective matrix is a Hessian, the conversion can be
+viewed as a sparse differentiation problem. Our backend is built on \texttt{SparseDiffEngine}, a
+lightweight open-source C library that computes both matrices directly from the expression
+structure. A symbolic pass runs once per problem family and determines the sparsity
+patterns of the matrices. A numeric pass fills in new values at every
+solve. Re-solving a parametrized problem therefore costs only one numeric pass. This split is an
+alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and it places no
+restriction on how the parameters enter the problem. We compare the backend with
+\texttt{CVXPY}'s three existing backends and show significant speedups on the first
+compilation and similar performance on re-solves of parametrized problems.
 
 \end{otherlanguage}
