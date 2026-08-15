@@ -115,7 +115,7 @@ Matrix stuffing computes the augmented matrix in one bottom-up pass over the
 tree. A variable leaf contributes an identity block and a constant leaf contributes its value
 to the last column, as shown in Figure~\ref{fig:matrix-stuffing}. An interior node with a
 single argument applies a constant linear operator $\mmat{L}$ to the argument, which has the affine form
-\eqref{eq:linop-form} with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$; applying $\mmat{L}$ gives
+\eqref{eq:linop-form} with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$. Applying $\mmat{L}$ gives
 \BEQ\label{eq:linop-chain-rule-unary}
 \begin{bmatrix} \mmat{A}_f & \mvec{b}_f \end{bmatrix}
   = \mmat{L} \begin{bmatrix} \mmat{A}_1 & \mvec{b}_1 \end{bmatrix}.
@@ -202,7 +202,7 @@ Matrix stuffing then runs bottom-up over the objective and the three constraint 
 shown in Figure~\ref{fig:matrix-stuffing}. Each leaf of $\mvec{x}$
 contributes an identity block of size $n$ at the column offset of $\mvec{x}$, and the constant
 leaf $\mvec{g}$ contributes its value to the last column. The interior nodes apply their
-operators to the matrices of their children; the product node $\mmat{F}\mvec{x}$, for example,
+operators to the matrices of their children. The product node $\mmat{F}\mvec{x}$, for example,
 multiplies the identity block of its argument by $\mmat{F}$. Finally, the root stacks the
 augmented matrices of its children at their constraint row offsets into $[\mmat{A}\ \mvec{b}]$.
 
@@ -474,7 +474,7 @@ so a re-solve applies the parameter maps in compiled code.
 
 The pass of this section produces the affine data $\mvec{c}$ and $[\mmat{A}\ \mvec{b}]$.
 For a quadratic objective, \texttt{CVXPY} replaces the affine argument of each quadratic
-atom by a new variable, adding the corresponding equality constraint; the objective becomes
+atom by a new variable, adding the corresponding equality constraint. The objective becomes
 a sum of quadratic forms with constant matrices. A second matrix stuffing pass then
 assembles these matrices into the diagonal blocks of the matrix $\mmat{P}$ of
 \eqref{e:quad-conic-form}~\cite{cvxpy2026source}.
@@ -492,9 +492,6 @@ Secondly, the canonicalization backends store dense constant matrices as sparse 
 When dense blocks appear in the problem data, they are both stored in an inconvenient format
 and computed without the optimized BLAS kernels of \S\ref{sec:bg-blas}.
 Our approach in Chapter~\ref{sec:Theme1} addresses these limitations.
-% TODO maybe add another limitation in that these backends are all tensor based
-% and that it can be expensive to compute.
-% (the example-after-this-section idea from this TODO was tried 2026-08-12 and reverted)
 %%
 %%  COMPUTING DERIVATIVES
 %%
@@ -663,7 +660,7 @@ perform the same computation.
 \caption[Accumulation by vertex elimination]{Accumulation of the Jacobian by vertex
 elimination, on the graph of Figure~\ref{fig:forward-sweep}. Eliminating the intermediate
 vertex $w$ connects each of its predecessors to each of its successors and multiplies the
-local derivatives along the path (in green); parallel edges, when they arise, are summed.
+local derivatives along the path (in green). Parallel edges, when they arise, are summed.
 Once every intermediate vertex is eliminated, the graph is bipartite and its edges are the
 entries of $\mmat{J}$.}
 \label{fig:vertex-elimination}
@@ -839,7 +836,7 @@ be exported as self-contained C code and compiled ahead of time for embedded app
 this section, and caches the pattern, the colouring, and the compiled derivative function
 across evaluations. Listing~\ref{lst:casadi-conic} rebuilds the conic-form trees of
 Figure~\ref{fig:conic-form-tree}, obtained after canonicalization, as \texttt{MX}
-expressions; differentiating them recovers the problem data that matrix stuffing assembles
+expressions. Differentiating them recovers the problem data that matrix stuffing assembles
 in \S\ref{sec:ms-example}.
 \begin{lstlisting}[language=Python, caption={The conic form of the running example in
 \texttt{CasADi}.}, label=lst:casadi-conic]
@@ -854,9 +851,9 @@ b = cs.substitute(expr, z, 0)               # the vector b
 c = cs.gradient(t1 + mu * t2, z)            # the objective vector c
 \end{lstlisting}
 The Jacobian with respect to the stacked variable $\mvec{z}$ recovers the matrix $\mmat{A}$
-of Figure~\ref{fig:matrix-stuffing} entry by entry; differentiation is the equivalent of matrix
-stuffing, with the coefficients obtained by those sweeps rather than by a bottom-up pass
-over the tree. The parameters remain symbols, so $\mvec{b}$ and $\mvec{c}$
+of Figure~\ref{fig:matrix-stuffing} entry by entry. Sparse differentiation is the equivalent of
+the matrix stuffing of \S\ref{sec:matrix-stuffing}, with the coefficients obtained by these
+sweeps rather than by a bottom-up pass over the tree. The parameters remain symbols, so $\mvec{b}$ and $\mvec{c}$
 are expressions of $\mvec{g}$ and $\mu$, re-evaluated for each parameter value. This is how
 the \texttt{qpsol} interface builds its problem data internally, for problems with a
 quadratic objective and affine constraints. A model written at the same high level as in

@@ -33,10 +33,10 @@ and updates the problem data through it.
 
 \texttt{SparseDiffEngine} is a small C library which is around seventeen thousand lines
 of code (and a similar number of lines for the test suite).
-The expression node is defined in \texttt{expr.h}; atoms that carry extra data, such as
+The expression node is defined in \texttt{expr.h}. Atoms that carry extra data, such as
 the exponent of a power, define a larger structure in \texttt{subexpr.h}.
 Each atom is implemented in its own file in the \texttt{atoms/}
-directory; there are around forty-five of them, divided into six subdirectories based on their
+directory. There are around forty-five of them, divided into six subdirectories based on their
 mathematical properties.
 The matrix data structures and the computational kernels that operate on them are in
 \texttt{utils/}, and \texttt{problem.c} collects the objective and constraints of a
@@ -765,7 +765,7 @@ its lower triangle is passed to the solver.
 \caption{The Jacobians of three constraint trees stack into the global constraint
 Jacobian. The row pointer array~\texttt{p} concatenates the pointers of the trees,
 shifted by the nonzeros of the blocks before them. The numeric pass copies the values of
-each tree into its slice of the value array~\texttt{x}; the second tree is affine, so the
+each tree into its slice of the value array~\texttt{x}. The second tree is affine, so the
 copy is skipped after the first evaluation.}
 \label{fig:jacobian-stacking}
 \end{figure}

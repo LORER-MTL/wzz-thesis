@@ -57,7 +57,7 @@ constraint functions $g_1,\ldots,g_{m_2} : \reals^n \times \reals^p \to \reals$ 
 \cite{boyd2004convex}.
 The parameter $\gvec{\theta} \in \reals^p$ specifies data that can change between solves but is fixed
 and given when solving an instance of the problem. We call the parametrized problem \eqref{e:parametric-family}
-a problem family; for a fixed value of $\gvec{\theta}$, we call it a problem instance.
+a problem family. For a fixed value of $\gvec{\theta}$, we call it a problem instance.
 
 % \paragraph{Quadratic conic form.}  (heading removed per advisor; kept for reference)
 Canonicalization converts the high-level description \eqref{e:parametric-family} to a
@@ -117,8 +117,8 @@ and their derivatives from this file inside the solver process \cite{gay1997hook
 among other formats, though it generally writes them more slowly than the \texttt{AMPL}
 translator.
 
-On the other hand, \texttt{JuMP} has no single standard form to target;
-it decouples modeller and solver through \ac{MOI}, a typed in-memory interface
+On the other hand, \texttt{JuMP} has no single standard form to target.
+It decouples modeller and solver through \ac{MOI}, a typed in-memory interface
 \cite{legat2020mathoptinterface}.
 The model is built constraint by constraint, and each constraint stores its coefficients directly,
 so extraction reduces to copying them into the format of the chosen solver.
@@ -266,13 +266,13 @@ second-order, power, exponential, and positive semidefinite cones.
 % \paragraph{Conic reformulation.}  (heading removed per advisor; kept for reference)
 Every nonlinear atom is rewritten into conic constraints in three steps.
 The first step rewrites the problem into \emph{Smith form}, where each
-nonlinear atom is replaced by a new variable coupled with an equality constraint; every atom
+nonlinear atom is replaced by a new variable coupled with an equality constraint. Every atom
 then acts only on affine arguments \cite{smith1996}.
 For a convex atom $\phi$, the Smith form gives an auxiliary variable $t \in \reals$ with the
 equality constraint $\phi(\mvec{x}) = t$. The second step relaxes this equality to the
 inequality $\phi(\mvec{x}) \le t$.
 The DCP rules allow a convex atom only where its value is minimized or upper-bounded, so the solver
-always prefers $t$ as small as possible; the relaxation is therefore lossless.
+always prefers $t$ as small as possible. The relaxation is therefore lossless.
 The pair $(\mvec{x}, t)$ then lies in the \emph{epigraph}
 $\{(\mvec{x}, t) \in \reals^n \times \reals : \phi(\mvec{x}) \le t\}$ of $\phi$, so we
 often refer to $t$ as an epigraph variable.
@@ -316,7 +316,7 @@ parameter support grew into DPP, a restricted grammar
 under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
 
 The open source project has since grown through contributions from many other enthusiastic
-developers; a recent paper surveys the new canonicalization and modelling features
+developers. A recent paper surveys the new canonicalization and modelling features
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 % \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
@@ -354,7 +354,7 @@ We consider the following simple fitting with regularization problem
 % element-wise >=, and \succeq is reserved for PSD or general cone orders.
 with variable $\mvec{x} \in \reals^n$, fixed problem data $\mmat{F}\in \reals^{m\times n}$, and
 parameters
-$\mvec{g}\in \reals^m$ and $\mu \geq 0$; the constraint $\mvec{x} \ge 0$ requires every entry of
+$\mvec{g}\in \reals^m$ and $\mu \geq 0$. The constraint $\mvec{x} \ge 0$ requires every entry of
 $\mvec{x}$ to be nonnegative.
 The problem formulation in \texttt{CVXPY} code is
 \begin{lstlisting}[language=Python, caption={The running example \eqref{eq:example} in
@@ -432,7 +432,7 @@ Figure~\ref{fig:conic-form-tree} shows the effect of canonicalization: the nonli
 have been replaced by epigraph variables, leaving affine expression trees in the variables,
 which we call the conic-form trees of the problem.
 The three rows of \eqref{eq:graph} remain three separate cone constraints, each carrying the
-affine expressions that must lie in its cone; Figure~\ref{fig:conic-form-tree} accordingly shows
+affine expressions that must lie in its cone. Figure~\ref{fig:conic-form-tree} accordingly shows
 one expression tree per constraint, rather than a single combined tree.
 
 \begin{figure}[htbp]
@@ -494,7 +494,7 @@ one expression tree per constraint, rather than a single combined tree.
 \caption{After canonicalization. \texttt{CVXPY} represents the conic form~\eqref{eq:graph} as
 these expression trees: the nonlinear norm atoms have become epigraph variables, leaving the objective
 and the three separate cone constraints affine. The variable $\mvec{x}$ appears as a leaf of several
-trees; all occurrences refer to the same variable.}
+trees. All occurrences refer to the same variable.}
 \label{fig:conic-form-tree}
 \end{figure}
 
@@ -798,7 +798,7 @@ The CSC arrays of a matrix read exactly as the CSR arrays of its transpose, so t
 is a conversion between the two formats, computable without sorting in one counting pass over
 the nonzeros \cite{gustavson1978two}.
 Accessing a column of a CSR matrix instead requires a scan of every row, so algorithms
-that read columns prefer CSC; direct methods for sparse linear systems are the
+that read columns prefer CSC. Direct methods for sparse linear systems are the
 standard example \cite{davis2006direct}.
 
 % \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
@@ -899,14 +899,14 @@ We make the following contributions:
   sparse Jacobians and Hessians directly from the expression structure, with no sparsity
   detection or graph colouring.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
-  \texttt{SparseDiffEngine}; this backend avoids the large upfront cost of the parameter tensor
+  \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.
   \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
   backends.
 \end{enumerate}
 All code contributions are open source and available at
 \begin{center}
-\url{https://github.com/SparseDifferentiation/SparseDiffengine} \\
+\url{https://github.com/SparseDifferentiation/SparseDiffEngine} \\
 \url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
 \end{center}
 
@@ -916,5 +916,5 @@ the problem data.
 In Chapter~\ref{sec:Theme1} we present an overview of the main data structures and
 algorithms in \texttt{SparseDiffEngine} as well as its interface in \texttt{CVXPY}.
 Finally, Chapter~\ref{sec:Theme2} benchmarks this engine against \texttt{CVXPY}'s three
-canonicalization backends, and finally, we conclude with a summary of our contributions
+canonicalization backends, and we conclude with a summary of our contributions
 and future improvements in Chapter~\ref{sec:Conclusion}.
