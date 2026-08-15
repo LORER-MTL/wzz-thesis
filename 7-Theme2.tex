@@ -143,11 +143,12 @@ memory (bottom) over all $25$ problems, every backend on the \texttt{ignore\_dpp
 Table~\ref{tab:param-tensor} reports first canonicalization and re-solve times on the
 seven \ac{DPP} parametric problems. On the first
 canonicalization, each \texttt{CVXPY} backend runs the \ac{DPP} path and also builds the
-parameter-to-data tensor. \texttt{diffengine} is the fastest on every problem, and among
-the \texttt{CVXPY} backends only \texttt{COO} builds the tensor on all seven. On a
+parameter-to-data tensor. \texttt{diffengine} instead runs its symbolic pass and one
+numeric pass. It has the fastest first canonicalization on every problem, and among
+the \texttt{CVXPY} backends only \texttt{COO} is able to build the tensor on all seven. On a
 parameter update, the three \texttt{CVXPY} backends re-solve by applying the cached
-parameter map, so the tensor column is common to all three. \texttt{diffengine} re-runs
-the numeric pass on its cached program and makes no use of the \ac{DPP} ruleset.
+parameter map, so the tensor column is common to all three. \texttt{diffengine} instead
+re-runs the numeric pass on its cached program and makes no use of the \ac{DPP} ruleset.
 
 \begin{table}[htbp]
 \centering
@@ -192,19 +193,38 @@ numeric pass to recompute the entire constant part, which can be costly.
 \section{Discussion}
 \label{sec:bench-summary}
 
-This chapter measured the cost of canonicalization in \texttt{CVXPY}. The experiments
-compared \texttt{diffengine} against the three existing backends on the first
-canonicalization, and its numeric pass against the parameter-to-data tensor on
-parameter updates. We draw three observations:
+The benchmark experiments in this chapter lead us to make the following three observations:
 \begin{itemize}
-\item Caching canonicalization is not limited to the \ac{DPP} ruleset.
-Table~\ref{tab:param-tensor} shows that it is possible to cache without depending on
-the ruleset, so arbitrary nonlinear functions of the parameters can appear in a problem
-and still be cached by \texttt{diffengine}.
-\item The tensor rarely pays for its construction. The build is costly and does not
-always complete, and applying it is no faster than re-running the numeric pass on most
-problems (Table~\ref{tab:param-tensor}).
-\item \texttt{diffengine} shows a decisive speedup on the first canonicalization and is
-a suitable replacement for the deprecated
-\texttt{cvxcore} (Table~\ref{tab:oneshot-compile}, Figure~\ref{fig:profiles}).
+\item Caching canonicalization is not limited to the \ac{DPP} ruleset, since \texttt{diffengine}
+does not require it.
+\item The tensor approach requires a large upfront cost which is no longer always justifiable
+(Table~\ref{tab:param-tensor}).
+\item \texttt{diffengine} canonicalizes faster than \texttt{cvxcore} on 24 of the 25
+problems (Table~\ref{tab:oneshot-compile}, Figure~\ref{fig:profiles}).
 \end{itemize}
+
+Traditionally, \texttt{CVXPY} has relied on \ac{DPP} to guarantee a meaningful
+speedup between the first and subsequent solves of a parametric problem.
+If a problem does not conform to the \ac{DPP} grammar, users have to either attempt
+one of many possible reformulations or accept that every subsequent canonicalization
+will cost the same as the first. In addition, even if the problem conforms to the grammar,
+forming the tensor is sometimes prohibitive, especially for large-scale problems.
+Our first two observations challenge this tradition and suggest that \ac{DPP} should be
+used more carefully, for problems that are re-solved enough times or for applications
+built on downstream packages that depend on the tensor (for example,
+\texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}).
+With our approach, a similar speedup can be obtained through the symbolic and numeric split
+without enforcing any rules about how parameters appear in the problem formulation.
+
+In addition, the second and third observations suggest that \texttt{diffengine} can 
+become the new default backend of \texttt{CVXPY}. Canonicalization is faster on nearly
+every benchmark problem, on both the first and subsequent canonicalizations, so there is
+little reason to use \texttt{cvxcore} in the future.
+For many practical reasons, this will take a tremendous amount of work and communication
+with the rest of the developers and maintainers of \texttt{CVXPY}. We discuss these
+next steps and the roadmap of future work in \S\ref{sec:FutureResearch}.
+Finally, although the results are promising, \texttt{diffengine} has some downsides. Its peak
+memory is higher on several problems, and its re-solve requires the cached program to stay in
+memory. The benchmark suite also covers only a subset of possible optimization problems, and
+more experiments would be needed to validate these observations further. We talk about these
+limitations in \S\ref{sec:Limitations}.
