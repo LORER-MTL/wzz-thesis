@@ -8,10 +8,9 @@ This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
 \texttt{CasADi} (\S\ref{sec:computing-derivatives}) to coefficient extraction in \texttt{AMPL}
 and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modelling languages all produce the
 same output as \texttt{CVXPY}, the solver problem data, but differ in the inputs they accept
-and in how they compute the coefficients. For example, \texttt{CasADi} accepts vectorized expressions
-as input, but differentiates
-them through matrix-vector products, so the structure of the derivatives is never materialized
-and must be detected at runtime, over many sweeps of the expression graph.
+and in how they compute the coefficients. For example, \texttt{CasADi} accepts vectorized
+expressions as input, but differentiates them through matrix-vector products, so the structure
+of the derivatives must be detected at runtime, over many sweeps of the expression graph.
 \texttt{AMPL} and \texttt{JuMP} let the user declare vectorized expressions but scalarize them
 when processing the data into coefficients.
 The canonicalization backends of \texttt{CVXPY}, in contrast, keep the expressions
@@ -890,17 +889,19 @@ planning, scheduling, logistics, and energy systems. A model is written declarat
 to its mathematical statement, from sets, indexed parameters, indexed variables, and algebraic
 expressions over them. Data is supplied separately, so one model can be used for
 many problem instances.
-Models are written in the \texttt{AMPL} language itself or built through its Python
+The name \texttt{AMPL} denotes both the modelling language and the commercial system that
+processes it. Models are written in the language directly or built through its Python
 interface~\cite{amplpy}, and reach a large collection of commercial and open-source solvers
-through a
-single instance format.
+through a single instance format.
 
-The translator runs as its own process. It parses the model and the data, instantiates every
-constraint, and writes the resulting instance to a~\texttt{.nl} file~\cite{gay2005writing}.
-Each solver is reached through a driver, a separate executable that reads the~\texttt{.nl} file
-and calls the solver. A driver is built on one of two libraries that supply the reader and the
-expression handling. The \ac{ASL} is the original, a C library that parses the \texttt{.nl}
-format and evaluates the expressions it holds~\cite{gay1997hooking}. \texttt{MP} is the newer
+The system splits the work between two programs, which the \texttt{AMPL} documentation calls
+the translator and the driver. The translator runs as its own process. It parses the model and
+the data, expands every indexed declaration into individual variables and constraints with
+numeric coefficients, and writes the result to a~\texttt{.nl} file~\cite{gay2005writing}.
+The driver is a separate executable that reads the~\texttt{.nl} file
+and calls the solver, and each solver is reached through its own driver.
+A driver is built on one of two libraries. The \ac{ASL} is the original, a C library that
+parses the \texttt{.nl} format and evaluates the expressions it holds~\cite{gay1997hooking}. \texttt{MP} is the newer
 one, which AMPL supplies for solvers that need no derivatives~\cite{mpdocs}. This division
 between a translator that writes an instance and a driver that reads it still defines how most
 solvers receive nonlinear problems.
@@ -914,7 +915,8 @@ alongside the bounds and the nonzero counts of the instance. Only the nonlinear 
 as expression graphs, written in prefix notation~\cite{gay2005writing}.
 
 The language has no norm atom and no canonicalization step, so the norms of
-\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives depends on its driver. An \texttt{MP}-based driver rewrites
+\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives depends on its driver.
+An \texttt{MP}-based driver rewrites
 the two norms into second-order cones for a conic solver, and an ASL-based driver passes on a
 general nonlinear program. Listing~\ref{lst:ampl-example} states the model.
 \begin{lstlisting}[language=Ampl, caption={The running example \eqref{eq:example} in
@@ -1031,3 +1033,16 @@ are computed by sparse AD. The MOI representation is general, and a new problem 
 a new function or set rather than as a change to the interface. However, vectorized expressions
 written in the model are stored as scalar coefficients, and each is expanded into one term per
 nonzero as the macro runs.
+
+%%
+%%  CHAPTER SYNTHESIS
+%%  (replaces the §2.4 Research gap section of 2026-08-19; cut text in
+%%   plans/research_gap_cut.md; advisor comment 17, rebuttal R1)
+The systems of this chapter obtain the same object, the coefficient matrices of an optimization
+problem, from three starting points. The backends of \S\ref{sec:matrix-stuffing} canonicalize
+expression trees and cache a parameter-to-data tensor. The methods of
+\S\ref{sec:computing-derivatives} treat the problem as an arbitrary program, detect the sparsity
+of its derivatives, and recover the matrices by seed sweeps. \texttt{AMPL} and \texttt{JuMP}
+store the coefficients as the user declares them, so no extraction step remains. The next
+chapter presents an engine that extracts the coefficients from the expression trees themselves,
+in a symbolic pass and a numeric pass.
