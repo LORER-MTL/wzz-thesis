@@ -4,21 +4,22 @@
 \chapter*{RÉSUMÉ}\thispagestyle{headings}
 \addcontentsline{toc}{compteur}{RÉSUMÉ}
 
-Le sujet de ce mémoire est la compilation des problèmes d'optimisation convexe dans
-\texttt{CVXPY}, un langage de modélisation. L'utilisateur écrit son problème sous une forme
-proche des mathématiques et le langage le traduit en données numériques acceptées par un
-solveur. Le coût de cette compilation tient surtout à la construction des matrices creuses
-du problème à partir d'arbres d'expressions symboliques. Ces matrices correspondent à la
-jacobienne des contraintes et à la hessienne de l'objectif. Leur construction revient donc à
-un calcul de dérivées creuses. Nous proposons une nouvelle implémentation de la canonicalisation
-qui est basée sur \texttt{SparseDiffEngine}, une librairie C \emph{open source} qui forme les deux
-matrices directement à partir de la structure des expressions. 
-Le calcul se déroule en deux
-phases. La phase symbolique s'exécute une seule fois par famille de problèmes et détermine
-les structures creuses des matrices. La phase numérique remplit les valeurs à chaque résolution. Pour un
-problème paramétré, seule la phase numérique est répétée d'une résolution à l'autre. Cette
-approche constitue une solution de rechange à la mise en cache déjà offerte par
-\texttt{CVXPY} et ne limite pas la manière dont les paramètres interviennent dans le
-problème. Sur une suite de problèmes de référence, la première compilation est nettement
-plus rapide qu'avec les trois implémentations existantes de \texttt{CVXPY}, et résoudre de
-nouveau un problème paramétré prend un temps comparable.
+Les langages de modélisation pour l'optimisation convexe permettent d'écrire un problème sous une
+forme proche des mathématiques. Ils le compilent ensuite en données numériques acceptées par un
+solveur. Dans \texttt{CVXPY}, un langage de modélisation largement utilisé, la majorité du temps
+de compilation sert à construire les matrices creuses du problème à partir d'arbres d'expressions
+symboliques. Ces matrices correspondent à la jacobienne des contraintes et à la hessienne de
+l'objectif. Leur construction revient donc à un calcul de dérivées creuses. Nous présentons
+\texttt{SparseDiffEngine}, une librairie C \emph{open source} qui forme la jacobienne et la
+hessienne directement à partir de la structure des expressions. Le calcul se déroule en deux
+phases. La phase symbolique s'exécute une seule fois par problème et détermine les structures
+creuses des matrices. La phase numérique remplit ensuite les valeurs dans ces structures fixes à
+chaque résolution. Pour un problème paramétrique, seule la phase numérique est répétée d'une
+résolution à l'autre. À l'aide de \texttt{SparseDiffEngine}, nous implémentons une nouvelle façon
+de former les données numériques dans \texttt{CVXPY}. Cette approche est une alternative à la mise
+en cache déjà offerte par \texttt{CVXPY} et ne limite pas la manière dont les paramètres
+apparaissent dans le problème. Nous comparons cette nouvelle approche aux trois implémentations
+actuelles de \texttt{CVXPY} sur une suite publique de $25$ problèmes de référence. La première
+compilation est la plus rapide sur $21$ des $25$ problèmes, avec une accélération d'un facteur
+$2{,}8$ en moyenne géométrique par rapport à la meilleure des trois. Résoudre de nouveau un
+problème paramétrique prend un temps comparable à celui de la mise en cache de \texttt{CVXPY}.
