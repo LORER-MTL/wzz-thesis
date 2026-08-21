@@ -356,7 +356,7 @@ with variable $\mvec{x} \in \reals^n$, fixed problem data $\mmat{F}\in \reals^{m
 parameters
 $\mvec{g}\in \reals^m$ and $\mu \geq 0$. The constraint $\mvec{x} \ge 0$ requires every entry of
 $\mvec{x}$ to be nonnegative.
-The problem formulation in \texttt{CVXPY} code is
+Listing~\ref{lst:cvxpy-example} states the problem in \texttt{CVXPY} code.
 \begin{lstlisting}[language=Python, caption={The running example \eqref{eq:example} in
 \texttt{CVXPY}.}, label=lst:cvxpy-example]
 import cvxpy as cp
@@ -368,7 +368,7 @@ mu = cp.Parameter(nonneg=True)
 objective = cp.Minimize(cp.norm(F @ x - g) + mu * cp.norm(x))
 prob = cp.Problem(objective, [x >= 0])
 \end{lstlisting}
-where we also use the numerical computation library \texttt{NumPy} \cite{numpy} for
+The listing also uses the numerical computation library \texttt{NumPy} \cite{numpy} for
 the data arrays. The expression tree representation of the problem
 is shown in Figure~\ref{fig:dcp-expression-tree}.
 
@@ -755,15 +755,15 @@ For example, the matrix
   0 & 5 & 6 & 0\\
   \end{bmatrix}
 \EEQ
-can be represented in coordinate format as
+is stored in coordinate format as in Listing~\ref{lst:coo-format}, where we use
+zero-based indexing and array declaration notation from the C programming
+language \cite{Kernighan1988}.
 \begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in coordinate
 format.}, label=lst:coo-format]
 int    rows[] = {0,  1,  1,  1,  2,  2};
 int    cols[] = {1,  0,  2,  3,  1,  2};
 double vals[] = {1,  2,  3,  4,  5,  6};
 \end{lstlisting}
-where we use zero-based indexing and array declaration notation from the C programming
-language \cite{Kernighan1988}.
 The coordinate format is the easiest to understand and form, but it is not effective for most
 operations on sparse matrices.
 The compressed sparse row (CSR) format is commonly used instead.
@@ -772,16 +772,15 @@ The compressed sparse row (CSR) format is commonly used instead.
 The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
 a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
 The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
-For example, the matrix in \eqref{eq:sparse-matrix}
-can be represented in CSR format as
+For example, Listing~\ref{lst:csr-format} represents the matrix \eqref{eq:sparse-matrix} in
+CSR format, where we deliberately format \texttt{idxptr} to align with the start of each
+row in the \texttt{cols} arrays.
 \begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in CSR
 format.}, label=lst:csr-format]
 int  idxptr[] = {0,  1,          4,      6};
 int    cols[] = {1,  0,  2,  3,  1,  2};
 double vals[] = {1,  2,  3,  4,  5,  6};
 \end{lstlisting}
-where we deliberately format \texttt{idxptr} to align with the start of each
-row in the \texttt{cols} arrays.
 The benefits of the CSR format are more than a reduced size of the \texttt{idxptr} array
 compared to the \texttt{rows} array.
 In the CSR format, accessing a row takes constant time and is very cache-friendly

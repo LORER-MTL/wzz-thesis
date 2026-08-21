@@ -453,10 +453,13 @@ they represent the parameter axis~\cite{cvxpydocs}:
 \begin{itemize}
 \item the C++ backend \texttt{cvxcore} keeps one sparse matrix per parameter slice and
 loops over the slices at every operator.
-\item the \texttt{SciPy} backend stacks the slices vertically into a single strided
-two-dimensional sparse matrix.
+\item the \texttt{SCIPY} backend stacks the slices vertically into a single strided
+two-dimensional sparse matrix. The backend is named after the \texttt{scipy.sparse}
+library that holds the matrix.
 \item the \texttt{COO} backend does not form the tensor explicitly, and instead stores
-each nonzero with an explicit parameter index alongside its row and column.
+each nonzero with an explicit parameter index alongside its row and column. The backend is
+named after the coordinate format of \S\ref{sec:bg-sparse}, which it extends with the
+parameter index.
 \end{itemize}
 % (per-backend cost clauses trimmed 2026-08-12, revisit later:
 %  cvxcore: ", so the work of every operator grows with the number of parameter entries";
@@ -873,7 +876,7 @@ each objective and constraint as a sum of terms, and the coefficient of every li
 quadratic term is stored as it is typed. Neither language has an atom library or a
 canonicalization step, so a nonlinear expression such as a norm is left to the solver
 (\texttt{AMPL}) or written in conic form by the user (\texttt{JuMP}). In place of
-differentiation, \texttt{AMPL} writes the stored coefficients to a \texttt{.nl} file that the
+differentiation, \texttt{AMPL} writes the stored coefficients to a~\texttt{.nl} file that the
 solver parses, and \texttt{JuMP} keeps them as typed in-memory term lists that are copied to
 the solver.
 
@@ -893,8 +896,8 @@ through a
 single instance format.
 
 The translator runs as its own process. It parses the model and the data, instantiates every
-constraint, and writes the resulting instance to a \texttt{.nl} file~\cite{gay2005writing}.
-Each solver is reached through a driver, a separate executable that reads the \texttt{.nl} file
+constraint, and writes the resulting instance to a~\texttt{.nl} file~\cite{gay2005writing}.
+Each solver is reached through a driver, a separate executable that reads the~\texttt{.nl} file
 and calls the solver. A driver is built on one of two libraries that supply the reader and the
 expression handling. The \ac{ASL} is the original, a C library that parses the \texttt{.nl}
 format and evaluates the expressions it holds~\cite{gay1997hooking}. \texttt{MP} is the newer
@@ -910,10 +913,10 @@ The linear part of each record is an explicit list of (variable, coefficient) pa
 alongside the bounds and the nonzero counts of the instance. Only the nonlinear parts are kept
 as expression graphs, written in prefix notation~\cite{gay2005writing}.
 
-The language has no norm atom and no canonicalization step, so the norms of problem
+The language has no norm atom and no canonicalization step, so the norms of
 \eqref{eq:example} are entered as square roots of sums of squares. What the solver receives depends on its driver. An \texttt{MP}-based driver rewrites
 the two norms into second-order cones for a conic solver, and an ASL-based driver passes on a
-general nonlinear program.
+general nonlinear program. Listing~\ref{lst:ampl-example} states the model.
 \begin{lstlisting}[language=Ampl, caption={The running example \eqref{eq:example} in
 \texttt{AMPL}.}, label=lst:ampl-example]
 param m; param n;
@@ -925,8 +928,8 @@ minimize obj:
     sqrt(sum {i in 1..m} (sum {j in 1..n} F[i,j]*x[j] - g[i])^2)
   + mu * sqrt(sum {j in 1..n} x[j]^2);
 \end{lstlisting}
-For an instance with $m = 3$, $n = 2$, and $\mu = 0.1$, the translator writes the following
-\texttt{.nl} file. The comments are added by hand to make the
+For an instance with $m = 3$, $n = 2$, and $\mu = 0.1$, the translator writes the
+\texttt{.nl} file of Listing~\ref{lst:nl-file}. The comments are added by hand to make the
 records readable and are not written by the translator.
 \begin{lstlisting}[language={}, caption={An abbreviated \texttt{.nl} file for an instance
 of the running example.}, label=lst:nl-file]
@@ -954,7 +957,8 @@ coefficient lists.
 Inside the driver, the bounds and the linear coefficient lists are read directly from the file,
 at a cost linear in the number of nonzeros, and only the nonlinear parts are rebuilt as
 expression graphs. What happens to those graphs depends on the library. \texttt{MP} matches
-second-order and exponential cones in the rebuilt graphs. A conic solver such as Gurobi or
+the second-order and exponential cones of \S\ref{sec:bg-canonicalization} in the rebuilt
+graphs. A conic solver such as Gurobi or
 MOSEK then receives cone constraints rather than the square roots the model states. ASL instead
 differentiates the graphs by reverse-mode AD~\cite{gay1991automatic},
 with sparse Hessians assembled from partial separability~\cite{gay1996more}.
@@ -989,7 +993,7 @@ of \S\ref{sec:bg-canonicalization}. MOI also supports other sets, such as integr
 special ordered sets, and indicator constraints~\cite{moidocs}.
 
 The user declares the epigraph variables and cone memberships of \eqref{eq:graph}
-directly.
+directly, as in Listing~\ref{lst:jump-example}.
 \begin{lstlisting}[caption={The running example \eqref{eq:example} in \texttt{JuMP}.},
 label=lst:jump-example]
 using JuMP
@@ -1000,13 +1004,13 @@ model = Model()
 @constraint(model, [t2; x] in SecondOrderCone())
 @objective(model, Min, t1 + mu * t2)
 \end{lstlisting}
-The first cone constraint is stored as
+The first cone constraint is stored as shown in Listing~\ref{lst:moi-storage}.
 \begin{lstlisting}[caption={The first cone constraint as stored by \texttt{MOI}.},
 label=lst:moi-storage]
 VectorAffineFunction([(1, 1.0, t1), (2, F[1,1], x[1]), ...],
                      [0.0, -g[1], ..., -g[m]])   in   SecondOrderCone(m + 1)
 \end{lstlisting}
-and the expression itself is not retained after the macro returns.
+The expression itself is not retained after the macro returns.
 
 When the model is passed to a solver, MOI copies each constraint into the solver's own
 representation with a \texttt{copy\_to} function.

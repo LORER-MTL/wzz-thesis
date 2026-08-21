@@ -53,7 +53,7 @@ $0.37$, and on $17$ problems it is more than twice as fast as the best
 \texttt{CVXPY} backend. On the four problems where it is slower, canonicalization is
 dominated by moving large blocks of constant data into the problem matrices.
 
-Figure~\ref{fig:profiles} (top) reports the Dolan--Mor\'e performance profile
+Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. With $t_{p,s}$ the time of backend $s$ on
 problem $p$ and $n$ the number of problems, the profile of backend $s$ is the fraction of
 problems on which it is within a factor $\tau$ of the fastest backend,
@@ -65,7 +65,7 @@ the minimum running over all four backends. \texttt{diffengine} is within $7\tim
 the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than two problems,
 and each needs $\tau \approx 8$ to cover $88$--$96\%$ of the suite.
 
-Figure~\ref{fig:profiles} (bottom) reports the same profile for peak memory,
+Figure~\ref{fig:profiles}b reports the same profile for peak memory,
 with $t_{p,s}$ replaced by the growth of the process's peak resident memory during
 canonicalization. \texttt{SCIPY} has the lowest peak memory on
 $16$ of the $25$ problems. On one problem \texttt{CVXPY}'s backends report zero growth,
@@ -130,8 +130,8 @@ runs.}
 \centering
 \includegraphics{profiles_combined_thesis}
 \caption[Performance profiles of canonicalization time and peak memory]{Performance
-profiles \eqref{eq:perf-profile} of canonicalization time (top) and peak
-memory (bottom) over all $25$ problems, every backend on the \texttt{ignore\_dpp} path.}
+profiles \eqref{eq:perf-profile} of canonicalization time (a) and peak
+memory (b) over all $25$ problems, every backend on the \texttt{ignore\_dpp} path.}
 \label{fig:profiles}
 \end{figure}
 
@@ -159,7 +159,9 @@ canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric p
 Entries are medians of three runs except where marked. Each re-solve time is the average of
 three consecutive re-solves. A dash denotes a parameter map that did not finish building
 within the time limit. Bold
-denotes the faster re-solve. The ratio is \texttt{diffengine} over the tensor parameter map.}
+denotes the faster re-solve. The first canonicalization columns carry no bold because
+\texttt{diffengine} is the fastest on every problem there. The ratio is \texttt{diffengine}
+over the tensor parameter map.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -202,7 +204,7 @@ The benchmark experiments in this chapter lead us to make the following three ob
 \item The tensor approach carries a large upfront cost that is not always justified
 (Table~\ref{tab:param-tensor}).
 \item \texttt{diffengine} canonicalizes faster than \texttt{cvxcore} on $24$ of the $25$
-problems (Table~\ref{tab:oneshot-compile}, Figure~\ref{fig:profiles}).
+problems, as reported in Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}.
 \end{itemize}
 
 Traditionally, \texttt{CVXPY} has relied on \ac{DPP} to guarantee a meaningful
@@ -213,8 +215,8 @@ will cost the same as the first. In addition, even if the problem conforms to th
 forming the tensor is sometimes prohibitive, especially for large-scale problems.
 Our first two observations challenge this tradition and suggest that \ac{DPP} should be
 used more carefully, for problems that are re-solved enough times or for applications
-built on downstream packages that depend on the tensor (for example,
-\texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}).
+built on downstream packages that depend on the tensor, for example
+\texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}.
 With our approach, a similar speedup can be obtained through the symbolic and numeric split
 without enforcing any rules about how parameters appear in the problem formulation.
 
