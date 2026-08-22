@@ -74,7 +74,7 @@ the matrix $\mmat{A}(\gvec{\theta}) \in \reals^{m \times n}$, the vectors
 $\mvec{b}(\gvec{\theta}) \in \reals^m$ and
 $\mvec{c}(\gvec{\theta}) \in \reals^n$, and the non-empty closed convex cone
 $\cone{K} \subseteq \reals^m$.
-Problem \eqref{e:quad-conic-form} generalizes both quadratic programs (QPs), when
+Problem \eqref{e:quad-conic-form} generalizes both \acp{QP}, when
 $\cone{K} = \reals^m_+$ is the nonnegative orthant, and standard conic programs, when
 $\mmat{P}(\gvec{\theta}) = 0$.
 
@@ -99,8 +99,8 @@ as well as the parameter tensor and matrix stuffing in \S\ref{sec:matrix-stuffin
 The constraint matrix~$\mmat{A}$ is the Jacobian of the stacked constraint expressions and
 $\mmat{P}$ is the
 Hessian of the objective, so matrix stuffing amounts to computing a sparse Jacobian and Hessian.
-Classical methods build these matrices column by column with multiple passes of algorithmic
-differentiation (AD), using graph colouring to group columns that can be recovered in a single
+Classical methods build these matrices column by column with multiple passes of \ac{AD},
+using graph colouring to group columns that can be recovered in a single
 pass \cite{curtis1974estimation, gebremedhin2005color}.
 These methods treat the expression as a blackbox: the sparsity pattern must first be
 detected and the columns grouped before a single entry of the matrix is obtained.
@@ -653,7 +653,7 @@ vectorized MX expressions.
   \node[var] (vx) at (0,0) {$\mvec{x}$};
   \node[vop] (va) at (2.1,0) {$\mmat{A}\mvec{x}-\mvec{b}$};
   \node[vop] (vs) at (4.4,0) {$\|\cdot\|_2^2$};
-  \node (vf) at (5.7,0) {$f$};
+  \node (vf) at (5.65,0) {$f$};
   \draw[->] (vx) -- (va);
   \draw[->] (va) -- (vs);
   \draw[->] (vs) -- (vf);
@@ -744,7 +744,7 @@ entries.
 Such matrices are called sparse, and conic solvers expect their problem data in sparse formats.
 Techniques that store and compute with only the nonzero entries date back to the linear
 programming computations of the 1950s and the work of Markowitz \cite{markowitz1957elimination}.
-The simplest sparse matrix data structure is the coordinate or triplet
+The simplest sparse matrix data structure is the \ac{COO} format, also called the triplet
 format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
 For example, the matrix
@@ -755,21 +755,21 @@ For example, the matrix
   0 & 5 & 6 & 0\\
   \end{bmatrix}
 \EEQ
-is stored in coordinate format as in Listing~\ref{lst:coo-format}, where we use
+is stored in \ac{COO} format as in Listing~\ref{lst:coo-format}, where we use
 zero-based indexing and array declaration notation from the C programming
 language \cite{Kernighan1988}.
-\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in coordinate
+\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in COO
 format.}, label=lst:coo-format]
 int    rows[] = {0,  1,  1,  1,  2,  2};
 int    cols[] = {1,  0,  2,  3,  1,  2};
 double vals[] = {1,  2,  3,  4,  5,  6};
 \end{lstlisting}
-The coordinate format is the easiest to understand and form, but it is not effective for most
+The \ac{COO} format is the easiest to understand and form, but it is not effective for most
 operations on sparse matrices.
-The compressed sparse row (CSR) format is commonly used instead.
+The \ac{CSR} format is commonly used instead.
 
 % \paragraph{Compressed sparse row format.}  (heading removed per advisor; kept for reference)
-The CSR format differs from the coordinate format in that it replaces the \texttt{rows} array with
+The CSR format differs from the \ac{COO} format in that it replaces the \texttt{rows} array with
 a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
 The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
 For example, Listing~\ref{lst:csr-format} represents the matrix \eqref{eq:sparse-matrix} in
@@ -789,7 +789,7 @@ For this reason, the CSR format is the default for iterative methods
 to solve sparse linear systems \cite{saad2003iterative}.
 
 % \paragraph{Compressed sparse column format.}  (heading removed per advisor; kept for reference)
-The compressed sparse column (CSC) format applies the same compression to the
+The \ac{CSC} format applies the same compression to the
 columns instead.
 The pointer array \texttt{idxptr} now points into a \texttt{rows} array, and the nonzero
 entries are stored column by column.
@@ -802,7 +802,7 @@ standard example \cite{davis2006direct}.
 
 % \paragraph{Other sparse formats.}  (heading removed per advisor; kept for reference)
 % Paragraph moved up from the end of the section: LIL/DOK/BSR belong with the formats.
-The coordinate, CSR and CSC formats are the most widely used sparse matrix formats,
+The \ac{COO}, CSR and CSC formats are the most widely used sparse matrix formats,
 but many others exist for different specialized use cases.
 The scientific Python sparse library \texttt{scipy.sparse} \cite{2020SciPy-NMeth}
 allows users to form other types of sparse matrices such as the list of lists (LIL) matrix,
@@ -884,7 +884,7 @@ irregularly.
 The loops run over the index arrays, so every nonzero costs an index load and an indirect
 access. Contiguous reads, \ac{SIMD}, and cache tiling do not apply.
 Sparse formats are also a poor fit for dense data.
-A dense block stored in coordinate format triples its storage, one index pair per entry, and
+A dense block stored in \ac{COO} format triples its storage, one index pair per entry, and
 multiplying it through the sparse loop is far slower than the equivalent BLAS call.
 A sparse BLAS standard was specified by the BLAS Technical Forum \cite{duff2002sparse}, but
 implementations are few and far less widely adopted than the dense BLAS.

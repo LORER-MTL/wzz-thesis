@@ -3,10 +3,9 @@
 % et identifie les lacunes que la recherche vise à combler.
 \Chapter{LITERATURE REVIEW}\label{sec:RevLitt}
 
-This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing
-(\S\ref{sec:matrix-stuffing}) and of other modelling language approaches, from sparse AD such as
-\texttt{CasADi} (\S\ref{sec:computing-derivatives}) to coefficient extraction in \texttt{AMPL}
-and \texttt{JuMP} (\S\ref{sec:declared-structure}). These modelling languages all produce the
+This chapter reviews the implementation of \texttt{CVXPY}'s matrix stuffing and of other
+modelling language approaches, from sparse \ac{AD} in \texttt{CasADi} to coefficient extraction in
+\texttt{AMPL} and \texttt{JuMP}. These modelling languages all produce the
 same output as \texttt{CVXPY}, the solver problem data, but differ in the inputs they accept
 and in how they compute the coefficients. For example, \texttt{CasADi} accepts vectorized
 expressions as input, but differentiates them through matrix-vector products, so the structure
@@ -15,7 +14,7 @@ of the derivatives must be detected at runtime, over many sweeps of the expressi
 when processing the data into coefficients.
 The canonicalization backends of \texttt{CVXPY}, in contrast, keep the expressions
 vectorized and need no detection step (for this reason, we only compare against these backends
-in Chapter~\ref{sec:Theme2}).
+in Chapter~\ref{sec:Theme2}). These differences are summarized in \S\ref{sec:research-gap}.
 
 %%
 %%  MATRIX STUFFING
@@ -37,7 +36,8 @@ matrices. Systematic rules for such derivatives date back to the 1940s~\cite{dwy
 The simplest convention is to vectorize~\cite{magnus2019matrix}: every expression is identified
 with
 \BEQ\label{eq:vec}
-\vect(\mmat{X}) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn} \end{bmatrix}^\top,
+\vect(\mmat{X}) = \begin{bmatrix} x_{11} & \cdots & x_{m1} & x_{12} & \cdots & x_{mn}
+\end{bmatrix}^\top,
 \EEQ
 the vector that stacks the columns of $\mmat{X} \in \reals^{m \times n}$, and the derivative of a
 vectorized expression with respect to another is an ordinary Jacobian matrix. Under this
@@ -113,7 +113,8 @@ data $[\mmat{A}\ \mvec{b}]$ of \eqref{e:quad-conic-form}.
 Matrix stuffing computes the augmented matrix in one bottom-up pass over the
 tree. A variable leaf contributes an identity block and a constant leaf contributes its value
 to the last column, as shown in Figure~\ref{fig:matrix-stuffing}. An interior node with a
-single argument applies a constant linear operator $\mmat{L}$ to the argument, which has the affine form
+single argument applies a constant linear operator $\mmat{L}$ to the argument, which has the
+affine form
 \eqref{eq:linop-form} with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$. Applying $\mmat{L}$ gives
 \BEQ\label{eq:linop-chain-rule-unary}
 \begin{bmatrix} \mmat{A}_f & \mvec{b}_f \end{bmatrix}
@@ -130,7 +131,8 @@ $f = \sum_{i=1}^{k} \mmat{L}_i f_i$, which gives
 so the node costs one matrix product per argument.
 
 % \paragraph{Views and copies.}  (heading removed per advisor style; kept for reference)
-In \texttt{CVXPY}, the linear operators divide into views and copies~\cite{cvxpy2026source}. A view performs a
+In \texttt{CVXPY}, the linear operators divide into views and copies~\cite{cvxpy2026source}. A
+view performs a
 simple manipulation of the coefficients of its argument. Atoms with one constant argument,
 such as
 \texttt{matmul} and \texttt{multiply}, make copies instead. The operator is a constant
@@ -154,12 +156,15 @@ $\mvec{v}$ on its diagonal.}
 \multicolumn{3}{@{}l}{\textbf{Views}} \\
 $-f_1$ & $-\mmat{I}$ & flip the sign of every stored entry \\
 $f_1^\top$ & $\mmat{K}$, the vec-permutation & permute the rows \\
-$f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by $\mathcal{I}$ \\
+$f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by
+$\mathcal{I}$ \\
 $\operatorname{reshape}(f_1)$ & $\mmat{I}$ & none, the vectorization is unchanged \\
 \midrule
 \multicolumn{3}{@{}l}{\textbf{Copies}} \\
-$\mmat{F} f_1$ & $\mmat{I} \otimes \mmat{F}$ & multiply by a block diagonal formed from $\mmat{F}$ \\
-$f_1 \mmat{B}$ & $\mmat{B}^\top \otimes \mmat{I}$ & multiply by a Kronecker matrix formed from $\mmat{B}$ \\
+$\mmat{F} f_1$ & $\mmat{I} \otimes \mmat{F}$ & multiply by a block diagonal formed from
+$\mmat{F}$ \\
+$f_1 \mmat{B}$ & $\mmat{B}^\top \otimes \mmat{I}$ & multiply by a Kronecker matrix formed from
+$\mmat{B}$ \\
 $\mmat{C} \odot f_1$ & $\diag(\vect(\mmat{C}))$ & multiply by a diagonal formed from $\mmat{C}$ \\
 $f_1 / \mmat{C}$ & $\diag(\vect(\mmat{C}))^{-1}$ & multiply by the reciprocal diagonal \\
 \bottomrule
@@ -314,7 +319,8 @@ The augmented matrices of \eqref{eq:linop-form} can be stored in two ways,
 shown in Figure~\ref{fig:local-vs-global}. In the global layout, drawn in
 Figure~\ref{fig:matrix-stuffing}, each node stores one matrix whose columns span the whole
 stacked vector $\mvec{z}$, with the column offsets applied from the start. In the local
-layout, which \texttt{CVXPY} uses~\cite{cvxpy2026source}, each node keeps one coefficient block per variable in its
+layout, which \texttt{CVXPY} uses~\cite{cvxpy2026source}, each node keeps one coefficient block
+per variable in its
 subtree, and one for the constant data. The offsets are applied only after the pass, when
 each block is placed at its variable's columns and the blocks are concatenated into the full
 matrix $[\mmat{A}\ \mvec{b}]$. The local layout stores only the columns of the variables
@@ -454,11 +460,11 @@ they represent the parameter axis~\cite{cvxpydocs}:
 loops over the slices at every operator.
 \item the \texttt{SCIPY} backend stacks the slices vertically into a single strided
 two-dimensional sparse matrix. The backend is named after the \texttt{scipy.sparse}
-library that holds the matrix.
-\item the \texttt{COO} backend does not form the tensor explicitly, and instead stores
-each nonzero with an explicit parameter index alongside its row and column. The backend is
-named after the coordinate format of \S\ref{sec:bg-sparse}, which it extends with the
-parameter index.
+library that the matrix is stored in (we write \texttt{SCIPY} for the backend and
+\texttt{scipy.sparse} for the library).
+\item the \texttt{COO} backend does not form the tensor explicitly. It is named after the
+\ac{COO} format and extends its (row, column, value) triples with a parameter index (we write
+\texttt{COO} for the backend and \ac{COO} for the format).
 \end{itemize}
 % (per-backend cost clauses trimmed 2026-08-12, revisit later:
 %  cvxcore: ", so the work of every operator grows with the number of parameter entries";
@@ -468,7 +474,7 @@ parameter index.
 % (default-selection sentence reinstated 2026-08-12: ch. 4 cut its Backend substitution
 %  paragraph and now references this passage.)
 When no backend is requested, \texttt{CVXPY} uses \texttt{cvxcore}, and substitutes
-\texttt{COO} for a DPP problem once the total parameter size reaches $1000$ entries.
+\texttt{COO} for a DPP problem with at least $1000$ parameter entries in total.
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile a DPP problem ahead of
 time~\cite{schaller2022cvxpygen}. It generates C code specific to the problem family, with
 the entries of the cached maps \eqref{eq:param-maps} written into the source as constants,
@@ -486,13 +492,13 @@ All three backends share two limitations. Firstly, they delegate their matrix op
 general-purpose sparse library, \texttt{Eigen}~\cite{guennebaud2010eigen} in \texttt{cvxcore} and
 \texttt{scipy.sparse}~\cite{2020SciPy-NMeth} in the Python backends.
 The storage formats and kernels are fixed by the
-library, so structure known at canonicalization time cannot be exploited. In
+library, so structure known at canonicalization time cannot be used. In
 \texttt{cvxcore}, the views of Table~\ref{tab:views-copies} also materialize explicit sparse
 operators. For example, a reshape builds a sparse identity matrix and multiplies the
 coefficients by it.
 Secondly, the canonicalization backends store dense constant matrices as sparse matrices.
 When dense blocks appear in the problem data, they are both stored in an inconvenient format
-and computed without the optimized BLAS kernels of \S\ref{sec:bg-blas}.
+and computed without optimized BLAS kernels.
 Our approach in Chapter~\ref{sec:Theme1} addresses these limitations.
 %%
 %%  COMPUTING DERIVATIVES
@@ -819,7 +825,7 @@ model predictive control, trajectory optimization, robotics, and energy
 systems~\cite{casadidocs}. Its core is written in C++ and is used from Python, MATLAB, or
 Octave. It
 provides the building blocks of gradient-based optimization: symbolic expressions,
-derivatives, integrators, and interfaces to NLP and QP solvers. The
+derivatives, integrators, and interfaces to NLP and \ac{QP} solvers. The
 gradients, Jacobians, and Hessians these solvers require are obtained by differentiating the
 model.
 % (qpsol listing + dense-block worst-case ¶ cut 2026-08-04; archived in
@@ -855,7 +861,8 @@ c = cs.gradient(t1 + mu * t2, z)            # the objective vector c
 The Jacobian with respect to the stacked variable $\mvec{z}$ recovers the matrix $\mmat{A}$
 of Figure~\ref{fig:matrix-stuffing} entry by entry. Sparse differentiation is the equivalent of
 the matrix stuffing of \S\ref{sec:matrix-stuffing}, with the coefficients obtained by these
-sweeps rather than by a bottom-up pass over the tree. The parameters remain symbols, so $\mvec{b}$ and $\mvec{c}$
+sweeps rather than by a bottom-up pass over the tree. The parameters remain symbols, so
+$\mvec{b}$ and $\mvec{c}$
 are expressions of $\mvec{g}$ and $\mu$, re-evaluated for each parameter value. This is how
 the \texttt{qpsol} interface builds its problem data internally, for problems with a
 quadratic objective and affine constraints. A model written at the same high level as in
@@ -894,15 +901,16 @@ processes it. Models are written in the language directly or built through its P
 interface~\cite{amplpy}, and reach a large collection of commercial and open-source solvers
 through a single instance format.
 
-The system splits the work between two programs, which the \texttt{AMPL} documentation calls
+The \texttt{AMPL} system splits the work between two programs, which its documentation calls
 the translator and the driver. The translator runs as its own process. It parses the model and
 the data, expands every indexed declaration into individual variables and constraints with
 numeric coefficients, and writes the result to a~\texttt{.nl} file~\cite{gay2005writing}.
 The driver is a separate executable that reads the~\texttt{.nl} file
 and calls the solver, and each solver is reached through its own driver.
 A driver is built on one of two libraries. The \ac{ASL} is the original, a C library that
-parses the \texttt{.nl} format and evaluates the expressions it holds~\cite{gay1997hooking}. \texttt{MP} is the newer
-one, which AMPL supplies for solvers that need no derivatives~\cite{mpdocs}. This division
+parses the \texttt{.nl} format and evaluates the expressions it holds~\cite{gay1997hooking}.
+\texttt{MP} is the newer
+one, which \texttt{AMPL} supplies for solvers that need no derivatives~\cite{mpdocs}. This division
 between a translator that writes an instance and a driver that reads it still defines how most
 solvers receive nonlinear problems.
 
@@ -915,7 +923,8 @@ alongside the bounds and the nonzero counts of the instance. Only the nonlinear 
 as expression graphs, written in prefix notation~\cite{gay2005writing}.
 
 The language has no norm atom and no canonicalization step, so the norms of
-\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives depends on its driver.
+\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives
+depends on its driver.
 An \texttt{MP}-based driver rewrites
 the two norms into second-order cones for a conic solver, and an ASL-based driver passes on a
 general nonlinear program. Listing~\ref{lst:ampl-example} states the model.
@@ -950,9 +959,8 @@ b            # variable bounds: x[1] >= 0, x[2] >= 0
 2 0
 2 0
 \end{lstlisting}
-The whole objective is written as one expression graph, the constraint $\mvec{x} \ge 0$ reduces
-to the two bound records of the \texttt{b} segment, and the value of $\mu$ is folded into the
-graph as the constant \texttt{n0.1}, so a parameter change requires a new file. For a linear or
+The whole objective is written as one expression graph, and the value of $\mu$ is folded into
+it as the constant \texttt{n0.1}, so a parameter change requires a new file. For a linear or
 quadratic program, no graph remains and the file contains the complete problem data as
 coefficient lists.
 
@@ -960,14 +968,14 @@ Inside the driver, the bounds and the linear coefficient lists are read directly
 at a cost linear in the number of nonzeros, and only the nonlinear parts are rebuilt as
 expression graphs. What happens to those graphs depends on the library. \texttt{MP} matches
 the second-order and exponential cones of \S\ref{sec:bg-canonicalization} in the rebuilt
-graphs. A conic solver such as Gurobi or
-MOSEK then receives cone constraints rather than the square roots the model states. ASL instead
-differentiates the graphs by reverse-mode AD~\cite{gay1991automatic},
+graphs. A conic solver such as \texttt{Gurobi} or
+\texttt{MOSEK} then receives cone constraints rather than the square roots the model states.
+ASL instead differentiates the graphs by reverse-mode AD~\cite{gay1991automatic},
 with sparse Hessians assembled from partial separability~\cite{gay1996more}.
 
 Any system that writes \texttt{.nl} reaches every solver that reads it. The format has grown
-since, with extensions such as logical constraints, and AMPL omits the added header fields when
-a model does not use them, so older drivers still read the files it
+since, with extensions such as logical constraints, and \texttt{AMPL} omits the added header
+fields when a model does not use them, so older drivers still read the files it
 writes~\cite{gay2005writing}. An instance is an ordinary file, so it can be archived, shipped to
 reproduce a bug, and rerun on another machine.
 However, serializing the instance to disk can be slow, and every solve repeats it, rebuilding
@@ -980,9 +988,9 @@ any expression graphs from scratch.
 modelling language embedded in Julia, developed at MIT and first released in 2013. It is the
 most widely used modelling language in Julia, applied in academia and industry to power
 systems, portfolio optimization, scheduling, and routing. A model is written with the macros
-\texttt{@variable}, \texttt{@constraint}, and \texttt{@objective}, and the same model can be
-passed to any of more than fifty supported solvers~\cite{jumpdocs}. The abstraction layer
-between models and solvers is \ac{MOI}~\cite{legat2020mathoptinterface}.
+\texttt{@variable}, \texttt{@constraint}, and \texttt{@objective}. The abstraction layer
+between models and solvers is the \ac{MOI}~\cite{legat2020mathoptinterface}, and through it the
+same model can be passed to any of more than fifty supported solvers~\cite{jumpdocs}.
 
 The macros of \texttt{JuMP} rewrite each expression as it is entered. \texttt{@objective} and
 \texttt{@constraint} build affine and quadratic expression objects term by term, so the model
@@ -1015,34 +1023,99 @@ VectorAffineFunction([(1, 1.0, t1), (2, F[1,1], x[1]), ...],
 The expression itself is not retained after the macro returns.
 
 When the model is passed to a solver, MOI copies each constraint into the solver's own
-representation with a \texttt{copy\_to} function.
-Solvers that want matrix data commonly implement that
-copy through the \texttt{MatrixOfConstraints} utility, which concatenates the stored term lists
-into one sparse matrix in the solver's format~\cite{moidocs}. Coefficient extraction passes
-once over the stored terms and forms the sparse matrix, with no expression graph to visit
-and no differentiation.
+representation with a \texttt{copy\_to} function. Solvers that want matrix data commonly implement
+that copy through the \texttt{MatrixOfConstraints} utility, which concatenates the stored term
+lists into one sparse matrix in the solver's format~\cite{moidocs}, with no expression graph to
+visit and no differentiation. Only the nonlinear path of \texttt{JuMP} retains expression graphs,
+and differentiates them by sparse AD.
 
-When a solver does not support a constraint type natively, MOI reformulates it through its
-bridge system. A bridge is a structural rewrite from one function-set pair to another, for
-instance from a rotated to a standard second-order cone. MOI selects and composes them
-automatically~\cite{legat2020mathoptinterface}. Bridging manipulates stored coefficients and
-adds auxiliary variables and constraints.
-
-\texttt{JuMP} also has a nonlinear path, in which expression graphs are retained and derivatives
-are computed by sparse AD. The MOI representation is general, and a new problem class enters as
-a new function or set rather than as a change to the interface. However, vectorized expressions
-written in the model are stored as scalar coefficients, and each is expanded into one term per
-nonzero as the macro runs.
+When a solver does not support a constraint type natively, MOI reformulates it through its bridge
+system. A bridge is a structural rewrite from one function-set pair to another, for instance from
+a rotated to a standard second-order cone. MOI selects and composes them
+automatically~\cite{legat2020mathoptinterface}. Bridging manipulates stored coefficients and adds
+auxiliary variables and constraints. A parameter is a variable in the \texttt{Parameter} set. A
+parameter multiplied by a variable is stored as a quadratic term, so keeping such a model affine
+requires \texttt{ParametricOptInterface.jl}, an extension that substitutes the parameter values
+before the solve~\cite{jumpdocs}.
 
 %%
-%%  CHAPTER SYNTHESIS
-%%  (replaces the §2.4 Research gap section of 2026-08-19; cut text in
-%%   plans/research_gap_cut.md; advisor comment 17, rebuttal R1)
-The systems of this chapter obtain the same object, the coefficient matrices of an optimization
-problem, from three starting points. The backends of \S\ref{sec:matrix-stuffing} canonicalize
-expression trees and cache a parameter-to-data tensor. The methods of
-\S\ref{sec:computing-derivatives} treat the problem as an arbitrary program, detect the sparsity
-of its derivatives, and recover the matrices by seed sweeps. \texttt{AMPL} and \texttt{JuMP}
-store the coefficients as the user declares them, so no extraction step remains. The next
-chapter presents an engine that extracts the coefficients from the expression trees themselves,
-in a symbolic pass and a numeric pass.
+%%  RESEARCH GAP
+%%  (section added per advisor review of 2026-08-19, comment 17; the unheaded synthesis
+%%   paragraph of fcb1ca3 and the 3-paragraph draft in plans/research_gap_cut.md preceded it)
+\section{Research gap}
+\label{sec:research-gap}
+
+The four modelling languages reviewed in this chapter obtain the problem data in one of two ways,
+by differentiating an expression graph or by reading the coefficients the user declares.
+\texttt{CasADi} is built for nonlinear optimization. Its conic interface, \texttt{qpsol}, supports
+\acp{QP} with affine constraints and obtains their coefficients by differentiating the expression
+graph, with detected sparsity and seeds compressed by colouring. \texttt{CVXPY} composes the
+linear operators of the conic-form trees in one bottom-up pass, which is equivalent to
+differentiating them. Both keep the model as an expression graph between solves. \texttt{AMPL} and
+\texttt{JuMP} take the coefficients as the user declares them, written to the \texttt{.nl} file by
+the translator or stored as term lists by the macros. In both, only nonlinear expressions are
+kept.
+
+The four modelling languages also differ in how they handle parameter changes. \texttt{CasADi}
+keeps the parameters as symbols and splits the work in two phases. The derivative function is
+built once, and a parameter change requires only its evaluation, one sweep per colour.
+\texttt{CVXPY} caches the parameter-to-data tensor of \S\ref{sec:ms-parameters} and re-evaluates
+with one tensor-vector product, but only for problems conforming to the \ac{DPP} ruleset. For
+every other problem nothing is cached and the whole pass is repeated. \texttt{AMPL} folds the
+values into the instance, so a change requires the translator to write a new \texttt{.nl} file and
+the driver to read it. \texttt{JuMP} modifies the term lists in place, and substitutes a parameter
+that multiplies a variable only through \texttt{ParametricOptInterface.jl}.
+
+None of the four combines the two-phase split with direct computation of the problem data.
+Chapter~\ref{sec:Theme1} presents a new method that does. It splits the work in two phases, just
+like \texttt{CasADi}, but instead of matrix-vector products it computes the entire coefficient
+matrix directly, in one bottom-up pass over the conic-form trees. Compared with the \texttt{CVXPY}
+backends, our proposed method also uses the dense structure of the problem, with dense storage and
+computation instead of general-purpose sparse matrix libraries. Table~\ref{tab:systems-summary}
+summarizes these differences.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\caption{How the four modelling languages and \texttt{SparseDiffEngine} obtain and reuse the
+coefficients.}
+\label{tab:systems-summary}
+\begin{tabular}{@{}l >{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{2.9cm}
+  >{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}p{2.9cm}@{}}
+\toprule
+\textbf{System} & \textbf{Expression storage} & \textbf{Coefficients obtained by}
+  & \textbf{Reused across the family} & \textbf{Repeated at every solve} \\
+\midrule
+\texttt{AMPL}
+  & scalar
+  & instance generation
+  & nothing, values folded into the instance
+  & \texttt{.nl} write and read \\
+\arrayrulecolor{black!30}\specialrule{0.3pt}{1.5pt}{1.5pt}\arrayrulecolor{black}
+\texttt{JuMP}
+  & scalar
+  & term lists stored by macros
+  & term lists, modified in place
+  & \texttt{copy\_to} into the solver \\
+\arrayrulecolor{black!30}\specialrule{0.3pt}{1.5pt}{1.5pt}\arrayrulecolor{black}
+\texttt{CasADi}
+  & scalar (\texttt{SX}) or matrix (\texttt{MX})
+  & differentiation of an expression graph
+  & pattern, colouring, derivative function
+  & one sweep per colour \\
+\arrayrulecolor{black!30}\specialrule{0.3pt}{1.5pt}{1.5pt}\arrayrulecolor{black}
+\texttt{CVXPY} backends
+  & vectorized
+  & composition of linear operators
+  & parameter-to-data tensor, \ac{DPP} problems only
+  & one tensor-vector product, or the whole pass \\
+\arrayrulecolor{black!30}\specialrule{0.3pt}{1.5pt}{1.5pt}\arrayrulecolor{black}
+\begin{tabular}[t]{@{}l@{}}\texttt{SparseDiffEngine}\\(Chapter~\ref{sec:Theme1})\end{tabular}
+  & vectorized
+  & structured direct differentiation
+  & problem structure, by the symbolic pass
+  & numeric pass \\
+\bottomrule
+\end{tabular}
+\end{table}
