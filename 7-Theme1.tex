@@ -1,19 +1,21 @@
 \Chapter{A LIGHTWEIGHT CANONICALIZATION ENGINE}\label{sec:Theme1}
 
-Mathematically, \texttt{SparseDiffEngine} computes the same derivatives as
-\texttt{CVXPY}'s canonicalization backends. Both apply the chain rule of matrix calculus
-to trees of vectorized expressions. The differences are in the implementation.
-Firstly, a custom sparse matrix data structure allows a natural split between a symbolic
-pass and a numeric pass. This separation
-is particularly useful for compiling problems involving parameters, where
+This chapter presents \texttt{SparseDiffEngine}, our C library for assembling the
+constraint and objective matrices of a canonicalized problem. The engine computes the same
+derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
+chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
+implementation. Firstly, we split the computation into a symbolic pass, which computes and
+caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
+This separation is particularly useful for compiling problems involving parameters, where
 the structure is fixed but the numerical values can change.
 Secondly, the data of most optimization problems is not only sparse but also
 structured, with dense blocks and diagonal patterns.
-In \texttt{SparseDiffEngine} we introduce two new matrix classes for this purpose,
+We introduce two new matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
-dense storage and BLAS subroutines when possible.
+dense storage and BLAS subroutines. Neither the two-phase approach nor the two matrix
+classes exists in \texttt{CVXPY}'s backends.
 
-Finally, some important design decisions differ from \texttt{CVXPY}'s backends for
+Other important design decisions differ from \texttt{CVXPY}'s backends for
 simplicity rather than performance. Every node carries one Jacobian taken with respect to
 all of the variables of the problem, rather than a dictionary of local Jacobians keyed by
 variable. As a consequence, the chain rule is a single matrix product, and the
@@ -23,19 +25,19 @@ variable substitution followed by a second matrix stuffing pass.
 
 The rest of the chapter is organized as follows. We begin with a brief overview of
 the engine, describing how expressions are represented and how the code is organized.
-We then present the matrix representations used for the derivative computations, where we
-focus much of our attention on the \texttt{permuted-dense} matrix. Next we describe the
+We then present the three matrix representations used for the derivative computations.
+Next, we describe the
 algorithms, or kernels, which operate on and combine these matrix representations.
 Finally, we describe the problem interface of the engine, and how \texttt{CVXPY} obtains
-and updates the problem data through it.
+and updates the problem data through it. We conclude with a summary.
 
 \section{Overview of the engine}\label{sec:theme1-overview}
 
-\texttt{SparseDiffEngine} is a small C library which is around seventeen thousand lines
-of code (and a similar number of lines for the test suite).
+\texttt{SparseDiffEngine} is a small C library, around seventeen thousand lines
+of code and a similar number of lines for the test suite.
 The expression node is defined in \texttt{expr.h}. Atoms that carry extra data, such as
 the exponent of a power, define a larger structure in \texttt{subexpr.h}.
-Each atom is implemented in its own file in the \texttt{atoms/}
+We implement each atom in its own file in the \texttt{atoms/}
 directory. There are around forty-five of them, divided into six subdirectories based on their
 mathematical properties.
 The matrix data structures and the computational kernels that operate on them are in
@@ -48,8 +50,8 @@ Table~\ref{tab:atom-classes} lists the classes and how each computes its Jacobia
 Canonicalization leaves the constraints affine and the
 objective affine or quadratic. The quadratic atoms of a DCP problem, such as a squared power,
 a quadratic over a linear term, or a Huber penalty, are all rewritten as quadratic forms by
-the canonicalization frontend of \S\ref{sec:matrix-stuffing}, so only affine atoms and
-quadratic forms reach the engine from a canonicalized DCP problem.
+the canonicalization frontend of \S\ref{sec:matrix-stuffing}. Therefore, only affine atoms
+and quadratic forms reach the engine from a canonicalized DCP problem.
 This chapter describes the affine atoms. The quadratic form contributes the
 objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-api}. The
 remaining classes are used by the \ac{NLP} interface of
@@ -62,7 +64,7 @@ remaining classes are used by the \ac{NLP} interface of
 \toprule
 Class & Examples & Jacobian computation \\
 \midrule
-affine & \texttt{sum}, \texttt{index}, \texttt{left\_matmul} & fixed; index maps and copies \\
+affine & \texttt{sum}, \texttt{index}, \texttt{left\_matmul} & fixed, by index maps and copies \\
 elementwise, full domain & \texttt{exp}, \texttt{power}, \texttt{logistic} & diagonal
 scaling of the child Jacobian \\
 elementwise, restricted domain & \texttt{log}, \texttt{entr}, \texttt{atanh} & diagonal at
@@ -74,11 +76,12 @@ other & \texttt{quad\_form}, \texttt{prod} & specific to each atom \\
 \bottomrule
 \end{tabular}
 \end{table}
-Each atom implements three operations: a forward pass, which evaluates the atom at
-a point; a symbolic pass, which computes the sparsity patterns of its derivatives
-and allocates memory for them; and a numeric pass, which computes the numerical
-values inside the fixed sparsity patterns. The constructor of the atom
-stores pointers to these three functions in the expression node.
+Each atom implements three operations. The forward pass evaluates the atom at a point. The
+symbolic pass computes the sparsity patterns of its derivatives and allocates memory for
+them. The numeric pass computes the numerical values inside the fixed sparsity patterns.
+Each atom also has a constructor, the C function that allocates and initializes the
+corresponding expression node. The constructor stores
+pointers to these three operations in the node.
 
 \subsection{Expression node}\label{sec:theme1-expression-node}
 An expression node stores its dimensions, pointers to at most two children, a buffer for
@@ -101,24 +104,24 @@ typedef struct expr
     eval_jacobian_fn  eval_jacobian;       /* numeric pass  */
 } expr;
 \end{lstlisting}
-Trees are built bottom up, with one constructor function per atom. A \texttt{CVXPY} expression
+Trees are built bottom up, with one constructor per atom. A \texttt{CVXPY} expression
 is converted in one pass over the tree, which calls the constructor of the corresponding atom
-at each node, as described in \S\ref{sec:theme1-api}. Expressions that appear multiple times can be shared, in
-which case the tree becomes a directed acyclic graph. Nodes are therefore reference
-counted, and the symbolic pass returns early if a node was already initialized.
+at each node, as described in \S\ref{sec:theme1-api}. Expressions that appear multiple times
+can be shared, in which case the tree becomes a directed acyclic graph. Nodes are therefore
+reference counted, and the symbolic pass returns early if a node was already initialized.
 
-Unlike \texttt{CVXPY}, there are only two kinds of leaf node, the variable and the
-parameter. A variable
-occupies a contiguous slice of the stacked variable vector, starting at the column offset
-\texttt{var\_id}. Its Jacobian is an identity block at the columns of the variable, written
-once during the symbolic pass. The Jacobian of a parameter is empty, because parameters are
-fixed during a solve. A constant is a parameter whose value cannot be updated between solves.
+The engine has only two kinds of leaf node, variables and parameters, where \texttt{CVXPY}
+also has constants. A variable occupies a contiguous slice of the stacked variable vector,
+starting at the column offset \texttt{var\_id}. Its Jacobian is an identity block at the
+columns of the variable, written once during the symbolic pass. The Jacobian of a parameter
+is empty, because parameters are fixed during a solve. The engine treats a constant as a
+parameter whose value cannot be updated between solves.
 
 \section{Matrix representations}\label{sec:theme1-matrix-representations}
-The Jacobian of a node is stored in one of three representations, a generic sparse matrix, a
+We store the Jacobian of a node in one of three representations, a generic sparse matrix, a
 permuted dense matrix, or a stacked permuted dense matrix. The generic sparse matrix is the
 default. The other two are created by matrix multiplication and the quadratic form, the
-operations that hold dense data. Each implements the same operations, so an atom picks one
+operations whose data is dense. Each implements the same operations, so an atom picks one
 when it allocates its Jacobian during the symbolic pass.
 
 \subsection{Sparse matrix}\label{sec:theme1-generic-sparse}
@@ -130,15 +133,15 @@ indexing, broadcasting, and stacking, operate on those rows. Each row is stored 
 and reached in constant time.
 For this reason we chose the CSR format over the CSC format.
 In \texttt{SparseDiffEngine} the column indices within each row are kept sorted. The CSR
-format does not necessarily require this order. \texttt{Eigen} keeps its indices sorted as well
-\cite{guennebaud2010eigen}, while \texttt{scipy.sparse} does not always enforce it
+format does not necessarily require this order, and libraries differ on it. For example, of
+the two sparse libraries behind \texttt{CVXPY}'s backends, \texttt{Eigen} keeps its indices
+sorted \cite{guennebaud2010eigen}, while \texttt{scipy.sparse} does not always enforce it
 \cite{2020SciPy-NMeth}. The merges
 and intersections of the symbolic pass depend on this sorted order guarantee.
 
 The symbolic pass allocates the row pointer and column index arrays, and the numeric pass
-writes only the value array. We
-provide more details on the benefits of this split between the sparsity pattern and the values
-in \S\ref{sec:theme1-reusing-work}.
+writes only the value array. \S\ref{sec:theme1-reusing-work} describes what this split
+between the sparsity pattern and the values saves across solves.
 
 \subsection{Permuted dense matrix}\label{sec:theme1-permuted-dense}
 
@@ -180,7 +183,7 @@ dense data~$\mmat{B}$. Its nonzeros are exactly the entries of~$\mmat{B}$.}
 
 The dense block can instead be stored together with the indices of the rows and columns it
 occupies, one index per row and column rather than one per entry, and the global matrix is
-never formed. A permuted dense matrix is defined as the
+never formed. We define a permuted dense matrix as the
 triple~$(\mmat{X}, \mvec{r}, \mvec{c})$, with $\mmat{X} \in \reals^{m_0 \times n_0}$ dense
 and $\mvec{r}$ and $\mvec{c}$ strictly increasing index vectors, representing
 \BEQ\label{eq:permuted-dense}
@@ -276,14 +279,15 @@ by~$\mvec{r}$ and~$\mvec{c}$.}
 \end{figure}
 
 The dense block is stored in row-major order and the index vectors as two integer arrays, so
-the storage does not depend on the global dimensions~$m$ and~$n$. The structural atoms turn a
-permuted dense matrix into another permuted dense matrix, and require only manipulating the
-row and column indices. The transpose of a permuted dense matrix swaps the two index vectors
-and transposes the dense block.
+the storage does not depend on the global dimensions~$m$ and~$n$. Structural atoms, which only
+rearrange entries, turn a permuted dense matrix into another permuted dense matrix by
+manipulating the row and column indices alone. The transpose of a permuted dense matrix
+swaps the two index vectors and transposes the dense block.
 Figure~\ref{fig:permuted-dense-index} indexes the first and last rows of the Jacobian
 of~$\mmat{B}\mvec{x}$. The row vector of the result is~$(0,1)$ rather than~$(0,3)$, because
-it indexes the rows of the result. The map back to the rows of the original block is kept
-internally, and the numeric pass copies the values through this map at every evaluation.
+it indexes the rows of the result rather than of the original block. The map back to the
+rows of the original block is kept internally, and the numeric pass copies the values
+through this map at every evaluation.
 
 \begin{figure}[htbp]
 \centering
@@ -339,7 +343,7 @@ larger block would store the zeros between them, and falling back to the generic
 representation would lose the dense structure. We instead keep the blocks as they are, in a
 third representation.
 
-A stacked permuted dense matrix is defined as a vertical union of permuted dense blocks whose
+We define a stacked permuted dense matrix as a vertical union of permuted dense blocks whose
 row vectors are pairwise disjoint, while the column vectors may overlap. Every operation
 treats the blocks one at a time, and the global matrix is never formed. The stacked matrix
 owns a single value buffer, and each block points into it.

@@ -825,7 +825,7 @@ model predictive control, trajectory optimization, robotics, and energy
 systems~\cite{casadidocs}. Its core is written in C++ and is used from Python, MATLAB, or
 Octave. It
 provides the building blocks of gradient-based optimization: symbolic expressions,
-derivatives, integrators, and interfaces to NLP and \ac{QP} solvers. The
+derivatives, integrators, and interfaces to \ac{NLP} and \ac{QP} solvers. The
 gradients, Jacobians, and Hessians these solvers require are obtained by differentiating the
 model.
 % (qpsol listing + dense-block worst-case ¶ cut 2026-08-04; archived in
@@ -868,7 +868,7 @@ the \texttt{qpsol} interface builds its problem data internally, for problems wi
 quadratic objective and affine constraints. A model written at the same high level as in
 \texttt{CVXPY}, with the norms of \eqref{eq:example} kept in the expression graph, is solved
 through \texttt{nlpsol} instead. The same sweeps assemble the gradient, constraint
-Jacobian, and Hessian of the Lagrangian that the NLP solver queries at each iteration.
+Jacobian, and Hessian of the Lagrangian that the \ac{NLP} solver queries at each iteration.
 
 %%
 %%  DECLARED STRUCTURE
