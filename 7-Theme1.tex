@@ -50,7 +50,7 @@ Table~\ref{tab:atom-classes} lists the classes and how each computes its Jacobia
 Canonicalization leaves the constraints affine and the
 objective affine or quadratic. The quadratic atoms of a DCP problem, such as a squared power,
 a quadratic over a linear term, or a Huber penalty, are all rewritten as quadratic forms by
-the canonicalization frontend of \S\ref{sec:matrix-stuffing}. Therefore, only affine atoms
+the canonicalization frontend of \S\ref{sec:canonicalization}. Therefore, only affine atoms
 and quadratic forms reach the engine from a canonicalized DCP problem.
 This chapter describes the affine atoms. The quadratic form contributes the
 objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-api}. The
@@ -518,7 +518,7 @@ rows~$\mvec{c}_B$ and the columns~$\mvec{c}_A$, so the result is again one dense
 permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
-on the sizes of the blocks and not on the global dimensions~$m$ and~$n$.
+on the sizes of the blocks and not on the global dimensions.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
@@ -534,7 +534,8 @@ sparsity pattern, a block layout, or an index map.
 
 The sparse kernels cache sparsity patterns.
 The \texttt{add} atom merges the sorted patterns of its operands, and the sparse products
-run the symbolic phase of Gustavson's algorithm \cite{bank1993smmp}, which finds the
+run the symbolic phase of Gustavson's algorithm \cite{gustavson1978two, bank1993smmp}, which
+finds the
 pattern of the product row by row. Finding the pattern is the costly and irregular part of
 both operations, and the numeric pass only computes the values and fills the stored
 pattern. For a product, the numeric
@@ -716,8 +717,8 @@ We collect the objective and constraint trees in one
 extension module \texttt{sparsediffpy} exposes the atom constructors and the functions
 that build and evaluate the \texttt{problem} object.
 We wrote everything specific to \texttt{CVXPY} as a converter and a canonicalization
-backend named \texttt{diffengine}. The converter builds the equivalent C trees in one pass
-over the canonicalized problem, with one constructor call per node. The backend obtains the
+backend named \texttt{diffengine}. The converter builds the C trees of the canonicalized
+problem in one pass over it, with one constructor call per node. The backend obtains the
 problem data as the values and derivatives of the trees, in place of the matrix stuffing
 pass of \S\ref{sec:matrix-stuffing}.
 
@@ -726,9 +727,9 @@ pass of \S\ref{sec:matrix-stuffing}.
 The \texttt{problem} object stores the constraint trees in the order in which they are
 registered, and the row blocks of the constraint Jacobian follow that order. Conic
 solvers expect the constraints grouped and ordered by cone, but the engine knows nothing
-about cones. Registering the trees in the right order and recording the cone of each row
-block are both handled by \texttt{CVXPY}, as part of the canonicalization frontend of
-\S\ref{sec:matrix-stuffing}.
+about cones. Registering the trees in the order the solver expects and recording the cone
+of each row block are both handled by \texttt{CVXPY}, as part of the canonicalization frontend of
+\S\ref{sec:canonicalization}.
 
 The split between structure and values of \S\ref{sec:theme1-reusing-work} is applied at
 the problem level as well. The solver receives one global CSR matrix, which the symbolic
@@ -740,7 +741,7 @@ are determined by shapes and index sets, or by problem data, and change only whe
 parameter is updated. The numeric pass therefore skips an affine tree after the first
 evaluation, until the next parameter update. The Hessian follows the same split. An affine tree
 contributes nothing to it, so for a canonicalized problem only the objective is evaluated.
-The matrix is symmetric, and only its lower triangle is passed to the solver.
+The Hessian is symmetric, and only its lower triangular entries are passed to the solver.
 
 \begin{figure}[htbp]
 \centering
@@ -874,21 +875,26 @@ unchanged. Listing~\ref{lst:diffengine-cone-program} outlines the class.
 \begin{lstlisting}[language=Python, caption={A simplified version of the
 \texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
 class DiffengineConeProgram:
-    """minimize c'x + d + (1/2) x'Px  subject to  Ax + b in K"""
+    """minimize (1/2) x'Px + c'x  subject to  Ax + b in K"""
 
     C_problem               # the problem object and its buffers
-    c, d, A, b, P           # problem data, updated in place
+    c, A, b, P              # problem data, updated in place
     constraints, cone_dims  # cone info
 
     def __init__(self, cvxpy_problem): ...
     def apply_parameters(self, id_to_param_value): ...
     def split_solution(self, solution): ...
 \end{lstlisting}
-The class is built once per problem family. Its constructor converts the problem, runs
-the symbolic pass, and evaluates the \texttt{problem} object once, at the origin, which
-recovers the problem data of \eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
-convention of the cone form afterwards, by negating~$\mmat{A}$.
-Listing~\ref{lst:extract-at-origin} shows the evaluations.
+The class is built once per problem family. Its constructor converts the Python problem
+to C trees with the converter and runs the symbolic pass. It then evaluates the
+\texttt{problem} object once at the origin, which recovers the problem data of
+\eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
+convention of the cone form afterwards, by negating~$\mmat{A}$. A parameter update
+involves only the numeric pass. The method \texttt{apply\_parameters} writes the new
+values into the parameter leaves and repeats the evaluations at the origin. After the
+solve, \texttt{split\_solution} slices the stacked solution vector into the variables of
+the original problem. Listing~\ref{lst:extract-at-origin} shows the evaluations at the
+origin.
 \begin{lstlisting}[language=Python, caption={A simplified version of the evaluations at
 the origin that recover the problem data.}, label=lst:extract-at-origin]
 problem.init_derivatives()               # symbolic pass, once
@@ -896,14 +902,34 @@ A.rows, A.cols = problem.jacobian_sparsity()
 P.rows, P.cols = problem.hessian_sparsity()
 
 x0 = np.zeros(n_vars)                    # numeric pass, at the origin
-d = problem.objective_forward(x0)        # objective constant
+problem.objective_forward(x0)            # forward pass, before the gradient
 c = problem.gradient()                   # objective gradient
 b = problem.constraint_forward(x0)       # constraint constants
 A.vals = problem.jacobian_values()       # fill the fixed patterns
 P.vals = problem.hessian_values()
 \end{lstlisting}
-After the solve, \texttt{split\_solution} slices the
-solution of the stacked variable vector back into the variables of the original problem.
 
-A parameter update only involves the numeric pass. The method \texttt{apply\_parameters}
-writes the new values into the parameter leaves and repeats the evaluations at the origin.
+\section{Summary}\label{sec:theme1-summary}
+
+% (chapter wrap-up added per advisor review of 2026-08-19; promoted to a headed section
+%  2026-08-22 to match §2.4 and §4.3)
+The engine computes the problem data of a canonicalized problem as the values and derivatives
+of its expression trees. A symbolic pass fixes the sparsity pattern, block layout, or index map
+of every Jacobian and allocates every buffer, and a numeric pass fills values into that fixed
+structure. A Jacobian is stored as a generic sparse matrix, a permuted dense matrix, or a
+stacked permuted dense matrix, and the ten kernels of Table~\ref{tab:kernel-operations}
+operate on the three representations, with BLAS on the dense blocks. \texttt{CVXPY} reaches
+the engine through the \texttt{diffengine} backend, which builds the trees once per problem
+family and reruns only the numeric pass after a parameter update.
+
+Section~\ref{sec:research-gap} found no reviewed system that combines a two-phase split
+with direct computation of the problem data. The engine does both. It splits the work in
+two passes, as \texttt{CasADi} does in \S\ref{sec:casadi}, and its numeric pass computes
+the coefficient matrices directly in one pass over the trees instead of by derivative
+sweeps. Two further choices separate it from the \texttt{CVXPY} backends of
+\S\ref{sec:matrix-stuffing}. The engine caches the structure of every problem, not only of
+the problems that conform to the \ac{DPP} ruleset, and it stores the dense blocks of the
+problem data in dense form. The next chapter measures the effect of these choices on
+\texttt{CVXPY}'s benchmark suite, first on a single canonicalization against the
+\texttt{CVXPY} backends, then on repeated solves against the parameter-to-data tensor of
+\S\ref{sec:ms-parameters}.
