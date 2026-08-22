@@ -379,8 +379,9 @@ An atom does not operate on the representations of
 \S\ref{sec:theme1-matrix-representations} directly. It instead calls a kernel, the
 implementation of one operation for one matrix representation. The ten operations of
 Table~\ref{tab:kernel-operations} cover the whole library, so every atom computes its
-derivatives through a small set of shared routines. Each kernel is a pair of functions, one
-called by the symbolic pass and one by the numeric pass.
+derivatives through a small set of shared routines.
+We implement each kernel as a pair of functions, one called by the symbolic pass and one
+by the numeric pass.
 \begin{table}[htbp]
 \caption{The kernels, the operation each computes, and the atoms of a canonicalized DCP
 problem that call them, grouped into unary and binary operations. In the second column,
@@ -411,10 +412,11 @@ Kernel & Computes & Called by \\
 \subsection{Kernel dispatch}\label{sec:theme1-kernel-dispatch}
 
 The operations of Table~\ref{tab:kernel-operations} divide into unary operations, which
-operate on a single matrix, and binary operations, which combine two matrices. Dispatching
-a unary operation is simple. Each representation implements every unary operation, and a
-call on a Jacobian runs the corresponding implementation. The kernel
-of a binary operation is determined by the representations of both operands.
+operate on a single matrix, and binary operations, which combine two matrices. A call on a
+Jacobian must select the kernel that matches its representation, a step called dispatch.
+For a unary operation, each representation implements the operation and the call runs that
+implementation. The kernel of a binary operation may depend on the representations of both
+operands.
 
 For example, on a generic sparse matrix the symbolic pass of the \texttt{index} kernel
 allocates a new CSR pattern and copies the column indices of the selected rows.
@@ -428,10 +430,11 @@ Of the three binary operations, only the transposed products dispatch on both op
 Addition always operates in the CSR format. Both operands are read through their CSR views
 and the result is a generic sparse matrix, so no dispatch is needed.
 In the product~$\mmat{B}\mmat{A}$, the matrix~$\mmat{B}$ is data rather than a Jacobian, so
-only the representation of~$\mmat{A}$ selects the kernel. The kernel of the transposed
-products~$\mmat{B}^\top \mmat{A}$ and~$\mmat{B}^\top \mmat{D} \mmat{A}$ is selected by
+only the representation of~$\mmat{A}$ selects the kernel. We select the kernel of the transposed
+products~$\mmat{B}^\top \mmat{A}$ and~$\mmat{B}^\top \mmat{D} \mmat{A}$ by
 double dispatch, meaning that the pair formed by the representations of both operands
-selects the implementation. Figure~\ref{fig:kernel-dispatch} lists the nine combinations.
+selects the implementation. Figure~\ref{fig:kernel-dispatch} lists the nine possible
+combinations.
 
 \begin{figure}[htbp]
 \centering
@@ -498,8 +501,10 @@ When both operands are generic sparse, the kernel is Gustavson's algorithm
 result of the same kind, so once a dense block appears, the dense representations take
 over.
 
-The product of two permuted dense matrices stays permuted dense because the transposed
-product expands, with the selector matrices of \eqref{eq:permuted-dense}, to
+The product of two permuted dense matrices stays permuted dense. With the selector
+matrices of \eqref{eq:permuted-dense}, the transposed product of
+$\mmat{A} = (\mmat{X}_A, \mvec{r}_A, \mvec{c}_A)$
+and $\mmat{B} = (\mmat{X}_B, \mvec{r}_B, \mvec{c}_B)$ expands to
 \BEQ\label{eq:pd-product}
 \mmat{B}^\top \mmat{A}
 = \mmat{S}_{c_B}^\top \mmat{X}_B^\top
@@ -510,47 +515,104 @@ and $\mmat{B}\mmat{A}$ expands the same way, with $\mvec{c}_B$ in place of $\mve
 The term~$\mmat{S}_{r_B} \mmat{S}_{r_A}^\top$ keeps the rows that appear in
 both~$\mvec{r}_B$ and~$\mvec{r}_A$, and the outer selectors place the product at the
 rows~$\mvec{c}_B$ and the columns~$\mvec{c}_A$, so the result is again one dense block at
-permuted positions. In practice the symbolic pass
+permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
 on the sizes of the blocks and not on the global dimensions~$m$ and~$n$.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
-Most of the Jacobians in the expression graph of a problem are fixed between solves, since
-the Jacobian of an affine atom does not depend on the values of the variables.
-For the structural atoms, such as
-\texttt{index}, \texttt{transpose}, and \texttt{sum}, the Jacobian is determined by shapes
-and index sets alone. The other binary affine atoms place problem data in the Jacobian, whose
-values change only when a parameter is updated. An atom whose data is
-constant therefore fills its Jacobian at the first evaluation and never touches it again,
-and a parameter update recomputes only the subtrees that depend on that parameter. The
-symbolic pass makes this possible by saving the structure of the problem.
+% (subsection reorganized per advisor review of 2026-08-19: define the split once, then group
+%  what is cached into patterns / layouts / maps; the payoff-across-solves ¶ moved to §3.4.1
+%  on 2026-08-22, at constraint-tree granularity, see plans/document8-advisor-comments.md #31)
+The split between the two passes determines what the engine reuses across solves. In the
+symbolic pass, a kernel computes everything determined by the structure of its operands
+and stores it. In the numeric pass it computes only the values inside that structure, and
+allocates nothing, because every buffer, including the work arrays of the kernels, is
+allocated in the symbolic pass. Depending on the kernel, the stored structure is a
+sparsity pattern, a block layout, or an index map.
 
-In addition, every buffer is allocated during the symbolic pass, including the work arrays
-used inside the kernels, so the numeric pass never allocates memory.
-\texttt{add} merges the patterns of its operands with a sorted
-merge, and the sparse products run the symbolic phase of Gustavson's algorithm
-\cite{bank1993smmp}, which finds the pattern of the product row by row. Finding the
-pattern is the irregular part of both operations, and the numeric phase only fills the
-stored pattern with values.
+The sparse kernels cache sparsity patterns.
+The \texttt{add} atom merges the sorted patterns of its operands, and the sparse products
+run the symbolic phase of Gustavson's algorithm \cite{bank1993smmp}, which finds the
+pattern of the product row by row. Finding the pattern is the costly and irregular part of
+both operations, and the numeric pass only computes the values and fills the stored
+pattern. For a product, the numeric
+pass computes one sparse dot product per stored nonzero, as shown in
+Figure~\ref{fig:sparse-product-passes}. It does not have to find which entries of the
+product exist or where they are stored, and evaluates each one directly.
 
-The dense representations follow the same split, with the block layout in place of the
-sparsity pattern. The permuted dense kernels intersect the index vectors of their operands
-during the symbolic phase, and the stacked kernels also determine which pairs of blocks
-have intersecting row sets. The numeric phase gathers the matching rows, multiplies them
-with \texttt{dgemm}, and scatters the products to fixed positions.
-
-Finally, the structural atoms save an index map during the symbolic pass. The Jacobian of
-\texttt{sum} is a sum of groups of rows of the child Jacobian. The symbolic pass records,
-for each of their nonzeros, the output entry it is added to, shown in
-Figure~\ref{fig:sum-idx-map}.
-The numeric pass is a single loop that performs
-one addition per nonzero, and the choice of axis and of representation affects only how
-the map is built. Other structural
-atoms such as \texttt{index},
-\texttt{transpose}, and \texttt{kron} save their maps in the same way, with a copy in place
-of an addition.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  cell/.style={draw=black!60, minimum width=0.62cm, minimum height=0.62cm, inner sep=0pt,
+               font=\small, anchor=center},
+  nz/.style={cell, fill=blue!12},
+  slot/.style={cell},
+  new/.style={cell, fill=orange!25},
+  zero/.style={font=\normalsize, text=black!50, anchor=center},
+  ttl/.style={font=\small\itshape, anchor=center},
+  note/.style={font=\small, anchor=north},
+  op/.style={font=\normalsize, anchor=center},
+  brk/.style={black!70, line width=0.5pt},
+]
+\def\cw{0.62}
+\def\bx{2.86}   % B origin: 3*cw + 1.0
+\def\cx{5.72}   % C origin: 2*(3*cw + 1.0)
+% brackets around a 3x3 grid whose top-left cell centre is at (#1, 0)
+\newcommand{\brackets}[1]{%
+  \draw[brk] (#1-0.36, 0.34) -- (#1-0.47, 0.34) -- (#1-0.47, -2*\cw-0.34) -- (#1-0.36, -2*\cw-0.34);
+  \draw[brk] (#1+2*\cw+0.36, 0.34) -- (#1+2*\cw+0.47, 0.34)
+          -- (#1+2*\cw+0.47, -2*\cw-0.34) -- (#1+2*\cw+0.36, -2*\cw-0.34);}
+% ---------- top panel: symbolic ----------
+\node[ttl] at (\cx/2+\cw, 1.15) {symbolic pass, once};
+\node[font=\small, anchor=south] at (\cw, 0.4) {$\mmat{A}$};
+\node[font=\small, anchor=south] at (\bx+\cw, 0.4) {$\mmat{B}$};
+\node[font=\small, anchor=south] at (\cx+\cw, 0.4) {pattern of $\mmat{C}$};
+\foreach \r/\c/\l in {0/0/$a_{00}$, 0/2/$a_{02}$, 1/1/$a_{11}$, 2/2/$a_{22}$}
+  {\node[nz] at (\c*\cw, -\r*\cw) {\l};}
+\foreach \r/\c in {0/1, 1/0, 1/2, 2/0, 2/1} {\node[zero] at (\c*\cw, -\r*\cw) {$\cdot$};}
+\brackets{0}
+\node[op] at (2.5*\cw+0.5, -\cw) {$\times$};
+\begin{scope}[xshift=\bx cm]
+\foreach \r/\c/\l in {0/1/$b_{01}$, 1/0/$b_{10}$, 1/2/$b_{12}$, 2/1/$b_{21}$, 2/2/$b_{22}$}
+  {\node[nz] at (\c*\cw, -\r*\cw) {\l};}
+\foreach \r/\c in {0/0, 0/2, 1/1, 2/0} {\node[zero] at (\c*\cw, -\r*\cw) {$\cdot$};}
+\brackets{0}
+\node[op] at (2.5*\cw+0.5, -\cw) {$=$};
+\end{scope}
+\begin{scope}[xshift=\cx cm]
+\foreach \r/\c in {0/1, 0/2, 1/0, 1/2, 2/1, 2/2} {\node[slot] at (\c*\cw, -\r*\cw) {$\ast$};}
+\foreach \r/\c in {0/0, 1/1, 2/0} {\node[zero] at (\c*\cw, -\r*\cw) {$\cdot$};}
+\brackets{0}
+\end{scope}
+\node[note] at (\cx/2+\cw, -2*\cw-0.45)
+  {the six positions of $\mmat{C}$ that can be nonzero, found and stored once};
+% ---------- bottom panel: numeric ----------
+\begin{scope}[yshift=-4.45cm]
+\node[ttl] at (\cx/2+\cw, 1.15) {numeric pass, per evaluation};
+\node[font=\small, anchor=south] at (\cw, 0.4) {$\mmat{C}$};
+\foreach \r/\c/\l in {0/1/$c_{01}$, 0/2/$c_{02}$, 1/0/$c_{10}$, 1/2/$c_{12}$, 2/1/$c_{21}$, 2/2/$c_{22}$}
+  {\node[new] at (\c*\cw, -\r*\cw) {\l};}
+\foreach \r/\c in {0/0, 1/1, 2/0} {\node[zero] at (\c*\cw, -\r*\cw) {$\cdot$};}
+\brackets{0}
+\node[font=\small, anchor=west, align=left] at (2*\cw+0.8, -\cw) {%
+  $\begin{aligned}
+    c_{01} &= a_{00}\,b_{01} + a_{02}\,b_{21} & c_{12} &= a_{11}\,b_{12} \\
+    c_{02} &= a_{02}\,b_{22}                   & c_{21} &= a_{22}\,b_{21} \\
+    c_{10} &= a_{11}\,b_{10}                   & c_{22} &= a_{22}\,b_{22}
+  \end{aligned}$};
+\node[note] at (\cx/2+\cw, -2*\cw-0.45)
+  {one sparse dot product per stored position, written into place};
+\end{scope}
+\end{tikzpicture}
+\caption{The two passes of a sparse product $\mmat{C} = \mmat{A}\mmat{B}$. The symbolic
+pass finds, from the patterns of $\mmat{A}$ and $\mmat{B}$, the positions of $\mmat{C}$
+that can be nonzero, denoted by~$\ast$, and stores them. The numeric pass computes one
+sparse dot product per stored position, over the indices at which the row of $\mmat{A}$
+and the column of $\mmat{B}$ are both nonzero.}
+\label{fig:sparse-product-passes}
+\end{figure}
 
 \begin{figure}[htbp]
 \centering
@@ -632,14 +694,29 @@ as arrows. The numeric pass accumulates the values along the fixed arrows.}
 \label{fig:sum-idx-map}
 \end{figure}
 
+The dense kernels cache block layouts in place of a sparsity pattern.
+The permuted dense kernels intersect the index vectors of their operands during the
+symbolic pass, and on the stacked matrices of \S\ref{sec:theme1-stacked-pd} the symbolic
+pass also determines which pairs of blocks have intersecting row sets. The numeric pass
+gathers the matching rows, multiplies them with
+\texttt{dgemm}, and scatters the products to fixed positions.
+
+The atoms that only move or add entries of the child Jacobian, which we call structural
+atoms, cache index maps. The Jacobian of \texttt{sum} is a sum of groups of rows of the
+child Jacobian. The symbolic pass records, for each nonzero of the child Jacobian, the
+output entry it is added to, as shown in Figure~\ref{fig:sum-idx-map}. The numeric pass is
+one loop with one addition per nonzero. Other structural atoms such as \texttt{index},
+\texttt{transpose}, and \texttt{broadcast} build their maps in the same way, with a copy in
+place of an addition.
+
 \section{Problem interface}\label{sec:theme1-api}
 
-\texttt{SparseDiffEngine} collects the objective and constraint trees in one
+We collect the objective and constraint trees in one
 \texttt{problem} object, defined in \texttt{problem.c}. The Python
 extension module \texttt{sparsediffpy} exposes the atom constructors and the functions
-that build and evaluate the \texttt{problem} object. 
-Everything specific to \texttt{CVXPY} is in a converter and a canonicalization backend
-named \texttt{diffengine}. The converter builds the equivalent C trees in one pass
+that build and evaluate the \texttt{problem} object.
+We wrote everything specific to \texttt{CVXPY} as a converter and a canonicalization
+backend named \texttt{diffengine}. The converter builds the equivalent C trees in one pass
 over the canonicalized problem, with one constructor call per node. The backend obtains the
 problem data as the values and derivatives of the trees, in place of the matrix stuffing
 pass of \S\ref{sec:matrix-stuffing}.
@@ -658,13 +735,12 @@ the problem level as well. The solver receives one global CSR matrix, which the 
 pass builds once by stacking the sparsity patterns of the constraint Jacobians, as in
 Figure~\ref{fig:jacobian-stacking}.
 The numeric pass copies the values of each tree into a fixed slice of the global value
-array, and skips an affine tree after the first evaluation, because its values cannot
-change until a parameter does.
-
-The Hessian follows the same split between structure and values. An affine tree contributes
-nothing to it, so for a
-canonicalized problem only the objective is evaluated. The matrix is symmetric, and only
-its lower triangle is passed to the solver.
+array. The Jacobian of an affine tree does not depend on the variable values. Its entries
+are determined by shapes and index sets, or by problem data, and change only when a
+parameter is updated. The numeric pass therefore skips an affine tree after the first
+evaluation, until the next parameter update. The Hessian follows the same split. An affine tree
+contributes nothing to it, so for a canonicalized problem only the objective is evaluated.
+The matrix is symmetric, and only its lower triangle is passed to the solver.
 
 \begin{figure}[htbp]
 \centering
