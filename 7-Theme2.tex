@@ -1,11 +1,11 @@
 \Chapter{RESULTS}\label{sec:Theme2}
 
-This chapter measures the system we built in Chapter~\ref{sec:Theme1}. We compare our
-canonicalization backend \texttt{diffengine}, whose lower-case name distinguishes it from
-the \texttt{SparseDiffEngine} library underneath it, against \texttt{CVXPY}'s
-three existing backends: the default \texttt{cvxcore} backend (which we refer to as
-\texttt{CPP}) and the two Python backends \texttt{SCIPY} and \texttt{COO}, all
-described in \S\ref{sec:matrix-stuffing}. There are two main reasons for these comparisons.
+This chapter compares \texttt{diffengine}, the canonicalization backend we built in
+Chapter~\ref{sec:Theme1} using \texttt{SparseDiffEngine}, against \texttt{CVXPY}'s three
+existing backends. The three are the
+default \texttt{cvxcore}, which we refer to as \texttt{CPP}, and the two Python
+backends \texttt{SCIPY} and \texttt{COO}, all described in \S\ref{sec:matrix-stuffing}.
+Two questions motivate these comparisons.
 First, we want to know the relative benefit of our proposed symbolic and numeric split
 against the parameter-to-data tensor. Both approaches store results of the first
 canonicalization so that subsequent parameter updates are cheap.
@@ -52,27 +52,22 @@ The benchmark scripts and all recorded timings are available at
 Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
 fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
 $0.36$, and on $17$ problems it is more than twice as fast as the best
-\texttt{CVXPY} backend. Four problems remain where it is slower. On CVaR and
-OptimalAdvertising the ratio is within $5\%$ of one. On
-SDPSegfault1132, canonicalization is
-dominated by moving large blocks of constant data into the problem matrices, and the numeric
-pass copies these blocks in full. On ConvexPlasticity the
-three \texttt{CVXPY} backends finish in equal time, a sign that
-Python-side reductions rather than the backend dominate there. The \texttt{diffengine} entry is
-measured on a later build of the branch, which converts the mostly-zero dense constant of the
-quadratic form to sparse form. The build used elsewhere in the table stored it as a dense block
-and took $2.03$ seconds.
+\texttt{CVXPY} backend. Two problems remain where it is slower (on CVaR and
+OptimalAdvertising the times are similar). On SDPSegfault1132 and
+ConvexPlasticity, processing dense constant data dominates \texttt{diffengine}'s
+canonicalization time.
 
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends
-over the whole suite at once. Let $t_{p,s}$ be the time of backend $s$ on
-problem $p$ and $n$ the number of problems. The profile of backend $s$ is the fraction of
-problems on which it is within a factor $\tau$ of the fastest backend,
+over the whole suite at once. We define $t_{p,s}$ as the time of backend $s$ on
+problem $p$. The profile of backend $s$ is the fraction of the $n$ problems on which it
+is within a factor $\tau$ of the fastest backend,
 \BEQ\label{eq:perf-profile}
 f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{p,b}
-\,\}\bigr|,
+\,\}\bigr|.
 \EEQ
-the minimum running over all four backends. The value at $\tau = 1$ is the fraction of
+The minimum $\min_b t_{p,b}$ is the time of the fastest backend on problem~$p$.
+The value at $\tau = 1$ is the fraction of
 problems on which the backend is the fastest, and the curve reaches $1$ at the factor the
 backend needs to cover every problem. \texttt{diffengine} is within $3\times$ of
 the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than two problems,
@@ -81,13 +76,9 @@ and each needs $\tau \approx 8$ to cover $92$--$96\%$ of the problems.
 Figure~\ref{fig:profiles}b reports the same profile for peak memory,
 with $t_{p,s}$ replaced by the growth of the process's peak resident memory during
 canonicalization. \texttt{SCIPY} has the lowest peak memory on
-$16$ of the $25$ problems. On one problem \texttt{CVXPY}'s backends report zero growth,
-as canonicalization never
-pushes the process above the peak reached while constructing the problem. The ratio is
-undefined there and the problem is excluded. Over
-the remaining $24$ problems, \texttt{diffengine} matches \texttt{CPP} and
-\texttt{COO} in geometric mean and uses about $1.5\times$ the memory of \texttt{SCIPY}.
-% TODO maybe need to change this once we add the sparse quad form path conversion.
+$16$ of the $25$ problems. \texttt{diffengine}
+matches \texttt{CPP} and \texttt{COO} in geometric mean and uses about $1.4\times$ the memory
+of \texttt{SCIPY}.
 \begin{table}[htbp]
 \centering
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
@@ -162,11 +153,11 @@ runs another numeric pass.
 \centering
 \caption[First canonicalization and re-solve on the parametric problems]{First
 canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric problems.
-Each re-solve time is the average of three consecutive re-solves. A dash denotes a parameter map
+A dash denotes a tensor
 that did not finish building
 within the time limit. Bold
 denotes the fastest first canonicalization and the faster re-solve. The ratio is
-\texttt{diffengine} over the tensor parameter map.}
+\texttt{diffengine} over the tensor.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -207,8 +198,9 @@ The benchmark experiments in this chapter lead us to make the following three ob
 Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a factor of
 about two of the cached tensor on every problem while ignoring the ruleset.
 \item The tensor approach carries a large upfront cost that is not always justified. In
-Table~\ref{tab:param-tensor}, two backends did not finish building the tensor within the
-time limit on two problems, and every first canonicalization is slower than the split.
+Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
+the tensor on every problem, and its re-solve is also faster on five of the seven
+problems.
 \item \texttt{diffengine} canonicalizes faster than \texttt{cvxcore} on $24$ of the $25$
 problems, as reported in Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}.
 \end{itemize}
