@@ -53,7 +53,7 @@ Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is t
 fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
 $0.36$, and on $17$ problems it is more than twice as fast as the best
 \texttt{CVXPY} backend. Four problems remain where it is slower. On CVaR and
-OptimalAdvertising the ratio is within $5\%$ of one, a tie within the run-to-run spread. On
+OptimalAdvertising the ratio is within $5\%$ of one, a tie. On
 SDPSegfault1132, canonicalization is
 dominated by moving large blocks of constant data into the problem matrices, and the numeric
 pass copies these blocks in full. On ConvexPlasticity the
@@ -156,11 +156,7 @@ numeric pass. It has the fastest first canonicalization on every problem, and am
 the \texttt{CVXPY} backends only \texttt{COO} is able to build the tensor on all seven. On a
 parameter update, the three \texttt{CVXPY} backends re-solve by applying the cached
 tensor, so the tensor column is common to all three. \texttt{diffengine} instead
-runs another numeric pass. On all problems but SimpleFullyParametrizedLP and ParametrizedQP,
-each entry is the fastest of three runs. The three runs agree within $7\%$ on every re-solve
-time above $0.1$ seconds, and within $8\%$ on the first canonicalization times, except for one
-\texttt{COO} run on FactorCovarianceModel and one \texttt{diffengine} run on
-ParamSmallMatrixStuffing.
+runs another numeric pass.
 
 \begin{table}[htbp]
 \centering
