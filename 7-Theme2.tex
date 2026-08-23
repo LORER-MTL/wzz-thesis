@@ -53,7 +53,7 @@ Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is t
 fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
 $0.36$, and on $17$ problems it is more than twice as fast as the best
 \texttt{CVXPY} backend. Four problems remain where it is slower. On CVaR and
-OptimalAdvertising the ratio is within $5\%$ of one, a tie. On
+OptimalAdvertising the ratio is within $5\%$ of one. On
 SDPSegfault1132, canonicalization is
 dominated by moving large blocks of constant data into the problem matrices, and the numeric
 pass copies these blocks in full. On ConvexPlasticity the
