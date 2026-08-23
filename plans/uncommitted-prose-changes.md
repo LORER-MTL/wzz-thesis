@@ -33,8 +33,9 @@ only when William says so.
 - Eigen vs scipy: "and the two sparse libraries behind CVXPY's backends differ on it" (#26).
 - Kernels: "An atom with an operation outside the ten would add a kernel of its own, implemented
   for each representation it must support" (#28).
+- §3.3.2: new fig:sparse-product-passes (symbolic/numeric panels of a sparse product), 2026-08-22.
 - §3.3.2 Caching structure across solves reorganized: split defined once → three cached kinds
-  (sparsity patterns / block layouts / index maps) → "This caching pays off across solves" ¶
+  (sparsity patterns / block layouts / index maps) → payoff ¶ (its framing opener cut 2026-08-22)
   (#31).
 - Chapter wrap-up paragraph after Listing 3.3: two design choices vs §2.1 backends, hand-off to
   ch. 4 (#33).
@@ -45,7 +46,15 @@ only when William says so.
   SparseDiffEngine library underneath it…" (#35).
 - "We exclude the solver because the choice of backend affects only canonicalization" (#36).
 - Variance sentences: median of three runs, 3–5 % typical deviation, larger deviations were
-  transients (#41, pushed back on 100–350 runs).
+  transients (#41, pushed back on 100–350 runs). 2026-08-22: CUT from the intro; Table 4.1
+  caption/notes now distinguish the median rows (Table 4.2 problems + CP) from the 17 single
+  measurements; variance sentence moved to §4.2 (re-solves above 0.1 s within 7 %, first
+  canonicalizations within 8 % but for two runs). See log item 41. Later 2026-08-22: replicated
+  cells switched to the FASTEST of three runs (Tables 4.1/4.2, captions, notes, §4.2 sentence),
+  CP ‡ fastest of six (0.85, ratio 2.48), CP old-build 2.03 s, dagger-row CPP cells to the
+  archived file values (2.22 / 11.51), fig:profiles(a) rebuilt from the table's cells,
+  profile prose 92–96 %. Geomean 0.36 and abstract 2.8× unchanged. Daggers removed from both
+  tables; protocol sentence in the chapter intro instead.
 - §4.1 slow rows: CVaR/OptimalAdvertising ties within spread; SDPSegfault1132 constant-data
   copies; ConvexPlasticity dense-ingested diagonal, dev build 0.9 s ≈ 2.6× CVXPY backends,
   Python-side reductions dominate (#42).
