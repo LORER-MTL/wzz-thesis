@@ -40,10 +40,7 @@ Each measurement runs \texttt{get\_problem\_data} once with
 \texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 20
 minutes. The method canonicalizes the
 problem and returns the resulting problem data without calling the solver. We exclude the
-solver because the choice of backend affects only canonicalization. Each entry in the
-tables of this chapter is a single measurement, except for ConvexPlasticity and five of the
-seven parametric problems, for which we repeated the measurement three times and report the
-fastest run.
+solver because the choice of backend affects only canonicalization.
 The benchmark scripts and all recorded timings are available at
 \begin{center}
   \url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
