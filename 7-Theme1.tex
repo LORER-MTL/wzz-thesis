@@ -716,10 +716,11 @@ We collect the objective and constraint trees in one
 \texttt{problem} object, defined in \texttt{problem.c}. The Python
 extension module \texttt{sparsediffpy} exposes the atom constructors and the functions
 that build and evaluate the \texttt{problem} object.
-We wrote everything specific to \texttt{CVXPY} as a converter and a canonicalization
-backend named \texttt{diffengine}. The converter builds the C trees of the canonicalized
+We keep everything specific to \texttt{CVXPY} in a converter and a canonicalization
+backend named \texttt{diffengine}. The lower-case name distinguishes the backend from
+\texttt{SparseDiffEngine}. The converter builds the C trees of the canonicalized
 problem in one pass over it, with one constructor call per node. The backend obtains the
-problem data as the values and derivatives of the trees, in place of the matrix stuffing
+problem data as the values and derivatives of the trees, replacing the matrix stuffing
 pass of \S\ref{sec:matrix-stuffing}.
 
 \subsection{Stacking the constraint Jacobians}\label{sec:theme1-problem-interface}
@@ -912,24 +913,31 @@ P.vals = problem.hessian_values()
 \section{Summary}\label{sec:theme1-summary}
 
 % (chapter wrap-up added per advisor review of 2026-08-19; promoted to a headed section
-%  2026-08-22 to match §2.4 and §4.3)
-The engine computes the problem data of a canonicalized problem as the values and derivatives
-of its expression trees. A symbolic pass fixes the sparsity pattern, block layout, or index map
-of every Jacobian and allocates every buffer, and a numeric pass fills values into that fixed
-structure. A Jacobian is stored as a generic sparse matrix, a permuted dense matrix, or a
-stacked permuted dense matrix, and the ten kernels of Table~\ref{tab:kernel-operations}
-operate on the three representations, with BLAS on the dense blocks. \texttt{CVXPY} reaches
-the engine through the \texttt{diffengine} backend, which builds the trees once per problem
-family and reruns only the numeric pass after a parameter update.
+%  2026-08-22 to match §2.4 and §4.3; rewritten around the contributions from William's
+%  draft 2026-08-23)
+This chapter presented a high-level overview of our approach to canonicalizing
+optimization problems faster. Our main contribution is two new matrix classes that take
+advantage of the dense blocks in problem data. Along with these data structures, we
+presented the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
+kernels are new but fairly straightforward, as each reduces to simple index manipulations
+followed by calls to existing sparse and dense routines. Together, the matrix classes
+and the kernels let sparse and dense Jacobians mix in the same tree without converting
+to one specific format.
 
-Section~\ref{sec:research-gap} found no reviewed system that combines a two-phase split
-with direct computation of the problem data. The engine does both. It splits the work in
-two passes, as \texttt{CasADi} does in \S\ref{sec:casadi}, and its numeric pass computes
-the coefficient matrices directly in one pass over the trees instead of by derivative
-sweeps. Two further choices separate it from the \texttt{CVXPY} backends of
-\S\ref{sec:matrix-stuffing}. The engine caches the structure of every problem, not only of
-the problems that conform to the \ac{DPP} ruleset, and it stores the dense blocks of the
-problem data in dense form. The next chapter measures the effect of these choices on
-\texttt{CVXPY}'s benchmark suite, first on a single canonicalization against the
-\texttt{CVXPY} backends, then on repeated solves against the parameter-to-data tensor of
-\S\ref{sec:ms-parameters}.
+In addition, for parametric problems, our contribution is the two-phase approach to computing
+derivatives, which we borrow from the interfaces of \ac{NLP} solvers
+(\S\ref{sec:casadi}). Although the idea is borrowed, what we store during the symbolic
+pass is very different. Instead of a compressed sparsity pattern and a graph colouring,
+we store index maps and sparsity patterns, and the numeric pass writes the coefficient
+values directly into them. The cached structure also covers every problem, not only the
+problems that conform to the \ac{DPP} ruleset.
+
+Finally, the choice to implement the engine in C without external libraries forced us to
+think carefully about memory allocation, sparse formats, and opportunities to cache
+computation. The next chapter presents the results of these contributions. For a fair
+comparison, we compare only against \texttt{CVXPY}'s existing backends of
+\S\ref{sec:matrix-stuffing}, which take the same canonicalized expressions as input and
+produce the same problem data. The other modelling languages of
+Chapter~\ref{sec:RevLitt} store and compute their coefficients differently. A comparison
+with them would be difficult to assess, since their times cover more than the
+coefficient computation.
