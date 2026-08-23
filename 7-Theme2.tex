@@ -59,8 +59,9 @@ dominated by moving large blocks of constant data into the problem matrices, and
 pass copies these blocks in full. On ConvexPlasticity the
 three \texttt{CVXPY} backends finish in equal time, a sign that
 Python-side reductions rather than the backend dominate there. The \texttt{diffengine} entry is
-measured on a later build of the branch, as the table notes. The build used elsewhere in the
-table stored the diagonal matrix of the model as a dense block and took $2.03$ seconds.
+measured on a later build of the branch, which converts the mostly-zero dense constant of the
+quadratic form to sparse form. The build used elsewhere in the table stored it as a dense block
+and took $2.03$ seconds.
 
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends
@@ -124,17 +125,11 @@ Murray                      &  7.13 &  3.87 &  4.00 &  \textbf{3.72} & 0.96 \\
 CVaR                        & 35.85 & \textbf{24.79} & 26.86 & 24.94 & 1.01 \\
 OptimalAdvertising          &  6.43 &  2.32 &  \textbf{2.25} &  2.36 & 1.05 \\
 SDPSegfault1132             & 64.84 &  \textbf{9.51} & 43.00 & 13.21 & 1.39 \\
-ConvexPlasticity\rlap{$^\ddagger$}
-                            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  0.85 & 2.48 \\
+ConvexPlasticity            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  0.85 & 2.48 \\
 \midrule
 \textbf{Geometric mean}     &       &       &       &       & \textbf{0.36} \\
 \bottomrule
 \end{tabular}}
-
-\vspace{0.5em}
-{\footnotesize $^\ddagger$ denotes the fastest of six runs on a later build of the
-\texttt{diffengine} branch that converts the mostly-zero dense constant of the quadratic form
-to sparse form. All other \texttt{diffengine} entries use the build described in the setup.}
 \end{table}
 
 \begin{figure}[htbp]
