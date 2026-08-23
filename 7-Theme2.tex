@@ -165,9 +165,8 @@ canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric p
 Each re-solve time is the average of three consecutive re-solves. A dash denotes a parameter map
 that did not finish building
 within the time limit. Bold
-denotes the faster re-solve. The first canonicalization columns carry no bold because
-\texttt{diffengine} is the fastest on every problem there. The ratio is \texttt{diffengine}
-over the tensor parameter map.}
+denotes the fastest first canonicalization and the faster re-solve. The ratio is
+\texttt{diffengine} over the tensor parameter map.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -178,13 +177,13 @@ over the tensor parameter map.}
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine}
 & tensor & \texttt{diffengine} & Ratio \\
 \midrule
-ParamSmallMatrixStuffing    &  7.78 & 29.06 &  0.40 & 0.21 & 0.005 & \textbf{0.001} & 0.29 \\
-ParamConeMatrixStuffing     &  3.16 &  7.63 &  0.26 & 0.14 & 0.003 & \textbf{0.001} & 0.29 \\
-SimpleFullyParametrizedLP   &   --- &   --- &  2.17 & 0.54 & 0.261 & \textbf{0.126} & 0.48 \\
-ParametrizedQP              &   --- &   --- & 10.87 & 2.53 & 1.485 & \textbf{0.985} & 0.66 \\
-SimpleScalarParametrizedLP  &  4.68 &  4.15 &  4.48 & 1.03 & 0.304 & \textbf{0.247} & 0.81 \\
-SVMWithL1Regularization     & 11.00 &  8.21 &  9.62 & 1.86 & \textbf{0.252} & 0.496 & 1.97 \\
-FactorCovarianceModel       &  4.92 &  4.15 &  4.66 & 0.86 & \textbf{0.139} & 0.279 & 2.00 \\
+ParamSmallMatrixStuffing    &  7.78 & 29.06 &  0.40 & \textbf{0.21} & 0.005 & \textbf{0.001} & 0.29 \\
+ParamConeMatrixStuffing     &  3.16 &  7.63 &  0.26 & \textbf{0.14} & 0.003 & \textbf{0.001} & 0.29 \\
+SimpleFullyParametrizedLP   &   --- &   --- &  2.17 & \textbf{0.54} & 0.261 & \textbf{0.126} & 0.48 \\
+ParametrizedQP              &   --- &   --- & 10.87 & \textbf{2.53} & 1.485 & \textbf{0.985} & 0.66 \\
+SimpleScalarParametrizedLP  &  4.68 &  4.15 &  4.48 & \textbf{1.03} & 0.304 & \textbf{0.247} & 0.81 \\
+SVMWithL1Regularization     & 11.00 &  8.21 &  9.62 & \textbf{1.86} & \textbf{0.252} & 0.496 & 1.97 \\
+FactorCovarianceModel       &  4.92 &  4.15 &  4.66 & \textbf{0.86} & \textbf{0.139} & 0.279 & 2.00 \\
 \bottomrule
 \end{tabular}}
 
