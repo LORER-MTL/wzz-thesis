@@ -1063,8 +1063,7 @@ built once, and a parameter change requires only its evaluation, one sweep per c
 with one tensor-vector product, but only for problems conforming to the \ac{DPP} ruleset. For
 every other problem nothing is cached and the whole pass is repeated. \texttt{AMPL} folds the
 values into the instance, so a change requires the translator to write a new \texttt{.nl} file and
-the driver to read it. \texttt{JuMP} modifies the term lists in place, and substitutes a parameter
-that multiplies a variable only through \texttt{ParametricOptInterface.jl}.
+the driver to read it. \texttt{JuMP} modifies the term lists in place.
 
 None of the four combines the two-phase split with direct computation of the problem data.
 Chapter~\ref{sec:Theme1} presents a new method that does. It splits the work in two phases, just

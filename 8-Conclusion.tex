@@ -1,35 +1,83 @@
 \Chapter{CONCLUSION}\label{sec:Conclusion}
 
-%%
-%%  SYNTHESE DES TRAVAUX / SUMMARY OF WORKS
-%%
-\section{Summary}
-% TODO(read-through): unwritten; summarize the three intro contributions and the
-% benchmark results vs all three CVXPY backends (fastest first canonicalization on 21/25,
-% geometric-mean ratio 0.37 vs best CVXPY backend; re-solve faster on 5/7 DPP problems,
-% geomean ratio 0.71 vs the tensor). State §4.3's outcomes as settled findings, one
-% sentence each (split as default on parametric problems; diffengine a suitable
-% replacement for deprecated cvxcore); do not re-argue them here.
-% should we try to bring back the tables which compare cvxpy against the other
-% modeling languages and also diffengine vs. the other sparse AD methods?
+Throughout this master's thesis, we have revisited the performance of compiling a high-level
+model into conic problem data, the step that \texttt{CVXPY} calls canonicalization. This step
+is essential to solving an optimization problem, but its cost has often been an afterthought,
+either negligible or accepted as a necessary upfront cost. Although implementations exist in
+many modelling languages, few take the perspective of computing sparse derivatives.
+\texttt{CasADi} is the closest, but its generic \ac{AD} does not use what is known about the
+problem ahead of time. The canonicalized functions are all affine, with their coefficients
+already stored in the expression graph, yet it must still detect the sparsity patterns at
+runtime and compress the Jacobian computation by graph colouring. 
+
+In addition, the existing
+languages all default to scalar or sparse storage, the formats expected by the solvers. When
+dense blocks appear in the problem data, \texttt{AMPL} and \texttt{JuMP} store them as lists
+of scalar coefficients, and \texttt{CasADi} and \texttt{CVXPY}'s backends return them inside
+general sparse matrices. No language keeps a dense block dense. To address this, we built
+\texttt{SparseDiffEngine}, a sparse differentiation library that operates on vectorized
+expressions and mixes sparse and dense formats throughout its operations.
+
 %%
 %%  LIMITATIONS
 %%
 \section{Limitations}\label{sec:Limitations}
-% TODO(read-through): unwritten; candidates: DPP's cached tensor still wins on small dense
-% parameter maps (SVM, FactorCovariance), Python-side reductions dominate some problems
-% (ConvexPlasticity), benchmarks limited to a single 25-problem suite, one machine, and
-% one solver target (the "first indication, not a verdict" caveat cut from §4.3 lives here).
-% Also: peak memory (measured by the same harness, not reported in ch. 4) does not follow
-% the timing results; diffengine is markedly heavier on several problems.
+
+The benchmark suite of \texttt{CVXPY} is a collection of synthetic problems accumulated over
+the years by the library's developers~\cite{cvxpybenchmarks}. It is not a standard benchmark
+collection like the ones maintained for optimization solvers. Two examples are the Mittelmann
+benchmarks~\cite{mittelmann2020benchmarking} and the repository of convex \acp{QP} of Maros
+and M\'esz\'aros~\cite{maros1999repository}. However, these collections bypass
+canonicalization. Their instances are distributed in standard form, ready to be passed to the
+solver, so there is no high-level model left to compile.
+
+If and when a standard benchmark set written at the modelling level becomes available, the
+experiments of Chapter~\ref{sec:Theme2} should be run again on it. One challenge is that
+every modelling language has its own syntax and conventions, so the problems would have to be
+written once per language. The same effort would however enable first comparisons between
+modelling languages.
+
+Finally, the results of Chapter~\ref{sec:Theme2} show that the peak memory of
+\texttt{diffengine} is higher on several problems of the suite. Part of the cost is the
+cached problem itself. The numeric pass traverses the expression trees at every parameter
+change, so the C problem must stay in memory for the lifetime of the problem family. The
+parameter-to-data tensor does not have this constraint. Once built, a re-solve needs only the
+tensor and the current parameter values, and the formulation can be set aside. This
+decoupling brings the same benefits as \texttt{AMPL}'s \texttt{.nl} files, which separate the
+instance from the model that produced it. A self-contained artifact can be archived, shipped
+to another machine, and consumed by downstream packages.
+\texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}
+build on the parameter-to-data tensor in exactly this way.
 
 %%
 %%  AMELIORATIONS FUTURES / FUTURE RESEARCH
 %%
 \section{Future Research}\label{sec:FutureResearch}
-% TODO(read-through): unwritten; include block-aware factorization (factorize directly from
-% the known permuted-dense blocks, skipping CSR conversion and the solver's structure
-% re-detection); a numeric pass that skips constant subtrees, making re-solve cost scale
-% with the update rather than the problem (§4.3 observes neither system achieves this;
-% staged plan in SparseDiffEngine/plan_resolve_constant_skip.md); optionally a qualitative
-% positioning vs CasADi/AMPL/JuMP now that the cross-system benchmarks are cut.
+
+The contributions of this thesis span several different ideas, from improvements to existing
+packages to new data structures and a simpler way to compute sparse derivatives. We see three
+avenues for future work.
+
+The first avenue is the improvement of \texttt{sparsediffpy}. We plan to add a standalone
+Python interface, so that the sparse Jacobians and Hessians can be built and evaluated
+without \texttt{CVXPY}. We see potential applications that need sparse derivatives without going
+through an optimization solver.
+
+The second avenue is the remaining work on the \texttt{diffengine} backend and in
+\texttt{CVXPY}. The first step is to make \texttt{diffengine} the default backend on the
+\texttt{ignore\_dpp} path. One challenge is that existing reductions must change behaviour
+without breaking backwards compatibility. The reduction \texttt{EvalParams} of
+\S\ref{sec:ms-parameters} folds the current parameter values into the tree, which discards
+the parameter dependence that the symbolic pass caches. The next task is the removal of
+\texttt{cvxcore} from the library. As a replacement, \texttt{diffengine} can become the
+default for problems without parameters and for parametric problems outside the \ac{DPP}
+grammar, and \texttt{COO} is a candidate default for \ac{DPP} problems, as the only backend
+that built the parameter-to-data tensor on all seven parametric problems of the suite.
+
+The final avenue is the use of the new matrix classes in the rest of the optimization
+process. Both the presolve and the factorization of the sparse linear system at each
+iteration of the optimization loop operate on a generic sparse matrix, and the solver detects
+its structure at runtime. Knowing ahead of time where the dense blocks appear could benefit
+both steps. This change is larger than the previous two, since presolve routines and sparse
+linear solvers would need to accept and operate on the new data structures rather than on
+sparse matrices alone.

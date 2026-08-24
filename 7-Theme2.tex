@@ -201,8 +201,10 @@ about two of the cached tensor on every problem while ignoring the ruleset.
 Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
 the tensor on every problem, and its re-solve is also faster on five of the seven
 problems.
-\item \texttt{diffengine} canonicalizes faster than \texttt{cvxcore} on $24$ of the $25$
-problems, as reported in Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}.
+\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster on $24$ of
+the $25$ problems, as reported in Table~\ref{tab:oneshot-compile} and
+Figure~\ref{fig:profiles}. On the parametric problems of Table~\ref{tab:param-tensor},
+\texttt{COO} builds the parameter-to-data tensor faster than \texttt{cvxcore} on all seven.
 \end{itemize}
 
 Traditionally, \texttt{CVXPY} has relied on \ac{DPP} to guarantee a meaningful
@@ -219,7 +221,8 @@ With our approach, a similar speedup can be obtained through the symbolic and nu
 without enforcing any rules about how parameters appear in the problem formulation.
 
 In addition, the second and third observations suggest that \texttt{diffengine} can 
-become the new default backend of \texttt{CVXPY}. Canonicalization is faster on nearly
+replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}.
+Canonicalization is faster on nearly
 every benchmark problem, on both the first and subsequent canonicalizations, so there is
 little reason to use \texttt{cvxcore} in the future.
 Making this change will require substantial work and coordination with the

@@ -932,12 +932,17 @@ we store index maps and sparsity patterns, and the numeric pass writes the coeff
 values directly into them. The cached structure also covers every problem, not only the
 problems that conform to the \ac{DPP} ruleset.
 
-Finally, the choice to implement the engine in C without external libraries forced us to
+Finally, the choice to implement the engine in C with custom matrix classes forced us to
 think carefully about memory allocation, sparse formats, and opportunities to cache
-computation. The next chapter presents the results of these contributions. For a fair
+computation. We use the term
+\emph{lightweight} to describe the engine because it is a small dependency-free C library
+(other than BLAS, which is a standard dependency) that only implements the required
+operations. 
+
+The next chapter presents the results of these contributions. For a fair
 comparison, we compare only against \texttt{CVXPY}'s existing backends of
 \S\ref{sec:matrix-stuffing}, which take the same canonicalized expressions as input and
 produce the same problem data. The other modelling languages of
 Chapter~\ref{sec:RevLitt} store and compute their coefficients differently. A comparison
-with them would be difficult to assess, since their times cover more than the
+with them would be difficult to assess, since their times can cover more than just the
 coefficient computation.
