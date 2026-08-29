@@ -1,12 +1,13 @@
 
 ###
 IEEEtran bibliography control entry, referenced by \bstctlcite in Document.tex.
-Values are the IEEEtran defaults; it exists only to silence the missing-entry warning.
+Values are the IEEEtran defaults, except CTLuse_url = no (advisor, Document 9 review:
+no "[Online]. Available:" tails; web-only resources cite their URL via howpublished).
 ###
 @IEEEtranBSTCTL{IEEEexample:BSTcontrol,
   CTLuse_article_number    = "yes",
   CTLuse_paper             = "yes",
-  CTLuse_url               = "yes",
+  CTLuse_url               = "no",
   CTLuse_forced_etal       = "no",
   CTLmax_names_forced_etal = "10",
   CTLnames_show_etal       = "1",
@@ -43,7 +44,7 @@ number = {2},
 issn = {0098-3500},
 url = {https://doi.org/10.1145/357456.357457},
 doi = {10.1145/357456.357457},
-journal = {ACM Trans. Math. Softw.},
+journal = {ACM Transactions on Mathematical Software},
 month = jun,
 pages = {143-183},
 numpages = {41}
@@ -86,6 +87,15 @@ numpages = {41}
   address = {Redwood City, CA}
 }
 
+@book{fourer2003ampl,
+  title = {{AMPL}: A Modeling Language for Mathematical Programming},
+  author = {Fourer, Robert and Gay, David M. and Kernighan, Brian W.},
+  edition = {2nd},
+  year = {2003},
+  publisher = {Duxbury Press},
+  address = {Pacific Grove, CA}
+}
+
 @article{fourer1990ampl,
   title = {A modeling language for mathematical programming},
   author = {Fourer, Robert and Gay, David M. and Kernighan, Brian W.},
@@ -107,6 +117,19 @@ Canonicalization
   publisher={Cambridge university press}
 }
 
+@incollection{vonneumann1947maximum,
+  title     = {Discussion of a maximum problem},
+  author    = {von Neumann, John},
+  booktitle = {John von Neumann: Collected Works},
+  editor    = {Taub, A. H.},
+  volume    = {VI},
+  pages     = {27--28},
+  publisher = {Pergamon Press},
+  address   = {Oxford},
+  year      = {1963},
+  note      = {Unpublished working paper, Institute for Advanced Study, Princeton, NJ, 1947}
+}
+
 @book{bental2001lectures,
   title={Lectures on modern convex optimization: analysis, algorithms, and engineering
          applications},
@@ -118,7 +141,7 @@ Canonicalization
 @misc{cederberg2025disciplined,
   title={Disciplined Nonlinear Programming},
   author={Cederberg, Daniel and Zhang, William and Nobel, Parth and Boyd, Stephen},
-  year={2025},
+  year={2026},
   howpublished={arXiv:2606.02896},
   url={https://arxiv.org/abs/2606.02896}
 }
@@ -140,7 +163,7 @@ Canonicalization
 Modeling languages
 ###
 @misc{cvx,
-  author       = {CVX Research, Inc.},
+  author       = {{CVX Research, Inc.}},
   title        = {{CVX}: Matlab Software for Disciplined Convex Programming, version 2.0},
   howpublished = {\url{https://cvxr.com/cvx}},
   month        = aug,
@@ -150,7 +173,7 @@ Modeling languages
 @inproceedings{lofberg2004yalmip,
   title={{YALMIP: A toolbox for modeling and optimization in MATLAB}},
   author={Löfberg, J.},
-  booktitle={2004 IEEE international conference on robotics and automation (IEEE Cat. No. 04CH37508)},
+  booktitle={2004 IEEE International Conference on Robotics and Automation (IEEE Cat. No. 04CH37508)},
   pages={284--289},
   year={2004},
   organization={IEEE}
@@ -159,10 +182,12 @@ Modeling languages
 @inproceedings{udell2014convex,
   title={{Convex optimization in Julia}},
   author={Udell, M. and Mohan, K. and Zeng, D. and Hong, J. and Diamond, S. and Boyd, S.},
-  booktitle={2014 first workshop for high performance technical computing in dynamic languages},
+  booktitle={2014 First Workshop for High Performance Technical Computing
+             in Dynamic Languages (HPTCDL)},
   pages={18--28},
   year={2014},
-  organization={IEEE}
+  organization={IEEE},
+  doi={10.1109/HPTCDL.2014.5}
 }
 
 @article{diamond2016cvxpy,
@@ -234,7 +259,6 @@ Modeling languages
   school  = {Imperial College London (University of London)},
   year    = {1996},
   address = {London},
-  note    = {Ph.D. dissertation},
 }
 
 @manual{gurobi,
@@ -245,14 +269,14 @@ Modeling languages
 }
 
 @manual{mosekSolver,
-   author = {ApS, MOSEK},
+   author = {{MOSEK ApS}},
    title = {{MOSEK optimization suite 11.0}},
    year = {2026}
 }
 
 @misc{aps2025mosek,
   title  = {{MOSEK} modeling cookbook},
-  author = {ApS, MOSEK},
+  author = {{MOSEK ApS}},
   year   = {2026}
 }
 
@@ -288,14 +312,13 @@ Modeling languages
   year         = {2004},
   month        = dec,
   department   = {Electrical Engineering},
-  note         = {Ph.D. dissertation},
   url          = {https://web.stanford.edu/~boyd/papers/pdf/mcg_thesis.pdf}
 }
 
 @ARTICLE{schaller2022cvxpygen,
   author={Schaller, Maximilian and Banjac, Goran and Diamond, Steven and Agrawal, Akshay and Stellato, Bartolomeo and Boyd, Stephen},
   journal={IEEE Control Systems Letters}, 
-  title={Embedded Code Generation With CVXPY}, 
+  title={Embedded Code Generation With {CVXPY}}, 
   year={2022},
   volume={6},
   number={},
@@ -330,7 +353,6 @@ Modeling languages
   year={2005},
   institution={Sandia National Laboratories},
   number={SAND2005-7907P},
-  note={Describes AMPL's expression DAG and coefficient extraction internals}
 }
 
 @techreport{gay1997hooking,
@@ -339,7 +361,6 @@ Modeling languages
   year={1997},
   institution={Bell Laboratories},
   number={97-4-06},
-  note={Reference for the AMPL Solver Library (ASL)}
 }
 
 @techreport{gay1991automatic,
@@ -348,17 +369,15 @@ Modeling languages
   year={1991},
   institution={AT\&T Bell Laboratories},
   number={Numerical Analysis Manuscript 91-05},
-  note={Reverse mode AD on AMPL expression graphs}
 }
 
 @incollection{gay1996more,
-  title={More {AD} of Nonlinear {AMPL} Models: Computing Hessian Information and Exploiting
+  title={More {AD} of Nonlinear {AMPL} Models: Computing {H}essian Information and Exploiting
          Partial Separability},
   author={Gay, David M.},
   booktitle={Computational Differentiation: Techniques, Applications, and Tools},
   publisher={SIAM},
   year={1996},
-  note={Sparse Hessians via partial separability, no graph coloring}
 }
 
 @misc{jumpdocs,
@@ -387,11 +406,10 @@ Modeling languages
   author={{AMPL Optimization Inc.}},
   year={2025},
   howpublished={\url{https://amplpy.ampl.com}},
-  note={Python interface to the AMPL modeling language}
 }
 
 @article{Fu_2020,
-   title={CVXR: An R Package for Disciplined Convex Optimization},
+   title={{CVXR}: An {R} Package for Disciplined Convex Optimization},
    volume={94},
    ISSN={1548-7660},
    url={http://dx.doi.org/10.18637/jss.v094.i14},
@@ -426,27 +444,30 @@ Coefficient extraction methods
   publisher = {SIAM}
 }
 
-@misc{lubin2023jump10recent,
-  title={JuMP 1.0: Recent improvements to a modeling language for mathematical optimization}, 
+@article{lubin2023jump10recent,
+  title={{JuMP} 1.0: Recent improvements to a modeling language for mathematical optimization},
   author={Miles Lubin and Oscar Dowson and Joaquim Dias Garcia and Joey Huchette and Benoît Legat and Juan Pablo Vielma},
+  journal={Mathematical Programming Computation},
+  volume={15},
+  number={3},
+  pages={581--589},
   year={2023},
-  eprint={2206.03866},
-  archivePrefix={arXiv},
-  primaryClass={cs.PL},
-  url={https://arxiv.org/abs/2206.03866}, 
+  doi={10.1007/s12532-023-00239-3}
 }
 
 @book{bynum2021pyomo,
   title={Pyomo---Optimization Modeling in Python},
-  author={Bynum, M. L. and others},
+  author={Bynum, M. L. and Hackebeil, G. A. and Hart, W. E. and Laird, C. D.
+          and Nicholson, B. L. and Siirola, J. D. and Watson, J.-P. and Woodruff, D. L.},
+  edition={3rd},
   year={2021},
   publisher={Springer},
   doi={10.1007/978-3-030-68928-5}
 }
 
 @article{hart2011pyomo,
-  title={Pyomo: modeling and solving mathematical programs in Python},
-  author={Hart, W. E. and others},
+  title={Pyomo: modeling and solving mathematical programs in {P}ython},
+  author={Hart, W. E. and Watson, J.-P. and Woodruff, D. L.},
   journal={Mathematical Programming Computation},
   volume={3},
   number={3},
@@ -455,14 +476,15 @@ Coefficient extraction methods
   doi={10.1007/s12532-011-0026-8}
 }
 
-@misc{legat2020mathoptinterface,
-  title={MathOptInterface: a data structure for mathematical optimization problems}, 
-  author={Benoit Legat and Oscar Dowson and Joaquim Dias Garcia and Miles Lubin},
-  year={2020},
-  eprint={2002.03447},
-  archivePrefix={arXiv},
-  primaryClass={math.OC},
-  url={https://arxiv.org/abs/2002.03447}, 
+@article{legat2020mathoptinterface,
+  title={{MathOptInterface}: A data structure for mathematical optimization problems},
+  author={Benoît Legat and Oscar Dowson and Joaquim Dias Garcia and Miles Lubin},
+  journal={INFORMS Journal on Computing},
+  volume={34},
+  number={2},
+  pages={672--689},
+  year={2022},
+  doi={10.1287/ijoc.2021.1067}
 }
 
 @Article{numpy,
@@ -492,7 +514,7 @@ Coefficient extraction methods
 Computing derivatives
 ###
 @article{sympy2017,
-  title = {SymPy: symbolic computing in Python},
+  title = {{SymPy}: symbolic computing in {P}ython},
   author = {Meurer, Aaron and Smith, Christopher P. and Paprocki, Mateusz and \v{C}ert\'{i}k, Ond\v{r}ej and Kirpichev, Sergey B. and Rocklin, Matthew and Kumar, AMiT and Ivanov, Sergiu and Moore, Jason K. and Singh, Sartaj and Rathnayake, Thilina and Vig, Sean and Granger, Brian E. and Muller, Richard P. and Bonazzi, Francesco and Gupta, Harsh and Vats, Shivam and Johansson, Fredrik and Pedregosa, Fabian and Curry, Matthew J. and Terrel, Andy R. and Rou\v{c}ka, \v{S}t\v{e}p\'{a}n and Saboo, Ashutosh and Fernando, Isuru and Kulal, Sumith and Cimrman, Robert and Scopatz, Anthony},
   year = 2017,
   month = jan,
@@ -530,7 +552,7 @@ Computing derivatives
   title={Evaluating Derivatives: Principles and Techniques of Algorithmic Differentiation},
   author={Griewank, Andreas and Walther, Andrea},
   year={2008},
-  publisher={Society for Industrial and Applied Mathematics},
+  publisher={SIAM},
   address={Philadelphia, PA},
   edition={2nd},
   isbn={978-0-89871-659-7}
@@ -549,7 +571,7 @@ issn = {0029-599X},
 url = {https://doi.org/10.1007/BF01386029},
 doi = {10.1007/BF01386029},
 abstract = {A bound is obtained for the error incurred when derivatives are found in terms of differences. The method depends on the use of an auxiliary function, and it is shown that by appropriately choosing the auxiliary function one may considerably improve the estimate of the error, especially in the neighbourhood of a singularity. The result, in addition, provides an alternative form for the remainder term in interpolation formulae, and it can also be regarded as an extension of Cauchy's generalised mean-value theorem.},
-journal = {Numer. Math.},
+journal = {Numerische Mathematik},
 month = dec,
 pages = {279–284},
 numpages = {6}
@@ -567,7 +589,7 @@ number = {4},
 issn = {0098-3500},
 url = {https://doi.org/10.1145/356012.356013},
 doi = {10.1145/356012.356013},
-journal = {ACM Trans. Math. Softw.},
+journal = {ACM Transactions on Mathematical Software},
 month = dec,
 pages = {337–343},
 numpages = {7}
@@ -583,7 +605,7 @@ volume = {18},
 number = {1},
 issn = {1532-4435},
 abstract = {Derivatives, mostly in the form of gradients and Hessians, are ubiquitous in machine learning. Automatic differentiation (AD), also called algorithmic differentiation or simply "auto-diff", is a family of techniques similar to but more general than backpropagation for efficiently and accurately evaluating derivatives of numeric functions expressed as computer programs. AD is a small but established field with applications in areas including computational uid dynamics, atmospheric sciences, and engineering design optimization. Until very recently, the fields of machine learning and AD have largely been unaware of each other and, in some cases, have independently discovered each other's results. Despite its relevance, general-purpose AD has been missing from the machine learning toolbox, a situation slowly changing with its ongoing adoption under the names "dynamic computational graphs" and "differentiable programming". We survey the intersection of AD and machine learning, cover applications where AD has direct relevance, and address the main implementation techniques. By precisely defining the main differentiation techniques and their interrelationships, we aim to bring clarity to the usage of the terms "autodiff", "automatic differentiation", and "symbolic differentiation" as these are encountered more and more in machine learning settings.},
-journal = {J. Mach. Learn. Res.},
+journal = {Journal of Machine Learning Research},
 month = jan,
 pages = {5595–5637},
 numpages = {43},
@@ -594,7 +616,7 @@ keywords = {backpropagation, differentiable programming}
   author = {{Wolfram Research, Inc.}},
   title = {Mathematica, {V}ersion 14.3},
   year = {2026},
-  note = {Champaign, IL},
+  note = {{Champaign, IL}},
   url = {https://www.wolfram.com/mathematica}
 }
 
@@ -607,18 +629,16 @@ keywords = {backpropagation, differentiable programming}
   year = {2026},
 }
 
-@article{Laue2019OnTE,
-  title={On the Equivalence of Forward Mode Automatic Differentiation and Symbolic Differentiation},
-  author={S. Laue},
-  journal={ArXiv},
+@misc{Laue2019OnTE,
+  title={On the Equivalence of Automatic and Symbolic Differentiation},
+  author={Laue, Sören},
   year={2019},
-  volume={abs/1904.02990},
-  url={https://api.semanticscholar.org/CorpusID:102350450}
+  howpublished={arXiv:1904.02990}
 }
 
 @article{Gebremedhin2009SparseHessians,
 author = {Gebremedhin, Assefaw H. and Tarafdar, Arijit and Pothen, Alex and Walther, Andrea},
-title = {Efficient Computation of Sparse Hessians Using Coloring and Automatic Differentiation},
+title = {Efficient Computation of Sparse {H}essians Using Coloring and Automatic Differentiation},
 year = {2009},
 issue_date = {Spring 2009},
 publisher = {INFORMS},
@@ -629,7 +649,7 @@ issn = {1526-5528},
 url = {https://doi.org/10.1287/ijoc.1080.0286},
 doi = {10.1287/ijoc.1080.0286},
 abstract = {The computation of a sparse Hessian matrix H using automatic differentiation (AD) can be made efficient using the following four-step procedure: (1) Determine the sparsity structure of H, (2) obtain a seed matrix S that defines a column partition of H using a specialized coloring on the adjacency graph of H, (3) compute the compressed Hessian matrix B ≡ HS, and (4) recover the numerical values of the entries of H from B.The coloring variant used in the second step depends on whether the recovery in the fourth step is direct or indirect: a direct method uses star coloring and an indirect method uses acyclic coloring. In an earlier work, we had designed and implemented effective heuristic algorithms for these two NP-hard coloring problems. Recently, we integrated part of the developed software with the AD tool ADOL-C, which has recently acquired a sparsity detection capability. In this paper, we provide a detailed description and analysis of the recovery algorithms and experimentally demonstrate the efficacy of the coloring techniques in the overall process of computing the Hessian of a given function using ADOL-C as an example of an AD tool. We also present new analytical results on star and acyclic coloring of chordal graphs. The experimental results show that sparsity exploitation via coloring yields enormous savings in runtime and makes the computation of Hessians of very large size feasible. The results also show that evaluating a Hessian via an indirect method is often faster than a direct evaluation. This speedup is achieved without compromising numerical accuracy.},
-journal = {INFORMS J. on Computing},
+journal = {INFORMS Journal on Computing},
 month = apr,
 pages = {209–223},
 numpages = {15},
@@ -677,8 +697,7 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   author = {Blondel, Mathieu and Roulet, Vincent},
   title  = {The Elements of Differentiable Programming},
   year   = {2024},
-  note   = {arXiv:2403.14606},
-  url    = {https://arxiv.org/abs/2403.14606}
+  howpublished = {arXiv:2403.14606}
 }
 
 @article{powell1979estimation,
@@ -736,7 +755,7 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   author = {Bradley M. Bell},
   title  = {{CppAD}: A Package for {C++} Algorithmic Differentiation},
   year   = {2023},
-  note   = {Computational Infrastructure for Operations Research},
+  note   = {{Computational Infrastructure for Operations Research}},
   url    = {https://github.com/coin-or/CppAD}
 }
 
@@ -766,9 +785,8 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   author  = {Hill, Adrian and Dalle, Guillaume},
   title   = {Sparser, Better, Faster, Stronger: Sparsity Detection for Efficient
              Automatic Differentiation},
-  journal = {arXiv preprint arXiv:2501.17737},
-  year    = {2025},
-  url     = {https://arxiv.org/abs/2501.17737}
+  journal = {Transactions on Machine Learning Research},
+  year    = {2025}
 }
 
 @misc{hill2025illustrated,
@@ -785,7 +803,6 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
                   via operator overloading},
   year         = {2025},
   howpublished = {\url{https://github.com/adrhill/SparseConnectivityTracer.jl}},
-  note         = {Julia package, companion software to the sparsity detection paper}
 }
 
 @article{chi2026torchsla,
@@ -880,7 +897,7 @@ Sparse Matrix Formats
 @book{davis2006direct,
   author    = {Timothy A. Davis},
   title     = {Direct Methods for Sparse Linear Systems},
-  publisher = {Society for Industrial and Applied Mathematics},
+  publisher = {SIAM},
   year      = {2006},
   address   = {Philadelphia, PA},
   isbn      = {978-0-89871-613-9},
@@ -912,7 +929,7 @@ Sparse Matrix Formats
   title={Iterative Methods for Sparse Linear Systems},
   author={Saad, Yousef},
   year={2003},
-  publisher={Society for Industrial and Applied Mathematics},
+  publisher={SIAM},
   address={Philadelphia, PA},
   edition={2nd},
   isbn={978-0-898715-34-7},
@@ -1033,7 +1050,6 @@ Benchmarking
   title        = {airspeed velocity},
   author       = {{airspeed velocity developers}},
   howpublished = {\url{https://asv.readthedocs.io/}},
-  note         = {Python benchmarking framework},
   year         = {2025}
 }
 
@@ -1084,15 +1100,16 @@ Benchmarking
 @article{clarabel,
   title        = {Clarabel: An interior-point solver for conic programs with quadratic objectives},
   author       = {Goulart, Paul J. and Chen, Yuwen},
-  journal      = {arXiv preprint arXiv:2405.12762},
-  year         = {2024}
+  journal      = {Mathematical Programming Computation},
+  year         = {2026},
+  doi          = {10.1007/s12532-026-00320-7}
 }
 
-@article{ge2022copt,
+@misc{ge2022copt,
   title        = {Cardinal {Optimizer} ({COPT}) user guide},
   author       = {Ge, Dongdong and Huangfu, Qi and Wang, Zizhuo and Wu, Jian and Ye, Yinyu},
-  journal      = {arXiv preprint arXiv:2208.14314},
-  year         = {2022}
+  year         = {2022},
+  howpublished = {arXiv:2208.14314}
 }
 
 @article{stellato2020osqp,
@@ -1111,10 +1128,7 @@ Benchmarking
   author       = {Zhang, William and Nobel, Parth and Jeendgar, Aryaman and Murray, Riley and
                   Schiele, Philipp and Diamond, Steven},
   year         = {2026},
-  eprint       = {2606.14891},
-  archivePrefix= {arXiv},
-  primaryClass = {math.OC},
-  url          = {https://arxiv.org/abs/2606.14891}
+  howpublished = {arXiv:2606.14891}
 }
 
 @article{lawson1979blas,

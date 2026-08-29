@@ -19,11 +19,12 @@ The survey \cite{orchard-hays1984history} provides a complete overview
 of the early history of modelling languages.
 
 More recently, modelling languages embedded in general-purpose programming languages have
-gained popularity. These include \texttt{Pyomo} \cite{bynum2021pyomo, hart2011pyomo} in Python,
+gained popularity. These domain-specific languages include \texttt{Pyomo}
+\cite{bynum2021pyomo, hart2011pyomo} in Python,
 \texttt{JuMP} \cite{dunning2017jump} in Julia, \texttt{CasADi} \cite{andersson2019} in C++, and
 \texttt{YALMIP} \cite{lofberg2004yalmip} in MATLAB.
 Other domain-specific modelling languages specialized for convex optimization \cite{boyd2004convex}
-are built on disciplined convex programming (DCP), the composition rules under which the
+are built on disciplined convex programming (DCP), a set of composition rules under which the
 convexity of a problem can be verified automatically
 \cite{grant2004disciplined, grant2006disciplined}.
 These DCP-based languages include \texttt{CVX} \cite{cvx} in MATLAB, \texttt{CVXR} \cite{Fu_2020} in
@@ -32,7 +33,7 @@ R, \texttt{CVXPY} \cite{diamond2016cvxpy} in Python, and \texttt{Convex.jl}
 
 In the meantime, modern general-purpose solvers \cite{mosekSolver, ge2022copt, clarabel}
 have mostly transitioned towards conic programming, which generalizes linear programming and
-can represent and solve nearly every convex program used in practice \cite{bental2001lectures}.
+can represent nearly every convex program used in practice \cite{bental2001lectures}.
 The translation task remains a responsibility of the modelling languages, which now target
 conic problem data instead of \ac{LP} coefficient matrices. In DCP-based languages, this
 translation process is called canonicalization \cite{agrawal2018rewriting}.
@@ -47,7 +48,7 @@ The standard form of a convex optimization problem is
 \begin{array}{ll}
 \underset{\mvec{x} \in \reals^n}{\mbox{minimize}}   & f_0(\mvec{x}; \gvec{\theta}) \\
 \mbox{subject to} & f_i(\mvec{x}; \gvec{\theta}) \le 0, \quad i = 1,\ldots,m_1 \\
-                  & g_j(\mvec{x}; \gvec{\theta}) = 0, \quad j = 1,\ldots,m_2
+                  & g_j(\mvec{x}; \gvec{\theta}) = 0, \quad j = 1,\ldots,m_2,
 \end{array}
 \EEQ
 where $\mvec{x} \in \reals^n$ is the optimization variable, the objective
@@ -65,10 +66,10 @@ quadratic conic form used by many general-purpose convex solvers
 \BEQ \label{e:quad-conic-form}
 \begin{array}{ll}
 \underset{\mvec{x} \in \reals^n}{\mbox{minimize}} & \frac{1}{2} \mvec{x}^\top \mmat{P}(\gvec{\theta}) \mvec{x} + \mvec{c}(\gvec{\theta})^\top \mvec{x}\\
-\mbox{subject to} & \mvec{b}(\gvec{\theta})-\mmat{A}(\gvec{\theta})\mvec{x} \in \cone{K}
+\mbox{subject to} & \mvec{b}(\gvec{\theta})-\mmat{A}(\gvec{\theta})\mvec{x} \in \cone{K},
 \end{array}
 \EEQ
-where the \emph{problem data} are the symmetric positive semidefinite matrix
+where the problem data are the symmetric positive semidefinite matrix
 $\mmat{P}(\gvec{\theta}) \in \symm^n_+$,
 the matrix $\mmat{A}(\gvec{\theta}) \in \reals^{m \times n}$, the vectors
 $\mvec{b}(\gvec{\theta}) \in \reals^m$ and
@@ -76,14 +77,14 @@ $\mvec{c}(\gvec{\theta}) \in \reals^n$, and the non-empty closed convex cone
 $\cone{K} \subseteq \reals^m$.
 Problem \eqref{e:quad-conic-form} generalizes both \acp{QP}, when
 $\cone{K} = \reals^m_+$ is the nonnegative orthant, and standard conic programs, when
-$\mmat{P}(\gvec{\theta}) = 0$.
+$\mmat{P}(\gvec{\theta}) = \mmat{0}$.
 
 % \paragraph{Canonicalization in \texttt{CVXPY}.}  (heading removed per advisor; kept for reference)
 Most of the cost of canonicalization lies in the final step, where symbolic
 expression trees are converted to numerical problem data.
 This step is often called matrix stuffing or the backend of canonicalization
 \cite{zhang2026cvxpy}.
-During the first solve of a problem family, \texttt{CVXPY} forms and caches a
+In \texttt{CVXPY}, the first solve of a problem family forms and caches a
 parameter tensor that maps the parameter vector to the problem data.
 On subsequent solves, new problem data can be obtained with a single matrix-vector product
 \cite{agrawal2019dpp}.
@@ -99,6 +100,8 @@ as well as the parameter tensor and matrix stuffing in \S\ref{sec:matrix-stuffin
 The constraint matrix~$\mmat{A}$ is the Jacobian of the stacked constraint expressions and
 $\mmat{P}$ is the
 Hessian of the objective, so matrix stuffing amounts to computing a sparse Jacobian and Hessian.
+Each row of $\mmat{A}$ holds the coefficients of one scalar constraint, and these coefficients
+are the partial derivatives of that constraint with respect to the entries of $\mvec{x}$.
 Classical methods build these matrices column by column with multiple passes of \ac{AD},
 using graph colouring to group columns that can be recovered in a single
 pass \cite{curtis1974estimation, gebremedhin2005color}.
@@ -114,10 +117,9 @@ translator writes the structure of the model to a \texttt{.nl} file
 \cite{gay2005writing}, and the open source AMPL Solver Library (ASL) evaluates constraints
 and their derivatives from this file inside the solver process \cite{gay1997hooking}.
 \texttt{Pyomo} also interfaces to solvers through \texttt{.nl} files,
-among other formats, though it generally writes them more slowly than the \texttt{AMPL}
-translator.
+among other formats.
 
-On the other hand, \texttt{JuMP} has no single standard form to target.
+Unlike \texttt{AMPL} and \texttt{Pyomo}, \texttt{JuMP} has no single standard form to target.
 It decouples modeller and solver through \ac{MOI}, a typed in-memory interface
 \cite{legat2020mathoptinterface}.
 The model is built constraint by constraint, and each constraint stores its coefficients directly,
@@ -126,7 +128,7 @@ None of these approaches operates on expression trees: the AD tools record the e
 flat tape of instructions, \texttt{AMPL} exchanges the model through a file, and \texttt{JuMP}
 stores lists of coefficients. In \texttt{CVXPY} the expression trees themselves are the input
 of the backend.
-We review both these modelling languages in \S\ref{sec:declared-structure}.
+We review \texttt{AMPL} and \texttt{JuMP} in \S\ref{sec:declared-structure}.
 
 \paragraph{Our approach.}
 We make use of the fact that the sparsity patterns of $\mmat{A}$ and $\mmat{P}$ are fixed
@@ -152,22 +154,22 @@ kernels, rather than always relying on generic sparse formats and routines (we p
 background on dense and sparse matrix computations in \S\ref{sec:intro-matrix}).
 
 \section{Canonicalization}\label{sec:intro-canon}
-The problem family \eqref{e:parametric-family} is written in functional form, as objective and
-constraint functions of the variables and parameters.
+The problem family \eqref{e:parametric-family} is written in functional form, meaning the
+objective and constraints are given as functions of the variables and parameters.
 In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$ are collected
 into a single
 vector $\mvec{x} \in \reals^n$, and likewise the parameters $\gvec{\theta}_1,\ldots,\gvec{\theta}_l$
-into $\gvec{\theta} \in \reals^p$ \cite{boyd2004convex}.
+into $\gvec{\theta} \in \reals^p$~\cite{boyd2004convex}.
 Users are not required to write constraints with a zero right-hand side as in
 \eqref{e:parametric-family}. Modelling languages accept inequalities with a convex left-hand
 side and a concave right-hand side, and equalities with both sides affine.
 Converting to the form \eqref{e:parametric-family} is trivial and only requires moving every
 term to the left-hand side.
-Internally, each function is represented as an \emph{expression tree}.
+Internally, each function is represented as an expression tree.
 
 % \paragraph{Atoms.}  (heading removed per advisor; kept for reference)
 Modelling languages for convex optimization are built on top of a library of functions which can be
-used to describe problems. These functions are known as \emph{atoms} in \texttt{CVXPY} because they
+used to describe problems. These functions are known as atoms in \texttt{CVXPY} because they
 are the fundamental building blocks of the modelling language \cite{grant2004disciplined}.
 Alongside its numerical definition, each atom declares useful attributes such as
 its curvature, monotonicity with respect to each argument, and the
@@ -228,7 +230,7 @@ the curvature of each function \cite{grant2004disciplined}.
 Once all functions are classified, a problem is DCP-compliant if the objective and
 each constraint have curvatures compatible with a convex problem: a convex objective,
 convex $\leq$ concave inequalities, and affine equalities.
-Otherwise, if a curvature is incompatible (e.g., $f_0$ is concave) or cannot be
+Otherwise, if a curvature is incompatible, for example when $f_0$ is concave, or cannot be
 determined, the modelling language raises an error and terminates.
 Because these rules are only sufficient for convexity, a problem that is genuinely convex
 but not expressed in a recognized form may still be rejected.
@@ -251,7 +253,7 @@ Affine expressions require $\phi$ and all of its arguments to be affine \cite{gr
 \subsection{Conic reformulation}\label{sec:bg-canonicalization}
 
 Once a problem is verified to be DCP-compliant, canonicalization
-rewrites its functional form \eqref{e:parametric-family} into an equivalent functional conic form
+rewrites its functional form~\eqref{e:parametric-family} into an equivalent functional conic form
 \BEQ\label{eq:conic-form}
 \begin{array}{ll}
 \underset{\mvec{x} \in \reals^n}{\mbox{minimize}}   & f_0(\mvec{x}; \gvec{\theta}) \\
@@ -265,15 +267,15 @@ second-order, power, exponential, and positive semidefinite cones.
 
 % \paragraph{Conic reformulation.}  (heading removed per advisor; kept for reference)
 Every nonlinear atom is rewritten into conic constraints in three steps.
-The first step rewrites the problem into \emph{Smith form}, where each
+The first step rewrites the problem into Smith form \cite{smith1996}, where each
 nonlinear atom is replaced by a new variable coupled with an equality constraint. Every atom
-then acts only on affine arguments \cite{smith1996}.
+then acts only on affine arguments.
 For a convex atom $\phi$, the Smith form gives an auxiliary variable $t \in \reals$ with the
 equality constraint $\phi(\mvec{x}) = t$. The second step relaxes this equality to the
 inequality $\phi(\mvec{x}) \le t$.
 The DCP rules allow a convex atom only where its value is minimized or upper-bounded, so the solver
 always prefers $t$ as small as possible. The relaxation is therefore lossless.
-The pair $(\mvec{x}, t)$ then lies in the \emph{epigraph}
+The pair $(\mvec{x}, t)$ then lies in the epigraph
 $\{(\mvec{x}, t) \in \reals^n \times \reals : \phi(\mvec{x}) \le t\}$ of $\phi$, so we
 often refer to $t$ as an epigraph variable.
 A concave atom relaxes to $\phi(\mvec{x}) \ge t$ instead, giving a hypograph variable.
@@ -281,7 +283,7 @@ The third and final step expresses each epigraph (hypograph) inequality as the m
 an affine function of $(\mvec{x}, t)$ in a convex cone \cite{grant2008graph}.
 
 \paragraph{Example of reformulations.}
-A first example is the $\ell_2$ norm atom $\|\mvec{x}\|_2$ of $\mvec{x} \in \reals^n$, whose
+A first example is the $\ell_2$-norm atom $\|\mvec{x}\|_2$ of $\mvec{x} \in \reals^n$, whose
 epigraph $\|\mvec{x}\|_2 \le t$ is exactly the second-order cone constraint
 $(t, \mvec{x}) \in \cone{K}_{\mathrm{soc}}$, where
 $\cone{K}_{\mathrm{soc}} = \{(t, \mvec{x}) \in \reals \times \reals^n : \|\mvec{x}\|_2 \le t\}$.
@@ -289,15 +291,18 @@ A second example is the nondifferentiable absolute value atom $|x|$ of a scalar 
 epigraph $|x| \le t$ can
 be written as the pair of affine inequalities $-t \le x \le t$.
 A final example is the sum of the $k$ largest entries of $\mvec{x}$, which expands into a small
-\ac{LP}: the epigraph $\mathrm{sum\_largest}(\mvec{x}, k) \le t$ holds if and only if there exist a
+\ac{LP}: the epigraph $\texttt{sum\_largest}(\mvec{x}, k) \le t$ holds if and only if there exist a
 scalar $q \in \reals$ and a vector $\mvec{w} \in \reals^n$ such that
 % Auxiliary vector renamed u -> w: u_i already denotes the subexpressions of the composition
 % rules above.
 \BEQ\label{eq:sum-largest}
-q\ones + \mvec{w} \ge \mvec{x}, \qquad \mvec{w} \ge 0, \qquad kq + \ones^\top \mvec{w} \le t,
+q\ones + \mvec{w} \ge \mvec{x}, \qquad \mvec{w} \ge \zeros, \qquad kq + \ones^\top \mvec{w} \le t,
 \EEQ
 where the inequalities are applied element-wise.
-Here $q$ acts as a threshold and each $w_i$ measures how far the entry $x_i$ rises above it, so that
+These conditions are obtained by linear programming duality \cite{vonneumann1947maximum}, as
+the sum of the $k$ largest entries is itself the optimal value of a small
+\ac{LP} \cite{boyd2004convex}.
+Here, $q$ acts as a threshold and each $w_i$ measures how far the entry $x_i$ rises above it, so that
 the sum of the $k$ largest entries is bounded by $kq + \ones^\top \mvec{w}$ \cite{boyd2004convex}.
 
 \subsection{\texttt{CVXPY}}\label{sec:canonicalization}
@@ -312,7 +317,7 @@ These ideas matured with version 1.0, which redesigned canonicalization as
 a general reduction-based rewriting system \cite{agrawal2018rewriting}.
 The new design enabled the addition of other disciplined
 grammars \cite{agrawal2019dgp, agrawal2020dqcp, cederberg2025disciplined}, and the early
-parameter support grew into DPP, a restricted grammar
+parameter support grew into \ac{DPP}, a restricted grammar
 under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
 
 The open source project has since grown through contributions from many other enthusiastic
@@ -321,7 +326,7 @@ introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 % \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
 The rewriting from the functional form \eqref{e:parametric-family} to the functional conic form
-\eqref{eq:conic-form} is carried out as a sequence of \emph{reductions}. Each reduction provides an
+\eqref{eq:conic-form} is carried out as a sequence of reductions. Each reduction provides an
 \texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
 step that recovers a solution of the original problem from a solution of the rewritten one
 \cite{agrawal2018rewriting}.
@@ -346,7 +351,7 @@ We consider the following simple fitting with regularization problem
 \BEQ
     \begin{array}{ll}
         \underset{\mvec{x} \in \reals^n}{\text{minimize}} & \|\mmat{F}\mvec{x}-\mvec{g}\|_2 + \mu \|\mvec{x}\|_2\\
-        \text{subject to} & \mvec{x} \ge 0\\
+        \text{subject to} & \mvec{x} \ge \zeros,\\
     \end{array}
       \label{eq:example}
 \EEQ
@@ -354,7 +359,7 @@ We consider the following simple fitting with regularization problem
 % element-wise >=, and \succeq is reserved for PSD or general cone orders.
 with variable $\mvec{x} \in \reals^n$, fixed problem data $\mmat{F}\in \reals^{m\times n}$, and
 parameters
-$\mvec{g}\in \reals^m$ and $\mu \geq 0$. The constraint $\mvec{x} \ge 0$ requires every entry of
+$\mvec{g}\in \reals^m$ and $\mu \geq 0$. The constraint $\mvec{x} \ge \zeros$ requires every entry of
 $\mvec{x}$ to be nonnegative.
 Listing~\ref{lst:cvxpy-example} states the problem in \texttt{CVXPY} code.
 \begin{lstlisting}[language=Python, caption={The running example \eqref{eq:example} in
@@ -398,9 +403,9 @@ is shown in Figure~\ref{fig:dcp-expression-tree}.
 \end{subfigure} %
 \begin{subfigure}{0.3\textwidth}
 \begin{tikzpicture}
-  \node {\annotatedop{\ge}{\mvec{x} \ge 0}}
+  \node {\annotatedop{\ge}{\mvec{x} \ge \zeros}}
     child {node[circle, draw] {$\mvec{x}$}}
-    child {node {$0$}};
+    child {node {$\zeros$}};
 \end{tikzpicture}
 \caption{Expression tree of the constraints}
 \end{subfigure}
@@ -416,9 +421,9 @@ After applying the reductions, the problem has been canonicalized to
 \begin{array}{ll}
   \underset{t_1,\, t_2,\, \mvec{x}}{\mbox{minimize}}  & t_1 + \mu t_2 \\
   \mbox{subject to}  &
-\mvec{x} \ge 0 \\
+\mvec{x} \ge \zeros \\
 & (t_1, \mmat{F}\mvec{x} -\mvec{g}) \in \cone{K}_{\mathrm{soc},m+1} \\
-& (t_2, \mvec{x}) \in \cone{K}_{\mathrm{soc},n+1} \\
+& (t_2, \mvec{x}) \in \cone{K}_{\mathrm{soc},n+1}, \\
 \end{array}
 \EEQ
 where $t_1, t_2 \in \reals$ are new epigraph variables, and the cone $\cone{K}$ from
@@ -435,7 +440,7 @@ The three rows of \eqref{eq:graph} remain three separate cone constraints, each 
 affine expressions that must lie in its cone. Figure~\ref{fig:conic-form-tree} accordingly shows
 one expression tree per constraint, rather than a single combined tree.
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \begin{subfigure}{\textwidth}
 \centering
@@ -505,8 +510,9 @@ differ in cost, in accuracy, and in the form of the result \cite{baydin2017ADsur
 The derivatives in this Master's thesis are the constraint Jacobian~$\mmat{A}$ and the objective
 Hessian~$\mmat{P}$ of a canonicalized problem, both large sparse matrices.
 This section presents the Jacobian and the Hessian, the elementary methods for computing them,
-and the choices that distinguish the software implementations;
-\S\ref{sec:computing-derivatives} reviews sparse AD and graph colouring methods.
+and the choices that distinguish the software implementations.
+\S\ref{sec:computing-derivatives} continues from these basics and reviews sparse AD and
+graph colouring methods.
 
 % \paragraph{The Jacobian.}  (heading removed per advisor; kept for reference)
 For a vector-valued map $F : \reals^n \to \reals^m$ of an input $\mvec{x} \in \reals^n$, the
@@ -544,14 +550,14 @@ function at nearby points using a finite difference formula such as
 f'(x) \approx \frac{f(x + h) - f(x)}{h},
 \EEQ
 where $h$ is a small step size.
-Note that the central variant $f'(x) \approx (f(x+h) - f(x-h)) / 2h$ improves accuracy.
-Both formulas use two function evaluations, but the forward difference can reuse the already
-computed value $f(x)$ across directions, while the central variant cannot.
+The central variant $f'(x) \approx (f(x+h) - f(x-h)) / 2h$ also uses two function
+evaluations, but the forward difference can reuse the already computed value $f(x)$ across
+directions, while the central variant cannot.
 The approach is simple but has two downsides.
 First, it requires a linear number of function evaluations with respect to the number of
 input variables, which is expensive for high-dimensional functions.
 Second, it can easily lead to truncation errors, when $h$ is too large, or
-rounding errors, when $h$ is too small, in the computed derivative if the step size is
+round-off errors, when $h$ is too small, in the computed derivative if the step size is
 not carefully chosen \cite{chakravarti1961truncation}.
 Despite these downsides, numerical differentiation is still widely used in practice,
 especially for verifying the correctness of derivative computations, also known as a
@@ -604,7 +610,7 @@ squares objective.
 \texttt{CasADi} \cite{andersson2019} offers both, through its scalar SX and
 vectorized MX expressions.
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \begin{subfigure}[c]{0.58\textwidth}
 \centering
@@ -694,7 +700,8 @@ A dense matrix is stored as a single contiguous array of its entries, ordered ro
 (row-major) or column by column (column-major), as shown in Figure~\ref{fig:dense-storage}.
 The position of an entry is computed directly from its indices, so no index arrays are
 needed, and rows or columns are read sequentially in memory.
-C arrays are row-major and Fortran arrays are column-major.
+C arrays are stored in row-major order and Fortran arrays in column-major order, so we often
+refer to the two orders as C-style and Fortran-style.
 Most dense linear algebra interfaces follow the Fortran convention.
 
 \begin{figure}[htbp]
@@ -720,12 +727,12 @@ The BLAS is a specification rather than an implementation.
 Implementations such as \texttt{OpenBLAS}, Intel \texttt{MKL}, and Apple \texttt{Accelerate}
 are specialized for their respective processors, and nearly every machine has one available,
 whether shipped with the operating system or bundled by numerical libraries.
-LAPACK, the library behind dense factorizations and linear system solving in most scientific
-software, is built on top of the BLAS kernels \cite{anderson1999lapack}.
+\texttt{LAPACK}, the library behind dense factorizations and linear system solving in most
+scientific software, is built on top of the BLAS kernels \cite{anderson1999lapack}.
 
 The BLAS interface is organized in three levels by the ratio of computation to data.
-Level 1 covers vector operations such as dot products, scaled copies, and additions, level 2
-covers matrix-vector products, and level 3 covers matrix-matrix products.
+Level~1 covers vector operations such as dot products, scaled copies, and additions, level~2
+covers matrix-vector products, and level~3 covers matrix-matrix products.
 The routine names abbreviate the precision and the operation.
 For example, \texttt{dgemv} is the double-precision general matrix-vector product, and
 \texttt{dgemm} is the double-precision general matrix-matrix product.
@@ -745,7 +752,7 @@ Such matrices are called sparse, and conic solvers expect their problem data in 
 Techniques that store and compute with only the nonzero entries date back to the linear
 programming computations of the 1950s and the work of Markowitz \cite{markowitz1957elimination}.
 The simplest sparse matrix data structure is the \ac{COO} format, also called the triplet
-format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a floating point
+format. It consists of two integer index arrays \texttt{rows} and \texttt{cols} and a
 value array \texttt{vals} of length equal to the number of nonzero entries in the matrix.
 For example, the matrix
 \BEQ\label{eq:sparse-matrix}
@@ -753,7 +760,7 @@ For example, the matrix
   0 & 1 & 0 & 0\\
   2 & 0 & 3 & 4\\
   0 & 5 & 6 & 0\\
-  \end{bmatrix}
+  \end{bmatrix},
 \EEQ
 is stored in \ac{COO} format as in Listing~\ref{lst:coo-format}, where we use
 zero-based indexing and array declaration notation from the C programming
@@ -892,7 +899,7 @@ implementations are few and far less widely adopted than the dense BLAS.
 \section{Contributions}
 % Moved to the end of the chapter per the advisor's annotation
 % ("derniere sub-section de l'intro").
-We make the following contributions:
+In this Master's thesis, we make the following contributions:
 \begin{enumerate}
   \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that assembles
   sparse Jacobians and Hessians directly from the expression structure, with no sparsity
@@ -912,7 +919,7 @@ All code contributions are open source and available at
 The rest of this thesis is organized as follows.
 Chapter~\ref{sec:RevLitt} reviews how \texttt{CVXPY} and other modelling languages compute
 the problem data.
-In Chapter~\ref{sec:Theme1} we present an overview of the main data structures and
+In Chapter~\ref{sec:Theme1}, we present an overview of the main data structures and
 algorithms in \texttt{SparseDiffEngine} as well as its interface in \texttt{CVXPY}.
 Finally, Chapter~\ref{sec:Theme2} benchmarks this engine against \texttt{CVXPY}'s three
 canonicalization backends, and we conclude with a summary of our contributions
