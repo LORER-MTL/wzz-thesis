@@ -5,14 +5,23 @@
 \addcontentsline{toc}{compteur}{RÉSUMÉ}
 
 Les langages de modélisation pour l'optimisation convexe permettent d'écrire un problème sous une
-forme proche des mathématiques. Ils le compilent ensuite en données numériques acceptées par un
-solveur. Dans \texttt{CVXPY}, un langage de modélisation largement utilisé, la majorité du temps
+forme proche de sa formulation mathématique. Ils le compilent ensuite en données numériques
+acceptées par un solveur. Dans \texttt{CVXPY}, un langage de modélisation populaire, la
+majorité du temps
 de compilation sert à construire les matrices creuses du problème à partir d'arbres d'expressions
-symboliques. Ces matrices correspondent à la jacobienne des contraintes et à la hessienne de
-l'objectif. Leur construction revient donc à un calcul de dérivées creuses. Nous présentons
+symboliques. Les arbres expriment l'objectif et les contraintes en termes de fonctions des
+variables et des paramètres du problème. Les matrices creuses correspondent à la jacobienne de
+ces fonctions et à la hessienne de
+l'objectif. Leur construction revient donc à un calcul de dérivées creuses. Aucune des
+implémentations actuelles n'adopte ce point de vue. Pour les problèmes paramétriques,
+\texttt{CVXPY} met en cache une application linéaire des paramètres vers les données, coûteuse à
+construire. Pour tout autre problème, la
+compilation est répétée en entier à chaque résolution. Nous présentons
 \texttt{SparseDiffEngine}, une librairie C \emph{open source} qui forme la jacobienne et la
-hessienne directement à partir de la structure des expressions. Le calcul se déroule en deux
-phases. La phase symbolique s'exécute une seule fois par problème et détermine les structures
+hessienne directement à partir de la structure des expressions. Le calcul est divisé en deux
+phases, une idée que nous empruntons aux interfaces des solveurs d'optimisation non
+linéaire.
+La phase symbolique s'exécute une seule fois par problème et détermine les structures
 creuses des matrices. La phase numérique remplit ensuite les valeurs dans ces structures fixes à
 chaque résolution. Pour un problème paramétrique, seule la phase numérique est répétée d'une
 résolution à l'autre. À l'aide de \texttt{SparseDiffEngine}, nous implémentons une nouvelle façon

@@ -1,16 +1,16 @@
 \Chapter{CONCLUSION}\label{sec:Conclusion}
+\acresetall
 
-Throughout this master's thesis, we have revisited the performance of compiling a high-level
+Throughout this Master's thesis, we revisit the performance of compiling a high-level
 model into conic problem data. Despite being essential to solving optimization problems, the
 compilation step has mostly been an afterthought. The reason for this is that the cost is
-often negligible, and when it is not, most users accept it as necessary. We have taken the
-perspective of computing the coefficients of the problem data as sparse derivatives, which
+often negligible, and when it is not, most users accept it as necessary. In our work, we take
+the perspective of computing the coefficients of the problem data as sparse derivatives, which
 differs from most modelling languages. The closest is \texttt{CasADi}, whose
 \ac{AD} is built for general nonlinear functions. Applied to affine functions, where the
 coefficients follow directly from the constants of the expression graph, \texttt{CasADi}
 would still need to detect the sparsity patterns at runtime and compress the Jacobian
 computation by graph colouring.
-
 \texttt{AMPL} and \texttt{JuMP} take the coefficients as the user declares them, but both
 scalarize the model. A dense block in the problem data becomes a list of scalar
 coefficients. \texttt{CVXPY}'s backends, on the other hand, convert everything to sparse
@@ -18,21 +18,20 @@ matrices. No existing modelling language keeps dense blocks as they are. To addr
 built \texttt{SparseDiffEngine}, a sparse differentiation library that operates on
 vectorized expressions without scalarizing them, requires no sparsity detection or graph
 colouring, and mixes sparse and dense formats throughout the computation. In addition to
-using BLAS operations and dense storage on dense blocks, we implemented a two-phase approach
+using BLAS operations and dense storage on dense blocks, we implement a two-phase approach
 which caches many computations during the symbolic pass. For parametric problems, the
 numeric pass reuses these computations, with no restrictions on how the parameters enter
 the problem.
 
-We also wrote \texttt{diffengine}, a new canonicalization backend for \texttt{CVXPY} with a
-simple interface to \texttt{sparsediffpy}, the Python bindings of the engine. We compared
-\texttt{diffengine} with \texttt{CVXPY}'s three existing backends in
-Chapter~\ref{sec:Theme2} and obtained promising results. They allow us to conclude that
+We also propose \texttt{diffengine}, a new canonicalization backend for \texttt{CVXPY} with a
+simple interface to \texttt{sparsediffpy}, the Python bindings of
+\texttt{SparseDiffEngine}. We compare
+\texttt{diffengine} with \texttt{CVXPY}'s three existing backends in numerical
+experiments and obtain promising results. They allow us to conclude that
 \texttt{diffengine} can replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}
 in certain circumstances. Overall, the work in this thesis is based on a combination of
 fundamental subjects in matrix computations, computing derivatives, and modelling languages
-for optimization. We were simply the ones to notice an interesting connection at their
-intersection. We hope that this work is insightful, and perhaps even useful in practice,
-for anyone reading it.
+for optimization.
 
 %%
 %%  LIMITATIONS
@@ -76,9 +75,11 @@ directions for future work, one in each type of contribution.
 The first direction concerns \texttt{sparsediffpy}. We plan to add a standalone
 Python interface, so that the sparse Jacobians and Hessians can be built and evaluated
 without \texttt{CVXPY}. We believe there can be many applications of such derivatives without
-necessarily calling an optimization solver.
+necessarily calling an optimization solver. The user would build the expression trees directly with
+the functions of \texttt{sparsediffpy} instead of with \texttt{CVXPY} expressions.
 
-The second direction covers the remaining work on the \texttt{diffengine} backend within
+The second direction is closer to development than research. It covers the remaining work
+on the \texttt{diffengine} backend within
 \texttt{CVXPY}. The immediate goal is to make \texttt{diffengine} the default backend on the
 \texttt{ignore\_dpp} path. One challenge is that existing reductions must change behaviour
 without breaking backwards compatibility. The next task is the removal of
@@ -88,11 +89,14 @@ would simplify the build process of the library. As a replacement, \texttt{diffe
 become the new default backend, with \texttt{COO} as an alternative candidate for \ac{DPP}
 problems.
 
-The final direction would be to extend the new matrix classes to the rest of the
+The final direction would be to extend the permuted dense matrix classes of
+Chapter~\ref{sec:Theme1} to the rest of the
 optimization process. Both the presolve and the solver operate on a generic sparse matrix,
-where the dense blocks are no longer explicit. Knowing ahead of time where these blocks
-appear could benefit both steps, not just canonicalization. This change would require much
-more research, since nothing beyond basic intuition indicates that it is worth doing. It
-would also require a lot of effort, as existing presolve routines and sparse linear system
-solvers would need to be adapted to handle different types of matrices other than the
-typical sparse matrix.
+where the dense blocks are no longer explicit. The high-level step would be to pass the
+block structure along with the problem data, so that the presolve and the factorization can
+work on the dense blocks directly instead of rediscovering them in a sparse
+matrix~\cite{davis2006direct}. This change would require much
+more research, because nothing beyond basic intuition indicates that it is worth doing.
+For existing presolve
+routines and sparse linear system solvers, it would also require adapting their code to
+operate on matrix representations other than the typical sparse matrix.
