@@ -13,7 +13,8 @@ structured, with dense blocks and diagonal patterns.
 We introduce two new matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
 dense storage and BLAS subroutines. Neither the two-phase approach nor the two matrix
-classes exists in \texttt{CVXPY}'s backends.
+classes exists in \texttt{CVXPY}'s backends. Together, they address the research gap we
+identify in \S\ref{sec:research-gap}.
 
 Other important design decisions differ from \texttt{CVXPY}'s backends for
 simplicity rather than performance. Every node carries one Jacobian taken with respect to
@@ -52,11 +53,11 @@ objective affine or quadratic. The quadratic atoms of a DCP problem, such as a s
 a quadratic over a linear term, or a Huber penalty, are all rewritten as quadratic forms by
 the canonicalization frontend of \S\ref{sec:canonicalization}. Therefore, only affine atoms
 and quadratic forms reach the engine from a canonicalized DCP problem.
-This chapter describes the affine atoms. The quadratic form contributes the
+The rest of the chapter describes the affine atoms. The quadratic form contributes the
 objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-api}. The
 remaining classes are used by the \ac{NLP} interface of
 \texttt{CVXPY} \cite{cederberg2025disciplined}.
-\begin{table}[htbp]
+\begin{table}[tb]
 \caption{The atom classes and how each computes its Jacobian.}
 \label{tab:atom-classes}
 \centering
@@ -347,7 +348,7 @@ We define a stacked permuted dense matrix as a vertical union of permuted dense 
 row vectors are pairwise disjoint, while the column vectors may overlap. Every operation
 treats the blocks one at a time, and the global matrix is never formed. The stacked matrix
 owns a single value buffer, and each block points into it.
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \[
 \mmat{M} \;=\;
@@ -382,7 +383,7 @@ Table~\ref{tab:kernel-operations} cover the whole library, so every atom compute
 derivatives through a small set of shared routines.
 We implement each kernel as a pair of functions, one called by the symbolic pass and one
 by the numeric pass.
-\begin{table}[htbp]
+\begin{table}[tb]
 \caption{The kernels, the operation each computes, and the atoms of a canonicalized DCP
 problem that call them, grouped into unary and binary operations. In the second column,
 $\mmat{A}$ denotes the Jacobian operand, $\mmat{B}$ a data matrix, $\mvec{d}$ a data vector,
@@ -485,8 +486,8 @@ combinations.
 \end{tikzpicture}
 \caption{Double dispatch of the transposed products $\mmat{B}^\top \mmat{A}$ and
 $\mmat{B}^\top \mmat{D} \mmat{A}$. Each cell names the representation of the result for one
-combination of operand types (PD is permuted dense, sPD is stacked permuted dense), and its
-colour indicates how the product is computed.}
+combination of operand types (PD is permuted dense and sPD is stacked permuted dense), and
+its colour indicates how the product is computed.}
 \label{fig:kernel-dispatch}
 \end{figure}
 
@@ -508,7 +509,7 @@ and $\mmat{B} = (\mmat{X}_B, \mvec{r}_B, \mvec{c}_B)$ expands to
 \BEQ\label{eq:pd-product}
 \mmat{B}^\top \mmat{A}
 = \mmat{S}_{c_B}^\top \mmat{X}_B^\top
-\underbrace{\left(\mmat{S}_{r_B} \mmat{S}_{r_A}^\top\right)}_{\text{index-set intersection}}
+\underbrace{\left(\mmat{S}_{r_B} \mmat{S}_{r_A}^\top\right)}_{\mathclap{\text{index-set intersection}}}
 \mmat{X}_A \mmat{S}_{c_A},
 \EEQ
 and $\mmat{B}\mmat{A}$ expands the same way, with $\mvec{c}_B$ in place of $\mvec{r}_B$.
@@ -599,9 +600,9 @@ product exist or where they are stored, and evaluates each one directly.
 \brackets{0}
 \node[font=\small, anchor=west, align=left] at (2*\cw+0.8, -\cw) {%
   $\begin{aligned}
-    c_{01} &= a_{00}\,b_{01} + a_{02}\,b_{21} & c_{12} &= a_{11}\,b_{12} \\
-    c_{02} &= a_{02}\,b_{22}                   & c_{21} &= a_{22}\,b_{21} \\
-    c_{10} &= a_{11}\,b_{10}                   & c_{22} &= a_{22}\,b_{22}
+    c_{01} &= a_{00}\,b_{01} + a_{02}\,b_{21} &\qquad c_{12} &= a_{11}\,b_{12} \\
+    c_{02} &= a_{02}\,b_{22}                   &\qquad c_{21} &= a_{22}\,b_{21} \\
+    c_{10} &= a_{11}\,b_{10}                   &\qquad c_{22} &= a_{22}\,b_{22}
   \end{aligned}$};
 \node[note] at (\cx/2+\cw, -2*\cw-0.45)
   {one sparse dot product per stored position, written into place};
@@ -713,9 +714,9 @@ place of an addition.
 \section{Problem interface}\label{sec:theme1-api}
 
 We collect the objective and constraint trees in one
-\texttt{problem} object, defined in \texttt{problem.c}. The Python
-extension module \texttt{sparsediffpy} exposes the atom constructors and the functions
-that build and evaluate the \texttt{problem} object.
+\texttt{problem} object, defined in \texttt{problem.c}. We also wrote
+\texttt{sparsediffpy}, a Python extension module that exposes the atom constructors and
+the functions that build and evaluate the \texttt{problem} object.
 We keep everything specific to \texttt{CVXPY} in a converter and a canonicalization
 backend named \texttt{diffengine}. The lower-case name distinguishes the backend from
 \texttt{SparseDiffEngine}. The converter builds the C trees of the canonicalized
@@ -873,6 +874,17 @@ second-order, semidefinite, exponential, and power.
 The \texttt{diffengine} backend wraps the \texttt{problem} object in one class, which has
 the same interface as the output of matrix stuffing, so the rest of \texttt{CVXPY} is
 unchanged. Listing~\ref{lst:diffengine-cone-program} outlines the class.
+
+The class is built once per problem family. Its constructor converts the Python problem
+to C trees with the converter and runs the symbolic pass. It then evaluates the
+\texttt{problem} object once at the origin, which recovers the problem data of
+\eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
+convention of the cone form afterwards, by negating~$\mmat{A}$. A parameter update
+involves only the numeric pass. The method \texttt{apply\_parameters} writes the new
+values into the parameter leaves and repeats the evaluations at the origin. After the
+solve, \texttt{split\_solution} slices the stacked solution vector into the variables of
+the original problem. Listing~\ref{lst:extract-at-origin} shows the evaluations at the
+origin.
 \begin{lstlisting}[language=Python, caption={A simplified version of the
 \texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
 class DiffengineConeProgram:
@@ -886,16 +898,6 @@ class DiffengineConeProgram:
     def apply_parameters(self, id_to_param_value): ...
     def split_solution(self, solution): ...
 \end{lstlisting}
-The class is built once per problem family. Its constructor converts the Python problem
-to C trees with the converter and runs the symbolic pass. It then evaluates the
-\texttt{problem} object once at the origin, which recovers the problem data of
-\eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
-convention of the cone form afterwards, by negating~$\mmat{A}$. A parameter update
-involves only the numeric pass. The method \texttt{apply\_parameters} writes the new
-values into the parameter leaves and repeats the evaluations at the origin. After the
-solve, \texttt{split\_solution} slices the stacked solution vector into the variables of
-the original problem. Listing~\ref{lst:extract-at-origin} shows the evaluations at the
-origin.
 \begin{lstlisting}[language=Python, caption={A simplified version of the evaluations at
 the origin that recover the problem data.}, label=lst:extract-at-origin]
 problem.init_derivatives()               # symbolic pass, once
@@ -915,18 +917,18 @@ P.vals = problem.hessian_values()
 % (chapter wrap-up added per advisor review of 2026-08-19; promoted to a headed section
 %  2026-08-22 to match §2.4 and §4.3; rewritten around the contributions from William's
 %  draft 2026-08-23)
-This chapter presented a high-level overview of our approach to canonicalizing
+This chapter presents our approach to canonicalizing
 optimization problems faster. Our main contribution is two new matrix classes that take
 advantage of the dense blocks in problem data. Along with these data structures, we
-presented the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
+present the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
 kernels are new but fairly straightforward, as each reduces to simple index manipulations
 followed by calls to existing sparse and dense routines. Together, the matrix classes
 and the kernels let sparse and dense Jacobians mix in the same tree without converting
 to one specific format.
 
 In addition, for parametric problems, our contribution is the two-phase approach to computing
-derivatives, which we borrow from the interfaces of \ac{NLP} solvers
-(\S\ref{sec:casadi}). Although the idea is borrowed, what we store during the symbolic
+derivatives, which we borrow from the interfaces of \ac{NLP} solvers outlined in
+\S\ref{sec:casadi}. Although the process is similar, what we store during the symbolic
 pass is very different. Instead of a compressed sparsity pattern and a graph colouring,
 we store index maps and sparsity patterns, and the numeric pass writes the coefficient
 values directly into them. The cached structure also covers every problem, not only the
@@ -935,7 +937,7 @@ problems that conform to the \ac{DPP} ruleset.
 Finally, the choice to implement the engine in C with custom matrix classes forced us to
 think carefully about memory allocation, sparse formats, and opportunities to cache
 computation. We use the term
-\emph{lightweight} to describe the engine because it is a small dependency-free C library
+lightweight to describe the engine because it is a small dependency-free C library
 (other than BLAS, which is a standard dependency) that only implements the required
 operations. 
 
@@ -944,5 +946,5 @@ comparison, we compare only against \texttt{CVXPY}'s existing backends of
 \S\ref{sec:matrix-stuffing}, which take the same canonicalized expressions as input and
 produce the same problem data. The other modelling languages of
 Chapter~\ref{sec:RevLitt} store and compute their coefficients differently. A comparison
-with them would be difficult to assess, since their times can cover more than just the
+with them would be difficult to assess, because their times can cover more than just the
 coefficient computation.

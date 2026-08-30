@@ -6,7 +6,7 @@ existing backends. The three are the
 default \texttt{cvxcore}, which we refer to as \texttt{CPP}, and the two Python
 backends \texttt{SCIPY} and \texttt{COO}, all described in \S\ref{sec:matrix-stuffing}.
 Two questions motivate these comparisons.
-First, we want to know the relative benefit of our proposed symbolic and numeric split
+First, we want to evaluate the relative benefit of our proposed symbolic and numeric split
 against the parameter-to-data tensor. Both approaches store results of the first
 canonicalization so that subsequent parameter updates are cheap.
 If the split matches the tensor's re-solve
@@ -52,8 +52,8 @@ The benchmark scripts and all recorded timings are available at
 Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
 fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
 $0.36$, and on $17$ problems it is more than twice as fast as the best
-\texttt{CVXPY} backend. Two problems remain where it is slower (on CVaR and
-OptimalAdvertising the times are similar). On SDPSegfault1132 and
+\texttt{CVXPY} backend. It is slower on CVaR and OptimalAdvertising, where the times are
+similar. On SDPSegfault1132 and
 ConvexPlasticity, processing dense constant data dominates \texttt{diffengine}'s
 canonicalization time.
 
@@ -79,7 +79,7 @@ canonicalization. \texttt{SCIPY} has the lowest peak memory on
 $16$ of the $25$ problems. \texttt{diffengine}
 matches \texttt{CPP} and \texttt{COO} in geometric mean and uses about $1.4\times$ the memory
 of \texttt{SCIPY}.
-\begin{table}[htbp]
+\begin{table}[tb]
 \centering
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
 time in seconds on all $25$ problems. Bold denotes the fastest of the four backends on each
@@ -156,8 +156,8 @@ canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric p
 A dash denotes a tensor
 that did not finish building
 within the time limit. Bold
-denotes the fastest first canonicalization and the faster re-solve. The ratio is
-\texttt{diffengine} over the tensor.}
+denotes the fastest first canonicalization and the faster re-solve. The ratio is the
+re-solve time of \texttt{diffengine} over the re-solve time of the tensor.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}

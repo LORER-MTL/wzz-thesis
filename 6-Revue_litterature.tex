@@ -151,16 +151,16 @@ $\mvec{v}$ on its diagonal.}
 \label{tab:views-copies}
 \begin{tabular}{@{}l l l@{}}
 \toprule
-\textbf{Atom} & \textbf{Operator $\mmat{L}$} & \textbf{Action on $[\mmat{A}_1\ \mvec{b}_1]$} \\
+Atom & Operator $\mmat{L}$ & Action on $[\mmat{A}_1\ \mvec{b}_1]$ \\
 \midrule
-\multicolumn{3}{@{}l}{\textbf{Views}} \\
+\multicolumn{3}{@{}l}{\itshape Views} \\
 $-f_1$ & $-\mmat{I}$ & flip the sign of every stored entry \\
 $f_1^\top$ & $\mmat{K}$, the vec-permutation & permute the rows \\
 $f_1[\mathcal{I}]$ & $\mmat{P}_{\mathcal{I}}$, a row selection & keep the rows indexed by
 $\mathcal{I}$ \\
 $\operatorname{reshape}(f_1)$ & $\mmat{I}$ & none, the vectorization is unchanged \\
 \midrule
-\multicolumn{3}{@{}l}{\textbf{Copies}} \\
+\multicolumn{3}{@{}l}{\itshape Copies} \\
 $\mmat{F} f_1$ & $\mmat{I} \otimes \mmat{F}$ & multiply by a block diagonal formed from
 $\mmat{F}$ \\
 $f_1 \mmat{B}$ & $\mmat{B}^\top \otimes \mmat{I}$ & multiply by a Kronecker matrix formed from
@@ -378,6 +378,8 @@ all columns.}
 In a problem family the structure is fixed and only the numeric parameter values change
 between solves. Under additional rules on how the parameters enter the expressions, known as
 \ac{DPP}, the problem data is affine in the parameters~\cite{agrawal2019dpp}.
+The rules classify each parameter as affine and forbid products of two parametrized
+expressions, so that the dependence can be represented by the maps of \eqref{eq:param-maps}.
 To keep track of the parameter dependence, \texttt{CVXPY} adds a third dimension to the
 problem data, indexed by the parameter entries. Every coefficient matrix throughout the
 bottom-up pass becomes a tensor. At the root nodes we thus get the cached parameter maps
@@ -576,7 +578,7 @@ $(\dot x_1, \dot x_2) = (1, 0)$ delivers the first column of $\mmat{J}$ at the o
 \label{fig:forward-sweep}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \begin{tikzpicture}[>={Stealth}, thick,
     var/.style={circle, draw, minimum size=8mm, inner sep=1pt},
@@ -628,7 +630,7 @@ node with respect to all the inputs. Eliminating the vertices in the order of ev
 stores the same derivative at each node, so the batched sweep and forward-order elimination
 perform the same computation.
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \begin{subfigure}[c]{0.48\textwidth}
 \centering
@@ -703,7 +705,7 @@ colourings~\cite{powell1979estimation, Gebremedhin2009SparseHessians}.
 \colorlet{jcColB}{green!16!white}
 \colorlet{jcColC}{orange!22!white}
 
-\begin{figure}[htbp]
+\begin{figure}[tb]
 \centering
 \begin{subfigure}{\textwidth}
 \centering
@@ -892,7 +894,8 @@ the solver.
 \texttt{AMPL}~\cite{fourer1990ampl} is a commercial algebraic modelling language for
 large-scale mathematical programming, developed at Bell Laboratories in the 1980s. It is one
 of the most widely used modelling languages in academia and industry, applied to production
-planning, scheduling, logistics, and energy systems. A model is written declaratively, close
+planning, scheduling, logistics, and energy systems~\cite{fourer2003ampl}.
+A model is written declaratively, close
 to its mathematical statement, from sets, indexed parameters, indexed variables, and algebraic
 expressions over them. Data is supplied separately, so one model can be used for
 many problem instances.
@@ -987,15 +990,16 @@ any expression graphs from scratch.
 \texttt{JuMP}~\cite{dunning2017jump, lubin2023jump10recent} is an open-source algebraic
 modelling language embedded in Julia, developed at MIT and first released in 2013. It is the
 most widely used modelling language in Julia, applied in academia and industry to power
-systems, portfolio optimization, scheduling, and routing. A model is written with the macros
+systems, portfolio optimization, scheduling, and routing~\cite{lubin2023jump10recent}.
+A model is written with the macros
 \texttt{@variable}, \texttt{@constraint}, and \texttt{@objective}. The abstraction layer
-between models and solvers is the \ac{MOI}~\cite{legat2020mathoptinterface}, and through it the
+between models and solvers is \ac{MOI}~\cite{legat2020mathoptinterface}, and through it the
 same model can be passed to any of more than fifty supported solvers~\cite{jumpdocs}.
 
 The macros of \texttt{JuMP} rewrite each expression as it is entered. \texttt{@objective} and
 \texttt{@constraint} build affine and quadratic expression objects term by term, so the model
-stores coefficient lists instead of an expression tree. These lists are typed by MOI. A
-\texttt{VectorAffineFunction} is a list of (row, coefficient, variable) terms plus a constant
+stores coefficient lists instead of an expression tree. These lists are typed by \ac{MOI}. A
+\texttt{VectorAffineFunction} is a list of (row, coefficient, variable) terms and a constant
 vector. A \texttt{ScalarQuadraticFunction} adds a list of (coefficient, variable, variable)
 triples. A constraint states that one such function lies in a set. For a nonnegative orthant
 or a second-order cone, this is exactly the functional conic form
@@ -1029,10 +1033,12 @@ lists into one sparse matrix in the solver's format~\cite{moidocs}, with no expr
 visit and no differentiation. Only the nonlinear path of \texttt{JuMP} retains expression graphs,
 and differentiates them by sparse AD.
 
-When a solver does not support a constraint type natively, MOI reformulates it through its bridge
-system. A bridge is a structural rewrite from one function-set pair to another, for instance from
-a rotated to a standard second-order cone. MOI selects and composes them
-automatically~\cite{legat2020mathoptinterface}. Bridging manipulates stored coefficients and adds
+When a solver does not support a constraint or objective type natively, MOI reformulates it
+through its bridge system. A bridge is a structural rewrite from one function-set pair to
+another, for instance from a rotated to a standard second-order cone. For a conic solver, a
+bridge rewrites a quadratic objective into a second-order cone constraint with an epigraph
+variable. MOI selects and composes bridges automatically~\cite{legat2020mathoptinterface}.
+Bridging manipulates stored coefficients and adds
 auxiliary variables and constraints. A parameter is a variable in the \texttt{Parameter} set. A
 parameter multiplied by a variable is stored as a quadratic term, so keeping such a model affine
 requires \texttt{ParametricOptInterface.jl}, an extension that substitutes the parameter values
