@@ -1,40 +1,51 @@
 \documentclass[10pt,mathserif,aspectratio=169]{beamer}
-\usepackage{graphicx,amsmath,amssymb,tikz,psfrag,verbatim}
+\usepackage{graphicx,amsmath,verbatim}   % amssymb omitted: newtxmath supplies the AMS symbols,
+                                          % and loading both exhausts the 16 math alphabets
+\usepackage{mathtools}      % \mathclap for wide underbrace labels
 \usepackage{tikz}
 \usepackage{pgfplots}
-\usepackage{fancyvrb}
 \usepackage{array}
-\usepackage{kotex}
-\usepackage{pstool}
-\usepackage{overpic}
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage[normalem]{ulem}
-\usepackage{mdframed}
 \usepackage{longtable}
 \usepackage{subcaption}
 \usepackage{blkarray}
-\usepackage{verbatim}
+\usepackage{nicematrix}     % cell shading for the permuted-dense figures
+\usepackage{appendixnumberbeamer}
+\graphicspath{{./images/}{./plans/}}
+\usepackage{adjustbox}   % max size={..}{..}: shrink a figure to fit, never enlarge it
 \usetikzlibrary{shapes.geometric}
 \usetikzlibrary{arrows}
 \pgfplotsset{compat=1.17}
 \usepgfplotslibrary{groupplots}
-\usepgfplotslibrary{external}
-\tikzexternalize[prefix=figures/]
 \usetikzlibrary{calc,patterns,decorations.pathmorphing,decorations.markings,arrows.meta}
+\usetikzlibrary{positioning,fit,backgrounds}
 \usetikzlibrary{overlay-beamer-styles} % provides the `alt=<n>{..}{..}` overlay key
+
+% NOTE: \tikzexternalize is deliberately NOT used. The figures/ directory does not exist,
+% and the overlay frames have to re-render on every slide anyway.
+
+% ---------------------------------------------------------------------------------------
+% Math alphabet budget. A math version may use at most 16 alphabets under pdfTeX.
+% newtxmath claims 6 and bm claims 4, which leaves nothing for the thesis notation
+% (\mmat = \mathbf, \cone = \mathcal, \reals = \mathbb, plus \mathrm) in one formula.
+% bm is only needed for \gvec, so we pre-empt it and route \gvec through amsmath's
+% \boldsymbol, which costs no alphabet in the normal version. Leaves 14 of 16 in use.
+\usepackage{amsbsy}
+\makeatletter \@namedef{ver@bm.sty}{2019/07/24} \makeatother
+\providecommand{\bm}[1]{\boldsymbol{#1}}
+% ---------------------------------------------------------------------------------------
 
 \input defs.tex
 \input listing_defs.tex
-
+\lstset{numbers=none}       % line numbers are noise on a slide
 
 \bibliographystyle{apalike}
 
 % comment out the following three lines to get default beamer fonts
 \usepackage{newtxtext}
-%\usepackage[smallerops,upint]{newtxmath}
 \usepackage{newtxmath}
-%\usepackage{enumitem}
 \renewcommand{\familydefault}{\sfdefault}
 
 
@@ -52,710 +63,455 @@
   {\large\bfseries \insertframetitle}
 }
 
-\AtBeginSection[] 
-{ 
+% one breath between top-level bullets, everywhere
+\newcommand{\bul}{\setlength\itemsep{1.1ex}}
+
+\AtBeginSection[]
+{
     \begin{frame}
-        \frametitle{Outline} 
+        \frametitle{Outline}
         \tableofcontents[currentsection,currentsubsection]
-    \end{frame} 
-} 
-\title{\large \bfseries A lightweight canonicalization engine in C}
+    \end{frame}
+}
+
+% colours of the permuted-dense figures, matching the thesis
+\colorlet{pdBlock}{blue!22}
+\colorlet{pdRowA}{blue!22}
+\colorlet{pdRowB}{green!28!white}
+\colorlet{pdRowC}{orange!38!white}
+\colorlet{pdRowD}{purple!26!white}
+
+% Square brackets around a 3x3 grid of 0.62cm cells whose top-left centre is at (#1, 0).
+% Defined here, not inside the frame: a #1 inside the \fitfig{} argument is misparsed.
+\newcommand{\pdbrackets}[1]{%
+  \draw[brk] (#1-0.36, 0.34) -- (#1-0.47, 0.34) -- (#1-0.47, -1.58) -- (#1-0.36, -1.58);
+  \draw[brk] (#1+1.60, 0.34) -- (#1+1.71, 0.34) -- (#1+1.71, -1.58) -- (#1+1.60, -1.58);}
+
+% Fit a big figure to the frame: shrinks when needed, never enlarges.
+\newcommand{\fitfig}[1]{\adjustbox{max size={0.98\textwidth}{0.70\textheight}}{#1}}
+
+% --- pipeline-diagram visual grammar (intro slides) ------------------------------------
+% Two node roles, used at all three zoom levels:
+%   art   an artifact: a thing that exists  (the problem, the conic form, P/A/b/c)
+%   proc  a process: a thing that acts      (modelling, solver)
+% Transformations are labelled arrows (flow + edgelab), so each zoom level can reveal a
+% new `art` box inside what the previous level drew as a single arrow.
+\definecolor{polyblue}{rgb}{0.13,0.28,0.59}   % the beamer structure colour
+\tikzset{
+  art/.style     ={draw=black!55, fill=polyblue!7,  inner sep=6pt, font=\small},
+  proc/.style    ={draw=black!55, fill=polyblue!22, rounded corners=3pt,
+                   minimum height=8mm, inner xsep=6pt, font=\small},
+  flow/.style    ={-{Stealth[length=2.2mm]}, thick, draw=black!70},
+  edgelab/.style ={font=\footnotesize, midway, above=0.5mm},
+  ends/.style    ={font=\small\itshape, text=black!55, align=center},
+  note/.style    ={font=\footnotesize, text=black!55, align=center},
+  % the greyed carry-over strip at the top of the two zoom slides
+  dimbox/.style  ={draw=black!25, fill=black!3, rounded corners=2pt,
+                   inner sep=3pt, font=\scriptsize, text=black!50},
+  dimflow/.style ={-{Stealth[length=1.6mm]}, draw=black!30},
+  zoombox/.style ={draw=polyblue, dashed, thick, rounded corners=2pt, inner sep=3pt},
+  zoomline/.style={draw=polyblue!60, dashed},
+  accent/.style  ={draw=polyblue, very thick},   % the one arrow that is "this thesis"
+  % an annotation box hanging off a pipeline box: dashed, so it does not read as a stage
+  exbox/.style   ={draw=black!40, dashed, fill=white, rounded corners=2pt,
+                   inner sep=5pt, font=\footnotesize, align=left},
+}
+
+
+% shorthands used throughout the deck
+\newcommand{\sde}{\texttt{SparseDiffEngine}}
+\newcommand{\sdp}{\texttt{sparsediffpy}}
+\newcommand{\de}{\texttt{diffengine}}
+\newcommand{\cvxpy}{\texttt{CVXPY}}
+
+\title{\large \bfseries A Lightweight Canonicalization Engine in C\\
+for Disciplined Convex Programming}
 
 \author{William Zijie Zhang}
 
-\date{Master's Thesis Defence, Polytechnique Montreal, Aug. 14, 2026}
+\date{Master's Thesis Defence \\[0.5ex]
+      {October 2nd}}
 
 \begin{document}
+
+% =====================================================================================
+%  Slides start here.
+%
+%  Preamble conventions, so they do not have to be rediscovered:
+%    \fitfig{<tikzpicture>}   shrink a figure to fit the frame; never enlarges
+%    \bul                     first thing inside an itemize: one breath between bullets
+%    \cvxpy{}                 CVXPY          \sde{}  SparseDiffEngine
+%    \sdp{}                   sparsediffpy   \de{}   diffengine
+%    \mvec{x} \mmat{A} \gvec{\theta} \cone{K} \reals \zeros    thesis notation (defs.tex)
+%    \annotatedop{op}{expr}   tree node with a grey annotation to its right
+%    pdBlock, pdRowA..pdRowD  the permuted-dense figure colours
+%
+%    \begin{frame}[fragile]   REQUIRED on any frame containing a lstlisting
+%    visible on=<2->          on a tikz scope: stage a reveal without moving the figure
+%
+%  Each \section below emits its own Outline frame (\AtBeginSection, line 69).
+% =====================================================================================
 
 \frame{
 \thispagestyle{empty}
 \titlepage
+\vspace{-4ex}
+\begin{center}\footnotesize
+Research director: Antoine Lesage-Landry \\[0.5ex]
+Department of Electrical Engineering, Polytechnique Montr\'eal
+\end{center}
 }
 
-\section{Background}
+% ==================================================================================
+\section{Introduction}
+% ==================================================================================
 
-\begin{frame}{Convex optimization}
-\begin{equation}\label{e:convex}
-\begin{array}{ll}
-\mbox{minimize}  &f_0(x) \\
-\mbox{subject to} &f_i(x) \leq 0, \quad i=1, \ldots, m\\
-&Ax=b
-\end{array}
-\end{equation}
-
-\begin{minipage}{0.68\textwidth}
-  \centering
-  \begin{itemize}
-    \item variable $x\in \reals^n$
-    \item equality constraints are linear and $f_0, \ldots, f_m$ are convex
-    \item can be solved globally and efficiently (both in theory and practice)
-  \end{itemize}
-\end{minipage}%
+% --- I0 -------------------------------------------------------------------------
+%  Zoom level 1: how optimization gets done at all.
+%  To stage a left-to-right build, add `visible on=<2->' (etc.) to individual nodes.
+\begin{frame}{Optimization in practice}
 \vfill
-\end{frame}
-
-\begin{frame}{Functional form}
-The user writes the problem in a general functional form:
-\begin{equation}\label{e:functional}
-\begin{array}{ll}
-\mbox{minimize}   & f_0(x_1, \ldots, x_k) \\
-\mbox{subject to} & f_i(x_1, \ldots, x_k) \leq g_i(x_1, \ldots, x_k), \quad i=1,\ldots,m_1\\
-                  & h_i(x_1, \ldots, x_k) = j_i(x_1, \ldots, x_k), \quad i=1,\ldots,m_2
-\end{array}
-\end{equation}
-\begin{columns}[T]
-\begin{column}{0.58\textwidth}
-\begin{itemize}
-  \item encompasses any optimization problem
-  \item potentially many variables of different sizes $x_1, \ldots, x_k$
-  \item the functions are \emph{expression trees} built from a library of \emph{atoms}
-\end{itemize}
-\end{column}
-\begin{column}{0.42\textwidth}
-\centering\footnotesize example
-\[
-\begin{array}{ll}
-\mbox{minimize}   & \|Fx - g\|_2 + \mu\|x\|_2 \\
-\mbox{subject to} & x \succeq 0
-\end{array}
-\]
-\end{column}
-\end{columns}
-\vfill
-\end{frame}
-
-\begin{frame}{Expression trees}
-\tikzset{external/export=false}
-Internally the functional form is stored as \textbf{expression trees} --- one per objective and
-constraint. Atoms are the nodes; variables, constants, and parameters are the leaves.
 \begin{center}
+\fitfig{%
 \begin{tikzpicture}
-  [level 1/.style={sibling distance=30mm},
-   level 2/.style={sibling distance=18mm}]
-  \node {\annotatedop{\|\cdot\|_2}{\|Fx-g\|_2}}
-    child {node {\annotatedop{-}{Fx-g}}
-        child {node {\annotatedop{\texttt{matmul}}{Fx}}
-              child {node[draw] {$F$}}
-              child {node[circle, draw] {$x$}} }
-        child {node[draw] {$g$}} };
-\end{tikzpicture}
+  \node[ends, text width=2.2cm] (world) at (0,0)   {observations,\\something to optimize};
+  \node[proc]                   (mod)   at (3.0,0) {modelling};
+  \node[art]                    (prob)  at (6.8,0)
+    {$\begin{array}{ll}
+        \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x}) \\[0.5ex]
+        \mbox{subject to}                    & f_i(\mvec{x}) \le 0 \\
+                                             & g_j(\mvec{x}) = 0
+      \end{array}$};
+  \node[proc]                   (solv)  at (10.4,0) {solver};
+  \node[ends, text width=2.2cm] (act)   at (13.2,0) {$\mvec{x}^\star$\\decision / action};
+
+  \draw[flow] (world) -- (mod);
+  \draw[flow] (mod)   -- (prob);
+  \draw[flow] (prob)  -- (solv);
+  \draw[flow] (solv)  -- (act);
+
+  \node[note, below=1.5mm of prob] {optimization problem};
+\end{tikzpicture}}
 \end{center}
-\end{frame}
-
-\begin{frame}{Disciplined convex programming (DCP)}
-\begin{itemize}
-\item a grammar for specifying convex optimization problems [Grant et al., 2006]
-\item convex and concave functions are constructed by combining a set of \textbf{atoms}
-\item each atom has known curvature and monotonicity
-\item simple rules specify how atoms can be composed
-\item a problem that follows the DCP rules is convex-by-construction
-\end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Modeling languages implementing DCP}
-\begin{itemize}
-\item Yalmip (MATLAB), CVX (MATLAB), CVXPY (Python), Convex.jl (Julia), CVXR (R)
-\item classic commercial software like AMPL and GAMS do not implement DCP
-\pause
-\bigskip
-\item two main tasks of DCP-based modeling languages:
-\begin{itemize}
-  \item \textbf{analysis}: verify that a high level problem description follows the DCP rules
-  \item \textbf{synthesis}: rewrite it into an equivalent conic standard form:
-\end{itemize}
-\end{itemize}
-\[
-\begin{array}{ll}
-\mbox{minimize}   & c^\top x + d \\
-\mbox{subject to} & b - Ax \in \mathcal{K}
-\end{array}
-\]
-\centering{\footnotesize problem data $A, b, c, d$; \;$\mathcal K$ a product of standard cones}
-\end{frame}
+% --- I1 -------------------------------------------------------------------------
+%  Zoom level 2: the problem-to-solver half of level 1, restricted to convex problems.
+%  Top strip = the level-1 chain, greyed; the dashed box marks what is magnified below.
+\begin{frame}{Convex optimization}
+\vfill
+\begin{center}
+\fitfig{%
+\begin{tikzpicture}
+  % ---- carry-over strip (level 1, in words only) -------------------------------
+  \node[dimbox] (s1) at (1.75,0)  {real world};
+  \node[dimbox] (s2) at (3.95,0)  {modelling};
+  \node[dimbox] (s3) at (6.15,0)  {problem};
+  \node[dimbox] (s4) at (8.35,0)  {solver};
+  \node[dimbox] (s5) at (10.55,0) {decision};
+  \draw[dimflow] (s1) -- (s2);  \draw[dimflow] (s2) -- (s3);
+  \draw[dimflow] (s3) -- (s4);  \draw[dimflow] (s4) -- (s5);
+  \node[zoombox, fit=(s3)(s4)] (zb) {};
 
-\begin{frame}{Functional conic form}
-Canonicalization first rewrites the problem into a \emph{functional} conic form:
-\begin{equation}\label{e:funcconic}
-\begin{array}{ll}
-\mbox{minimize}   & f_0(x_1, \ldots, x_k) \\
-\mbox{subject to} & g_i(x_1, \ldots, x_k) \in \mathcal{K}_i, \quad i=1,\ldots,m
-\end{array}
-\end{equation}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\begin{itemize}
-  \item $f_0$ and every $g_i$ are now affine
-  \item each $\mathcal K_i$ is a standard cone
-  \item nonsmooth atoms are replaced by epigraph variables and cone constraints
-  [Grant \& Boyd, 2008]
-\end{itemize}
-\end{column}
-\begin{column}{0.5\textwidth}
-\centering\footnotesize least squares becomes:
-\[
-\begin{array}{ll}
-\mbox{minimize} & t_1 + \mu\, t_2\\
-\mbox{s.t.} & x \in \reals_+^n\\
-            & (t_1,\, Fx - g) \in \mathcal K_{\mathrm{soc}}\\
-            & (t_2,\, x) \in \mathcal K_{\mathrm{soc}}
-\end{array}
-\]
-\end{column}
-\end{columns}
+  % ---- magnified panel ---------------------------------------------------------
+  \node[art] (prob2) at (0,-3.4)
+    {$\begin{array}{ll}
+        \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x}) \\[0.5ex]
+        \mbox{subject to}                    & f_i(\mvec{x}) \le 0 \\
+                                             & g_j(\mvec{x}) = 0
+      \end{array}$};
+  \node[art] (conic) at (7.1,-3.4)
+    {$\begin{array}{ll}
+        \underset{\mvec{x}}{\mbox{minimize}} & \frac{1}{2}\mvec{x}^\top\mmat{P}\mvec{x}
+                                               + \mvec{c}^\top\mvec{x} \\[0.5ex]
+        \mbox{subject to}                    & \mvec{b} - \mmat{A}\mvec{x} \in \cone{K}
+      \end{array}$};
+  \node[proc] (solv2) at (11.6,-3.4) {solver};
+  \node[ends] (xst)   at (13.9,-3.4) {$\mvec{x}^\star$};
+
+  \draw[flow] (prob2) -- node[edgelab] {compilation} (conic);
+  \draw[flow] (conic) -- (solv2);
+  \draw[flow] (solv2) -- (xst);
+
+  \node[note, below=1.5mm of prob2] {$f_0$, $f_i$ convex; $g_j$ affine};
+  \node[note, below=1.5mm of conic] {conic form};
+  \node[note, below=1.5mm of solv2] {Gurobi\\MOSEK\\COPT};
+
+  % ---- zoom lines from the strip down to the panel ------------------------------
+  \node[fit=(prob2)(conic)(solv2)(xst), inner sep=6pt] (panel) {};
+  \draw[zoomline] (zb.south west) -- (panel.north west);
+  \draw[zoomline] (zb.south east) -- (panel.north east);
+\end{tikzpicture}}
+\end{center}
 \vfill
 \end{frame}
 
+% --- F0 -------------------------------------------------------------------------
+%  Zoom level 3, generic. Deliberately the same geometry as I1b (strip at y=0, panel at
+%  y=-3.4, boxes at x=0 / 5.6 / 10.5 / 13.2), so that when I1b arrives it re-draws this
+%  picture with CVXPY's labels and nothing moves.
+%  `compilation' is the general name for the arrow; `canonicalization' is the DCP name
+%  for it and is introduced on I1b.
+\begin{frame}{Compilation}
+\begin{center}
+\adjustbox{max size={0.98\textwidth}{0.82\textheight}}{%
+\begin{tikzpicture}
+  % ---- carry-over strip (level 2, in words only) -------------------------------
+  \node[dimbox] (t1) at (3.15,0)  {convex problem};
+  \node[dimbox] (t2) at (5.55,0)  {compilation};
+  \node[dimbox] (t3) at (7.95,0)  {conic form};
+  \node[dimbox] (t4) at (10.35,0) {solver};
+  \draw[dimflow] (t1) -- (t2);  \draw[dimflow] (t2) -- (t3);
+  \draw[dimflow] (t3) -- (t4);
+  \node[zoombox, fit=(t2)] (zb) {};
+
+  % ---- magnified panel ---------------------------------------------------------
+  \node[art]    (mod)   at (0,-3.4)    {model};
+  \node[art]    (ir)    at (5.6,-3.4)  {intermediate form};
+  \node[art]    (sdata) at (10.5,-3.4) {solver data};
+  \node[dimbox] (tsolv) at (13.2,-3.4) {solver};
+
+  \draw[flow] (mod) -- node[edgelab] {frontend} (ir);
+  \draw[flow] (ir)  -- node[edgelab] {backend}  (sdata);
+  \draw[dimflow] (sdata) -- (tsolv);
+
+  \node[note, below=1.5mm of mod]        {what the user writes};
+  \node[note, below=1.5mm of ir]   (irn) {what the language stores};
+  \node[note, below=1.5mm of sdata]      {what the solver reads};
+
+  % Beat 2: the middle box instantiated. `visible on=' rather than \only, so the node
+  % still occupies space on overlay 1 and the picture does not rescale or shift.
+  \node[exbox, below=6mm of irn, visible on=<2->] (ex)
+    {\texttt{AMPL}: \texttt{.nl} file\\
+     \texttt{JuMP}: MOI\\
+     \cvxpy{}: expression trees};
+  \draw[zoomline, visible on=<2->] (irn.south) -- (ex.north);
+
+  % ---- zoom lines from the strip down to the panel ------------------------------
+  \node[fit=(mod)(ir)(sdata)(tsolv), inner sep=6pt] (panel) {};
+  \draw[zoomline] (zb.south west) -- (panel.north west);
+  \draw[zoomline] (zb.south east) -- (panel.north east);
+\end{tikzpicture}}
+\end{center}
+\vfill
+\end{frame}
+
+% --- F1 -------------------------------------------------------------------------
+%  Source if useful: 5-Introduction.tex:226-251 (composition rules, DCP compliance).
+\begin{frame}{Disciplined convex programming}
+
+\vfill
+\end{frame}
+
+% --- F2 -------------------------------------------------------------------------
+%  Source if useful: 5-Introduction.tex:15-42 (language families, analysis/synthesis).
+\begin{frame}{DCP-based modelling languages}
+
+\vfill
+\end{frame}
+
+% --- F3 -------------------------------------------------------------------------
+%  Source if useful: 5-Introduction.tex:170-224 (atom table tab:atoms, fig:expr-tree).
+\begin{frame}{Atoms and expression trees}
+
+\vfill
+\end{frame}
+
+% --- I1b ------------------------------------------------------------------------
+%  Zoom level 3: canonicalization itself. The accent-coloured backend arrow is the
+%  only highlighted element of the three slides -- that arrow is the thesis.
+\begin{frame}{Canonicalization: frontend and backend}
+\vfill
+\begin{center}
+\fitfig{%
+\begin{tikzpicture}
+  % ---- carry-over strip (level 2, in words only) -------------------------------
+  \node[dimbox] (t1) at (3.15,0)  {convex problem};
+  \node[dimbox] (t2) at (5.55,0)  {compilation};
+  \node[dimbox] (t3) at (7.95,0)  {conic form};
+  \node[dimbox] (t4) at (10.35,0) {solver};
+  \draw[dimflow] (t1) -- (t2);  \draw[dimflow] (t2) -- (t3);
+  \draw[dimflow] (t3) -- (t4);
+  \node[zoombox, fit=(t2)] (zb) {};
+
+  % ---- magnified panel ---------------------------------------------------------
+  \node[art] (dcp) at (0,-3.4) {\cvxpy{} problem};
+  \node[art] (fconic) at (5.6,-3.4)
+    {$\begin{array}{ll}
+        \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x};\gvec{\theta}) \\[0.5ex]
+        \mbox{subject to} & h_i(\mvec{x};\gvec{\theta}) \in \cone{K}_i
+      \end{array}$};
+  \node[art]    (data)  at (10.5,-3.4) {$\mmat{P},\ \mmat{A},\ \mvec{b},\ \mvec{c}$};
+  \node[dimbox] (tsolv) at (13.2,-3.4) {solver};
+
+  \draw[flow] (dcp) -- node[edgelab] {frontend} (fconic);
+  % Two beats: <1> the plain chain, <2> the backend arrow lights up and the claim lands.
+  % `alt=' / `visible on=' keep every node in the picture on both overlays, so the
+  % bounding box -- and the \fitfig scale -- do not move as the emphasis appears.
+  \draw[flow, alt=<2->{accent}{}] (fconic)
+    -- node[edgelab, alt=<2->{text=polyblue}{}] {\alt<2->{\textbf{backend}}{backend}}
+       node[font=\footnotesize, text=polyblue, midway, below=0.8mm,
+            visible on=<2->] {this thesis}
+    (data);
+  \draw[dimflow] (data) -- (tsolv);
+
+  \node[note, below=1.5mm of dcp]    {expression trees};
+  \node[note, below=1.5mm of fconic] {functional conic form\\%
+                                      $f_0$, $h_i$ affine; new variables $t$};
+  \node[note, below=1.5mm of data]   {explicit sparse matrices};
+
+  % ---- zoom lines from the strip down to the panel ------------------------------
+  \node[fit=(dcp)(fconic)(data)(tsolv), inner sep=6pt] (panel) {};
+  \draw[zoomline] (zb.south west) -- (panel.north west);
+  \draw[zoomline] (zb.south east) -- (panel.north east);
+\end{tikzpicture}}
+\end{center}
+\vfill
+\end{frame}
+
+% --- I5 -------------------------------------------------------------------------
+\begin{frame}{Problem statement}
+
+\vfill
+\end{frame}
+
+% ==================================================================================
+\section{Background}
+% ==================================================================================
+
+% --- B2 -------------------------------------------------------------------------
+\begin{frame}{Conic reformulation: epigraphs and cones}
+
+\vfill
+\end{frame}
+
+% --- B3 -------------------------------------------------------------------------
 \begin{frame}{Quadratic conic standard form}
-The backend materializes \eqref{e:funcconic} into the numeric conic standard form:
-\begin{equation}\label{e:quadconic}
-\begin{array}{ll}
-\mbox{minimize}   & \tfrac12 x^\top P x + c^\top x + d \\
-\mbox{subject to} & b - A x \in \mathcal{K}
-\end{array}
-\end{equation}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\begin{itemize}\small
-\item data $P \succeq 0,\ A, b, c, d$; \;$\mathcal K$ a product of standard cones
-\item generalizes both QP ($P\neq0$, $\mathcal K=\reals^m_+$) and conic programs ($P=0$)
-\item solvers: OSQP, HiGHS (QP); ECOS (conic); MOSEK, Clarabel (conic-quadratic)
-\end{itemize}
-\end{column}
-\begin{column}{0.5\textwidth}
-\centering\footnotesize least squares \eqref{e:funcconic}, $u = [\,x;\ t_1;\ t_2\,]$ ($P=0$):
-\[
-\min\; c^\top u, \quad b - A u \in \mathcal{K}
-\]
-{\scriptsize
-\[
-c = \begin{bmatrix} 0\\ 1\\ \mu \end{bmatrix},\;
-A = \begin{bmatrix} -I & 0 & 0\\ 0 & -1 & 0\\ -F & 0 & 0\\ 0 & 0 & -1\\ -I & 0 & 0 \end{bmatrix},\;
-b = \begin{bmatrix} 0\\ 0\\ -g\\ 0\\ 0 \end{bmatrix}
-\]
-\[
-\mathcal K = \reals^n_+ \times \mathcal K_{\mathrm{soc}} \times \mathcal K_{\mathrm{soc}}
-\]
-}
-\end{column}
-\end{columns}
-\vfill
-{\scriptsize a squared objective $\|Fx-g\|_2^2$ would instead populate $P$, with no epigraph variable $t_1$.}
-\end{frame}
 
-\begin{frame}{Summary}
-We have introduced four standard forms: the convex optimization standard form \eqref{e:convex},
-the user's functional form \eqref{e:functional}, the functional conic form \eqref{e:funcconic},
-and the numeric conic standard form \eqref{e:quadconic}.
-\bigskip
-
-A DCP modeling language works in two stages:
-\begin{itemize}
-\item the \emph{frontend} takes the functional form \eqref{e:functional}, uses DCP to verify it is
-      convex \eqref{e:convex}, and rewrites it into the functional conic form \eqref{e:funcconic}
-\item the \emph{backend} materializes \eqref{e:funcconic} into the numeric data \eqref{e:quadconic}
-\end{itemize}
-\pause
-\bigskip
-This thesis focuses on the \emph{canonicalization backend} for large-scale
-and parametrized problems.
-\end{frame}
-
-\section{Canonicalization}
-
-\begin{frame}{Matrix stuffing: a worked example}
-\tikzset{external/export=false}    % overlays must re-render each slide
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\centering
-$x + 3y$ \quad with $x, y, z \in \reals^2$
-\vspace{3ex}
-
-\begin{tikzpicture}[
-  every node/.style={align=center},
-  level 1/.style={sibling distance=24mm},
-  level 2/.style={sibling distance=14mm},
-  edge from parent/.style={draw, -latex},
-  active/.style={draw, fill=structure!25, text=black},
-  dim/.style={text=black!35}]
-  \node[dim, alt=<6>{active}{}] {$+$}
-    child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
-    child {node[dim, alt=<5>{active}{}] {$\times$}
-      child {node[draw, dim, alt=<3>{active}{}] {$3$}}
-      child {node[circle, draw, dim, alt=<4>{active}{}] {$y$}}
-    };
-\end{tikzpicture}
-\end{column}
-
-\begin{column}{0.5\textwidth}
-row block of $A$
-\vspace{2ex}
-\begin{itemize}\setlength\itemsep{1.2ex}
-  \item<2-> $x:\ \begin{bmatrix} I & \plotzero & \plotzero \end{bmatrix}$
-  \item<3-> $3:\ \begin{bmatrix} \plotzero & \plotzero & \plotzero \end{bmatrix}$ \;(constant)
-  \item<4-> $y:\ \begin{bmatrix} \plotzero & I & \plotzero \end{bmatrix}$
-  \item<5-> $3y:\ \begin{bmatrix} \plotzero & 3I & \plotzero \end{bmatrix}$
-  \item<6-> $x{+}3y:\ \begin{bmatrix} I & 3I & \plotzero \end{bmatrix}$
-\end{itemize}
-\onslide<6->{\vspace{1ex}\centering each block is $2\times2$; the $z$ block stays $0$. This is row block~1 of $A$.}
-\end{column}
-\end{columns}
 \vfill
 \end{frame}
 
-\begin{frame}{Stacking constraints}
-\tikzset{external/export=false}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\centering
-$-7x + 2z$ \quad with $x, y, z \in \reals^2$
-\vspace{3ex}
+% --- B5 -------------------------------------------------------------------------
+\begin{frame}{Derivatives: algorithmic differentiation and graph colouring}
 
-\begin{tikzpicture}[
-  every node/.style={align=center},
-  level 1/.style={sibling distance=26mm},
-  level 2/.style={sibling distance=12mm},
-  edge from parent/.style={draw, -latex},
-  active/.style={draw, fill=structure!25, text=black},
-  dim/.style={text=black!35}]
-  \node[dim, alt=<4>{active}{}] {$+$}
-    child {node[dim, alt=<2>{active}{}] {$\times$}
-      child {node[draw, dim, alt=<2>{active}{}] {$-7$}}
-      child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
-    }
-    child {node[dim, alt=<3>{active}{}] {$\times$}
-      child {node[draw, dim, alt=<3>{active}{}] {$2$}}
-      child {node[circle, draw, dim, alt=<3>{active}{}] {$z$}}
-    };
-\end{tikzpicture}
-\end{column}
-
-\begin{column}{0.5\textwidth}
-row block of $A$
-\vspace{2ex}
-\begin{itemize}\setlength\itemsep{1.2ex}
-  \item<2-> $-7x:\ \begin{bmatrix} -7I & \plotzero & \plotzero \end{bmatrix}$
-  \item<3-> $2z:\ \begin{bmatrix} \plotzero & \plotzero & 2I \end{bmatrix}$
-  \item<4-> $-7x{+}2z:\ \begin{bmatrix} -7I & \plotzero & 2I \end{bmatrix}$
-\end{itemize}
-\onslide<5->{
-\vspace{2ex}
-\centering stacking both constraints:
-\[
-A = \begin{bmatrix} I & 3I & \plotzero \\ -7I & \plotzero & 2I \end{bmatrix} \in \reals^{4\times6}
-\]}
-\end{column}
-\end{columns}
 \vfill
 \end{frame}
 
-\begin{frame}{Variable offsets}
-\begin{itemize}
-\item the backend stacks all variables into one vector $u$
-\item each variable has a unique \textbf{id}; \texttt{id\_to\_col} maps it to a \textbf{column offset}
-\item a variable of size $n$ occupies $n$ consecutive columns of $A$
-\end{itemize}
-\vspace{1ex}
-\[
-x \in \reals^2,\quad y \in \reals^3 \qquad\Rightarrow\qquad
-u = \big[\,\underbrace{x_1\ x_2}_{\text{cols }1\text{--}2}\ \ \underbrace{y_1\ y_2\ y_3}_{\text{cols }3\text{--}5}\,\big]^\top \in \reals^5
-\]
-\[
-\texttt{id\_to\_col} = \{\, \mathrm{id}(x)\!: 0,\ \ \mathrm{id}(y)\!: 2 \,\}
-\]
-\begin{itemize}
-\item so $A$ has $5$ columns (\texttt{var\_length}); a final column holds the constant $b$
-\end{itemize}
+% --- B6 -------------------------------------------------------------------------
+\begin{frame}{Dense and sparse matrices}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Building the coefficient blocks}
-\tikzset{external/export=false}
-\begin{columns}[T]
-\begin{column}{0.42\textwidth}
-\centering
-$x + y_{[:2]} + 5$\\[0.5ex]
-{\footnotesize $x\in\reals^2,\ y\in\reals^3$}
-\vspace{2ex}
+% ==================================================================================
+\section{Single canonicalization}
+% ==================================================================================
 
-\begin{tikzpicture}[
-  every node/.style={align=center},
-  level 1/.style={sibling distance=20mm},
-  level 2/.style={sibling distance=11mm},
-  edge from parent/.style={draw, -latex},
-  active/.style={draw, fill=structure!25, text=black},
-  dim/.style={text=black!35}]
-  \node[dim, alt=<7>{active}{}] {$+$}
-    child {node[circle, draw, dim, alt=<2>{active}{}] {$x$}}
-    child {node[dim, alt=<4>{active}{}] {index\\${[:2]}$}
-      child {node[circle, draw, dim, alt=<3>{active}{}] {$y$}}}
-    child {node[dim, alt=<6>{active}{}] {promote}
-      child {node[draw, dim, alt=<5>{active}{}] {$5$}}};
-\end{tikzpicture}
-\end{column}
+% --- SC1 --------------------------------------------------------------------------
+\begin{frame}{}
 
-\begin{column}{0.58\textwidth}
-each node holds $\{\text{var id} \mapsto \texttt{scipy.sparse}\}$
-\vspace{1ex}
-\begin{itemize}\setlength\itemsep{0.7ex}\small
-  \item<2-> $x:\ \{\, x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right] \}$
-  \item<3-> $y:\ \{\, y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\\0&0&1\end{smallmatrix}\right] \}$
-  \item<4-> $y_{[:2]}:\ \{\, y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right] \}$ \;{\footnotesize (rows $0,1$)}
-  \item<5-> $5:\ \{\, {-1} \mapsto [\,5\,] \}$
-  \item<6-> promote:\ $\{\, {-1} \mapsto \left[\begin{smallmatrix}5\\5\end{smallmatrix}\right] \}$ \;{\footnotesize (repeat row)}
-  \item<7-> $+:\ \big\{\begin{array}{@{}l@{}}
-        x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right],\ \
-        y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right],\\[1.2ex]
-        {-1} \mapsto \left[\begin{smallmatrix}5\\5\end{smallmatrix}\right]\end{array}\big\}$
-\end{itemize}
-\end{column}
-\end{columns}
-\vfill
-{\footnotesize \texttt{scipy.sparse}: variable $\to$ \texttt{eye\_array} (CSC); \texttt{index} selects rows; \texttt{promote} repeats a row; \texttt{sum} merges per-variable keys. Constant id $=-1$.}
-\end{frame}
-
-\begin{frame}{Assembling $[A\ b]$}
-\texttt{id\_to\_col} places each variable's block at its column offset; the constant fills the last column:
-\vspace{1ex}
-\begin{itemize}\setlength\itemsep{1ex}
-\item<1-> $\{x \mapsto \left[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\right]\} \to$ columns $1$--$2$;\quad
-        $\{y \mapsto \left[\begin{smallmatrix}1&0&0\\0&1&0\end{smallmatrix}\right]\} \to$ columns $3$--$5$
-\item<2->
-\[
-[A\ b] = \left[\begin{array}{cc|ccc|c}
-1 & 0 & 1 & 0 & 0 & 5\\
-0 & 1 & 0 & 1 & 0 & 5
-\end{array}\right] \in \reals^{2\times 6}
-\]
-\item<3-> the $y_3$ column is all zeros --- $y_{[:2]}$ never touched it
-\end{itemize}
-\vfill
-{\footnotesize CVXPY: \texttt{flatten\_tensor} collapses $(\text{row},\text{col})$ into one sparse $[A\,b]$; \texttt{id\_to\_col}$[-1]=\texttt{var\_length}$ reserves the constant column.}
-\end{frame}
-
-\begin{frame}{Parameters, path 1: \texttt{ignore\_dpp}}
-\begin{itemize}\setlength\itemsep{1.5ex}
-\item prepends a reduction called \texttt{EvalParams}: every parameter node in the expression
-      trees is replaced by a \textbf{constant} holding its current value
-\item canonicalization then runs on a parameter-free problem
-\end{itemize}
-\vspace{2ex}
-\[
-\min\; t_1 + \mu\, t_2
-\;\xrightarrow{\ \texttt{EvalParams}:\ (\mu,\, g)\,\leftarrow\,(2.5,\ \hat g)\ }\;
-\min\; t_1 + 2.5\, t_2
-\qquad\Rightarrow\qquad
-c = \begin{bmatrix} \plotzero\\ 1\\ 2.5 \end{bmatrix}
-\]
-\pause
-\vspace{1ex}
-\begin{itemize}
-\item the numeric data drop out directly --- but the \textbf{full reduction chain re-runs}
-      every time a parameter changes
-\end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Parameters, path 2: the DPP parameter map}
-\begin{itemize}\setlength\itemsep{1.5ex}
-\item if the problem follows the DPP ruleset, CVXPY compiles \textbf{once} and caches a linear
-      map from parameters to problem data
-\item for the objective: $[c;\, d] = Q\,\tilde\theta$ with $\tilde\theta = (g, \mu, 1)$
-\end{itemize}
-\vspace{2ex}
-\[
-Q =
-\begin{blockarray}{cccc}
-        & g^\top & \mu & 1 \\
-\begin{block}{c[ccc]}
-  x     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
-  t_1   & \plotzero \cdots \plotzero & \plotzero & 1         \\
-  t_2   & \plotzero \cdots \plotzero & 1         & \plotzero \\
-  d     & \plotzero \cdots \plotzero & \plotzero & \plotzero \\
-\end{block}
-\end{blockarray}
-\qquad
-\begin{bmatrix} c \\ d \end{bmatrix} = Q\,\tilde\theta
-= \begin{bmatrix} \plotzero\\ 1\\ \mu\\ \plotzero \end{bmatrix}
-\]
-\pause
-\vspace{1ex}
-\begin{itemize}
-\item re-solve = one sparse matvec, the reduction chain is bypassed entirely
-\item but: requires DPP compliance, and the cached map must be stored
-\end{itemize}
+% --- SC2 --------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\section{A lightweight C engine}
+% --- SC3 --------------------------------------------------------------------------
+\begin{frame}{}
 
-\begin{frame}{The key insight}
-\begin{itemize}
-\item for any parameterized problem, under mild conditions the \textbf{sparsity pattern} of $A(\theta)$ is fixed across the family
-\item only the \textbf{numerical values} of the nonzeros change with $\theta$
-\pause
-\item reframe matrix stuffing as \textbf{sparse Jacobian evaluation}:
-  \begin{itemize}
-    \item symbolic phase: compute the sparsity pattern of $\partial A / \partial \theta$ once
-    \item numeric phase: refill values on every solve
-  \end{itemize}
-\item no restriction on how parameters enter the problem
-\end{itemize}
 \vfill
 \end{frame}
 
-\begin{frame}{Two-phase design}
-\textbf{Init phase} (run once per problem family):
-\begin{itemize}
-\item allocate one \texttt{expr} struct per tree node
-\item traverse the tree to compute sparsity patterns
-\item allocate Jacobians as CSR matrices
-\end{itemize}
-\vspace{1ex}
-\textbf{Eval phase} (run on every solve, with new $\theta$):
-\begin{itemize}
-\item walk the tree, fill numerical values into pre-allocated buffers
-\item stuff the resulting $A$, $b$, $c$ into the solver
-\end{itemize}
-\pause
-\vspace{1ex}
-Cost model: init is $O(\text{tree size})$ once; eval is $O(\text{nnz}(A))$ per solve.
+% --- SC4 --------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{The two phases on our example}
-replace the constant $3$ with a parameter $\theta$: \quad $x + \theta y$, \; $x,y,z \in \reals^2$
-\vspace{2ex}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\textbf{Init} (once per problem family)
-\begin{itemize}
-\item walk the tree, record \emph{which} blocks are nonzero
-\item pattern: blocks $x, y$ \;($z$ empty)
-\item allocate the CSR matrix $\begin{bmatrix} \bullet & \bullet & \plotzero \end{bmatrix}$
-\end{itemize}
-\end{column}
-\begin{column}{0.5\textwidth}
-\textbf{Eval} (every solve, new $\theta$)
-\begin{itemize}
-\item refill values into the fixed pattern
-\item $\theta{=}3:\ \begin{bmatrix} I & 3I & \plotzero \end{bmatrix}$
-\item $\theta{=}7:\ \begin{bmatrix} I & 7I & \plotzero \end{bmatrix}$
-\item structure never recomputed
-\end{itemize}
-\end{column}
-\end{columns}
-\pause
-\vspace{2ex}
-the current backend redoes the \textbf{whole} left column on every solve; the engine pays it once.
-\par\smallskip
-\footnotesize (quadratic objectives add a matrix $P$, built the same way from second-order coefficients.)
-\end{frame}
+% ==================================================================================
+\section{Parametric canonicalization}
+% ==================================================================================
 
-\begin{frame}[fragile]{The \texttt{expr} struct}
-\begin{lstlisting}[language=C]
-typedef struct expr {
-    int    d1, d2, size;    /* shape (d1 x d2) */
-    int    n_vars;
-    int    var_id;          /* offset, or NOT_A_VARIABLE */
+% --- PC1 --------------------------------------------------------------------------
+\begin{frame}{}
 
-    struct expr *left, *right;
-
-    double     *value;      /* forward-pass output */
-    CSR_Matrix *jacobian;   /* size x n_vars sparse */
-
-    forward_fn       forward;
-    jacobian_init_fn jacobian_init_impl;
-    eval_jacobian_fn eval_jacobian;
-} expr;
-\end{lstlisting}
 \vfill
 \end{frame}
 
-\begin{frame}{The atom contract}
-Every atom implements three functions:
-\vspace{1ex}
-\begin{center}
-\begin{tabular}{ll}
-\toprule
-\textbf{Function} & \textbf{Phase / Purpose} \\
-\midrule
-\texttt{forward}            & numeric: compute the atom's output value \\
-\texttt{jacobian\_init}     & symbolic: allocate sparsity pattern of the Jacobian \\
-\texttt{eval\_jacobian}     & numeric: fill Jacobian values from children \\
-\bottomrule
-\end{tabular}
-\end{center}
-\vspace{1ex}
-\begin{itemize}
-\item \texttt{jacobian\_init} is called \textbf{once} during the init phase
-\item \texttt{eval\_jacobian} is called on \textbf{every} solve
-\end{itemize}
+% --- PC2 --------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Atom example: elementwise multiply}
-\begin{itemize}
-\item operation: $z = a \odot b$ (elementwise product of two expressions)
-\item Jacobian: $\partial z / \partial x = \mathrm{diag}(a) \, \partial b / \partial x + \mathrm{diag}(b) \, \partial a / \partial x$
-\pause
-\item \texttt{jacobian\_init}: union of the sparsity patterns of $\partial a / \partial x$ and $\partial b / \partial x$
-\item \texttt{eval\_jacobian}: scale child Jacobian rows by the current values of $a$ and $b$
-\pause
-\item key observation: the sparsity union is computed \textbf{once}; per-solve work is just row scaling
-\item this is where \textbf{parameter values} enter without changing structure
-\end{itemize}
+% --- PC3 --------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Atom example: matrix multiplication}
-\begin{itemize}
-\item operation: $z = A \cdot y$ (where $A$ is a constant or parameter, $y$ is an expression)
-\item Jacobian: $\partial z / \partial x = A \cdot \partial y / \partial x$
-\pause
-\item \texttt{jacobian\_init}: sparsity pattern of $A \cdot J_y$ derived from the sparsity of $A$ and $J_y$
-\item \texttt{eval\_jacobian}: sparse-sparse multiply, writing into pre-allocated CSR buffers
-\item the structural pattern --- which entries are nonzero --- is fixed once $A$'s sparsity is known
-\end{itemize}
-\vfill
-\end{frame}
-
-\begin{frame}{Assembling $A$}
-\begin{itemize}
-\item each constraint contributes a row block of $A$
-\item after \texttt{eval\_jacobian} runs on every node, the root Jacobians \emph{are} the rows of $A$
-\item we copy them into a flat CSR buffer in the layout the solver expects
-\pause
-\item the column structure of $A$ is computed once; row values are refilled per solve
-\item no Python in the hot path; no allocation in the eval phase
-\end{itemize}
-\vfill
-\end{frame}
-
-\begin{frame}{What ``lightweight'' means}
-\begin{itemize}
-\item pure C; no Python in the inner loop
-\item no symbolic graph mutation between solves
-\item CSR storage throughout; cache-friendly traversals
-\item no general-purpose AD framework (no JAX, no Autograd) --- we only implement the atoms we need
-\pause
-\item contrast with today's backend:
-  \begin{itemize}
-    \item no 3D parameter tensor in memory
-    \item sparsity computed once, not on every solve
-    \item no restriction on how parameters enter
-  \end{itemize}
-\end{itemize}
-\vfill
-\end{frame}
-
+% ==================================================================================
 \section{Results}
+% ==================================================================================
 
-\begin{frame}{Benchmark setup}
-\begin{itemize}
-\item hardware: laptop (TODO: spec)
-\item software: CVXPY pinned (TODO: version)
-\item baselines:
-  \begin{itemize}
-    \item CVXPY DPP path (default)
-    \item CVXPY \texttt{ignore\_dpp=True}
-    \item our C engine
-  \end{itemize}
-\item metrics:
-  \begin{itemize}
-    \item cold-start time (first solve)
-    \item warm-restart time (subsequent solves, new $\theta$)
-    \item peak memory
-  \end{itemize}
-\end{itemize}
+% --- R1 ---------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Problem suite}
-\begin{itemize}
-\item \textbf{standard benchmarks}
-  \begin{itemize}
-    \item LASSO, portfolio optimization, model-predictive control
-    \item representative of real-world use cases
-  \end{itemize}
-\item \textbf{stress tests}
-  \begin{itemize}
-    \item large sparse problems, deep expression trees
-    \item designed to expose canonicalization overhead
-  \end{itemize}
-\item \textbf{least squares}
-  \begin{itemize}
-    \item bread-and-butter case; well-understood baseline
-  \end{itemize}
-\end{itemize}
+% --- R2 ---------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Hypotheses (no numbers yet)}
-\begin{itemize}
-\item \textbf{cold-start time:} comparable to ignore\_DPP (no caching benefit on first solve)
-\item \textbf{warm-restart time:} approaches the DPP path's amortized cost, without the DPP rule restriction
-\item \textbf{peak memory:} below DPP, because no 3D parameter tensor is materialized
-\pause
-\item \textbf{break-even:} after $\sim 2$--$3$ solves on the same problem family, our engine should beat ignore\_DPP
-\end{itemize}
+% --- R3 ---------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\begin{frame}{Results}
-\begin{center}
-\large TODO: insert benchmark plots + tables here
-\end{center}
-\vspace{2ex}
-\begin{itemize}
-\item runtime comparison (cold + warm)
-\item memory comparison
-\item scaling with problem size
-\end{itemize}
+% --- R4 ---------------------------------------------------------------------------
+\begin{frame}{}
+
 \vfill
 \end{frame}
 
-\section{Conclusions}
-
-\begin{frame}{Summary}
-\begin{itemize}
-\item reframed CVXPY matrix stuffing as \textbf{sparse Jacobian evaluation}
-\item built a lightweight \textbf{C engine} that:
-  \begin{itemize}
-    \item computes sparsity once per problem family
-    \item refills values per solve
-    \item avoids the 3D parameter tensor of the DPP path
-  \end{itemize}
-\item works for parameterized problems \textbf{without the DPP rule restriction}
-\pause
-\item (pending) benchmark wins over ignore\_DPP, competitive with DPP
-\end{itemize}
-\vfill
-\end{frame}
-
-\begin{frame}{Limitations and future work}
-\textbf{Limitations}
-\begin{itemize}
-\item partial atom coverage --- not yet a drop-in replacement for CVXPY
-\item C library, not yet integrated as a CVXPY backend
-\item single-threaded; no GPU
-\end{itemize}
-\vspace{1ex}
-\textbf{Future work}
-\begin{itemize}
-\item expand atom library to cover all of CVXPY's standard atoms
-\item ship as a Python-importable CVXPY backend
-\item explore non-DPP parameterizations where sparsity is still stable
-\end{itemize}
-\vfill
-\end{frame}
-
+% --- closing ----------------------------------------------------------------------
 \begin{frame}
 \vspace{2cm}
 \begin{center}
 {\Large \textbf{Thank you}} \\[2ex]
-{\large Questions?}
 \end{center}
+\vfill
+\end{frame}
+
+% =====================================================================================
+%  BACKUP SLIDES (not presented). appendixnumberbeamer stops the visible frame count
+%  at the Thank-you slide, so these do not inflate "slide n of N".
+% =====================================================================================
+\appendix
+
+% --- B1 ---------------------------------------------------------------------------
+\begin{frame}{Backup: }
+
+\vfill
+\end{frame}
+
+% --- B2 ---------------------------------------------------------------------------
+\begin{frame}{Backup: }
+
+\vfill
+\end{frame}
+
+% --- B3 ---------------------------------------------------------------------------
+\begin{frame}{Backup: }
+
 \vfill
 \end{frame}
 

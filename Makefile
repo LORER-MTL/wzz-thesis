@@ -71,6 +71,16 @@ pdf: $(SRC:%.tex=%.pdf)
 clean:
 	@rm -f *.aux *~ $(SRC:%tex=%){dvi,pdf,bbl,blg,log,out,lof,lot,loa,toc,app}
 
+# The defence slides. Kept separate from the $(SRC) rules on purpose: final/draft edit
+# line 1 of Document.tex and clean's substitution only ever matched Document.
+# Two runs are needed for the \tableofcontents outline frames.
+presentation: presentation.tex
+	${PDFLATEX} -interaction=nonstopmode presentation.tex
+	${PDFLATEX} -interaction=nonstopmode presentation.tex
+
+presentation_clean:
+	@rm -f presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}
+
 all_clean: clean
 	@if [ -d dia ]; then cd dia; ${MAKE} clean; fi
 	@if [ -d gnuplot ]; then cd gnuplot; ${MAKE} clean; fi
@@ -102,4 +112,4 @@ help:
 	@echo "  make images     Génération de toutes les images"
 	@echo
 
-.PHONY	: show clean all_clean pdf archive final draft help images
+.PHONY	: show clean all_clean pdf archive final draft help images presentation presentation_clean
