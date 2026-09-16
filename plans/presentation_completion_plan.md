@@ -2,6 +2,13 @@
 
 Target: ~30 minute defence, October 2nd.
 
+> **Status, 2026-09-16: Batches 1-4 are done** (`2bc33bc`, `85a8a14`, and the commit that
+> carries this line). The deck is 33 content frames + 1 outline + 10 backups, 52 PDF pages,
+> building clean. Two things in the plan below were *not* done and should not be: the
+> retarget of `B-DCP` (unnecessary once `F1` became the short grammar slide), and the
+> trimming of `I5` (it reads fine at size; cutting content there is a call for the author).
+> What remains is rehearsal against the clock.
+
 `presentation.tex` is largely written — 31 content frames, 9 backup frames, 50 PDF pages — but
 three frames in the Introduction are still empty `\vfill` placeholders, and the deck has no
 contributions or future-work slide.

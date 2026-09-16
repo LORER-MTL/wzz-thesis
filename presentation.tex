@@ -178,6 +178,10 @@ for Disciplined Convex Programming}
 %
 %    \begin{frame}[fragile]   REQUIRED on any frame containing a lstlisting
 %    visible on=<2->          on a tikz scope: stage a reveal without moving the figure
+%    \item<2->  \item<2->[--] reveal a bullet, marker and all, with its space reserved
+%                             (I0b, F2). \onslide inside an \item leaves the marker behind.
+%    \only<1>{..}\only<2>{..} two versions of one block, e.g. B3's two beats. Keep the two
+%                             metrically identical or \fitfig rescales between the beats.
 %
 %  One Outline frame follows the title page; the \section commands only feed it (line 69).
 % =====================================================================================
@@ -681,6 +685,36 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \item the cone $\cone{K}$ comes out of the frontend --- which rows belong to which cone
         is settled before any number exists; what is left is the numbers
   \item {\color{polyblue}the goal of this thesis is to reduce \cvxpy{}'s compilation time}
+\end{itemize}
+\end{frame}
+
+% --- I6 -------------------------------------------------------------------------
+%  What was built, stated once, before the deck spends a section on a worked example. I5
+%  gives the goal; this gives the answer to it, so the Example section that follows has a
+%  destination rather than being background for its own sake.
+%  Deliberately a preview and not a summary: permuted dense, the two passes and the kernel
+%  dispatch all arrive later with their own slides, so each bullet here is phrased to be
+%  readable before any of that. The order is the order of the sections.
+%  Sources: 7-Theme1.tex:1-33 (the two contributions and the design decisions),
+%           7-Theme1.tex:35-47 (seventeen thousand lines, ~45 atoms in six subdirectories,
+%           the three operations per atom), 7-Theme1.tex:714-726 (sparsediffpy and the
+%           diffengine backend), 8-Conclusion.tex:1-33.
+%  The counts are the thesis's own and are approximate there too -- keep the "about".
+\begin{frame}{Contributions}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item \sde{}, a C library that computes $\mmat{P}$, $\mmat{A}$, $\mvec{b}$, $\mvec{c}$ as
+        {\color{polyblue}sparse derivatives} of the conic-form trees \\[0.4ex]
+        {\footnotesize\color{black!55} about 17\,000 lines of C; around 45 atoms, each
+        implementing a forward, a symbolic and a numeric pass}
+  \item two matrix representations for the structure the problem data already has, so that a
+        dense block is stored dense and multiplied by BLAS --- no sparsity detection and no
+        graph colouring
+  \item a {\color{polyblue}symbolic pass} that computes structure once and a
+        {\color{polyblue}numeric pass} that fills in values, so a re-solve after a parameter
+        change costs one numeric pass --- with no restriction on how the parameters enter
+  \item \sdp{}, the Python bindings, and \de{}, a \cvxpy{} backend with the same interface
+        as matrix stuffing, so the rest of \cvxpy{} is unchanged
 \end{itemize}
 \end{frame}
 
@@ -1529,6 +1563,24 @@ recompute the whole constant part.}
         not
   \item the suite is a collection of synthetic problems, not a standard benchmark library
 \end{itemize}}
+\end{frame}
+
+% --- FW ---------------------------------------------------------------------------
+%  The three directions of 8-Conclusion.tex:68-120, one line each, in the thesis's own
+%  order: a package, a piece of development work, and a research question.
+%  The limitations are not repeated here -- R4 just gave them, on its second beat.
+\begin{frame}{Future work}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item a standalone \sdp{} interface: build and evaluate sparse Jacobians and Hessians
+        {\color{polyblue}without \cvxpy{}}, with the trees built from \sdp{}'s own functions
+  \item \de{} as the default backend on the \texttt{ignore\_dpp} path, and the removal of
+        \texttt{cvxcore}, which the \cvxpy{} developers have already deprecated --- \cvxpy{}
+        would then ship no C++ binaries at all
+  \item pass the {\color{polyblue}block structure} along with the problem data, so that the
+        presolve and the factorization work on the dense blocks directly instead of
+        rediscovering them in a generic sparse matrix
+\end{itemize}
 \end{frame}
 
 % --- closing ----------------------------------------------------------------------
