@@ -786,15 +786,24 @@ canonicalization.}
 %  Beat 3: the same problem handed to a modelling language, placed after the convexity
 %  argument so that the code is read as a transcription of something already understood.
 %  It also sets up F3b: `nonneg=True' is what makes the DCP check on the next slide pass.
-%  Source: lst:cvxpy-example (5-Introduction.tex:365-374).
+%  Source: lst:cvxpy-example (5-Introduction.tex:365-374), imports included, so the slide
+%  and the thesis listing show the same code.
+%  `mypython' (listing_defs.tex:39) rather than plain Python: it colours the CVXPY and NumPy
+%  names green and the keywords magenta, which is what makes `Parameter' and `Variable'
+%  findable while the bullets below talk about them.
 %  [fragile] is required: the frame carries an lstlisting.
 \begin{frame}[fragile]{A DCP-based modelling language}
 \recallstrip[\cvxpy{} problem]{1}
 
-\vspace{1ex}
 \begin{center}
 \begin{minipage}{0.80\textwidth}
-\begin{lstlisting}[language=Python, basicstyle=\ttfamily\small]
+% aboveskip/belowskip override mypython's 1em: the imports and the blank line cost three
+% lines, and without this the frame pushes the recall strip into the title.
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
+                   aboveskip=0.4em, belowskip=0.4em]
+import cvxpy as cp
+import numpy as np
+
 F  = np.random.randn(m, n)
 x  = cp.Variable(n)
 g  = cp.Parameter(m)
@@ -807,7 +816,7 @@ prob = cp.Problem(objective, [x >= 0])
 \end{minipage}
 \end{center}
 
-\vspace{1.5ex}
+\vspace{1ex}
 \begin{itemize}\small\bul
   \item the problem is written the way it is stated: atoms and operators, not matrices
   \item \texttt{Parameter} marks what changes between solves; \texttt{Variable} marks what
@@ -1654,7 +1663,8 @@ unrecognized form is rejected.
 \vspace{-2ex}
 \begin{columns}[T,onlytextwidth]
 \begin{column}{0.48\textwidth}
-\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\scriptsize,
+                   aboveskip=0.4em, belowskip=0.4em]
 cp.sqrt(cp.square(x) + 1)
 \end{lstlisting}
 \vspace{0.5ex}
@@ -1666,7 +1676,8 @@ cp.sqrt(cp.square(x) + 1)
 \end{itemize}
 \end{column}
 \begin{column}{0.48\textwidth}
-\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\scriptsize,
+                   aboveskip=0.4em, belowskip=0.4em]
 cp.norm(cp.hstack([x, 1]))
 \end{lstlisting}
 \vspace{0.5ex}
