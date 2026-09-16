@@ -66,13 +66,11 @@
 % one breath between top-level bullets, everywhere
 \newcommand{\bul}{\setlength\itemsep{1.1ex}}
 
-\AtBeginSection[]
-{
-    \begin{frame}
-        \frametitle{Outline}
-        \tableofcontents[currentsection,currentsubsection]
-    \end{frame}
-}
+% No \AtBeginSection outline frame. It used to emit one per section, five in all, which at a
+% 30-minute slot is four slides of table of contents. One outline frame follows the title page
+% instead. To restore the per-section version, put back:
+%   \AtBeginSection[]{\begin{frame}\frametitle{Outline}
+%     \tableofcontents[currentsection,currentsubsection]\end{frame}}
 
 % colours of the permuted-dense figures, matching the thesis
 \colorlet{pdBlock}{blue!22}
@@ -181,7 +179,7 @@ for Disciplined Convex Programming}
 %    \begin{frame}[fragile]   REQUIRED on any frame containing a lstlisting
 %    visible on=<2->          on a tikz scope: stage a reveal without moving the figure
 %
-%  Each \section below emits its own Outline frame (\AtBeginSection, line 69).
+%  One Outline frame follows the title page; the \section commands only feed it (line 69).
 % =====================================================================================
 
 \frame{
@@ -193,6 +191,14 @@ Research director: Antoine Lesage-Landry \\[0.5ex]
 Department of Electrical Engineering, Polytechnique Montr\'eal
 \end{center}
 }
+
+% --- outline ----------------------------------------------------------------------
+%  The only outline frame in the deck; see the note at \AtBeginSection above.
+\begin{frame}{Outline}
+\vfill
+\tableofcontents
+\vfill
+\end{frame}
 
 % ==================================================================================
 \section{Introduction}
@@ -245,8 +251,10 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 %  The form every general-purpose solver reads. Comes before the level-2 zoom (I1), so
 %  that when the zoom draws `problem -> conic form -> solver' the target of the arrow is
 %  already familiar and the panel can show it as an equation rather than a phrase.
-%  Source: 5-Introduction.tex:63-81 (eq:quad-conic-form, the data, the two special cases)
-%  and :278-283 (the list of cones the solvers support).
+%  Source: 5-Introduction.tex:63-81 (eq:quad-conic-form, the data, the two special cases).
+%  Deliberately two lines and no more. The six standard cones used to be enumerated here
+%  (5-Introduction.tex:278-283); nobody retains a six-item list, the example only ever uses
+%  two of them, and B2 names those two where they are actually used.
 \begin{frame}{Conic form}
 \vspace{-1ex}
 \[
@@ -257,13 +265,11 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \end{array}
 \]
 
-\vspace{0.5ex}
+\vspace{1ex}
 \begin{itemize}\small\bul
   \item the problem data is four arrays: $\mmat{P} \in \symm^n_+$,
         $\mmat{A} \in \reals^{m \times n}$, $\mvec{b} \in \reals^m$, $\mvec{c} \in \reals^n$
-  \item $\cone{K} \subseteq \reals^m$ is a product of standard cones: \\[0.3ex]
-        {\footnotesize zero, nonnegative, second-order, exponential, power, positive
-        semidefinite}
+  \item $\cone{K} \subseteq \reals^m$ is a product of standard cones
 \end{itemize}
 
 \end{frame}
@@ -271,7 +277,9 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 % --- I1 -------------------------------------------------------------------------
 %  Zoom level 2: the problem-to-solver half of level 1, restricted to convex problems.
 %  Top strip = the level-1 chain, greyed; the dashed box marks what is magnified below.
-\begin{frame}{Convex optimization}
+%  Titled for what the panel shows, not `Convex optimization': that title belongs to I0b,
+%  which now has content, and to its Example twin F3a.
+\begin{frame}{From convex problem to solver}
 \vfill
 \begin{center}
 \fitfig{%
@@ -784,14 +792,26 @@ $\bigcirc$ variable \quad $\square$ parameter}
 %  is fixed at 6-Revue_litterature.tex:174-182. The sign note is the figure's caption,
 %  6-Revue_litterature.tex:310-311.
 %  P is genuinely absent here: the objective canonicalized to t1 + mu*t2, which is linear.
+%
+%  Beat 2 was a separate frame, B4 "A parameter change" (the claim of
+%  5-Introduction.tex:134-137: a parameter changes the values of the problem data but not
+%  their structure). The two frames drew the same matrix twice, so beat 2 now says what B4
+%  said while the picture holds still -- the gesture I0, I1 and I1b make with `visible on='.
+%  \only rather than \alt: the lead line and the bullets differ between the beats too.
+%  The \boldsymbol beat 2 used to put on mu and -g is dropped: bold is wider than upright, so
+%  \fitfig would rescale the whole figure between the beats. Against a matrix that is grey
+%  everywhere else, the colour alone carries it.
 \begin{frame}{Canonicalization: the backend}
 \recallstrip{3}
 \vspace{-1ex}
-{\small Stack the variables as $\mvec{z} = (t_1, t_2, \mvec{x})$ and the data falls out:}
+\only<1>{{\small Stack the variables as $\mvec{z} = (t_1, t_2, \mvec{x})$ and the data falls
+out:}}%
+\only<2>{{\small The parameters are $\mvec{g}$ and $\mu$. Everything else is fixed for the
+whole problem family:}}
 
 \vspace{1ex}
 \begin{center}
-\fitfig{%
+\only<1>{\fitfig{%
 $\mvec{c}^\top =
 \begin{blockarray}{ccc}
  t_1 & t_2 & \mvec{x} \\
@@ -810,37 +830,13 @@ $\mvec{c}^\top =
  \plotzero & -1        & \plotzero & \plotzero \\
  \plotzero & \plotzero & -\mmat{I} & \plotzero \\
 \end{block}
-\end{blockarray}$}
-\end{center}
-
-\vspace{0.5ex}
-\begin{itemize}\footnotesize\bul
-  \item the five row blocks are the three cone constraints, in the order
-        $\reals_+^n$, $\cone{K}_{\mathrm{soc},m+1}$, $\cone{K}_{\mathrm{soc},n+1}$
-  \item the coefficients are negated because the standard form writes
-        $\mvec{b} - \mmat{A}\mvec{x} \in \cone{K}$
-  \item {\color{polyblue}$\mmat{P} = \zeros$ here}: the objective canonicalized to
-        $t_1 + \mu t_2$, which is linear --- a quadratic objective would fill it
-\end{itemize}
-\end{frame}
-
-% --- B4 -------------------------------------------------------------------------
-%  What a parameter change actually touches. The claim of 5-Introduction.tex:134-137:
-%  the parameter changes the values of the problem data but not their structure.
-\begin{frame}{A parameter change}
-\recallstrip{3}
-\vspace{-1ex}
-{\small The parameters are $\mvec{g}$ and $\mu$. Everything else is fixed for the whole
-problem family:}
-
-\vspace{1ex}
-\begin{center}
-\fitfig{%
+\end{blockarray}$}}%
+\only<2>{\fitfig{%
 $\mvec{c}^\top =
 \begin{blockarray}{ccc}
  t_1 & t_2 & \mvec{x} \\
 \begin{block}{[ccc]}
- \color{black!35}1 & \color{polyblue}\boldsymbol{\mu} & \color{black!35}\plotzero \\
+ \color{black!35}1 & \color{polyblue}\mu & \color{black!35}\plotzero \\
 \end{block}
 \end{blockarray}
 \qquad
@@ -850,25 +846,37 @@ $\mvec{c}^\top =
 \begin{block}{[cccc]}
  \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{I} & \color{black!35}\plotzero \\
  \color{black!35}-1        & \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}\plotzero \\
- \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{F} & \color{polyblue}\boldsymbol{-\mvec{g}} \\
+ \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{F} & \color{polyblue}-\mvec{g} \\
  \color{black!35}\plotzero & \color{black!35}-1        & \color{black!35}\plotzero & \color{black!35}\plotzero \\
  \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{I} & \color{black!35}\plotzero \\
 \end{block}
-\end{blockarray}$}
+\end{blockarray}$}}
 \end{center}
 
+\only<1>{%
+\vspace{0.5ex}
+\begin{itemize}\footnotesize\bul
+  \item the five row blocks are the three cone constraints, in the order
+        $\reals_+^n$, $\cone{K}_{\mathrm{soc},m+1}$, $\cone{K}_{\mathrm{soc},n+1}$
+  \item the coefficients are negated because the standard form writes
+        $\mvec{b} - \mmat{A}\mvec{x} \in \cone{K}$
+  \item {\color{polyblue}$\mmat{P} = \zeros$ here}: the objective canonicalized to
+        $t_1 + \mu t_2$, which is linear --- a quadratic objective would fill it
+\end{itemize}}%
+\only<2>{%
 \vspace{1.5ex}
-\begin{itemize}\small\bul
+\begin{itemize}\footnotesize\bul
   \item $\mu$ lands in one entry of $\mvec{c}$; $\mvec{g}$ lands in one block of $\mvec{b}$
   \item every other entry --- the signs, the identities, the data $\mmat{F}$ --- is the same
         at every solve
   \item {\color{polyblue}and the \emph{positions} never move at all}
-\end{itemize}
+\end{itemize}}
 \end{frame}
 
 % --- I4 -------------------------------------------------------------------------
-%  Last slide of the Example section, and the third of its three data slides: B3 gives the
-%  data, B4 what a parameter touches, this one the structure that never moves. Its closing
+%  Last slide of the Example section, and the second of its two data slides: B3 gives the
+%  data and, on its second beat, what a parameter touches; this one gives the structure that
+%  never moves. Its closing
 %  line hands into the method, which opens the next section on SC1.
 %
 %  The pattern is the running example's own [A b], not a synthetic one: the blocks of B3
@@ -1415,65 +1423,6 @@ recompute the whole constant part.}
 \section{Conclusion}
 % ==================================================================================
 
-% --- SUM --------------------------------------------------------------------------
-%  The wrap-up the results are then read against: the whole library is ten kernels, and the
-%  contribution is that each one dispatches to the representation in front of it rather than
-%  flattening everything to one format.
-%  Sources: tab:kernel-operations at 7-Theme1.tex:386-411 (the ten kernels, verbatim minus
-%           the "Called by" column, which the prose carries instead),
-%           7-Theme1.tex:413-437 (unary vs binary dispatch, double dispatch on the transposed
-%           products, addition always in CSR),
-%           7-Theme1.tex:493-503 (the four kernel families, and "once a dense block appears,
-%           the dense representations take over").
-\begin{frame}{Ten kernels is the whole library}
-\vspace{-1ex}
-\begin{columns}[T,onlytextwidth]
-\begin{column}{0.47\textwidth}
-\vspace{1ex}
-\centering
-{\footnotesize
-\begin{tabular}{@{}ll@{}}
-\toprule
-Kernel & Computes \\
-\midrule
-\texttt{transpose}          & $\mmat{A}^\top$ \\
-\texttt{index}              & $\mmat{A}[\mvec{r}, :]$ \\
-\texttt{sum\_row\_partition}& sums of groups of rows \\
-\texttt{promote}            & copies of a single row \\
-\texttt{broadcast}          & copies of a row or a column \\
-\texttt{diag\_vec}          & rows moved to the diagonal \\
-\texttt{DA}                 & $\diag(\mvec{d})\,\mmat{A}$ \\
-\midrule
-\texttt{sum\_matrices}      & $\mmat{A} + \mmat{B}$ \\
-\texttt{BA}                 & $\mmat{B}\mmat{A}$ \\
-\texttt{BTA}, \texttt{BTDA} & $\mmat{B}^\top\mmat{A}$,\ \ $\mmat{B}^\top\mmat{D}\mmat{A}$ \\
-\bottomrule
-\end{tabular}}
-
-\vspace{1ex}
-{\scriptsize\color{black!55} seven unary, three binary}
-\end{column}
-\begin{column}{0.50\textwidth}
-\begin{itemize}\small\bul
-  \item every atom of a canonicalized DCP problem reaches its derivative through one of these
-        --- there is no per-atom derivative code to write
-  \item each kernel is written once {\color{polyblue}per representation}, and the call selects
-        the implementation: the unary ones on their operand, the transposed products on
-        {\color{polyblue}both} operands at once
-  \item so dense and sparse {\color{polyblue}mix freely}: a sparse-dense pair is a kernel that
-        converts neither operand, and a product with a dense operand gives back a dense one
-  \item once a dense block appears, the dense path takes over and the structure is never
-        flattened into $(\text{row}, \text{column}, \text{value})$ triples
-\end{itemize}
-\end{column}
-\end{columns}
-
-\vspace{1ex}
-\begin{center}\small\color{polyblue}
-Being free to pick the representation per operation is what the timings measure.
-\end{center}
-\end{frame}
-
 % --- R4 ---------------------------------------------------------------------------
 %  The three observations, 7-Theme2.tex:196-209, and the downsides, 7-Theme2.tex:232-236
 %  and 8-Conclusion.tex:57-66. The memory numbers are 7-Theme2.tex:77-82.
@@ -1730,6 +1679,68 @@ split into two families by what they ask of the user.}
 None of the four combines the two-phase split with direct computation of the problem data.\\[0.4ex]
 {\color{black!55}\footnotesize Two phases like \texttt{CasADi}, but the whole coefficient matrix
 at once instead of matrix-vector products, and dense storage where the structure is dense.}
+\end{center}
+\end{frame}
+
+% --- SUM --------------------------------------------------------------------------
+%  Q: "how much code is this, and how many derivative rules did you have to write?"
+%  Was the opening frame of the Conclusion, where it was the densest slide in the deck and
+%  the only method content after the results. Moved here: the whole library is ten kernels,
+%  and the contribution is that each one dispatches to the representation in front of it
+%  rather than flattening everything to one format -- a good answer to a question, and too
+%  much to read aloud in a 30-minute slot.
+%  Sources: tab:kernel-operations at 7-Theme1.tex:386-411 (the ten kernels, verbatim minus
+%           the "Called by" column, which the prose carries instead),
+%           7-Theme1.tex:413-437 (unary vs binary dispatch, double dispatch on the transposed
+%           products, addition always in CSR),
+%           7-Theme1.tex:493-503 (the four kernel families, and "once a dense block appears,
+%           the dense representations take over").
+\begin{frame}{Backup: ten kernels is the whole library}
+\vspace{-1ex}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+\vspace{1ex}
+\centering
+{\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+Kernel & Computes \\
+\midrule
+\texttt{transpose}          & $\mmat{A}^\top$ \\
+\texttt{index}              & $\mmat{A}[\mvec{r}, :]$ \\
+\texttt{sum\_row\_partition}& sums of groups of rows \\
+\texttt{promote}            & copies of a single row \\
+\texttt{broadcast}          & copies of a row or a column \\
+\texttt{diag\_vec}          & rows moved to the diagonal \\
+\texttt{DA}                 & $\diag(\mvec{d})\,\mmat{A}$ \\
+\midrule
+\texttt{sum\_matrices}      & $\mmat{A} + \mmat{B}$ \\
+\texttt{BA}                 & $\mmat{B}\mmat{A}$ \\
+\texttt{BTA}, \texttt{BTDA} & $\mmat{B}^\top\mmat{A}$,\ \ $\mmat{B}^\top\mmat{D}\mmat{A}$ \\
+\bottomrule
+\end{tabular}}
+
+\vspace{1ex}
+{\scriptsize\color{black!55} seven unary, three binary}
+\end{column}
+\begin{column}{0.50\textwidth}
+\begin{itemize}\small\bul
+  \item every atom of a canonicalized DCP problem reaches its derivative through one of these
+        --- there is no per-atom derivative code to write
+  \item each kernel is written once {\color{polyblue}per representation}, and the call selects
+        the implementation: the unary ones on their operand, the transposed products on
+        {\color{polyblue}both} operands at once
+  \item so dense and sparse {\color{polyblue}mix freely}: a sparse-dense pair is a kernel that
+        converts neither operand, and a product with a dense operand gives back a dense one
+  \item once a dense block appears, the dense path takes over and the structure is never
+        flattened into $(\text{row}, \text{column}, \text{value})$ triples
+\end{itemize}
+\end{column}
+\end{columns}
+
+\vspace{1ex}
+\begin{center}\small\color{polyblue}
+Being free to pick the representation per operation is what the timings measure.
 \end{center}
 \end{frame}
 
