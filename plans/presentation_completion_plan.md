@@ -15,10 +15,14 @@ Two findings constrain what is possible:
 
 1. **The thesis contains no argument for why convex problems are special** — no tractability,
    global-optimum, or LP/QP/SOCP/SDP material anywhere in the `.tex` sources. `I0b` cannot be
-   lifted from the prose; the argument the thesis actually makes is about *conic generality*
-   (`5-Introduction.tex:34-37`) and *recognizability* (`:235-237`).
-2. **`B-DCP` (backup) already contains everything `F1` would say**, including the full
-   composition rules. Filling `F1` without retargeting `B-DCP` creates a duplicate.
+   lifted from the prose.
+2. **`copt_talk.pdf` supplies exactly the three missing slides.** The COPT talk (Cederberg,
+   Zhang, Nobel, Boyd; Shanghai, May 2026; committed at `fcfd6b6`) opens with `Convex
+   optimization` (pp. 3-4), `Disciplined convex programming (DCP)` (pp. 5-6) and `Modeling
+   languages implementing DCP` (pp. 7-9) — the same three beats, at the right altitude for an
+   introduction, already written and already delivered. Batch 2 adapts them instead of building
+   from the thesis prose, and the thesis line references survive only where they add something
+   the COPT slide does not have.
 
 Budget: 31 content + 5 outline frames today. Adding five slides at ~30 min needs four removed,
 so the structural trims in Batch 1 are part of the plan, not optional polish.
@@ -49,74 +53,106 @@ moving the picture. Implement with `\only<1>{...}\only<2>{...}` around the whole
 pair and around the bullet list; the two copies have identical content so nothing shifts.
 Retitle the merged frame **"Canonicalization: the backend"**, keeping `\recallstrip{3}`.
 
+**5. Shorten `I1c` "Conic form" (`:250-269`).** It currently carries the display plus two
+bullets, the second of which enumerates all six standard cones. Nobody retains a six-item cone
+list, and `F2` will re-state the conic form anyway as the target of synthesis. Cut to the
+display plus one line: the problem data is four arrays `P`, `A`, `b`, `c`, and `K` is a product
+of standard cones. The enumeration moves to the `B-DPP` backup or is dropped.
+
+`I1c` cannot be cut outright, despite `F2` covering the same ground: `I1` (the level-2 zoom)
+draws `problem → compilation → conic form → solver`, and its header comment records that `I1c`
+was placed before it precisely so the target of that arrow is already familiar. `F2` comes after
+`I1` in the running order, so it cannot do that job.
+
 Net after Batch 1: 29 content frames, 1 outline frame.
 
 ---
 
-## Batch 2 — the three empty Introduction frames
+## Batch 2 — the three empty Introduction frames, adapted from the COPT talk
+
+All three come from `copt_talk.pdf`, kept short and built as overlays, which is how that deck
+paces them. Adapting them costs almost nothing and they have already survived a live audience.
+
+Three adaptations apply to all three slides, and matter more than the wording:
+
+- **Notation.** COPT writes the conic form as `minimize cᵀx  s.t.  Ax + s = b,  s ∈ K`, with an
+  explicit slack `s`. This deck writes `minimize ½xᵀPx + cᵀx  s.t.  b − Ax ∈ K` (`I1c:250-269`,
+  `I1:300-305`, `SC1:992-997`). **Use the deck's form.** Importing COPT's would contradict every
+  other frame and silently drop `P`.
+- **Bullet style.** COPT uses Boyd-style `I` triangles and lowercase fragments; this deck uses
+  `\begin{itemize}\small\bul`. Re-set the text, do not transcribe the layout.
+- **Citations.** COPT writes `[Grant et al., 2006]` inline. The deck has `\bibliographystyle` but
+  no `\bibliography`, and the Makefile target runs no bibtex — so attribution is a grey
+  `\scriptsize` line at the foot of the frame, as on `R2` and the cut Boehm slide.
 
 ### `I0b` "Convex optimization" (`presentation.tex:236-242`)
 
-The frame's own comment says it was left "deliberately empty: spoken, not written" — because the
-thesis has nothing to lift. Rather than importing a textbook convexity argument, make the slide
-earn its place by defining the vocabulary the rest of the deck silently assumes: **the deck uses
-"problem family" and "problem instance" on `B4`, `PC1`, `R3` and `R4` and never defines either.**
+COPT pp. 3-4, essentially verbatim. Two beats:
 
-Shape it like its twin `F3a` — one display, three bullets:
+- Display: `minimize f₀(x)`, `s.t. fᵢ(x) ≤ 0, i = 1,…,m`, `gⱼ(x) = 0`. **Use the deck's own
+  form from `I0` (`:226-229`)** — `gⱼ(x) = 0` rather than COPT's `Ax = b` — so the display on
+  this slide and the annotation box on the previous one are the same object.
+- variable `x ∈ ℝⁿ`; equality constraints are linear and `f₀,…,f_m` are convex.
+- why care about convexity?
+  - beat 2: *classic answer: local optimum = global optimum*
+  - beat 2: *modern answer: very actionable because of reliable software*
 
-- Display: the parametrized standard form, `5-Introduction.tex:46-62` —
-  minimize `f_0(x;θ)` s.t. `f_i(x;θ) ≤ 0`, `g_j(x;θ) = 0`.
-- Bullet 1: `f_0`, `f_i` convex and `g_j` affine — this is what "convex" means structurally
-  here, and it is what the DCP rules will be built to certify.
-- Bullet 2: `θ` is data fixed when an instance is solved. The parametrized problem is a
-  **problem family**; a fixed `θ` gives a **problem instance** (`5-Introduction.tex:52-62`).
-  This is the term `B4`, `PC1` and `R3` depend on.
-- Bullet 3, the hand-off to `I1c`: general-purpose solvers read conic form, which
-  "can represent nearly every convex program used in practice" (`5-Introduction.tex:34-37`).
+That last pair is the whole reason this slide exists, and it is the one thing the thesis never
+says anywhere. Keep the two-beat reveal: the question lands, then the answer.
 
-Attribution for the standard form goes in a grey `\scriptsize` line, not `\cite` — the deck sets
-`\bibliographystyle` but has no `\bibliography`, and the Makefile target runs no bibtex.
+**Do not** add the parameter `θ` here — it would cost the slide its shape. Instead put the
+family/instance naming on `F3` (`:617-636`), which already says "the parameters change from solve
+to solve; `F` does not" and is the concrete place for it. That fixes the real gap: **the deck
+uses "problem family" on `B4`, `PC1`, `R3` and `R4` and never defines it**
+(`5-Introduction.tex:52-62`).
 
 ### `F1` "Disciplined convex programming" (`:397-402`)
 
-Carry the ruleset, and **retarget the `B-DCP` backup so it does not duplicate this**:
+COPT pp. 5-6, verbatim. Two beats:
 
-- Lead line: each atom declares its curvature, its monotonicity in each argument, and the sign
-  of its output (`5-Introduction.tex:171-176`).
-- The composition rule for `φ(u_1(x), …, u_k(x))`, three sub-bullets verbatim from
-  `5-Introduction.tex:239-251`. Note the thesis renames subexpressions `u_i` (not `f_i`) at the
-  advisor's request, because `f_i` is already the inequality constraints — keep that.
-- Compliance in one line: convex objective, convex ≤ concave, affine equalities
-  (`5-Introduction.tex:227-237`).
-- Closing line: the rules are sufficient for convexity, not necessary.
+- a grammar for specifying convex optimization problems (Grant et al., 2006)
+- convex and concave functions are constructed by combining a set of atoms
+- each atom has known curvature and monotonicity
+- simple rules specify how atoms can be composed
+- beat 2: a problem that follows the DCP rules is **convex by construction**
+- beat 2: and can be solved globally and efficiently, in theory and in practice
 
-No expression tree on this slide — `F3b` (`:708`) already shows the rules applied bottom-up, and
-that is the twin's job.
+This is a better `F1` than a composition-rule slide: it is the right altitude for an
+introduction, and the rules themselves are already covered twice — `F3b` (`:708`) shows them
+applied bottom-up to the running example, and `B-DCP` (`:1525`) is the backup that states them.
 
-Then **retitle `B-DCP` (`:1525-1564`) to "Backup: the atom library"** and cut it back to
-`tab:atoms` (`5-Introduction.tex:178-197`, 9 rows × definition/curvature/monotonicity/sign),
-dropping the composition-rule half that `F1` now carries. `B-NONDCP` (`:1570`) is unaffected and
-remains the answer to "give me a problem the rules reject".
+**This cancels the previously planned retarget of `B-DCP`.** Since `F1` no longer carries the
+composition rules, `B-DCP` keeps them, and its atom table stays where it is. No change to the
+backups in this batch.
+
+Optional one-word addition from the thesis: atoms also declare the **sign** of their output
+(`5-Introduction.tex:171-176`), which COPT omits and which `B-DCP`'s table has a column for.
 
 ### `F2` "DCP-based modelling languages" (`:404-409`)
 
-The taxonomy, from `5-Introduction.tex:15-32`. Three groups, best as a small three-row table or
-a grouped list:
+COPT pp. 7-9. Three beats, and the most valuable steal of the three because of the
+analysis/synthesis framing:
 
-| | |
-|---|---|
-| standalone algebraic | `AMPL`, `AIMMS`, `GAMS` |
-| embedded, general purpose | `Pyomo` (Python), `JuMP` (Julia), `CasADi` (C++), `YALMIP` (MATLAB) |
-| embedded, DCP-based | `CVX` (MATLAB), `CVXR` (R), `CVXPY` (Python), `Convex.jl` (Julia) |
+- `YALMIP` (MATLAB), `CVX` (MATLAB), `CVXPY` (Python), `Convex.jl` (Julia), `CVXR` (R)
+- classic commercial software like `AMPL` and `GAMS` does not implement DCP
+- beat 2: the two main tasks of a DCP-based modelling language —
+  - **analysis:** verify that a high-level problem description follows the DCP rules
+  - **synthesis:** build an equivalent problem in conic form *(display, in the deck's notation)*
+- beat 3: no more communication between the modelling language and the solver
 
-Then the one sentence that separates the third row from the second
-(`6-Revue_litterature.tex:884-887`): `AMPL` and `JuMP` have **no atom library and no
-canonicalization step**, so a norm is left to the solver or written in conic form by hand.
+Two things to add to the COPT version:
 
-Close on `CVXPY` specifically (`5-Introduction.tex:310-318`): expression tree as the central
-representation, reduction-based canonicalization, and parameters — so compilation work can be
-reused when a problem is solved repeatedly. That last clause is what the whole second half of
-the deck is about, so it is the right hand-off into `I1b`.
+1. **Name synthesis.** In DCP-based languages the synthesis step is called **canonicalization**
+   (`5-Introduction.tex:37-42`) — that is the deck's own word for the rest of the talk, and this
+   is where it should be introduced. `I1b` immediately after is titled
+   "Canonicalization: frontend and backend", so this hand-off has to land here.
+2. **Sharpen the AMPL/GAMS line** with the thesis sentence (`6-Revue_litterature.tex:884-887`):
+   they have no atom library and no canonicalization step, so a norm is left to the solver or
+   written in conic form by hand. That says *why* the distinction matters rather than only
+   listing who is on which side.
+
+Drop the three-row taxonomy table previously planned for this slide — COPT's flat two-line list
+is shorter and makes the same point, and `Pyomo`/`AIMMS` do not appear anywhere else in the deck.
 
 Do **not** repeat "the goal of this thesis is to reduce CVXPY's compilation time" here — `I5`
 (`:598`) already closes on it.
@@ -133,7 +169,12 @@ artifact-first in the Example — but it is worth a look once both are on screen
 ### New frame: "Contributions", after `I5` (insert around `:600`)
 
 `I5` ends the Introduction on the goal; the jury should then be told what was built before the
-Example section starts. Sources: `7-Theme1.tex:1-33`, `8-Conclusion.tex:1-33`.
+Example section starts. Sources: `7-Theme1.tex:1-33`, `8-Conclusion.tex:1-33`, and the COPT
+talk's "Our approach to computing derivatives" slide, which is already a four-line version of
+this: *developed a C package for sparse differentiation with Python bindings* / *every atom
+implements its own forward, jacobian and hessian* / *our goal is still to not be the bottleneck
+(spend less time than in the solver)*. That last line is the best one-sentence statement of the
+goal in either deck — consider using it as the closing line of this frame.
 
 - `SparseDiffEngine` — a C library that computes the conic problem data as sparse derivatives;
   ~17k lines, ~45 atoms, three operations each (forward / symbolic / numeric).
@@ -194,6 +235,32 @@ Both `\includegraphics` targets resolve (`images/performance_profile_thesis.pdf`
 
 Finally, open the PDF and read every changed frame at presentation size — `\fitfig` shrinks
 silently, so a frame can be correct in the log and unreadable on screen.
+
+---
+
+## The rest of the COPT talk — what else is worth taking, and what is not
+
+Reviewed page by page so this does not have to be done again.
+
+**Worth taking (optional):**
+
+- *"What DCP modeling languages do → **Nothing.** The problem data A, b, c of the conic form are
+  already the derivatives of interest."* This is the thesis's central claim stated more bluntly
+  than anywhere in the thesis itself. `SC1` (`:982`) already makes it with the `∂/∂x` arrow, so
+  this is a candidate spoken line for `SC1` rather than a new frame — but it is a good line.
+- The "Our approach to computing derivatives" slide — folded into the Contributions frame above.
+
+**Deliberately not taking:**
+
+- Everything from "Nonlinear programming (NLP)" onward — solver guarantees, KKT points, LICQ,
+  the domain and nonsmoothness failure examples, the Ipopt crash output, DNLP itself, circle
+  packing. It is a different contribution with a different argument.
+- "How NLP modeling languages compute derivatives" (AD, graph colouring, expensive Hessians).
+  This is the `CasADi` contrast, and the defence deliberately does not cover `CasADi` — see
+  `plans/presentation_dense_sparse_slide_cut.md`. It stays in the `B-OTHERLANG` backup
+  (`:1654`), where it already is.
+- "Who is responsible? the solver / no, it's the user / also no, it should be the modelling
+  language." A good three-beat, but it argues for DNLP's premise, not this thesis's.
 
 ---
 
