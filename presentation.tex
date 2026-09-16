@@ -533,10 +533,13 @@ canonicalization.}
 \fitfig{%
 \begin{tikzpicture}
   % ---- carry-over strip (level 2, in words only) -------------------------------
-  \node[dimbox] (t1) at (3.15,0)  {convex problem};
-  \node[dimbox] (t2) at (5.55,0)  {compilation};
-  \node[dimbox] (t3) at (7.95,0)  {conic form};
-  \node[dimbox] (t4) at (10.35,0) {solver};
+  % The zoomed box says `canonicalization' where F0's said `compilation': this is the DCP
+  % pipeline and the frame is titled with the word. The boxes are spread to 2.8 rather than
+  % F0's 2.4 to fit it, which moves the strip only -- the panel below keeps F0's geometry.
+  \node[dimbox] (t1) at (2.55,0)  {convex problem};
+  \node[dimbox] (t2) at (5.35,0)  {canonicalization};
+  \node[dimbox] (t3) at (8.15,0)  {conic form};
+  \node[dimbox] (t4) at (10.95,0) {solver};
   \draw[dimflow] (t1) -- (t2);  \draw[dimflow] (t2) -- (t3);
   \draw[dimflow] (t3) -- (t4);
   \node[zoombox, fit=(t2)] (zb) {};
@@ -544,8 +547,7 @@ canonicalization.}
   % ---- magnified panel ---------------------------------------------------------
   % "DCP problem", not "CVXPY problem": what canonicalization takes in is a DCP-compliant
   % formulation, and F1/F2 introduced the term two slides back, with F0 in between drawing
-  % this same picture generically. CVXPY moves down to the note, so the slide still says
-  % whose pipeline this is.
+  % this same picture generically.
   \node[art] (dcp) at (0,-3.4) {DCP problem};
   \node[art] (fconic) at (5.6,-3.4)
     {$\begin{array}{ll}
@@ -564,12 +566,13 @@ canonicalization.}
             visible on=<2->] {this thesis}
     (data);
 
-  \node[note, below=1.5mm of dcp]    {\cvxpy{} expression trees};
-  % The middle line is the one that matters for the thesis: the frontend does not change
+  \node[note, below=1.5mm of dcp]    {expression trees};
+  % The second line is the one that matters for the thesis: the frontend does not change
   % the representation, only the content of it. What the backend walks is still a tree.
+  % The third line -- f_0, h_i affine, new variables t -- was cut: B2 shows both for the
+  % running example, where they can be pointed at.
   \node[note, below=1.5mm of fconic] {functional conic form\\%
-                                      still \cvxpy{} expression trees\\%
-                                      $f_0$, $h_i$ affine; new variables $t$};
+                                      still expression trees};
   \node[note, below=1.5mm of data]   {explicit sparse matrices};
 
   % ---- zoom lines from the strip down to the panel ------------------------------
@@ -644,7 +647,7 @@ canonicalization.}
         \mbox{subject to}
           & h_i(\mvec{x}_1,\ldots,\mvec{x}_p;\gvec{\theta}) \in \cone{K}_i
       \end{array}$};
-  \node[note, below=1.5mm of fconic] {\cvxpy{} expression trees, affine\\%
+  \node[note, below=1.5mm of fconic] {expression trees, affine\\%
                                       $p$ variables of different shapes,
                                       $q$ cone constraints};
 
@@ -710,7 +713,7 @@ canonicalization.}
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item most of the compilation time is spent in this one step
-  \item the frontend takes care of the cone $\cone{K}$
+  \item the frontend takes care of $\cone{K}$
   \item {\color{polyblue}the goal of this thesis is to reduce \cvxpy{}'s compilation time}
 \end{itemize}
 \end{frame}
