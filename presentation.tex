@@ -241,10 +241,40 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 
 % --- I0b ------------------------------------------------------------------------
 %  Why the deck narrows from "an optimization problem" (I0) to "a convex one" (I1).
-%  Deliberately empty: spoken, not written.
+%  Adapted from copt_talk.pdf pp. 3-4 ("Convex optimization"), essentially verbatim. The
+%  thesis has nothing to lift here: there is no passage anywhere in it arguing that convex
+%  problems are special -- no tractability, no global optimum, no LP/QP/SOCP/SDP taxonomy --
+%  because it starts from convexity and cites Boyd and Vandenberghe. The two-beat answer
+%  below is the whole reason the slide exists, so the question lands first and the answer
+%  follows.
+%  The display is I0's, not COPT's: COPT writes the equalities as Ax = b, and this deck
+%  writes g_j(x) = 0 (see the exbox of I0). Same object on both slides, so nothing is
+%  re-read. The constraint counts are left off for the same reason they are left off I0,
+%  and because m is already the row count of A from I1c onwards.
+%  Twin: F3a, which makes this argument for the running example.
 \begin{frame}{Convex optimization}
+\vspace{-1ex}
+\[
+  \begin{array}{ll}
+    \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x}) \\[0.5ex]
+    \mbox{subject to}                    & f_i(\mvec{x}) \le 0 \\
+                                         & g_j(\mvec{x}) = 0
+  \end{array}
+\]
+
+\vspace{1ex}
+\begin{itemize}\small\bul
+  \item variable $\mvec{x} \in \reals^n$
+  \item the equality constraints $g_j$ are affine, and $f_0$ and the $f_i$ are convex
+  \item why care about convexity?
+    \begin{itemize}\small
+      \item<2->[--] classic answer: a local optimum is a global optimum
+      \item<2->[--] modern answer: very actionable, because of reliable software
+    \end{itemize}
+\end{itemize}
 
 \vfill
+{\scriptsize\color{black!55} Boyd and Vandenberghe (2004).}
 \end{frame}
 
 % --- I1c ------------------------------------------------------------------------
@@ -403,17 +433,64 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \end{frame}
 
 % --- F1 -------------------------------------------------------------------------
-%  Source if useful: 5-Introduction.tex:226-251 (composition rules, DCP compliance).
+%  Adapted from copt_talk.pdf pp. 5-6 ("Disciplined convex programming (DCP)"), verbatim
+%  but for the `sign' in bullet three, which the thesis adds (5-Introduction.tex:171-176)
+%  and COPT omits.
+%  Deliberately the grammar and not the rules. The composition rules themselves are already
+%  in the deck twice: F3b applies them bottom-up to the running example, and the B-DCP
+%  backup states them with the atom table. An introduction slide that restated them would
+%  be the third telling and the least useful of the three.
+%  Twin: F3b.
 \begin{frame}{Disciplined convex programming}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item a grammar for specifying convex optimization problems
+  \item convex and concave functions are built by combining a set of \textbf{atoms}
+  \item each atom has known curvature, monotonicity in each argument, and sign
+  \item simple rules specify how atoms can be composed
+\end{itemize}
+
+\vspace{2.5ex}
+\onslide<2->{%
+\begin{itemize}\small\bul
+  \item a problem that follows the DCP rules is {\color{polyblue}convex by construction}
+  \item and can be solved globally and efficiently --- in theory and in practice
+\end{itemize}}
 
 \vfill
+{\scriptsize\color{black!55} Grant, Boyd and Ye (2006).}
 \end{frame}
 
 % --- F2 -------------------------------------------------------------------------
-%  Source if useful: 5-Introduction.tex:15-42 (language families, analysis/synthesis).
+%  Adapted from copt_talk.pdf pp. 7-9 ("Modeling languages implementing DCP"). The
+%  analysis/synthesis split is the reason to take this slide: synthesis is canonicalization,
+%  which is the deck's word for everything that follows, and I1b is titled with it -- so the
+%  term has to be introduced here.
+%  Two additions to the COPT version. The AMPL/GAMS line is sharpened with
+%  6-Revue_litterature.tex:884-887, which says why the distinction matters rather than only
+%  who is on which side; and JuMP joins them, since it is the one the deck actually compares
+%  against later (B-OTHERLANG, B-GAP). `commercial' is dropped, because JuMP is not.
+%  No conic-form display: I1c showed it and the I1 panel showed it again. A third copy on
+%  the same equation would be the crowding this slide is meant to avoid.
+%  Twin: F3c, singular in its title because it shows one of these where this surveys them.
 \begin{frame}{DCP-based modelling languages}
-
-\vfill
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item \texttt{CVX} (MATLAB), \cvxpy{} (Python), \texttt{Convex.jl} (Julia),
+        \texttt{CVXR} (R), \texttt{YALMIP} (MATLAB)
+  \item \texttt{AMPL}, \texttt{GAMS} and \texttt{JuMP} do not implement DCP: no atom
+        library and no canonicalization step, so a norm is left to the solver or written
+        in conic form by hand
+  \item<2-> the two tasks of a DCP-based modelling language:
+    \begin{itemize}\small
+      \item<2->[--] \textbf{analysis}: verify that a high-level problem description
+            follows the DCP rules
+      \item<2->[--] \textbf{synthesis}: build an equivalent problem in conic form,
+            called {\color{polyblue}canonicalization}
+    \end{itemize}
+  \item<3-> and then {\color{polyblue}no further communication} between the modelling
+        language and the solver
+\end{itemize}
 \end{frame}
 
 % --- I1b ------------------------------------------------------------------------
@@ -639,7 +716,9 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
         parameters $\mvec{g} \in \reals^m$ and $\mu \ge 0$
   \item interpretation: find a good approximation $\mmat{F}\mvec{x} \approx \mvec{g}$
         with small $\mvec{x}$, and $\mu$ sets the trade-off between the two
-  \item the parameters change from solve to solve; $\mmat{F}$ does not
+  \item the parameters change from solve to solve; $\mmat{F}$ does not --- one
+        {\color{polyblue}problem family}, and each value of the parameters gives a
+        {\color{polyblue}problem instance}
 \end{itemize}
 \end{frame}
 
