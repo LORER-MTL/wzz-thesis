@@ -136,6 +136,14 @@
   % an annotation box hanging off a pipeline box: dashed, so it does not read as a stage
   exbox/.style   ={draw=black!40, dashed, fill=white, rounded corners=2pt,
                    inner sep=5pt, font=\footnotesize, align=left},
+  % a standing box that fills space rather than annotating one node: solid, titled,
+  % and tinted in the same blue family as the pipeline boxes it unpacks -- art!7 for
+  % what the solver does, proc!22 for who implements it, so the `solvers' box carries
+  % the colour of the solver node itself
+  bigbox/.style  ={draw=polyblue!55, fill=polyblue!7, rounded corners=3pt,
+                   inner sep=7pt, minimum height=15mm, font=\footnotesize,
+                   align=left, text width=5.9cm},
+  boxtitle/.style={font=\footnotesize\bfseries, text=polyblue},
   % the current box of the recall strip on the worked-example slides
   hlbox/.style   ={draw=polyblue, fill=polyblue!12, rounded corners=2pt,
                    inner sep=3pt, font=\scriptsize, text=polyblue},
@@ -301,9 +309,10 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item the problem data is four arrays: $\mmat{P} \in \symm^n_+$,
+  \item \textbf{problem data}: four arrays $\mmat{P} \in \symm^n_+$,
         $\mmat{A} \in \reals^{m \times n}$, $\mvec{b} \in \reals^m$, $\mvec{c} \in \reals^n$
   \item $\cone{K} \subseteq \reals^m$ is a product of standard cones
+  \item when $\cone{K} = \reals^m_+$ is the nonnegative orthant, this is a QP
 \end{itemize}
 
 \end{frame}
@@ -358,42 +367,121 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   % note under the source box on the other side of the arrow.
   \node[note, below=1.5mm of conic] {quadratic conic form};
 
-  % The solver box spelled out, in the same dashed-white grammar as I0 and F0, in two
-  % beats: what the solver *does* first, then who implements it. `visible on=' rather
-  % than \only, so both nodes occupy space on overlay 1 and the picture does not
-  % rescale or shift between beats.
-  \node[exbox, below=8mm of solv2] (methex)
-    {{\color{black!55}methods:}\ \ interior point, simplex,\\
-     \phantom{{\color{black!55}methods:}}\ \ operator splitting, active set};
-  \draw[zoomline] (solv2.south) -- (methex.north);
-
-  \node[exbox, below=4mm of methex, visible on=<2->] (solvex)
-    {{\color{black!55}commercial:}\ \ Gurobi, MOSEK, COPT\\
-     {\color{black!55}open source:}\ \ OSQP, Clarabel, SCS};
-  \draw[zoomline, visible on=<2->] (methex.south) -- (solvex.north);
-
   % ---- zoom lines from the strip down to the panel ------------------------------
   % The panel spans problem -> solver, matching the two boxes the zoombox brackets in the
-  % strip: each zoom line lands on the magnified copy of the box it comes from. methex and
-  % solvex are deliberately left out of the fit -- they annotate the solver, they are not
-  % zoom targets.
+  % strip: each zoom line lands on the magnified copy of the box it comes from. The two
+  % standing boxes below are deliberately left out of the fit -- they fill the space under
+  % the panel, they are not zoom targets.
   \node[fit=(prob2)(conic)(solv2), inner sep=6pt] (panel) {};
   \draw[zoomline] (zb.south west) -- (panel.north west);
   \draw[zoomline] (zb.south east) -- (panel.north east);
+
+  % What a `solver' is made of, as two standing boxes filling the space under the panel,
+  % in two beats: what the solver *does* first, then who implements it. No line back up to
+  % the solver box -- the heading of each box says what it holds. `visible on=' rather than
+  % \only, so both nodes occupy space on overlay 1 and the picture does not rescale or
+  % shift between beats.
+  \node[bigbox, anchor=north west] (methex)
+    at ([yshift=-13mm]panel.south west)
+    {interior point \quad simplex (LP)\\[0.4ex]
+     operator splitting \quad active set (QP)};
+  \node[boxtitle, above=1mm of methex.north west, anchor=south west] {algorithms};
+
+  \node[bigbox, fill=polyblue!22, anchor=north east, visible on=<2->] (solvex)
+    at ([yshift=-13mm]panel.south east)
+    {{\color{black!55}commercial:}\ \ Gurobi, MOSEK, COPT\\[0.4ex]
+     {\color{black!55}open source:}\ \ OSQP, Clarabel, SCS};
+  \node[boxtitle, above=1mm of solvex.north west, anchor=south west,
+        visible on=<2->] {solvers};
 \end{tikzpicture}}
 \end{center}
 \vfill
+\end{frame}
+
+% --- F1 -------------------------------------------------------------------------
+%  Adapted from copt_talk.pdf pp. 5-6 ("Disciplined convex programming (DCP)"), verbatim
+%  but for the `sign' in bullet three, which the thesis adds (5-Introduction.tex:171-176)
+%  and COPT omits.
+%  Deliberately the grammar and not the rules. The composition rules themselves are already
+%  in the deck twice: F3b applies them bottom-up to the running example, and the B-DCP
+%  backup states them with the atom table. An introduction slide that restated them would
+%  be the third telling and the least useful of the three.
+%  Placed before F0, not after it: the thesis has verification gating the rewrite ("Once a
+%  problem is verified to be DCP-compliant, canonicalization rewrites its functional form",
+%  5-Introduction.tex:255), and the COPT talk runs in the same order. The gap I1 leaves open
+%  -- its panel assumes convexity and never says who checks it -- is left to be spoken; a
+%  written lead-in was tried here and cut. Deliberately no claim that checking convexity is
+%  hard in general: the thesis makes none anywhere, and B-NONDCP carries the price of the
+%  discipline (sufficient, not necessary) if it is asked for.
+%  Twin: F3b.
+\begin{frame}{Disciplined convex programming}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item a grammar for specifying convex optimization problems
+  \item convex and concave functions are built by combining a set of \textbf{atoms}
+  \item each atom has known curvature, monotonicity in each argument, and sign
+  \item simple rules specify how atoms can be composed
+\end{itemize}
+
+\vspace{2.5ex}
+\onslide<2->{%
+\begin{itemize}\small\bul
+  \item a problem that follows the DCP rules is {\color{polyblue}convex by construction}
+  \item and can be solved globally and efficiently --- in theory and in practice
+\end{itemize}}
+
+\vfill
+{\scriptsize\color{black!55} Grant, Boyd and Ye (2006).}
+\end{frame}
+
+% --- F2 -------------------------------------------------------------------------
+%  Adapted from copt_talk.pdf pp. 7-9 ("Modeling languages implementing DCP"), less its
+%  closing beat -- `no further communication between modelling language and solver', cut
+%  here and left to be spoken. The
+%  analysis/synthesis split is the reason to take this slide: synthesis is canonicalization,
+%  which is the deck's word for everything that follows, and I1b is titled with it -- so the
+%  term has to be introduced here.
+%  One addition to the COPT version: JuMP joins AMPL and GAMS, since it is the one the deck
+%  actually compares against later (B-OTHERLANG, B-GAP), and `commercial' is dropped because
+%  JuMP is not. What that line means -- no atom library, no canonicalization step, so a norm
+%  is left to the solver or written in conic form by hand (6-Revue_litterature.tex:884-887)
+%  -- is left to be spoken; it was written out here and cut. B-OTHERLANG has it in full.
+%  No conic-form display: I1c showed it and the I1 panel showed it again. A third copy on
+%  the same equation would be the crowding this slide is meant to avoid.
+%  Twin: F3c, singular in its title because it shows one of these where this surveys them.
+\begin{frame}{DCP-based modelling languages}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item \texttt{CVX} (MATLAB), \cvxpy{} (Python), \texttt{Convex.jl} (Julia),
+        \texttt{CVXR} (R), \texttt{YALMIP} (MATLAB)
+  \item \texttt{AMPL}, \texttt{GAMS} and \texttt{JuMP} do not implement DCP
+  \item<2-> the two tasks of a DCP-based modelling language:
+    \begin{itemize}\small
+      \item<2->[--] \textbf{analysis}: verify that a high-level problem description
+            follows the DCP rules
+      \item<2->[--] \textbf{synthesis}: build an equivalent problem in conic form,
+            called {\color{polyblue}canonicalization}
+    \end{itemize}
+\end{itemize}
 \end{frame}
 
 % --- F0 -------------------------------------------------------------------------
 %  Zoom level 3, generic. Deliberately the same geometry as I1b (strip at y=0, panel at
 %  y=-3.4, boxes at x=0 / 5.6 / 10.5 / 13.2), so that when I1b arrives it re-draws this
 %  picture with CVXPY's labels and nothing moves.
-%  `compilation' is the general name for the arrow; `canonicalization' is the DCP name
-%  for it and is introduced on I1b.
+%  `compilation' is the general name for the arrow; `canonicalization' is the DCP name for
+%  it, introduced on F2 just before and carried by the title of I1b just after -- hence the
+%  grey line under the title, which hands the word over without taking it: this picture also
+%  covers AMPL and JuMP, which do not canonicalize. The exbox languages are a callback to
+%  F2 for the same reason.
 \begin{frame}{Compilation}
+\vspace{-1ex}
+{\footnotesize\color{black!55} In DCP-based languages this step is called
+canonicalization.}
+
+\vspace{0.5ex}
 \begin{center}
-\adjustbox{max size={0.98\textwidth}{0.82\textheight}}{%
+\adjustbox{max size={0.98\textwidth}{0.76\textheight}}{%
 \begin{tikzpicture}
   % ---- carry-over strip (level 2, in words only) -------------------------------
   \node[dimbox] (t1) at (3.15,0)  {convex problem};
@@ -436,67 +524,6 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \vfill
 \end{frame}
 
-% --- F1 -------------------------------------------------------------------------
-%  Adapted from copt_talk.pdf pp. 5-6 ("Disciplined convex programming (DCP)"), verbatim
-%  but for the `sign' in bullet three, which the thesis adds (5-Introduction.tex:171-176)
-%  and COPT omits.
-%  Deliberately the grammar and not the rules. The composition rules themselves are already
-%  in the deck twice: F3b applies them bottom-up to the running example, and the B-DCP
-%  backup states them with the atom table. An introduction slide that restated them would
-%  be the third telling and the least useful of the three.
-%  Twin: F3b.
-\begin{frame}{Disciplined convex programming}
-\vspace{-0.5ex}
-\begin{itemize}\small\bul
-  \item a grammar for specifying convex optimization problems
-  \item convex and concave functions are built by combining a set of \textbf{atoms}
-  \item each atom has known curvature, monotonicity in each argument, and sign
-  \item simple rules specify how atoms can be composed
-\end{itemize}
-
-\vspace{2.5ex}
-\onslide<2->{%
-\begin{itemize}\small\bul
-  \item a problem that follows the DCP rules is {\color{polyblue}convex by construction}
-  \item and can be solved globally and efficiently --- in theory and in practice
-\end{itemize}}
-
-\vfill
-{\scriptsize\color{black!55} Grant, Boyd and Ye (2006).}
-\end{frame}
-
-% --- F2 -------------------------------------------------------------------------
-%  Adapted from copt_talk.pdf pp. 7-9 ("Modeling languages implementing DCP"). The
-%  analysis/synthesis split is the reason to take this slide: synthesis is canonicalization,
-%  which is the deck's word for everything that follows, and I1b is titled with it -- so the
-%  term has to be introduced here.
-%  Two additions to the COPT version. The AMPL/GAMS line is sharpened with
-%  6-Revue_litterature.tex:884-887, which says why the distinction matters rather than only
-%  who is on which side; and JuMP joins them, since it is the one the deck actually compares
-%  against later (B-OTHERLANG, B-GAP). `commercial' is dropped, because JuMP is not.
-%  No conic-form display: I1c showed it and the I1 panel showed it again. A third copy on
-%  the same equation would be the crowding this slide is meant to avoid.
-%  Twin: F3c, singular in its title because it shows one of these where this surveys them.
-\begin{frame}{DCP-based modelling languages}
-\vspace{-0.5ex}
-\begin{itemize}\small\bul
-  \item \texttt{CVX} (MATLAB), \cvxpy{} (Python), \texttt{Convex.jl} (Julia),
-        \texttt{CVXR} (R), \texttt{YALMIP} (MATLAB)
-  \item \texttt{AMPL}, \texttt{GAMS} and \texttt{JuMP} do not implement DCP: no atom
-        library and no canonicalization step, so a norm is left to the solver or written
-        in conic form by hand
-  \item<2-> the two tasks of a DCP-based modelling language:
-    \begin{itemize}\small
-      \item<2->[--] \textbf{analysis}: verify that a high-level problem description
-            follows the DCP rules
-      \item<2->[--] \textbf{synthesis}: build an equivalent problem in conic form,
-            called {\color{polyblue}canonicalization}
-    \end{itemize}
-  \item<3-> and then {\color{polyblue}no further communication} between the modelling
-        language and the solver
-\end{itemize}
-\end{frame}
-
 % --- I1b ------------------------------------------------------------------------
 %  Zoom level 3: canonicalization itself. The accent-coloured backend arrow is the
 %  only highlighted element of the three slides -- that arrow is the thesis.
@@ -516,8 +543,9 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 
   % ---- magnified panel ---------------------------------------------------------
   % "DCP problem", not "CVXPY problem": what canonicalization takes in is a DCP-compliant
-  % formulation, and F1/F2 have just introduced the term. CVXPY moves down to the note, so
-  % the slide still says whose pipeline this is.
+  % formulation, and F1/F2 introduced the term two slides back, with F0 in between drawing
+  % this same picture generically. CVXPY moves down to the note, so the slide still says
+  % whose pipeline this is.
   \node[art] (dcp) at (0,-3.4) {DCP problem};
   \node[art] (fconic) at (5.6,-3.4)
     {$\begin{array}{ll}
@@ -682,39 +710,8 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item most of the compilation time is spent in this one step
-  \item the cone $\cone{K}$ comes out of the frontend --- which rows belong to which cone
-        is settled before any number exists; what is left is the numbers
+  \item the frontend takes care of the cone $\cone{K}$
   \item {\color{polyblue}the goal of this thesis is to reduce \cvxpy{}'s compilation time}
-\end{itemize}
-\end{frame}
-
-% --- I6 -------------------------------------------------------------------------
-%  What was built, stated once, before the deck spends a section on a worked example. I5
-%  gives the goal; this gives the answer to it, so the Example section that follows has a
-%  destination rather than being background for its own sake.
-%  Deliberately a preview and not a summary: permuted dense, the two passes and the kernel
-%  dispatch all arrive later with their own slides, so each bullet here is phrased to be
-%  readable before any of that. The order is the order of the sections.
-%  Sources: 7-Theme1.tex:1-33 (the two contributions and the design decisions),
-%           7-Theme1.tex:35-47 (seventeen thousand lines, ~45 atoms in six subdirectories,
-%           the three operations per atom), 7-Theme1.tex:714-726 (sparsediffpy and the
-%           diffengine backend), 8-Conclusion.tex:1-33.
-%  The counts are the thesis's own and are approximate there too -- keep the "about".
-\begin{frame}{Contributions}
-\vspace{-0.5ex}
-\begin{itemize}\small\bul
-  \item \sde{}, a C library that computes $\mmat{P}$, $\mmat{A}$, $\mvec{b}$, $\mvec{c}$ as
-        {\color{polyblue}sparse derivatives} of the conic-form trees \\[0.4ex]
-        {\footnotesize\color{black!55} about 17\,000 lines of C; around 45 atoms, each
-        implementing a forward, a symbolic and a numeric pass}
-  \item two matrix representations for the structure the problem data already has, so that a
-        dense block is stored dense and multiplied by BLAS --- no sparsity detection and no
-        graph colouring
-  \item a {\color{polyblue}symbolic pass} that computes structure once and a
-        {\color{polyblue}numeric pass} that fills in values, so a re-solve after a parameter
-        change costs one numeric pass --- with no restriction on how the parameters enter
-  \item \sdp{}, the Python bindings, and \de{}, a \cvxpy{} backend with the same interface
-        as matrix stuffing, so the rest of \cvxpy{} is unchanged
 \end{itemize}
 \end{frame}
 
