@@ -66,11 +66,18 @@
 % one breath between top-level bullets, everywhere
 \newcommand{\bul}{\setlength\itemsep{1.1ex}}
 
-% No \AtBeginSection outline frame. It used to emit one per section, five in all, which at a
-% 30-minute slot is four slides of table of contents. One outline frame follows the title page
-% instead. To restore the per-section version, put back:
-%   \AtBeginSection[]{\begin{frame}\frametitle{Outline}
-%     \tableofcontents[currentsection,currentsubsection]\end{frame}}
+% One outline frame at the start of every section, as a break between them: five in all,
+% with the section being entered highlighted and the rest greyed. Restored 2026-09-16 after
+% a spell with a single outline frame after the title page -- that one is gone, since it
+% would have rendered immediately before this one fires for Introduction and the two read
+% as the same slide twice. The cost is four extra slides against the single-outline version;
+% at a 30-minute slot that is the trade being made knowingly.
+\AtBeginSection[]{%
+  \begin{frame}{Outline}
+  \vfill
+  \tableofcontents[currentsection,currentsubsection]
+  \vfill
+  \end{frame}}
 
 % colours of the permuted-dense figures, matching the thesis
 \colorlet{pdBlock}{blue!22}
@@ -203,14 +210,6 @@ Research director: Antoine Lesage-Landry \\[0.5ex]
 Department of Electrical Engineering, Polytechnique Montr\'eal
 \end{center}
 }
-
-% --- outline ----------------------------------------------------------------------
-%  The only outline frame in the deck; see the note at \AtBeginSection above.
-\begin{frame}{Outline}
-\vfill
-\tableofcontents
-\vfill
-\end{frame}
 
 % ==================================================================================
 \section{Introduction}
@@ -465,6 +464,66 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \end{itemize}
 \end{frame}
 
+% --- I1d ------------------------------------------------------------------------
+%  Why CVXPY and not one of the other four languages F2 listed. I5 closes on "reduce
+%  CVXPY's compilation time": it assumes that narrowing and nothing before it earns it.
+%  This slide earns it.
+%
+%  Placed between F2 and F0, and nowhere later. F0 and I1b share their geometry exactly so
+%  that I1b re-draws F0's picture with CVXPY's labels and nothing moves; a bullet slide
+%  between them destroys that morph, which is the whole point of F0 being drawn the way it
+%  is. I1b -> I5 is a weaker link -- I5 keeps only the locator strip -- but it is a link
+%  too, so this slide goes above the pair rather than inside either gap. F2 hands to it
+%  cleanly: F2 lists the five DCP languages, this one says which of them the thesis targets
+%  and why, and F0 then opens the pipeline generically.
+%
+%  The consequence -- every one of these installs pays the backend cost -- is spoken, not
+%  written: I1b lights that arrow one slide later and I5 states the goal after it.
+%
+%  The numbers are rounded down from what the sources gave on 2026-09-16 (6.46 M
+%  downloads in August 2026 without mirrors, 6335 stars, 1215 forks), so they stay true
+%  if anyone re-checks them on the day. The trailing-30-day figure was higher, 7.18 M;
+%  the calendar month is the safer one to say out loud. The growth -- 3.7 M in April to
+%  6.5 M in August 2026 -- is worth saying, not worth putting on the slide: pypistats
+%  retains only 180 days, so the series starts in March 2026 and five months is not a
+%  trend to stand on.
+%
+%  Plain bullets in F2's shape, not a figure: two reasons and two numbers do not need a
+%  picture, and the two slides either side of this one are both full-width TikZ.
+%
+%  Bullet 1 is the reach, bullet 2 the maturity, the last three the evidence for both.
+%  Open source matters here beyond goodwill: it is why the backend can be replaced at all,
+%  which is what R4 claims in the Conclusion. The licence is Apache 2.0 today -- the 2016
+%  paper says GPL, so do not quote the paper on the licence.
+%  Python at number one is TIOBE's ranking, September 2026 -- hence the index in the source
+%  line; GitHub's Octoverse and the Stack Overflow survey agree, so the claim does not rest
+%  on one source.
+%
+%  "Over ten years" is understated on purpose, the way the other figures are: the repo was
+%  created in July 2013 and the first PyPI release (0.1) is May 2014, so thirteen and twelve
+%  years respectively, across 148 releases with the latest in June 2026. Say "over ten" and
+%  nobody can take issue with it.
+%
+%  The 4.5 k is Google Scholar's count for Diamond and Boyd (2016), which is the figure
+%  usually quoted for that paper. Do not "correct" it downwards against OpenAlex: OpenAlex
+%  splits the JMLR record from the arXiv preprint and gives 683 + 477, an undercount of a
+%  paper that is cited far more widely than either record sees.
+%
+%  Sources: 3-Abstract.tex:14 ("widely used modelling language"), 5-Introduction.tex:22
+%           ("gained popularity") -- the two places the thesis asserts this with no number.
+\begin{frame}{CVXPY}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item open source, embedded in Python, the most widely used programming language
+  \item in development for over ten years
+  \item over 6 million downloads a month from PyPI
+  \item 6.3 k stars and 1.2 k forks on GitHub
+  \item 4.5 k citations of the 2016 \cvxpy{} paper
+\end{itemize}
+\vfill
+{\scriptsize\color{black!55} TIOBE index, \texttt{pypistats.org},
+\texttt{github.com/cvxpy/cvxpy} and Google Scholar, September 2026.}
+\end{frame}
 % --- F0 -------------------------------------------------------------------------
 %  Zoom level 3, generic. Deliberately the same geometry as I1b (strip at y=0, panel at
 %  y=-3.4, boxes at x=0 / 5.6 / 10.5 / 13.2), so that when I1b arrives it re-draws this
@@ -599,7 +658,7 @@ canonicalization.}
 %
 %  The accent arrow occurs exactly three times in the deck: named `backend' on I1b, named
 %  `matrix stuffing' here (5-Introduction.tex:83-86 gives both names), answered on SC1 with
-%  d/dx. The left box is kept at x=0 and the right panel centred at x=8.4 -- SC1's panel
+%  d/dz. The left box is kept at x=0 and the right panel centred at x=8.4 -- SC1's panel
 %  geometry -- so SC1 still reads as this picture answered.
 %
 %  Nothing of the method belongs on this slide. In particular the matrix is deliberately
@@ -1100,15 +1159,56 @@ $\mvec{c}^\top =
 \section{Single canonicalization}
 % ==================================================================================
 
+% --- SC0 --------------------------------------------------------------------------
+%  PLACEHOLDER -- content still to be written. Opens the contributions section with the
+%  storage format everything after it is expressed in: SC2's (X, r, c) triple is a dense
+%  block at permuted positions *against* CSR, SC3's kernels dispatch on it, and the backup
+%  slide "addition is where the dense path stops" turns on CSR views sharing indptr/indices
+%  without copying values. None of those read without CSR on the board first.
+%
+%  What this slide has to land, when it is written:
+%    - the three arrays: indptr (m+1), indices (nnz), data (nnz)
+%    - one small matrix shown twice, as a grid and as the three arrays, so the reader can
+%      trace one row across
+%    - row i occupies data[indptr[i]:indptr[i+1]] -- the one fact SC2 and B1 both lean on
+%    - why CSR and not COO: rows are contiguous, so a row slice is a view, not a copy
+%
+%  Suggested form: the I4 sparsity grid on the left (nz / matframe styles are already in the
+%  preamble) and the three arrays as a \texttt{} stack on the right, in \begin{columns}[c,
+%  onlytextwidth] -- I4 at :1030 is the model for that split. Keep it to one beat.
+%
+%  Sources to draw on: 6-Revue_litterature.tex (CSR in the backend discussion),
+%                      7-Theme1.tex (the representation chapter).
+\begin{frame}{Compressed sparse row}
+\vfill
+\begin{center}
+{\color{black!35}\small [ placeholder --- CSR storage format ]}
+\end{center}
+\vfill
+\end{frame}
 % --- SC1 --------------------------------------------------------------------------
-%  The premise the whole engine rests on. Both forms are restated side by side: the quadratic
-%  conic form was last seen on I1 ("Convex optimization"), and naming P, A, b, c again is what
-%  makes the derivative statement concrete.
-%  Sources: 5-Introduction.tex:66-77 (e:quad-conic-form), 3-Abstract.tex:12-17 ("None of the
-%           current implementations takes this perspective"), 7-Theme1.tex:17-24 (one global
+%  The premise the whole engine rests on, and I5 ("Problem statement") answered: the same two
+%  panels at the same x = 0 and x = 8.4, the same accent arrow, with `matrix stuffing' replaced
+%  by the derivative. Panel geometry must not move -- I5's comment at :659-662 pins it.
+%
+%  Stated on the running example rather than in the abstract. The audience has just made the
+%  frontend/backend trip twice (B2, B3), so both boxes are things they have already read and
+%  only the identities below the figure are general. The variable is the stacked
+%  z = (t1, t2, x) of B3, not a bare x; the column order is fixed at
+%  6-Revue_litterature.tex:174-182 and the deck has used it since B2.
+%
+%  The right box carries c and b - Az in K, not the quadratic form: B3 established P = 0 for
+%  this problem (the objective canonicalized to t1 + mu*t2), and writing (1/2) z'Pz here would
+%  contradict the slide the audience just saw. P appears in the general display below instead.
+%
+%  Trimmed to one grey line and one bullet. Two bullets that used to sit here -- no sparsity
+%  detection or graph colouring, and expressions never scalarized -- are on the backup frame
+%  "two ways to get the coefficients", which says both of CasADi, CVXPY, AMPL and JuMP by name;
+%  repeating them here was the same claim with less evidence behind it.
+%  Sources: 5-Introduction.tex:66-77 (e:quad-conic-form), 7-Theme1.tex:17-24 (one global
 %           Jacobian per node), 7-Theme1.tex:877-887 + lst:extract-at-origin (one evaluation
 %           at the origin recovers b and c; CVXPY negates A afterwards for the cone form's
-%           sign convention), 8-Conclusion.tex:8-22 (the CasADi / AMPL / JuMP contrasts).
+%           sign convention).
 \begin{frame}{Canonicalization as sparse differentiation}
 \vspace{-1.5ex}
 \begin{center}
@@ -1116,28 +1216,28 @@ $\mvec{c}^\top =
 \begin{tikzpicture}
   \node[art] (fn) at (0,0)
     {$\begin{array}{ll}
-        \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x};\gvec{\theta}) \\[0.5ex]
-        \mbox{subject to} & h_i(\mvec{x};\gvec{\theta}) \in \cone{K}_i
+        \underset{\mvec{z}}{\mbox{minimize}} & f_0(\mvec{z}) = t_1 + \mu t_2 \\[0.5ex]
+        \mbox{subject to} & \mvec{h}(\mvec{z}) \in \cone{K}
       \end{array}$};
   \node[art] (qcp) at (8.4,0)
     {$\begin{array}{ll}
-        \underset{\mvec{x}}{\mbox{minimize}} & \frac{1}{2}\mvec{x}^\top\mmat{P}\mvec{x}
-                                               + \mvec{c}^\top\mvec{x} \\[0.5ex]
-        \mbox{subject to} & \mvec{b} - \mmat{A}\mvec{x} \in \cone{K}
+        \underset{\mvec{z}}{\mbox{minimize}} & \mvec{c}^\top\mvec{z} \\[0.5ex]
+        \mbox{subject to} & \mvec{b} - \mmat{A}\mvec{z} \in \cone{K}
       \end{array}$};
   \draw[flow, accent] (fn) --
-    node[edgelab, text=polyblue] {$\partial/\partial\mvec{x}$} (qcp);
-  \node[note, below=1.5mm of fn]  {what the frontend leaves:\\the problem as functions
-                                   of~$\mvec{x}$};
-  \node[note, below=1.5mm of qcp] {what the solver takes};
+    node[edgelab, text=polyblue] {$\partial/\partial\mvec{z}$} (qcp);
+  \node[note, below=1.5mm of fn]  {what the frontend leaves:\\one affine map per cone,
+                                   in $\mvec{z} = (t_1, t_2, \mvec{x})$};
+  \node[note, below=1.5mm of qcp] {what the solver takes:\\the $[\mmat{A}\ \ \mvec{b}]$
+                                   of the last two slides};
 \end{tikzpicture}}
 \end{center}
 
 \vspace{0.5ex}
 \[
-  \mmat{A} = \frac{\partial \mvec{h}}{\partial \mvec{x}}
+  \mmat{A} = \frac{\partial \mvec{h}}{\partial \mvec{z}}
   \qquad
-  \mmat{P} = \frac{\partial^2 f_0}{\partial \mvec{x}^2}
+  \mmat{P} = \frac{\partial^2 f_0}{\partial \mvec{z}^2}
   \qquad
   \mvec{b} = \mvec{h}(\zeros)
   \qquad
@@ -1145,59 +1245,113 @@ $\mvec{c}^\top =
 \]
 \vspace{-2ex}
 
-{\footnotesize\color{black!55} One evaluation at the origin recovers $\mvec{b}$ and
-$\mvec{c}$.}
+{\footnotesize\color{black!55} One evaluation at the origin recovers $\mvec{b}$ and $\mvec{c}$;
+$\mmat{A}$ is negated afterwards for the sign convention of
+$\mvec{b} - \mmat{A}\mvec{z} \in \cone{K}$.}
 
-\vspace{1.5ex}
-\begin{itemize}\footnotesize\bul
+\vspace{2ex}
+\begin{itemize}\small\bul
   \item one Jacobian per node, with respect to \emph{all} the variables, so the chain rule is a
         single matrix product --- not a dictionary of blocks keyed by variable
-  \item the structure comes from the expression: no sparsity detection, no graph colouring
-  \item expressions stay vectorized, never scalarized into lists of scalar coefficients
 \end{itemize}
 \end{frame}
 
 % --- SC2 --------------------------------------------------------------------------
-%  Lifted from 7-Theme1.tex:160-183 (fig:pd-motivation) and 185-198 (eq:permuted-dense).
-%  Beat 1 is the observation, beat 2 the class. The thesis sets pdBlock to blue!12 locally
-%  at 7-Theme1.tex:158; the deck's preamble value (blue!22) is kept.
+%  Lifted from 7-Theme1.tex:160-183 (fig:pd-motivation) and 185-198 (eq:permuted-dense), but
+%  drawn on the running example rather than on a generic dense B. The deck never introduces a
+%  matrix called B: the audience has had F, g and mu since F3, and the -F block of I4's [A b]
+%  *is* a dense block at permuted positions, so the class is read off a picture they have
+%  already been shown instead of off a new symbol.
+%
+%  The picture is I4's, cell for cell -- same geometry comment applies (I4 at :1071-1084):
+%  8 columns x 20 rows at x = y = 0.5cm, origin top-left, rows growing downwards.
+%    columns  0  t1   1  t2   2-6  x (n = 5)   7  b
+%    rows     0-4  -I      5  -1 at t1     6-13  -F on x, -g on b
+%             14   -1 at t2                15-19 -I
+%  Three things change against I4: everything outside rows 6-13 is dropped to black!25, the
+%  shading is pdBlock (:83) on -F only -- I4 also shades -g, which belongs to b and not to the
+%  Jacobian -- and the cone bands on the left are replaced by the index vectors r and c. The
+%  bands would collide with r at x = -1 and the caption says "the rows of its cone" anyway.
+%
+%  Over-sized cells plus an adjustbox cap, not \fitfig, for I4's reason (:1093-1095): `max
+%  size' only ever shrinks, so drawing at the natural size would leave the cap doing nothing.
+%
+%  Beat 1 is the observation, beat 2 the class. \onslide, not \only: it reserves beat 2's
+%  space, so the right column does not grow and the [c] columns do not re-centre the picture
+%  between the beats. The thesis sets pdBlock to blue!12 locally at 7-Theme1.tex:158; the
+%  deck's preamble value (blue!22) is kept.
 \begin{frame}{A dense block at permuted positions}
 \vspace{-0.5ex}
-\begin{center}
-\fitfig{%
-\begin{tikzpicture}[x=1cm, y=1cm,
+\begin{columns}[c,onlytextwidth]
+\begin{column}{0.46\textwidth}
+\centering
+\adjustbox{max size={0.98\textwidth}{0.76\textheight}}{%
+\begin{tikzpicture}[x=0.5cm, y=0.5cm,
     dim/.style={<->, >=Latex, black!70, thin},
     lbl/.style={font=\small}]
-  \draw[draw=black!60, fill=black!5] (0,0) rectangle (12,1.1);
-  \fill[pdBlock] (3.4,0) rectangle (5.8,1.1);
-  \draw[draw=black!60] (3.4,0) rectangle (5.8,1.1);
-  \node[lbl] at (8.9,0.55) {structurally zero};
-  \draw[dim] (0,1.5) -- (12,1.5);
-  \node[lbl, anchor=south] at (6,1.55) {one column per variable entry of the problem};
-  \draw[dim] (-0.4,0) -- (-0.4,1.1);
-  \node[lbl, anchor=east] at (-0.55,0.55) {rows of~$\mmat{B}$};
-  \draw[black!70, thin] (4.6,-0.1) -- (4.6,-0.55);
-  \node[lbl, anchor=north] at (4.6,-0.57) {$\mmat{B}$, at the columns of~$\mvec{x}$};
-\end{tikzpicture}}
-\end{center}
 
-\vspace{0.5ex}
-{\small The Jacobian of $\mmat{B}\mvec{x}$ for dense data $\mmat{B}$. A generic sparse format
-stores one column index \emph{per entry} of the block.}
+  % ---- the one block the slide is about, behind the dots -------------------------
+  \fill[pdBlock] (2,-6) rectangle (7,-14);
+
+  % ---- the matrix ---------------------------------------------------------------
+  \draw[matframe] (0,0) rectangle (8,-20);
+  \draw[black!25, dashed] (2,0) -- (2,-20);
+  \draw[black!25, dashed] (7,0) -- (7,-20);
+
+  % -I on the columns of x, from x >= 0
+  \foreach \r in {0,...,4} \fill[black!25] (2+\r+0.5,-\r-0.5) circle (0.9mm);
+  % the epigraph variable t1
+  \fill[black!25] (0.5,-5.5) circle (0.9mm);
+  % -F, dense and lit, with -g beside it left grey: -g is part of b, not of the Jacobian
+  \foreach \r in {6,...,13} {
+    \foreach \c in {2,...,6} \fill[nz] (\c+0.5,-\r-0.5) circle (0.9mm);
+    \fill[black!25] (7.5,-\r-0.5) circle (0.9mm);
+  }
+  % the epigraph variable t2
+  \fill[black!25] (1.5,-14.5) circle (0.9mm);
+  % -I on the columns of x again, from the second cone
+  \foreach \r in {0,...,4} \fill[black!25] (2+\r+0.5,-15-\r-0.5) circle (0.9mm);
+
+  % ---- the column space ---------------------------------------------------------
+  \node[lbl, anchor=south] at (0.5,0.3) {$t_1$};
+  \node[lbl, anchor=south] at (1.5,0.3) {$t_2$};
+  \node[lbl, anchor=south] at (4.5,0.3) {$\mvec{x}$};
+  \node[lbl, anchor=south] at (7.5,0.3) {$\mvec{b}$};
+
+  % ---- the two index vectors, in place of I4's cone bands ------------------------
+  \draw[dim, polyblue] (-1,-6) -- (-1,-14);
+  \node[lbl, rotate=90, anchor=south, text=polyblue] at (-1.6,-10) {$\mvec{r}$};
+  \draw[dim, polyblue] (2,-21) -- (7,-21);
+  \node[lbl, anchor=north, text=polyblue] at (4.5,-21.3) {$\mvec{c}$};
+\end{tikzpicture}}
 
 \vspace{1ex}
+{\footnotesize the same $[\mmat{A}\ \ \mvec{b}]$, with one block lit}
+\end{column}
+\begin{column}{0.51\textwidth}
+{\small The $-\mmat{F}$ block is the Jacobian of $\mmat{F}\mvec{x}$: dense, at the rows
+$\mvec{r}$ of its cone and the columns $\mvec{c}$ of~$\mvec{x}$.}
+
+\vspace{1.5ex}
+{\small A generic sparse format stores one column index \emph{per entry} of it.}
+
 \onslide<2->{%
-\[
-  \mmat{A} = \mmat{S}_r^\top \mmat{X} \mmat{S}_c, \qquad A_{r_i,\, c_j} = X_{ij}
-\]
-\vspace{-1.5ex}
+\vspace{2.5ex}
+\begin{center}
+$\mmat{A} = \mmat{S}_r^\top \mmat{X} \mmat{S}_c$ \\[0.8ex]
+$A_{r_i,\, c_j} = X_{ij}$
+\end{center}
+
+\vspace{1ex}
 \begin{itemize}\footnotesize\bul
   \item store the triple $(\mmat{X}, \mvec{r}, \mvec{c})$: one index per row and per column,
         and the global matrix is never formed
   \item {\color{polyblue}the storage does not depend on the global dimensions $m$ and $n$}
-  \item $\mmat{B}\mmat{V}$ gives one such block per column of $\mmat{V}$, at disjoint rows ---
-        kept as a vertical union, with the data stored once
+  \item a matrix-valued argument gives one such block per column, at disjoint rows --- kept
+        as a vertical union, with the data stored once
 \end{itemize}}
+\end{column}
+\end{columns}
 \end{frame}
 
 % --- SC3 --------------------------------------------------------------------------
@@ -1205,7 +1359,10 @@ stores one column index \emph{per entry} of the block.}
 %  Sources: 7-Theme1.tex:508-522 (eq:pd-product and the two-pass sentence),
 %           7-Theme1.tex:440-492 (fig:kernel-dispatch, redrawn smaller for the slide).
 \begin{frame}{Closed under the operations we need}
-\vspace{-2.5ex}
+\vspace{-1.5ex}
+{\footnotesize For two permuted dense matrices $\mmat{A} = (\mmat{X}_A, \mvec{r}_A, \mvec{c}_A)$
+and $\mmat{B} = (\mmat{X}_B, \mvec{r}_B, \mvec{c}_B)$:}
+\vspace{-1ex}
 \[
   \mmat{B}^\top \mmat{A} = \mmat{S}_{c_B}^\top \mmat{X}_B^\top
   \underbrace{\left(\mmat{S}_{r_B} \mmat{S}_{r_A}^\top\right)}_{\mathclap{\text{index-set
@@ -1756,6 +1913,9 @@ split into two families by what they ask of the user.}
   \item \cvxpy{}: composes the linear operators of the conic-form trees in one bottom-up pass,
         which is equivalent to differentiating them; expressions stay vectorized, so no detection
         step is needed
+  \item {\color{polyblue}\sde{}}: differentiates them outright, one Jacobian per node with
+        respect to \emph{all} the variables, so the chain rule is a single matrix product ---
+        not a dictionary of blocks keyed by variable
 \end{itemize}
 
 \vspace{1ex}
@@ -1891,7 +2051,7 @@ Being free to pick the representation per operation is what the timings measure.
 \begin{frame}{Backup: addition is where the dense path stops}
 \vspace{-0.5ex}
 \begin{itemize}\small\bul
-  \item the Jacobian of $\mmat{B}\mvec{x} + \mvec{y}$ holds the block of $\mmat{B}$ at the
+  \item the Jacobian of $\mmat{F}\mvec{x} + \mvec{y}$ holds the block of $\mmat{F}$ at the
         columns of $\mvec{x}$ \emph{and} an identity at the columns of $\mvec{y}$
   \item no single triple $(\mmat{X}, \mvec{r}, \mvec{c})$ covers both, so the sum is performed
         on CSR views of the two operands instead
@@ -1905,6 +2065,62 @@ Being free to pick the representation per operation is what the timings measure.
 The dense representations are sticky in the other direction: a product with a permuted dense or
 stacked operand gives back a matrix of the same kind.
 \end{center}
+\end{frame}
+
+% --- B-LOSS -----------------------------------------------------------------------
+%  Q: "which of the 25 do you lose, and why?"  Was a presented frame between R1 and R2, which
+%  spent a full slide of a 30-minute slot on a loss. R1's closing footnote already names both
+%  losses and gives the reason, so the frame is the answer to a question rather than something
+%  to walk through; it is only needed if the question is actually asked.
+%
+%  SDPSegfault1132 rather than ConvexPlasticity, though ConvexPlasticity has the worse ratio
+%  (2.48 vs 1.39): its absolute times are 0.35 s against 0.85 s, which invites "half a second"
+%  as the reply and loses the point, and its source needs the plasticity physics explained
+%  before the code means anything. SDPSegfault1132 is ten lines, is a recognizable SDP, and
+%  its constants are visibly dense on the slide -- V is 100 x 99, D and W are 100 x 100, and
+%  V @ G @ V.T sandwiches a PSD variable between two of them three times over.
+%
+%  Code trimmed from benchmark/sdp_segfault_1132_benchmark.py in cvxpy/benchmarks: the
+%  construction of D, V and points is replaced by comments giving their shapes, since the
+%  shapes are the whole content and the arithmetic that builds them is not. The name is the
+%  suite's own (it was filed as a segfault report, cvxpy issue 1132) -- kept as-is so it
+%  matches the table on the previous slide. p='fro' uses single quotes: the deck is OT1 and
+%  \textquotedbl is unavailable there, so a double quote in a listing is a compile error.
+%
+%  Sources: 7-Theme2.tex:56-59 (the two losses and the reason), tab:oneshot-compile
+%           (7-Theme2.tex:119) for the timings quoted.
+\begin{frame}[fragile]{Backup: a problem we do not win}
+\vspace{-1ex}
+{\scriptsize\color{black!55} \texttt{SDPSegfault1132}, one of the two problems of the suite
+where \de{} is behind}
+
+\vspace{0.5ex}
+\begin{center}
+\begin{minipage}{0.82\textwidth}
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
+                   aboveskip=0.4em, belowskip=0.4em]
+n = 100
+V = ...                      # dense, (n, n-1)
+D = ...                      # dense, (n, n)
+W = np.ones((n, n))          # dense, (n, n)
+
+G = cp.Variable((n-1, n-1), PSD=True)
+A = cp.kron(e,   cp.reshape(cp.diag(V @ G @ V.T), (1, n)))
+B = cp.kron(e.T, cp.reshape(cp.diag(V @ G @ V.T), (n, 1)))
+C = cp.norm(cp.multiply(W, A + B - 2 * V @ G @ V.T - D), p='fro')
+
+prob = cp.Problem(cp.Maximize(cp.trace(G) - C))
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\vspace{0.5ex}
+\begin{itemize}\small\bul
+  \item every constant is dense, and \texttt{V @ G @ V.T} sandwiches the variable between
+        two of them
+  \item \de{} takes $13.21$ s against \texttt{SCIPY}'s $9.51$ s: processing the dense
+        constant data dominates
+\end{itemize}
 \end{frame}
 
 % --- B3 ---------------------------------------------------------------------------
