@@ -73,8 +73,12 @@ clean:
 
 # The defence slides. Kept separate from the $(SRC) rules on purpose: final/draft edit
 # line 1 of Document.tex and clean's substitution only ever matched Document.
-# Two runs are needed for the \tableofcontents outline frames.
+# Three runs: two for the \tableofcontents outline frames, and a third for nicematrix.
+# The \CodeBefore cell shading of the permuted-dense figures is placed from coordinates
+# written to the .aux on the previous run, so whenever a page is added or removed the
+# panels come out missing (or, inside a scalebox, adrift) until one more run settles them.
 presentation: presentation.tex
+	${PDFLATEX} -interaction=nonstopmode presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 
