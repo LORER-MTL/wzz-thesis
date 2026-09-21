@@ -1,7 +1,11 @@
 # Defence timing card — 2026-10-02, ~30 minute slot
 
-Written 2026-09-17. The deck is **48 shown slides** (35 frames; the 14 backups after
+Written 2026-09-17. The deck is **55 shown slides** (36 frames; the 13 backups after
 `\appendix` are not presented and are not budgeted here).
+
+**The per-frame table was re-synced to the deck on 2026-09-21**, frame by frame, from the
+footer numbering of the built PDF. Every row below is a frame that exists; the slide counts are
+the overlay beats the deck actually has. See the last note for what moved.
 
 The decision behind this card was **nothing is cut**, and it has since been walked back twice,
 both times for the same reason — a frame whose whole job was already being done elsewhere. The
@@ -11,7 +15,9 @@ thesis titled *"…for Disciplined Convex Programming"* that never defines the t
 gone is the CVXPY slide and, on 2026-09-20, *Compilation* — see the Notes. Otherwise the time
 still comes from pace, not from cuts.
 
-Total budget below: **25:25**, leaving about four and a half minutes of slack in a 30-minute slot.
+Total budget below: **26:40**, leaving about three and a quarter minutes of slack in a 30-minute
+slot. The method section grew and the Example and the Conclusion shrank; the net is about a
+minute against the first version of this card.
 
 ## Checkpoints — the only numbers to watch on the day
 
@@ -19,10 +25,10 @@ Total budget below: **25:25**, leaving about four and a half minutes of slack in
 |---|---|
 | Title, *Optimization in practice*, first outline | 1:15 |
 | **Introduction** | **8:05** |
-| **Example** | **14:00** |
-| **Single canonicalization** | **18:30** |
-| **Parametric canonicalization** | **23:10** |
-| **Conclusion** | **25:25** |
+| **Example** | **13:35** |
+| **SparseDiffEngine** | **21:30** |
+| **Results** | **24:40** |
+| **Conclusion** | **26:40** |
 
 If the Introduction has not ended by 8:05, do not try to make it up by talking faster later —
 drop to the sprint pace on the Example's first three slides, which are built for it.
@@ -40,40 +46,41 @@ Slides = overlay beats, so a two-beat frame is two clicks.
 |---|---|---|---|---|
 | | Title | 1 | 0:15 | — |
 | | Outline (×5, one per section) | 5 | 0:10 each | sprint |
-| **Introduction** | | **17** | **7:05** | |
-| 1 | Optimization in practice — *before the first outline* | 2 | 0:50 | |
+| **Introduction** | | **18** | **7:05** | |
+| 1 | Optimization in practice — *before the first outline* | 3 | 0:50 | |
 | 2 | Convex optimization | 2 | 0:40 | |
 | 3 | Conic form | 1 | 0:25 | sprint |
 | 4 | Convex optimization in practice | 4 | 1:30 | walk |
 | 5 | Disciplined convex programming | 2 | 0:45 | |
-| 6 | DCP-based modelling languages | 2 | 0:40 | sprint |
-| 7 | Canonicalization | 3 | 1:10 | walk |
+| 6 | DCP-based modelling languages | 3 | 0:40 | sprint |
+| 7 | Canonicalization | 2 | 1:10 | walk |
 | 8 | Problem statement | 1 | 1:05 | walk |
-| **Example** | | **9** | **5:55** | |
+| **Example** | | **9** | **5:30** | |
 | 9 | Fitting with regularization | 1 | 0:40 | |
-| 10 | Convex optimization | 1 | 0:25 | sprint |
-| 11 | A DCP-based modelling language | 1 | 0:45 | |
-| 12 | Disciplined convex programming | 1 | 0:55 | walk |
-| 13 | Atoms | 1 | 0:40 | walk |
-| 14 | Canonicalization: the frontend | 1 | 0:30 | sprint |
-| 15 | Canonicalization: the backend | 2 | 1:10 | walk |
-| 16 | Structure in the problem data | 1 | 0:50 | walk |
-| **Single canonicalization** | | **7** | **4:30** | |
+| 10 | Atoms | 1 | 0:40 | walk |
+| 11 | A CVXPY example | 2 | 0:45 | |
+| 12 | Expression tree | 1 | 0:55 | walk |
+| 13 | Canonicalization: the frontend | 1 | 0:30 | sprint |
+| 14 | Canonicalization: the backend | 2 | 1:10 | walk |
+| 15 | Structure in the problem data | 1 | 0:50 | walk |
+| **SparseDiffEngine** | | **15** | **7:55** | |
+| 16 | Overview | 1 | 0:45 | |
 | 17 | Compressed sparse row | 1 | 0:40 | punchline first |
 | 18 | A dense block at permuted positions | 2 | 1:05 | walk |
-| 19 | Closed under the operations we need | 2 | 1:05 | |
-| 20 | First canonicalization | 1 | 0:55 | |
-| 21 | Performance profile | 1 | 0:45 | sprint — the figure does the work |
-| **Parametric canonicalization** | | **5** | **4:40** | |
-| 22 | The same problem, a hundred times | 1 | 0:45 | punchline in bullet 2 |
-| 23 | Two passes | 1 | 0:55 | |
-| 24 | What the symbolic pass stores | 1 | 1:15 | walk |
-| 25 | The parameter maps | 1 | 0:50 | |
-| 26 | Parametric problems | 1 | 0:55 | |
-| **Conclusion** | | **4** | **2:15** | |
-| 27 | Three observations | 2 | 1:15 | |
-| 28 | Future work | 1 | 0:45 | |
-| 29 | Thank you | 1 | 0:15 | |
+| 19 | Dispatch: a data vector | 3 | 0:50 | walk |
+| 20 | Dispatch: a dense block | 3 | 0:45 | walk — the twin, so it goes faster |
+| 21 | Two passes | 1 | 0:55 | |
+| 22 | What the symbolic pass stores | 1 | 1:15 | walk |
+| 23 | The parameter maps | 1 | 0:50 | |
+| 24 | What this buys | 2 | 0:50 | |
+| **Results** | | **4** | **3:10** | |
+| 25 | First canonicalization | 1 | 0:55 | |
+| 26 | Performance profile | 1 | 0:45 | sprint — the figure does the work |
+| 27 | Peak memory | 1 | 0:35 | sprint |
+| 28 | Parametric problems | 1 | 0:55 | |
+| **Conclusion** | | **3** | **2:00** | |
+| 29 | Conclusion | 2 | 1:45 | |
+| 30 | Thank you | 1 | 0:15 | |
 
 ## Notes
 
@@ -169,6 +176,40 @@ Slides = overlay beats, so a two-beat frame is two clicks.
     *Disciplined convex programming*. One bullet came off in the redraw, "it computes that
     Jacobian sparsely, which is what the name is for": say it off the arrow when
     SparseDiffEngine is named.
+- **2026-09-21 — *Dispatch* becomes two frames, and this card was re-synced to the deck.**
+  The method section's `Dispatch` frame — a ten-kernel table beside three bullets — is now two
+  twinned frames, *Dispatch: a data vector* and *Dispatch: a dense block*: a three-node
+  expression tree on the left, the kernel each node dispatches to on the right, walked bottom-up
+  one node per beat with the node and its kernel lit together. The second is the argument: the
+  same tree over dense data turns permuted dense at the product and stays there, which the
+  `result` column says in three tags. The table itself is the backup *the ten kernels*, together
+  with the two claims two worked paths cannot make — that ten kernels cover the library, and
+  that the dense form is absorbing, which is about binary operands. Net +1 frame, +4 shown
+  slides, +1:35 on the section.
+  The same pass corrected rows that had drifted through the restructures of 2026-09-20, which is
+  why the numbering below shifts by one from the Example onward: the sections are Introduction /
+  Example / SparseDiffEngine / Results / Conclusion; *Closed under the operations we need* and
+  *The same problem, a hundred times* are gone; *Overview*, *What this buys* and *Peak memory*
+  are on the main line; the Example's Introduction-twinning frames are now *A CVXPY example* and
+  *Expression tree*; and *Three observations* + *Future work* are one *Conclusion* frame. Every
+  budget for a frame that still exists is unchanged. The budgets for the new and merged frames —
+  frames 11, 12, 16, 19, 20, 24, 27, 29 — are estimates and have not been rehearsed.
+- **2026-09-21, second entry — a concision pass on the five frames written that day.** *Overview*
+  (renamed from *The engine* the same morning), the two *Dispatch* frames, *What this buys* and
+  *Conclusion* were written after the 09-20 trim and had not been held to its rule. They go from
+  ~268 prose words to ~176, and from 75 words inside the figures to 9. What came off: every card's
+  grey second line on both *Dispatch* frames, the grey note under each box on *Overview* and its
+  second bullet, and one clause from each bullet on *What this buys* and *Conclusion*, whose five
+  bullets are all kept — each is an ask recorded in `deck-comments-04-conclusion.md`. Two grey
+  clauses were promoted into a card's main line rather than cut: `r = (0,1)` and `one dgemm`, both
+  on *Dispatch: a dense block*. Three geometry consequences, all in the frames' `%` blocks: `kcard`
+  gained `minimum height=0.95cm`, because one-line cards inside the tree's unchanged 15mm rhythm
+  read as ribbons; both closing lines were shortened rather than one being cut, and *a dense
+  block*'s lead lost its cross-reference, because the frames are vertically centred and the twins
+  must flip without moving — they now sit at the same height, which they did not before; and the
+  `\vspace` under a halved bullet block grew on *What this buys* (5ex → 7ex) and *Conclusion*
+  (2.5ex → 4ex). **No budget and no beat count changed.** Every deletion is in that frame's `%`
+  comment, as before.
 - **If rehearsal still runs long**, the zero-risk headroom is the four per-section outline frames
   (`presentation.tex:84-89`): about two minutes, and nothing in the deck cross-references them.
   They are kept by choice and the revert is one line.
