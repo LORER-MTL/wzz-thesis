@@ -218,3 +218,123 @@ This frame is the hand-off into the method section. The new right column gets 2�
 
 The last line is exactly what the new section-2 overview picks up, so keep the wording
 consistent with `deck-comments-02-single-canon.md`.
+
+---
+
+## Read-through of the built deck — 2026-09-22
+
+Four comments in the Example section, all done, all deleted from the source.
+
+### B2 "Canonicalization: the frontend" — the cone
+> we should maybe show K = ... ?
+> also we should show/define K_soc somewhere to make this equivalence with the last one
+> more precise?
+
+Right, and the frame was asking the room to take an equivalence on trust. The display's second
+bullet claims *every constraint is an affine function belonging to a cone*, and until now
+$\cone{K}_{\mathrm{soc}}$ had never been written down anywhere in the deck. There is now a grey
+line under the display carrying both:
+
+$$\cone{K}_{\mathrm{soc},k} = \{(u,\mvec{v}) : \|\mvec{v}\|_2 \le u\}, \qquad
+  \cone{K} = \reals_+^n \times \cone{K}_{\mathrm{soc},m+1} \times \cone{K}_{\mathrm{soc},n+1}$$
+
+The product used to be in the frame's `%` block as a thing to say; it is on the slide now, and
+the header comment is updated to match. **+0:10 on the frame** (0:30 → 0:40).
+
+### B3a "Canonicalization: the backend" — the objective, and the name of the variable
+> it would be helpful to show the conic form again maybe? like in a small box somewhere?
+> and also to also just bring t_1+mut_2 so that we can more clearly
+> see the objective and how cTz is equal to it.
+> we should also maybe not use z but rather x_tilde or bar?
+
+A dashed `exbox` now sits between the lead line and the matrices carrying
+*minimize $t_1 + \mu t_2 = \mvec{c}^\top\tilde{\mvec{x}}$*, which is the one thing that makes
+the row of ones and $\mu$s underneath readable as an objective rather than as data.
+
+$\mvec{z}$ → $\tilde{\mvec{x}}$, one occurrence in the whole deck. The tilde says it is the
+problem's own $\mvec{x}$ with the epigraph variables stacked on, which is what it is; `z` said
+nothing and appeared nowhere else.
+
+The box is **outside** `\fitfig`, so B3a and B3b's blockarrays still scale identically — see
+B3a's `%` block, which is the standing caution on those two frames.
+
+### PC0 "Parameters in CVXPY" — the sweep
+> maybe we could use a linspace? or just put a fixed list for different mus
+> like [1, 10, 25, 100]?
+
+`mus = [1, 10, 25, 100]` is now in the listing, above the loop. A fixed list rather than a
+`linspace`: a regularization path is chosen, not sampled, and four values is a number that can
+be said out loud. The loop was iterating over a name the slide never defined.
+
+### I4 "Structure in the problem data" — the matrix, and the motivation
+> can we make n smaller maybe? or m? to make this matrix a bit more compact and less tall?
+> and then we can make it wider.
+> and then we can have one bullet point:
+> motivation: take advantage of dense structure arising in problem data matrices.
+> benefits can be in storage and computation which we both care about.
+> we could maybe add one that says this is often the case for many optimization problems.
+
+$n = 5, m = 8$ → $n = 3, m = 5$, so the matrix goes from 20 × 8 to 13 × 6. It is still taller
+than wide — it has to be, $2n+m+2$ rows against $n+2$ columns for every $n$ and $m$ — but three
+variables still shows two identity diagonals, a dense block wider than one cell and two lone
+epigraph entries, which is the entire inventory the frame is for.
+
+The right-hand column comes back, with the three lines above, in your words. Note this reverses
+the 2026-09-20 trim, which took bullets *off* this frame — but what came off then was a reading
+of the picture, and what goes on now is the motivation for the section that follows. The
+reading is still spoken. **+0:15 on the frame** (0:50 → 1:05).
+
+While in there: this frame's `\begin{columns}` had never been closed. Beamer had been
+swallowing it silently since the single-column version. Fixed.
+
+---
+
+## Read-through of the built deck — 2026-09-22, second entry
+
+Three comments in the Example section, all done, all deleted from the source.
+
+### B3a "Canonicalization: the backend" — the constraints
+> can we try to do the same for the constraints?
+
+Yes, and the constraint line earns its room more than the objective line did. The dashed box
+now holds both, in one aligned array:
+
+$$\begin{array}{r l = l}
+\text{minimize} & t_1 + \mu t_2 & \mvec{c}^\top\tilde{\mvec{x}} \\
+\text{subject to} & (\mvec{x},\, t_1,\, \mmat{F}\mvec{x}-\mvec{g},\, t_2,\, \mvec{x})
+                  & \mvec{b} - \mmat{A}\tilde{\mvec{x}} \in \cone{K}
+\end{array}$$
+
+The left side is B2's three constraints stacked **in the order the row blocks appear
+underneath** — $\mvec{x}$, then $t_1$ and $\mmat{F}\mvec{x}-\mvec{g}$, then $t_2$ and
+$\mvec{x}$ — so the five rows of $[\mmat{A}\ \mvec{b}]$ can be read off it one block at a time,
+and the right side is the standard form of I0 and I1a. Check the signs against the matrix if it
+is ever edited: row 1 gives $\mvec{b} - \mmat{A}\tilde{\mvec{x}} = \mvec{x}$, rows 2–3 give
+$(t_1, \mmat{F}\mvec{x}-\mvec{g})$, rows 4–5 give $(t_2, \mvec{x})$.
+
+The box is still **outside** `\fitfig`, so B3a and B3b's blockarrays scale identically.
+**No time change** (1:10): the walk was already pointing at each row block in turn.
+
+### PC0 "Parameters in CVXPY" — the bullet
+> let's add a bullet point that says CVXPY can reuse the problem instance for different
+> parameter values
+
+Done, in the deck's bullet style with *reuse the problem instance* in polyblue. It is the one
+claim the listing cannot make on its own: `prob` is built once, above the frame, and every
+iteration re-solves that same object.
+
+### B3b "Parameters in the CVXPY backend" — the bullets, and the box
+> let's add a bullet point saying that the structure of the problem remains fixed
+
+Two bullets: *the structure of the problem stays fixed: a zero stays a zero*, and *most of the
+problem data is constant*. They are what the dimming is an argument for, and the premise the
+whole parametric half of the deck rests on.
+
+**Follow-up, same day:**
+> I think we should bring the box in the parameters in the cvxpy backend slide too.
+
+B3a's box, carried over and dimmed on the same rule as the matrices — everything a parameter
+does not touch goes to `black!35`, $\mu$ and $\mvec{g}$ stay in colour. It matters more here
+than on B3a: the two coloured entries in $\mvec{c}$ and $[\mmat{A}\ \mvec{b}]$ are one glyph
+each in a picture of thirty, and the box says which two glyphs to look for before the eye
+reaches the matrices. Still 0:35.

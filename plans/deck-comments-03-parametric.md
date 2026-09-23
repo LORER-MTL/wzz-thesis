@@ -96,3 +96,96 @@ The peak-memory panel already exists as backup **B4** — "Backup: peak memory",
   than about time. Worth the slide.
 
 **Source:** `7-Theme2.tex:61-82` (the profiles) and `:77-82` (the memory numbers).
+
+---
+
+## Reopened — 2026-09-22. The section is demoted, not deleted.
+
+The note at the top of this file says the section no longer exists as a section. As of today its
+frames no longer exist in the **presented deck** either. They are backups 13–16.
+
+> `presentation.tex`, on *Two passes*:
+> let's put everything related to the two passes in the backup
+> I decided I want to focus solely on the first and more important contribution.
+> the matrix classes. I won't have time to talk about everything.
+>
+> on *The parameter maps*: cut this please. i will only briefly mention the backends and
+> their implementations.
+>
+> on *Parametric problems*: cut these results.
+
+| Was | Now |
+|---|---|
+| PC1 *Two passes* | backup 13, *Backup: two passes* |
+| PC2 *What the symbolic pass stores* | backup 14, *Backup: what the symbolic pass stores* |
+| PC3 *The parameter maps* | backup 15, *Backup: the parameter maps* |
+| R3 *Parametric problems* | backup 16, *Backup: parametric problems* |
+
+Each keeps its content unchanged and gains the `% Q: "…"` header every other backup has, naming
+the question it answers. They sit immediately after backup 12, *what the two-phase split costs*,
+which was already their neighbour in subject. Read in order they are still the whole argument:
+the split, what the split stores, what CVXPY does instead, and the numbers.
+
+**Δ: −4 presented frames, −5 shown slides, −4:45.** The reason is the clock and nothing else.
+The mechanism is sound and R3's numbers are good — fastest first canonicalization on all seven
+parametric problems, re-solve within about 2× the tensor.
+
+**What stays in the presented deck, deliberately:**
+
+- **PC0 *Parameters in CVXPY* and B3b *Parameters in the CVXPY backend*** are **not** demoted.
+  They are in the Example section, and they are what make "the sparsity pattern is fixed across
+  a problem family" mean anything at all. B3b is the only slide in the deck where a parameter is
+  visible inside `[A b]`. Without them the four backups would be shown cold to a room that has
+  never seen a `cp.Parameter`. They also, as of the 2026-09-22 re-sync, finally have rows in
+  `plans/defence_timing.md` — they had been presented and unbudgeted since 2026-09-21.
+- **One line in the Conclusion**: *faster first canonicalization on 24 of 25, and re-solve
+  caching without DPP*. That is the whole second contribution, said once. It is meant to invite
+  the question that backups 13–16 answer.
+
+**R3's own earlier entry in this file** — promote the memory results, done 2026-09-21 — is
+unaffected: *Peak memory* is R2b and is still a presented frame. It was promoted for fairness,
+not for the parametric argument, and that reason still holds.
+
+---
+
+## Reopened again — 2026-09-22, sixth pass. One frame comes back
+
+> I actually have more time than I thought, maybe I should include back the parameter stuff?
+
+Partly. **PC1, *Two passes*, is presented again**; the other three stay backups. The demotion
+entry above stands as written — it was right about the clock, and the clock changed.
+
+| | then | now |
+|---|---|---|
+| PC1 *Two passes* | backup 13 | **presented**, last frame of the SparseDiffEngine section, 0:55 |
+| PC2 *What the symbolic pass stores* | backup 14 | backup 13 |
+| PC3 *The parameter maps* | backup 15 | backup 14 |
+| R3 *Parametric problems* | backup 16 | backup 15 |
+
+**Why only one.** You asked for the mechanism, with the numbers as a claim rather than a table —
+so R3's two sentences are a single grey line at the bottom of PC1:
+
+> On the seven parametric problems of the suite: the fastest first canonicalization on all seven,
+> and a re-solve within about 2× of the cached tensor CVXPY builds.
+
+R3 itself is still the frame to put up if either half is questioned, and *what the two-phase split
+costs* is still the honest answer to the two rows where the tensor wins.
+
+**Why at the end of the engine section**, rather than in a section of its own as before: the
+section builds three representations and then the algorithms over them, and the split is what
+those algorithms are split *by*. SC3's `%` block already carried "each kernel is a pair of
+functions, one per pass" (`7-Theme1.tex:384-385`) as a spoken line — this is the frame that line
+was standing in for, and it hands straight into the Results.
+
+**DPP stays off the slide**, as when the frame was first written: the presented deck has no
+on-slide occurrence of the acronym, so the closing line says "the cached tensor CVXPY builds" and
+the word is spoken. Backup *the parameter maps* is what a challenge to that comparison gets.
+
+**One consequence, and it is not cosmetic.** The Conclusion's first bullet read "not covered
+today: handling parameters efficiently — the symbolic and numeric split". That is false once this
+frame is presented. It now reads *what CVXPY does instead — the parameter-to-data tensor, and what
+the split costs against it*, which is still the invitation the dropped re-solve line was, and the
+three remaining backups still answer it in order.
+
+**Net: +1 presented frame, +1 shown slide, +0:55.** 23:20 → 24:15, and the SparseDiffEngine,
+Results and Conclusion checkpoints all move by that much.

@@ -153,3 +153,130 @@ Trim the last bullet to *the goal of this thesis is to reduce CVXPY's compilatio
 **Consequence:** `\sde{}` is then never named before the method section. The new overview
 frame in `deck-comments-02-single-canon.md` has to introduce it. Do not tick this box until
 that entry is scheduled.
+
+---
+
+## Read-through of the built deck — 2026-09-22
+
+Five comments, all in the Introduction, all done. Each is quoted from `presentation.tex` as it
+stood that morning, and the comment itself is deleted from the source now that it is answered.
+
+### F0 "Optimization in practice" — the third bullet
+> this last one can maybe be not in this talk:? how to model a problem.
+> and how does the solver work?
+
+The bullet read *not here: modelling a problem in a domain, how the solver finds* and broke off
+mid-sentence — the line had been trimmed once too often. It is now two named things:
+*not in this talk: how to model a problem in a domain, and how a solver works*. These are the
+two scope questions a jury asks first, and fencing them off explicitly on the opening frame is
+worth the line.
+
+### I1 "Convex optimization in practice" — the `algorithms` box
+> format this so that it fits a bit better and we can distinguish that its 4 things.
+> maybe add commas too.
+
+Four algorithms separated by `\quad` read as two lines of prose. They are now commas plus a
+fixed first column set with `\makebox[2.7cm][l]`, so the two rows align into a grid: interior
+point / simplex (LP) on the left, operator splitting / active set (QP) on the right. Same
+content, same grouping as the old rows, transposed into columns.
+
+### F2 "DCP-based modelling languages" — the arrow, and the AMPL bullet
+> maybe we can add an arrow on top of cvxpy at the same time as 3? so that
+> we can better visually see that its now blue?
+
+Done. The word is wrapped in a `tikzpicture` with the arrow drawn under `visible on=<3->`, so
+the bounding box — and therefore the line height — is the same on all three beats and nothing
+reflows when the arrow appears. It costs 4mm of leading on that line, permanently.
+
+> \item AMPL, GAMS and JuMP do not implement DCP % maybe cut this if its not really important.
+> I agree, because we shouldn't mention things which we don't really use later on.
+
+Cut. Nothing in the presented deck names AMPL, GAMS or JuMP again; the backup *two ways to get
+the coefficients* is where they live.
+
+Also on this frame, and not from a comment: **`diamond2016cvxpy` is now cited here**, in the
+deck's grey attribution style. This is the frame that singles CVXPY out, and the deck had gone
+its whole length without citing the system it is about. See the References entry in
+`deck-comments-04-conclusion.md`.
+
+### I1b "Canonicalization" — the last note of the pipeline
+> we should maybe emphasize sparse matrices? and say this is the form
+> required by solvers.
+
+The note under `P, A, b, c` is now bold, with a second line: *the form the solver requires*.
+It is the only box on that strip the thesis touches, and the whole engine section is spent
+inside it.
+
+### I5 "Problem statement" — the note, and the trees
+> maybe we can put a newline here? before b-Ax?
+> also feel free to take more room with the trees on the left.
+
+Both. The note breaks after *one tree per cone constraint*, which was the element binding the
+picture's width on that side; the room it frees goes to the forest, whose scope is now at
+`scale=1.55` with the node radii grown 2.4mm → 3.5mm by hand (coordinates scale, absolute sizes
+do not).
+
+**Follow-up, same day** — the enlargement broke the arrow label:
+
+> can we move the trees to the left? the sparse derivative text is over it?
+
+It was. At `scale=1.55` the third tree reaches $x = 3.80$ and the arrow's landing point is
+pinned at $4.76$ — `rpanel` cannot move right without putting the arrowhead on the $\cone{K}$
+labels — which left under a centimetre of arrow for a two-line edge label needing about two, so
+`sparse derivative` sat on top of the tree. The forest scope now carries `xshift=-1.6cm`
+**before** `scale`, so a point $p$ lands at $-1.6 + 1.55p$ and the gap opens to 2.6cm. The note
+moves with it, to $(-1.6, -1.25)$, so it stays centred under the forest.
+
+It costs about 8% on the whole picture, which is width-bound by the forest on one side and the
+matrix on the other — the trees still render well above where they were before the scale went
+up. If this ever needs to be undone, the trade is: shrinking the scale closes the gap for free,
+shifting left opens it at 8%.
+
+### Later on 2026-09-22 — two follow-ups on the same two frames
+
+**I5 "Problem statement" — the arrow label.**
+> matrix stuffing — I don't want to introduce this term, maybe just sparse derivative?
+
+Done: the accent arrow reads `sparse derivative` over $\mmat{A} = \partial\mvec{h}/\partial\mvec{x}$.
+`matrix stuffing` is what the literature calls the step (`5-Introduction.tex:83-86`) and it stays
+in the thesis, but that arrow was the only place the deck would have used it — a name the talk
+does not go on to need is a cost with no return. `sparse derivative` says the same thing in the
+words the line underneath then writes down, and it is what `SparseDiffEngine` and the word
+Jacobian both land on later. B3a's header comment is updated to match; it referred to "what
+matrix stuffing produced for this problem".
+
+**F2 "DCP-based modelling languages" — cite the rest of them.**
+> instead of just citing this can we also cite yalmip and maybe grant and boyd for cvx?
+
+Yes, and all five rather than three — the bullet names five systems and citing three of them
+would read as an oversight. The grey line carries them in the bullet's own order, so the two
+lines read off each other:
+
+| System on the bullet | Citation | Key |
+|---|---|---|
+| CVX (MATLAB) | Grant and Boyd (2008) | `grant2008graph` |
+| Convex.jl (Julia) | Udell et al. (2014) | `udell2014convex` |
+| CVXR (R) | Fu et al. (2020) | `Fu_2020` |
+| YALMIP (MATLAB) | Löfberg (2004) | `lofberg2004yalmip` |
+| CVXPY (Python) | Diamond and Boyd (2016) | `diamond2016cvxpy` |
+
+For CVX this is `grant2008graph` — *Graph implementations for nonsmooth convex programs* — and
+not the `cvx` software entry, whose author field in `Document.bib` is "CVX Research, Inc." rather
+than Grant and Boyd. If you want the software cited instead, that entry exists and the bib is
+what would need changing, not the slide.
+
+The References frame goes from nine entries to thirteen.
+
+> maybe split the citations into two? … I meant the references slide.
+> … yeah sure two slides.
+
+**Two frames**, *References* and *References (continued)*, seven entries then six, alphabetical
+straight through. Each is a single full-width list at `\footnotesize`.
+
+Three shapes were tried and the reasoning is worth keeping, because this slide will be on screen
+longer than any other: one column of thirteen needed `\scriptsize` and filled the frame edge to
+edge; two columns on one frame fixed the density but gave every entry three short broken lines
+and forced abbreviated journal names; two frames give two clean lines per entry and the full
+titles. **Δ +1 presented frame, +1 shown slide, +0:00** — neither frame is spoken. The first is
+what the deck sits on during questions; the second is where it goes if the question is about a
+reference on it.
