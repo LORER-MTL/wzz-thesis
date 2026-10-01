@@ -23,7 +23,9 @@ see the Notes. The Introduction and the Example still twin each other on convex 
 DCP and the modelling language, and both copies stay: cutting the Introduction's DCP slide would
 leave a thesis titled *"…for Disciplined Convex Programming"* that never defines the term.
 
-Total budget below: **25:25**, leaving just under five minutes of slack in a 30-minute slot. Do not treat that as a surplus to fill. Roughly half of it is the price of having one
+Total budget below: **27:25** in a **35-minute** slot (updated 2026-09-30; it was 25:25 in a
+slot believed to be 30 minutes, and the practice run on that deck took about 30). Earlier:
+25:25, leaving just under five minutes of slack in a 30-minute slot. Do not treat that as a surplus to fill. Roughly half of it is the price of having one
 argument instead of two, and the other half is what the corrected Example rows say was being
 overspent all along.
 
@@ -34,9 +36,9 @@ overspent all along.
 | Title, *Optimization in practice*, first outline | 1:15 |
 | **Introduction** | **7:25** |
 | **Example** | **14:45** |
-| **SparseDiffEngine** | **19:35** |
-| **Results** | **23:00** |
-| **Conclusion** | **25:25** |
+| **SparseDiffEngine** | **20:35** |
+| **Results** | **25:00** |
+| **Conclusion** | **27:25** |
 
 If the Introduction has not ended by 7:25, do not try to make it up by talking faster later —
 drop to the sprint pace on the Example's first three slides, which are built for it.
@@ -54,7 +56,7 @@ Slides = overlay beats, so a two-beat frame is two clicks.
 |---|---|---|---|---|
 | | Title | 1 | 0:15 | — |
 | | Outline (×5, one per section) | 5 | 0:10 each | sprint |
-| **Introduction** | | **18** | **7:00** | |
+| **Introduction** | | **19** | **7:05** | |
 | 1 | Optimization in practice — *before the first outline* | 3 | 0:50 | |
 | 2 | Convex optimization | 2 | 0:40 | |
 | 3 | Conic form | 1 | 0:25 | sprint |
@@ -62,7 +64,7 @@ Slides = overlay beats, so a two-beat frame is two clicks.
 | 5 | Disciplined convex programming | 2 | 0:45 | |
 | 6 | DCP-based modelling languages | 3 | 0:35 | sprint |
 | 7 | Canonicalization | 2 | 1:10 | walk |
-| 8 | Problem statement | 1 | 1:05 | walk |
+| 8 | Problem statement | 2 | 1:10 | walk — the two pictures, then click for the derivative |
 | **Example** | | **9** | **7:10** | |
 | 9 | Fitting with regularization | 1 | 0:40 | |
 | 10 | Atoms | 1 | 0:40 | walk |
@@ -73,17 +75,19 @@ Slides = overlay beats, so a two-beat frame is two clicks.
 | 15 | Parameters in CVXPY | 1 | 0:40 | |
 | 16 | Parameters in the CVXPY backend | 1 | 0:35 | |
 | 17 | Structure in the problem data | 1 | 1:05 | walk |
-| **SparseDiffEngine** | | **7** | **4:40** | |
+| **SparseDiffEngine** | | **8** | **5:40** | |
 | 18 | Overview | 2 | 1:00 | the boxes, then the two structures they are for |
 | 19 | Compressed sparse row | 1 | 0:40 | punchline first |
 | 20 | Permuted-Dense matrix | 2 | 1:15 | walk |
 | 21 | Algorithms | 1 | 0:50 | the ten names, then the three representations |
 | 22 | Two passes | 1 | 0:55 | walk — the figure, then the two bullets |
-| **Results** | | **8** | **3:15** | |
+| 22b | What the symbolic pass stores | 1 | 1:00 | walk — left panel builds the map, right panel follows it |
+| **Results** | | **9** | **4:15** | |
 | 23 | A known bottleneck | 5 | 0:50 | one capture per click; read only the last one aloud |
 | 24 | Setup | 1 | 0:55 | the applications lead, then the call; the `cvxcore` deprecation is spoken here |
 | 25 | Performance profile | 1 | 0:55 | the figure does the work; the two numbers under it do not |
 | 26 | Peak memory | 1 | 0:35 | sprint — #3072 on the opener is the frame to point back to |
+| 26b | Parametric problems | 1 | 1:00 | the closing line first, then point at the two rows the tensor wins |
 | **Conclusion** | | **6** | **2:15** | |
 | 27 | Takeaways | 2 | 1:00 | |
 | 28 | Conclusion | 2 | 1:00 | |
@@ -437,3 +441,12 @@ Slides = overlay beats, so a two-beat frame is two clicks.
   into the talk. Numbering is positional, so everything after it moved up one: *what the symbolic
   pass stores* is now 13, *the parameter maps* 14, *parametric problems* 15, *the per-problem
   times* 16, *how to read a performance profile* 17.
+- **2026-09-30: two frames back, for a 35-minute slot.** The practice run of the 35-frame deck
+  took about 30 minutes, and the slot is 35. *What the symbolic pass stores* returns right after
+  *Canonicalization in two phases* (the box diagram gets one worked example), and *Parametric
+  problems* returns at the end of Results, cut to five columns (best CVXPY and diffengine on the
+  first canonicalization, cached tensor and diffengine on the re-solve). It is the only evidence
+  in the talk for the split that Takeaways claims. Net **+2 frames, +2 shown slides, +2:00**;
+  25:25 → 27:25, which against a 30-minute practice means about 32 on the day. The backups are
+  now regrouped behind a clickable index, so the backup numbering in the note above is stale:
+  ask for a backup by title, or use the index.

@@ -1,0 +1,451 @@
+diff --git a/3-Resume_sujet.tex b/3-Resume_sujet.tex
+index 617f190..77a5524 100644
+--- a/3-Resume_sujet.tex
++++ b/3-Resume_sujet.tex
+@@ -17,7 +17,7 @@ implémentations actuelles n'adopte ce point de vue. Pour les problèmes paramé
+ \texttt{CVXPY} met en cache une application linéaire des paramètres vers les données, coûteuse à
+ construire. Pour tout autre problème, la
+ compilation est répétée en entier à chaque résolution. Nous présentons
+-\texttt{SparseDiffEngine}, une librairie C \emph{open source} qui forme la jacobienne et la
++\texttt{SparseDiffEngine}, une \AL{bibliothèque} C \emph{open source} qui forme la jacobienne et la
+ hessienne directement à partir de la structure des expressions. Le calcul est divisé en deux
+ phases, une idée que nous empruntons aux interfaces des solveurs d'optimisation non
+ linéaire.
+diff --git a/5-Introduction.tex b/5-Introduction.tex
+index c4ccb66..5c98ffa 100644
+--- a/5-Introduction.tex
++++ b/5-Introduction.tex
+@@ -29,7 +29,8 @@ convexity of a problem can be verified automatically
+ \cite{grant2004disciplined, grant2006disciplined}.
+ These DCP-based languages include \texttt{CVX} \cite{cvx} in MATLAB, \texttt{CVXR} \cite{Fu_2020} in
+ R, \texttt{CVXPY} \cite{diamond2016cvxpy} in Python, and \texttt{Convex.jl}
+-\cite{udell2014convex} in Julia.
++\cite{udell2014convex} in Julia\AL{, whose internals were rewritten in 2024 on top of
++\texttt{JuMP}'s \texttt{MathOptInterface}~\cite{convexjl2024release}}.
+ 
+ In the meantime, modern general-purpose solvers \cite{mosekSolver, ge2022copt, clarabel}
+ have mostly transitioned towards conic programming, which generalizes linear programming and
+@@ -142,6 +143,14 @@ across the problem family.
+ The numeric phase then fills in new values at every solve.
+ This separation between structure and values is inspired by the interfaces of \ac{NLP}
+ solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
++\AL{The idea itself is older. Sparse direct solvers have long split a factorization into a
++symbolic analysis of the sparsity pattern and a numeric factorization that can be repeated
++for new values on the same pattern~\cite{george1981computer, davis2006direct,
++chen2008cholmod}, and Gustavson's sparse product has the same two
++phases~\cite{gustavson1978two}. Similarly, exploiting dense blocks inside a sparse Jacobian
++is standard in finite-element assembly and in nonlinear least-squares libraries such as
++\texttt{Ceres}~\cite{agarwal2023ceres}. The novelty of our approach is therefore
++architectural: applying these known ideas to the backend of a DCP modelling language.}
+ 
+ The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
+ numeric phase is often similar in cost to applying the matrix-vector product.
+@@ -903,9 +912,13 @@ In this Master's thesis, we make the following contributions:
+ \begin{enumerate}
+   \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that assembles
+   sparse Jacobians and Hessians directly from the expression structure, with no sparsity
+-  detection or graph colouring.
++  detection or graph colouring. \AL{Our main contribution within it is two matrix
++  representations, permuted dense and stacked permuted dense, and their kernels, which keep
++  the dense blocks of the problem data intact and process them with BLAS.}
+   \item We implement a canonicalization backend for \texttt{CVXPY} built on
+-  \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
++  \texttt{SparseDiffEngine}. \AL{It applies a symbolic and numeric split, borrowed from
++  \ac{NLP} solvers and sparse factorization, to canonicalization.} This backend avoids the
++  large upfront cost of the parameter tensor
+   while still caching computations for subsequent solves.
+   \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
+   backends.
+diff --git a/6-Revue_litterature.tex b/6-Revue_litterature.tex
+index 27bba5b..7d87ff6 100644
+--- a/6-Revue_litterature.tex
++++ b/6-Revue_litterature.tex
+@@ -478,7 +478,8 @@ library that the matrix is stored in (we write \texttt{SCIPY} for the backend an
+ When no backend is requested, \texttt{CVXPY} uses \texttt{cvxcore}, and substitutes
+ \texttt{COO} for a DPP problem with at least $1000$ parameter entries in total.
+ When canonicalization remains too slow, \texttt{CVXPYgen} can compile a DPP problem ahead of
+-time~\cite{schaller2022cvxpygen}. It generates C code specific to the problem family, with
++time~\cite{schaller2022cvxpygen}\AL{, following the earlier code generator
++\texttt{CVXGEN}~\cite{mattingley2012cvxgen} for small quadratic programs}. It generates C code specific to the problem family, with
+ the entries of the cached maps \eqref{eq:param-maps} written into the source as constants,
+ so a re-solve applies the parameter maps in compiled code.
+ 
+@@ -502,6 +503,23 @@ Secondly, the canonicalization backends store dense constant matrices as sparse
+ When dense blocks appear in the problem data, they are both stored in an inconvenient format
+ and computed without optimized BLAS kernels.
+ Our approach in Chapter~\ref{sec:Theme1} addresses these limitations.
++
++\begin{ALblock}
++Two earlier efforts answer the same question of how to make matrix stuffing cheaper.
++\texttt{cvxcore} itself began as \texttt{CVXcanon}~\cite{miller2015cvxcanon}, a C++
++rewrite of the Python matrix stuffing of early \texttt{CVXPY} versions, which was later
++renamed and absorbed into the library. It keeps the approach of this section, forming
++$\mmat{A}$ explicitly, and moves the work into compiled code. Diamond and Boyd take the
++opposite approach~\cite{diamond2016matrixfree}: they never form $\mmat{A}$, and represent
++each linear function in the problem as an abstract operator that supports only the
++products $\mmat{A}\mvec{x}$ and $\mmat{A}^\top\mvec{y}$. Such operators feed first-order or
++Krylov-based solvers directly and remove the cost of assembly altogether. Their scope is
++different from ours. Interior-point solvers such as \texttt{Clarabel} and \texttt{MOSEK},
++and operator-splitting solvers such as \texttt{SCS} and \texttt{OSQP} in their default
++direct mode, factorize a matrix built from $\mmat{A}$ and $\mmat{P}$, and therefore need
++these matrices explicitly. This thesis
++keeps the explicit matrix and reduces the cost of forming it.
++\end{ALblock}
+ %%
+ %%  COMPUTING DERIVATIVES
+ %%
+diff --git a/7-Theme1.tex b/7-Theme1.tex
+index 7c7604e..b3a8c19 100644
+--- a/7-Theme1.tex
++++ b/7-Theme1.tex
+@@ -4,16 +4,20 @@ This chapter presents \texttt{SparseDiffEngine}, our C library for assembling th
+ constraint and objective matrices of a canonicalized problem. The engine computes the same
+ derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
+ chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
+-implementation. Firstly, we split the computation into a symbolic pass, which computes and
++implementation.
++\begin{ALblock}
++Our main contribution is two new matrix classes. The data of most optimization problems is
++not only sparse but also structured, with dense blocks and diagonal patterns.
++The classes \texttt{permuted-dense} and \texttt{stacked-permuted-dense}
++keep these blocks intact, which lets us use dense storage and BLAS subroutines.
++In addition, we split the computation into a symbolic pass, which computes and
+ caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
+-This separation is particularly useful for compiling problems involving parameters, where
+-the structure is fixed but the numerical values can change.
+-Secondly, the data of most optimization problems is not only sparse but also
+-structured, with dense blocks and diagonal patterns.
+-We introduce two new matrix classes for this purpose,
+-\texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
+-dense storage and BLAS subroutines. Neither the two-phase approach nor the two matrix
+-classes exists in \texttt{CVXPY}'s backends. Together, they address the research gap we
++This two-phase approach is borrowed from \ac{NLP} solvers and sparse direct factorization,
++and we apply it to canonicalization. It is particularly useful for compiling problems
++involving parameters, where the structure is fixed but the numerical values can change.
++\end{ALblock}
++Neither the two matrix
++classes nor the two-phase approach exists in \texttt{CVXPY}'s backends. Together, they address the research gap we
+ identify in \S\ref{sec:research-gap}.
+ 
+ Other important design decisions differ from \texttt{CVXPY}'s backends for
+@@ -45,6 +49,16 @@ The matrix data structures and the computational kernels that operate on them ar
+ \texttt{utils/}, and \texttt{problem.c} collects the objective and constraints of a
+ problem and evaluates the values and derivatives that a solver asks for.
+ 
++\begin{ALblock}
++\texttt{SparseDiffEngine} was developed jointly by Daniel Cederberg and the author. The same
++library also serves as the differentiation engine of the disciplined nonlinear programming
++extension of \texttt{CVXPY}~\cite{cederberg2025disciplined}, which uses the atoms that canonicalization
++does not need, described in \S\ref{sec:theme1-atom-classes}. This thesis contributes the
++use of the engine for canonicalization: the \texttt{CVXPY} backend of
++\S\ref{sec:theme1-backend}, the re-solve path that caches the symbolic pass for parametric
++problems, and the benchmark study of Chapter~\ref{sec:Theme2}.
++\end{ALblock}
++
+ \subsection{Atom classes}\label{sec:theme1-atom-classes}
+ Atoms in the same subdirectory compute their derivatives in the same way.
+ Table~\ref{tab:atom-classes} lists the classes and how each computes its Jacobian.
+@@ -461,33 +475,35 @@ combinations.
+ \node[hdr, anchor=east] at (-1.45, -\dy)   {sPD};
+ \node[hdr, anchor=east] at (-1.45, -2*\dy) {sparse};
+ % cells: output type of B^\top A
+-\node[blas]  at (0, 0)          {PD};
+-\node[bblas] at (\dx, 0)        {sPD};
+-\node[mixed] at (2*\dx, 0)      {PD};
+-\node[bblas] at (0, -\dy)       {sPD};
+-\node[bblas] at (\dx, -\dy)     {sPD};
+-\node[mixed] at (2*\dx, -\dy)   {sPD};
+-\node[mixed] at (0, -2*\dy)     {PD};
+-\node[mixed] at (\dx, -2*\dy)   {sPD};
+-\node[hand]  at (2*\dx, -2*\dy) {sparse};
++% the second line in each cell names the kernel family, so the figure reads without colour
++\newcommand{\dcell}[2]{\shortstack{#1\\[-1pt]{\scriptsize\rmfamily #2}}}
++\node[blas]  at (0, 0)          {\dcell{PD}{(a)}};
++\node[bblas] at (\dx, 0)        {\dcell{sPD}{(b)}};
++\node[mixed] at (2*\dx, 0)      {\dcell{PD}{(c)}};
++\node[bblas] at (0, -\dy)       {\dcell{sPD}{(b)}};
++\node[bblas] at (\dx, -\dy)     {\dcell{sPD}{(b)}};
++\node[mixed] at (2*\dx, -\dy)   {\dcell{sPD}{(c)}};
++\node[mixed] at (0, -2*\dy)     {\dcell{PD}{(c)}};
++\node[mixed] at (\dx, -2*\dy)   {\dcell{sPD}{(c)}};
++\node[hand]  at (2*\dx, -2*\dy) {\dcell{sparse}{(d)}};
+ % legend
+ \node[blas, minimum width=0.42cm, minimum height=0.3cm]
+   at (-1.1, -3.15) {};
+-\node[font=\small, anchor=west] at (-0.8, -3.15) {one \texttt{dgemm}};
++\node[font=\small, anchor=west] at (-0.8, -3.15) {(a) one \texttt{dgemm}};
+ \node[bblas, minimum width=0.42cm, minimum height=0.3cm]
+-  at (4.3, -3.15) {};
+-\node[font=\small, anchor=west] at (4.6, -3.15) {\texttt{dgemm} per pair of blocks};
++  at (5.2, -3.15) {};
++\node[font=\small, anchor=west] at (5.5, -3.15) {(b) \texttt{dgemm} per pair of blocks};
+ \node[mixed, minimum width=0.42cm, minimum height=0.3cm]
+   at (-1.1, -3.75) {};
+-\node[font=\small, anchor=west] at (-0.8, -3.75) {hand-written sparse-dense};
++\node[font=\small, anchor=west] at (-0.8, -3.75) {(c) hand-written sparse-dense};
+ \node[hand, minimum width=0.42cm, minimum height=0.3cm]
+-  at (4.3, -3.75) {};
+-\node[font=\small, anchor=west] at (4.6, -3.75) {Gustavson's algorithm};
++  at (5.2, -3.75) {};
++\node[font=\small, anchor=west] at (5.5, -3.75) {(d) Gustavson's algorithm};
+ \end{tikzpicture}
+-\caption{Double dispatch of the transposed products $\mmat{B}^\top \mmat{A}$ and
++\caption[Double dispatch of the transposed products]{Double dispatch of the transposed products $\mmat{B}^\top \mmat{A}$ and
+ $\mmat{B}^\top \mmat{D} \mmat{A}$. Each cell names the representation of the result for one
+ combination of operand types (PD is permuted dense and sPD is stacked permuted dense), and
+-its colour indicates how the product is computed.}
++its colour \AL{and letter (a)--(d)} indicate how the product is computed.}
+ \label{fig:kernel-dispatch}
+ \end{figure}
+ 
+@@ -521,6 +537,25 @@ intersects the two sorted index vectors, the numeric pass multiplies the two blo
+ one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
+ on the sizes of the blocks and not on the global dimensions.
+ 
++\begin{ALblock}
++An elementary count makes this precise. Let $\mmat{X}_A \in \reals^{m_A \times n_A}$ and
++$\mmat{X}_B \in \reals^{m_B \times n_B}$, and let $s = |\mvec{r}_A \cap \mvec{r}_B|$ be the
++number of shared rows. The symbolic pass of \eqref{eq:pd-product} merges two sorted
++index vectors in $O(m_A + m_B)$ operations and allocates the $n_B \times n_A$ result. The
++numeric pass performs $n_B\, s\, n_A$ multiply-adds in one \texttt{dgemm}. For a stacked
++operand, both counts are summed over the pairs of blocks with intersecting rows. If the same
++blocks were stored as generic sparse matrices, Gustavson's algorithm would perform the same
++$n_B\, s\, n_A$ multiply-adds, but its symbolic pass would build the full
++pattern of the result, with $O(n_B\, s\, n_A)$ operations and one stored index per
++entry. The dense representations therefore reduce the symbolic pass and the index storage
++from the number of entries of a block to the number of its rows and columns. In the
++numeric pass they keep the same operation count and replace the index-driven sparse loop
++by a BLAS call, a gain in the constant factor rather than in the asymptotic cost. When one
++operand is dense and the other is generic sparse, the numeric pass costs one multiply-add
++per stored nonzero of the sparse operand in the shared rows, per column of the dense
++block.
++\end{ALblock}
++
+ \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
+ 
+ % (subsection reorganized per advisor review of 2026-08-19: define the split once, then group
+@@ -928,7 +963,8 @@ to one specific format.
+ 
+ In addition, for parametric problems, our contribution is the two-phase approach to computing
+ derivatives, which we borrow from the interfaces of \ac{NLP} solvers outlined in
+-\S\ref{sec:casadi}. Although the process is similar, what we store during the symbolic
++\S\ref{sec:casadi}\AL{, and which goes back to the symbolic and numeric factorizations of
++sparse direct solvers~\cite{george1981computer, chen2008cholmod}}. Although the process is similar, what we store during the symbolic
+ pass is very different. Instead of a compressed sparsity pattern and a graph colouring,
+ we store index maps and sparsity patterns, and the numeric pass writes the coefficient
+ values directly into them. The cached structure also covers every problem, not only the
+diff --git a/7-Theme2.tex b/7-Theme2.tex
+index e2875b0..606fe2d 100644
+--- a/7-Theme2.tex
++++ b/7-Theme2.tex
+@@ -31,8 +31,11 @@ numeric split on the seven \ac{DPP} parametric problems of the suite.
+ All measurements run single-threaded on a 2018 MacBook
+ Pro with a 6-core Intel Core i7-8850H and \SI{16}{\giga\byte} of memory. \texttt{CVXPY}'s
+ backends run on the released
+-version 1.9.2. The \texttt{diffengine} backend is in a separate branch,
+-available as a pull request:
++version 1.9.2. The \texttt{diffengine} backend was benchmarked on a separate branch.
++\AL{Since then, the pull request below was merged into the main branch of \texttt{CVXPY} on
++September 9, 2026. It adds \texttt{diffengine} as an opt-in backend for parameter-free
++problems. The parametric re-solve path of \S\ref{sec:bench-param} is still under review in
++a follow-up pull request (\#3449).}
+ \begin{center}
+   \url{https://github.com/cvxpy/cvxpy/pull/3448}
+ \end{center}
+@@ -202,8 +205,9 @@ about two of the cached tensor on every problem while ignoring the ruleset.
+ Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
+ the tensor on every problem, and its re-solve is also faster on five of the seven
+ problems.
+-\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster on $24$ of
+-the $25$ problems, as reported in Table~\ref{tab:oneshot-compile} and
++\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster
++\AL{than \texttt{cvxcore}} on $24$ of
++the $25$ problems\AL{, and faster than all three \texttt{CVXPY} backends on $21$}, as reported in Table~\ref{tab:oneshot-compile} and
+ Figure~\ref{fig:profiles}. On the parametric problems of Table~\ref{tab:param-tensor},
+ \texttt{COO} builds the parameter-to-data tensor faster than \texttt{cvxcore} on all seven.
+ \end{itemize}
+diff --git a/Document.bib b/Document.bib
+index 48d735e..4d35b89 100644
+--- a/Document.bib
++++ b/Document.bib
+@@ -268,9 +268,10 @@ Modeling languages
+    url    = {https://www.gurobi.com},
+ }
+ 
+-@manual{mosekSolver,
++@misc{mosekSolver,
+    author = {{MOSEK ApS}},
+    title = {{MOSEK optimization suite 11.0}},
++   howpublished = {\url{https://docs.mosek.com/11.0/intro/index.html}},
+    year = {2026}
+ }
+ 
+@@ -573,7 +574,7 @@ doi = {10.1007/BF01386029},
+ abstract = {A bound is obtained for the error incurred when derivatives are found in terms of differences. The method depends on the use of an auxiliary function, and it is shown that by appropriately choosing the auxiliary function one may considerably improve the estimate of the error, especially in the neighbourhood of a singularity. The result, in addition, provides an alternative form for the remainder term in interpolation formulae, and it can also be regarded as an extension of Cauchy's generalised mean-value theorem.},
+ journal = {Numerische Mathematik},
+ month = dec,
+-pages = {279–284},
++pages = {279--284},
+ numpages = {6}
+ }
+ 
+@@ -591,7 +592,7 @@ url = {https://doi.org/10.1145/356012.356013},
+ doi = {10.1145/356012.356013},
+ journal = {ACM Transactions on Mathematical Software},
+ month = dec,
+-pages = {337–343},
++pages = {337--343},
+ numpages = {7}
+ }
+ 
+@@ -607,7 +608,7 @@ issn = {1532-4435},
+ abstract = {Derivatives, mostly in the form of gradients and Hessians, are ubiquitous in machine learning. Automatic differentiation (AD), also called algorithmic differentiation or simply "auto-diff", is a family of techniques similar to but more general than backpropagation for efficiently and accurately evaluating derivatives of numeric functions expressed as computer programs. AD is a small but established field with applications in areas including computational uid dynamics, atmospheric sciences, and engineering design optimization. Until very recently, the fields of machine learning and AD have largely been unaware of each other and, in some cases, have independently discovered each other's results. Despite its relevance, general-purpose AD has been missing from the machine learning toolbox, a situation slowly changing with its ongoing adoption under the names "dynamic computational graphs" and "differentiable programming". We survey the intersection of AD and machine learning, cover applications where AD has direct relevance, and address the main implementation techniques. By precisely defining the main differentiation techniques and their interrelationships, we aim to bring clarity to the usage of the terms "autodiff", "automatic differentiation", and "symbolic differentiation" as these are encountered more and more in machine learning settings.},
+ journal = {Journal of Machine Learning Research},
+ month = jan,
+-pages = {5595–5637},
++pages = {5595--5637},
+ numpages = {43},
+ keywords = {backpropagation, differentiable programming}
+ }
+@@ -651,7 +652,7 @@ doi = {10.1287/ijoc.1080.0286},
+ abstract = {The computation of a sparse Hessian matrix H using automatic differentiation (AD) can be made efficient using the following four-step procedure: (1) Determine the sparsity structure of H, (2) obtain a seed matrix S that defines a column partition of H using a specialized coloring on the adjacency graph of H, (3) compute the compressed Hessian matrix B ≡ HS, and (4) recover the numerical values of the entries of H from B.The coloring variant used in the second step depends on whether the recovery in the fourth step is direct or indirect: a direct method uses star coloring and an indirect method uses acyclic coloring. In an earlier work, we had designed and implemented effective heuristic algorithms for these two NP-hard coloring problems. Recently, we integrated part of the developed software with the AD tool ADOL-C, which has recently acquired a sparsity detection capability. In this paper, we provide a detailed description and analysis of the recovery algorithms and experimentally demonstrate the efficacy of the coloring techniques in the overall process of computing the Hessian of a given function using ADOL-C as an example of an AD tool. We also present new analytical results on star and acyclic coloring of chordal graphs. The experimental results show that sparsity exploitation via coloring yields enormous savings in runtime and makes the computation of Hessians of very large size feasible. The results also show that evaluating a Hessian via an indirect method is often faster than a direct evaluation. This speedup is achieved without compromising numerical accuracy.},
+ journal = {INFORMS Journal on Computing},
+ month = apr,
+-pages = {209–223},
++pages = {209--223},
+ numpages = {15},
+ keywords = {acyclic coloring, automatic differentiation, combinatorial scientific computing, sparse Hessian computation, star coloring}
+ }
+@@ -756,7 +757,7 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
+   title  = {{CppAD}: A Package for {C++} Algorithmic Differentiation},
+   year   = {2023},
+   note   = {{Computational Infrastructure for Operations Research}},
+-  url    = {https://github.com/coin-or/CppAD}
++  howpublished = {\url{https://github.com/coin-or/CppAD}}
+ }
+ 
+ @article{zou2025vectorized,
+@@ -836,7 +837,7 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
+   author    = {Guennebaud, Ga{\"e}l and Jacob, Beno{\^i}t and others},
+   title     = {Eigen v3},
+   year      = {2010},
+-  url       = {http://eigen.tuxfamily.org}
++  howpublished = {\url{https://eigen.tuxfamily.org}}
+ }
+ 
+ @book{magnus2019matrix,
+@@ -1093,7 +1094,7 @@ Benchmarking
+   journal      = {SN Operations Research Forum},
+   volume       = {1},
+   number       = {1},
+-  pages        = {2},
++  note         = {Art. no. 2},
+   year         = {2020}
+ }
+ 
+@@ -1194,3 +1195,67 @@ Benchmarking
+   pages        = {239--267},
+   year         = {2002}
+ }
++
++%% Added for the examiner's report (A. Legrain): positioning and antecedents.
++@incollection{diamond2016matrixfree,
++  author    = {Diamond, Steven and Boyd, Stephen},
++  title     = {Matrix-free convex optimization modeling},
++  booktitle = {Optimization and its Applications in Control and Data Sciences},
++  series    = {Springer Optimization and Its Applications},
++  volume    = {115},
++  editor    = {Goldengorin, Boris},
++  publisher = {Springer},
++  pages     = {221--264},
++  year      = {2016}
++}
++
++@misc{miller2015cvxcanon,
++  author       = {Miller, John and Quigley, Paul and Zhu, Jack},
++  title        = {{CVXcanon}: Automatic canonicalization of disciplined convex programs},
++  howpublished = {EE364B project report, Stanford University},
++  year         = {2015}
++}
++
++@article{mattingley2012cvxgen,
++  author  = {Mattingley, Jacob and Boyd, Stephen},
++  title   = {{CVXGEN}: a code generator for embedded convex optimization},
++  journal = {Optimization and Engineering},
++  volume  = {13},
++  number  = {1},
++  pages   = {1--27},
++  year    = {2012}
++}
++
++@misc{convexjl2024release,
++  author       = {{The Convex.jl developers}},
++  title        = {{Convex.jl} release notes, v0.16.0},
++  howpublished = {\url{https://jump.dev/Convex.jl/stable/release_notes/}},
++  year         = {2024}
++}
++
++@book{george1981computer,
++  author    = {George, Alan and Liu, Joseph W. H.},
++  title     = {Computer Solution of Large Sparse Positive Definite Systems},
++  publisher = {Prentice-Hall},
++  address   = {Englewood Cliffs, NJ},
++  year      = {1981}
++}
++
++@article{chen2008cholmod,
++  author  = {Chen, Yanqing and Davis, Timothy A. and Hager, William W. and Rajamanickam,
++             Sivasankaran},
++  title   = {Algorithm 887: {CHOLMOD}, supernodal sparse {Cholesky} factorization and
++             update/downdate},
++  journal = {ACM Transactions on Mathematical Software},
++  volume  = {35},
++  number  = {3},
++  note    = {Art. no. 22},
++  year    = {2008}
++}
++
++@misc{agarwal2023ceres,
++  author       = {Agarwal, Sameer and Mierle, Keir and {The Ceres Solver Team}},
++  title        = {{Ceres Solver}},
++  howpublished = {\url{https://github.com/ceres-solver/ceres-solver}},
++  year         = {2023}
++}
+diff --git a/Document.tex b/Document.tex
+index a962c8c..70e2e79 100644
+--- a/Document.tex
++++ b/Document.tex
+@@ -54,7 +54,7 @@
+ \usepackage{flafter,placeins}
+ %%
+ %% Autres modules. / Other packages.
+-\usepackage{amsmath,color,soulutf8,longtable,colortbl,setspace,xspace,url,pdflscape,cite}
++\usepackage{amsmath,xcolor,soulutf8,longtable,colortbl,setspace,xspace,url,pdflscape,cite}
+ %%
+ %% Support des acronymes. / Support for acronyms.
+ \usepackage[nolist]{acronym}
+@@ -123,7 +123,7 @@
+ \BeforeBeginEnvironment{lstlisting}{\par\noindent\begin{minipage}{\linewidth}}
+ \AfterEndEnvironment{lstlisting}{\end{minipage}\par}
+ \usepackage{tikz} % TikZ graphics
+-\usetikzlibrary{arrows.meta,positioning,shapes,calc} % Common TikZ libraries
++\usetikzlibrary{arrows.meta,positioning,shapes,calc,patterns} % Common TikZ libraries
+ \usepackage{nicematrix} % Cell-level shading for the permuted-dense figures
+ \setcounter{MaxMatrixCols}{16} % Matrix environments default to 10 columns
+ \usepackage{blkarray} % Block arrays with row/column labels
+diff --git a/defs.tex b/defs.tex
+index d78daf9..5c36f88 100644
+--- a/defs.tex
++++ b/defs.tex
+@@ -91,3 +91,11 @@
+ %% new commands from CVXPY paper
+ \newcommand\plotzero{{\color{gray}0}}
+ \newcommand\annotatedop[2]{\phantom{\ensuremath{#2}}\hspace{2ex}\ensuremath{#1}\hspace{2ex}{\color{gray}\ensuremath{#2}}}
++
++%% Revision markup for the examiner's report (A. Legrain). Set \revmarksfalse for the
++%% final deposit: marked text then prints in black with no tag.
++\newif\ifrevmarks
++\revmarkstrue
++\newcommand{\ALtag}{\ifrevmarks\textsuperscript{\textsf{\scriptsize[AL]}}\,\fi}
++\newcommand{\AL}[1]{\ifrevmarks{\color{blue}\ALtag#1}\else#1\fi}
++\newenvironment{ALblock}{\ifrevmarks\color{blue}\ALtag\fi}{}

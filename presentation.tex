@@ -183,6 +183,9 @@
 \newcommand{\sdp}{\texttt{sparsediffpy}}
 \newcommand{\de}{\texttt{diffengine}}
 \newcommand{\cvxpy}{\texttt{CVXPY}}
+% A zero BLOCK (vector or matrix) in the example's c and [A b], bold like \mmat{I}; the
+% upright \plotzero of defs.tex stays for the scalar zeros (advisor, 2026-09-29).
+\newcommand{\plotzerob}{{\color{gray}\zeros}}
 
 \title{\large \bfseries A Lightweight Canonicalization Engine in C\\
 for Disciplined Convex Programming}
@@ -190,7 +193,7 @@ for Disciplined Convex Programming}
 \author{William Zijie Zhang}
 
 \date{Master's Thesis Defence \\[0.5ex]
-      {October 2nd}}
+      {October 2, 2026}}
 
 \begin{document}
 
@@ -226,8 +229,10 @@ for Disciplined Convex Programming}
 \titlepage
 \vspace{-4ex}
 \begin{center}\footnotesize
-Research director: Antoine Lesage-Landry \\[0.5ex]
-Department of Electrical Engineering, Polytechnique Montr\'eal
+Research supervisor: Antoine Lesage-Landry \\[0.5ex]
+Department of Electrical Engineering, Polytechnique Montr\'eal \\[1.5ex]
+% Jury as in 0-Definitions_Etudiant.tex (\monJury).
+{Jury: S\'ebastien Le Digabel (president) and Antoine Legrain (member)}
 \end{center}
 }
 
@@ -278,16 +283,16 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item operate a grid, control a car or a plane, manage a portfolio, design a circuit
-  \item the formulation says what you want, not how to compute it
+  \item operate a grid, control a car or a plane, manage a portfolio, design a circuit;
+  \item the formulation says what you want, not how to compute it;
   \item<2-> {\color{polyblue}the modelling language is the bridge between the formulation
-        and the solver}
+        and the solver;}
   % Two things named separately, not one run-on. The line used to read `not here: modelling a
   % problem in a domain, how the solver finds' and broke off mid-sentence; what it is fencing
   % off are the two questions the room is most likely to ask about scope, so each gets its own
   % clause.
   \item<3-> {\color{black!55}not in this talk: how to model a problem in a domain,
-        and how a solver works}
+        and how a solver works.}
 \end{itemize}
 \vfill
 \end{frame}
@@ -302,18 +307,18 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \begin{array}{ll}
     \underset{\mvec{x}}{\mbox{minimize}} & f_0(\mvec{x}) \\[0.5ex]
     \mbox{subject to}                    & f_i(\mvec{x}) \le 0 \\
-                                         & g_j(\mvec{x}) = 0
+                                         & g_j(\mvec{x}) = 0.
   \end{array}
 \]
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item variable $\mvec{x} \in \reals^n$
-  \item the equality constraints $g_j$ are affine, and $f_0$ and the $f_i$ are convex
+  \item variable $\mvec{x} \in \reals^n$;
+  \item the equality constraints $g_j$ are affine, and $f_0$ and the $f_i$ are convex;
   \item why care about convexity?
     \begin{itemize}\small
-      \item<2->[--] classic answer: a local optimum is a global optimum
-      \item<2->[--] modern answer: very actionable, because of reliable software
+      \item<2->[--] classic answer: a local optimum is a global optimum;
+      \item<2->[--] modern answer: very actionable, because of reliable software.
     \end{itemize}
 \end{itemize}
 
@@ -343,16 +348,16 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \begin{array}{ll}
     \underset{\mvec{x} \in \reals^n}{\mbox{minimize}}
       & \frac{1}{2}\mvec{x}^\top \mmat{P} \mvec{x} + \mvec{c}^\top \mvec{x} \\[0.6ex]
-    \mbox{subject to} & \mvec{b} - \mmat{A}\mvec{x} \in \cone{K}
+    \mbox{subject to} & \mvec{b} - \mmat{A}\mvec{x} \in \cone{K}.
   \end{array}
 \]
 
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item problem data: $\mmat{P} \in \symm^n_+$,
-        $\mmat{A} \in \reals^{m \times n}$, $\mvec{b} \in \reals^m$, $\mvec{c} \in \reals^n$
-  \item $\cone{K} \subseteq \reals^m$ is a product of standard cones
-  \item all general-purpose solvers target this standard form
+        $\mmat{A} \in \reals^{m \times n}$, $\mvec{b} \in \reals^m$, $\mvec{c} \in \reals^n$;
+  \item $\cone{K} \subseteq \reals^m$ is a product of standard cones;
+  \item all general-purpose solvers target this standard form.
 \end{itemize}
 
 \vfill
@@ -379,7 +384,9 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \begin{frame}{Convex optimization in practice}
 \vfill
 \begin{center}
-\fitfig{%
+% A taller cap than \fitfig's 0.70: the picture is the whole frame (advisor, 2026-09-29:
+% ``bigger if possible'').
+\adjustbox{max size={0.98\textwidth}{0.82\textheight}}{%
 \begin{tikzpicture}
   % ---- carry-over strip (level 1, in words only) -------------------------------
   % Five boxes, matching I0's chain. The modelling language is not one of them there either:
@@ -471,7 +478,7 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \node[bigbox, anchor=north west] (methex)
     at ([yshift=-24mm]panel.south west)
     {\makebox[2.7cm][l]{interior point,} operator splitting,\\[0.4ex]
-     \makebox[2.7cm][l]{simplex (LP),} active set (QP)};
+     \makebox[2.7cm][l]{simplex (LP),} active set (QP).};
   % Four algorithms, and they have to read as four. \makebox sets a fixed first column so the
   % two rows align, which \quad did not do, and the commas separate the items the alignment
   % pairs. The columns keep the old rows' grouping: the general-purpose methods above, the
@@ -479,8 +486,8 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
   \node[boxtitle, above=1mm of methex.north west, anchor=south west] {algorithms};
   \node[bigbox, fill=polyblue!22, anchor=north east] (solvex)
     at ([yshift=-24mm]panel.south east)
-    {{\color{black!55}commercial:}\ \ Gurobi, MOSEK, COPT\\[0.4ex]
-     {\color{black!55}open source:}\ \ Clarabel, SCS, HiGHS};
+    {{\color{black!55}commercial:}\ \ \texttt{Gurobi}, \texttt{MOSEK}, \texttt{COPT}\\[0.4ex]
+     {\color{black!55}open source:}\ \ \texttt{Clarabel}, \texttt{SCS}, \texttt{HiGHS}};
   \node[boxtitle, above=1mm of solvex.north west, anchor=south west] {solvers};
 \end{tikzpicture}}
 \end{center}
@@ -490,17 +497,17 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
 \begin{frame}{Disciplined convex programming}
 \vspace{-0.5ex}
 \begin{itemize}\small\bul
-  \item a grammar for specifying convex optimization problems
-  \item convex and concave functions are built by combining a set of \textbf{atoms}
-  \item each atom has known curvature, monotonicity, and sign
-  \item simple rules specify how atoms can be composed
+  \item a grammar for specifying convex optimization problems;
+  \item convex and concave functions are built by combining a set of \textbf{atoms};
+  \item each atom has known curvature, monotonicity, and sign;
+  \item simple rules specify how atoms can be composed.
 \end{itemize}
 
 \vspace{2.5ex}
 \onslide<2->{%
 \begin{itemize}\small\bul
-  \item a problem that follows the DCP rules is {\color{polyblue}convex by construction}
-  \item and can be solved globally and efficiently --- in theory and in practice
+  \item a problem that follows the DCP rules is {\color{polyblue}convex by construction};
+  \item and can be solved globally and efficiently --- in theory and in practice.
 \end{itemize}}
 
 \vfill
@@ -524,13 +531,13 @@ Department of Electrical Engineering, Polytechnique Montr\'eal
             {\alt<3->{\color{polyblue}\cvxpy{} (Python)}{\cvxpy{} (Python)}};
           \draw[-{Stealth[length=1.6mm]}, polyblue, thick, visible on=<3->]
             ([yshift=4.4mm]cp.north) -- ([yshift=1.2mm]cp.north);
-        \end{tikzpicture}
+        \end{tikzpicture};
   \item<2-> the two tasks of a DCP-based modelling language:
     \begin{itemize}\small
       \item<2->[--] \textbf{analysis}: verify that a high-level problem description
-            follows the DCP rules
+            follows the DCP rules;
       \item<2->[--] \textbf{synthesis}: build an equivalent problem in conic form,
-            called {\color{polyblue}canonicalization}
+            called {\color{polyblue}canonicalization}.
     \end{itemize}
 \end{itemize}
 
@@ -606,7 +613,7 @@ L\"ofberg (2004); Diamond and Boyd (2016).}
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item<2-> {\color{polyblue}Our focus is on improving the canonicalization backend
-   of CVXPY}
+   of \cvxpy{}.}
 \end{itemize}
 \end{frame}
 
@@ -765,16 +772,44 @@ L\"ofberg (2004); Diamond and Boyd (2016).}
   % the thesis, and is the right answer if someone from the floor uses it.
   % This is the only place the derivative framing appears before `Permuted-Dense matrix' opens
   % on the word Jacobian, so the second line is not decoration -- say it.
-  \draw[flow, accent] (forest) --
-    node[edgelab, text=polyblue, align=center]
+  % Two beats (2026-10-01): beat 1 is the two pictures, read through the bullets below; beat 2
+  % lights the arrow and puts the label on it, so the derivative is said on its own click.
+  % `alt' and `visible on', not \only: the label holds its space on both beats, nothing moves.
+  \draw[flow, alt=<2->{accent}{}] (forest) --
+    node[edgelab, text=polyblue, align=center, visible on=<2->]
       {sparse derivative\\[0.2ex]$\mmat{A} = \partial\mvec{h}/\partial\mvec{x}$} (rpanel);
 \end{tikzpicture}}
 \end{center}
 \vspace{1ex}
+% The two bullets name the figures rather than point at them (advisor, 2026-09-29: ``left:''
+% and ``right:'' left the room asking what they referred to).
 \begin{itemize}\small\bul
-  \item left: expression tree representation with many different constraints (rows)
-  and variables (columns).
-  \item right: one single sparse constraint matrix with all variables stacked together.
+  \item the expression trees: many different constraints (rows) and variables (columns);
+  \item the matrix $[\mmat{A}\ \ \mvec{b}]$: one single sparse constraint matrix with all
+        variables stacked together.
+\end{itemize}
+\end{frame}
+
+% --- CONTRIB ----------------------------------------------------------------------
+%  New 2026-09-30, from the advisor's annotated deck: ``contributions should be stated at this
+%  point, even if not all is introduced''. Placed after Problem statement rather than straight
+%  after Canonicalization, so the backend's job is on screen when its contributions are named.
+%  The list is 5-Introduction.tex's own (In this Master's thesis, we make the following
+%  contributions), in the deck's words; permuted dense is named here and defined in the
+%  engine section. The takeaways frame closes on the same list.
+%  The [--] line is why existing AD tools do not do the job: a sub-bullet, not a third item,
+%  since it is not a contribution. Source: 6-Revue_litterature.tex:514-519.
+\begin{frame}{Overview of the contributions}
+\vspace{-0.5ex}
+\begin{itemize}\small\bul
+  \item \sde{}, a C library that computes sparse Jacobians and Hessians directly from the
+        expression trees, with {\color{polyblue}new matrix representations} that keep the
+        dense blocks of the problem data dense;
+  \begin{itemize}\small
+    \item[--] existing AD libraries target dense derivatives, or gradients of scalar
+          functions; the solver needs the explicit sparse matrices;
+  \end{itemize}
+  \item a new canonicalization backend for CVXPY which we compare against existing methods.
 \end{itemize}
 \end{frame}
 
@@ -798,23 +833,23 @@ L\"ofberg (2004); Diamond and Boyd (2016).}
 %  is a line under the display instead. `problem family' / `problem instance' moved to B3b,
 %  where the parameters are on screen.
 %  Source: 5-Introduction.tex:349-364 (the problem, the data, the parameters).
-\begin{frame}{Fitting with regularization}
+\begin{frame}{Example: fitting with regularization}
 \recallstrip[real world]{1}
 
 \vspace{2ex}
 \[
   \begin{array}{ll}
     \mbox{minimize}   & \|\mmat{F}\mvec{x}-\mvec{g}\|_2 + \mu \|\mvec{x}\|_2 \\[0.3ex]
-    \mbox{subject to} & \mvec{x} \ge \zeros
+    \mbox{subject to} & \mvec{x} \ge \zeros.
   \end{array}
 \]
 
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item variable $\mvec{x} \in \reals^n$, data $\mmat{F} \in \reals^{m \times n}$,
-        parameters $\mvec{g} \in \reals^m$ and $\mu \ge 0$
-  \item similar to least-squares
-  \item physical constraint such as non-negativity of the solution
+        parameters $\mvec{g} \in \reals^m$ and $\mu \ge 0$;
+  \item similar to least-squares;
+  \item physical constraint such as non-negativity of the solution.
 \end{itemize}
 \end{frame}
 
@@ -823,7 +858,7 @@ L\"ofberg (2004); Diamond and Boyd (2016).}
 %  the tree: the library is what the code and the tree are both instances of.
 \begin{frame}{Atoms}
 \recallstrip{1}
-{\small Some atoms in the CVXPY library:}
+{\small Some atoms in the \cvxpy{} library:}
 
 \vspace{1.5ex}
 \begin{center}\footnotesize
@@ -948,7 +983,7 @@ $\bigcirc$ variable \quad $\square$ parameter}
     \mbox{subject to}
       & \mvec{x} \ge \zeros \\
       & (t_1,\ \mmat{F}\mvec{x} - \mvec{g}) \in \cone{K}_{\mathrm{soc},\, m+1} \\
-      & (t_2,\ \mvec{x}) \in \cone{K}_{\mathrm{soc},\, n+1}
+      & (t_2,\ \mvec{x}) \in \cone{K}_{\mathrm{soc},\, n+1}.
   \end{array}
 \]
 
@@ -964,8 +999,8 @@ $\cone{K} = \reals_+^n \times \cone{K}_{\mathrm{soc},\, m+1}
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item the nonlinear norms are replaced by new variables $t_1$, $t_2$
-  \item {\color{polyblue}every constraint is an affine function belonging to a cone}
+  \item the nonlinear norms are replaced by new variables $t_1$, $t_2$;
+  \item {\color{polyblue}every constraint is an affine function belonging to a cone.}
 \end{itemize}
 \end{frame}
 
@@ -1007,7 +1042,7 @@ $\mvec{c}^\top =
 \begin{blockarray}{ccc}
  t_1 & t_2 & \mvec{x} \\
 \begin{block}{[ccc]}
- 1 & \mu & \plotzero \\
+ 1 & \mu & \plotzerob \\
 \end{block}
 \end{blockarray}
 \qquad
@@ -1015,11 +1050,11 @@ $\mvec{c}^\top =
 \begin{blockarray}{cccc}
  t_1 & t_2 & \mvec{x} & \mvec{b} \\
 \begin{block}{[cccc]}
- \plotzero & \plotzero & -\mmat{I} & \plotzero \\
- -1        & \plotzero & \plotzero & \plotzero \\
- \plotzero & \plotzero & -\mmat{F} & -\mvec{g} \\
- \plotzero & -1        & \plotzero & \plotzero \\
- \plotzero & \plotzero & -\mmat{I} & \plotzero \\
+ \plotzerob & \plotzerob & -\mmat{I} & \plotzerob \\
+ -1         & \plotzero  & \plotzerob & \plotzero \\
+ \plotzerob & \plotzerob & -\mmat{F} & -\mvec{g} \\
+ \plotzero  & -1         & \plotzerob & \plotzero \\
+ \plotzerob & \plotzerob & -\mmat{I} & \plotzerob \\
 \end{block}
 \end{blockarray}$}
 \end{center}
@@ -1043,7 +1078,7 @@ $\mvec{c}^\top =
 \begin{frame}[fragile]{Parameters in CVXPY}
 \recallstrip[\cvxpy{} problem]{1}
 \vspace{-1ex}
-{\small Solving the same problem for different values of the parameters}
+{\small Solving the same problem for different values of the parameters:}
 
 \vspace{1ex}
 \begin{center}
@@ -1066,7 +1101,7 @@ for _ in range(trials):
 \vspace{1ex}
 \begin{itemize}\small\bul
   \item \cvxpy{} can {\color{polyblue}reuse the problem instance} for different parameter
-        values
+        values.
 \end{itemize}
 % `mus' is written out rather than left to the room's imagination: the loop is the slide, and
 % a bare `for mu_value in mus' left the one thing being swept undefined. A fixed list, not a
@@ -1107,7 +1142,7 @@ $\mvec{c}^\top =
 \begin{blockarray}{ccc}
  t_1 & t_2 & \mvec{x} \\
 \begin{block}{[ccc]}
- \color{black!35}1 & \color{polyblue}\mu & \color{black!35}\plotzero \\
+ \color{black!35}1 & \color{polyblue}\mu & \color{black!35}\plotzerob \\
 \end{block}
 \end{blockarray}
 \qquad
@@ -1115,19 +1150,19 @@ $\mvec{c}^\top =
 \begin{blockarray}{cccc}
  t_1 & t_2 & \mvec{x} & \mvec{b} \\
 \begin{block}{[cccc]}
- \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{I} & \color{black!35}\plotzero \\
- \color{black!35}-1        & \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}\plotzero \\
- \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{F} & \color{polyblue}-\mvec{g} \\
- \color{black!35}\plotzero & \color{black!35}-1        & \color{black!35}\plotzero & \color{black!35}\plotzero \\
- \color{black!35}\plotzero & \color{black!35}\plotzero & \color{black!35}-\mmat{I} & \color{black!35}\plotzero \\
+ \color{black!35}\plotzerob & \color{black!35}\plotzerob & \color{black!35}-\mmat{I} & \color{black!35}\plotzerob \\
+ \color{black!35}-1         & \color{black!35}\plotzero  & \color{black!35}\plotzerob & \color{black!35}\plotzero \\
+ \color{black!35}\plotzerob & \color{black!35}\plotzerob & \color{black!35}-\mmat{F} & \color{polyblue}-\mvec{g} \\
+ \color{black!35}\plotzero  & \color{black!35}-1         & \color{black!35}\plotzerob & \color{black!35}\plotzero \\
+ \color{black!35}\plotzerob & \color{black!35}\plotzerob & \color{black!35}-\mmat{I} & \color{black!35}\plotzerob \\
 \end{block}
 \end{blockarray}$}
 \end{center}
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item the {\color{polyblue}structure of the problem stays fixed}: a zero stays a zero
-  \item most of the problem data is constant
+  \item the {\color{polyblue}structure of the problem stays fixed}: a zero stays a zero;
+  \item most of the problem data is constant.
 \end{itemize}
 \end{frame}
 
@@ -1231,8 +1266,8 @@ $\mvec{c}^\top =
 \end{column}
 \begin{column}{0.52\textwidth}
 \begin{itemize}\small\bul
-  \item most optimization problems have similar structure
-  \item exploiting structure while computing a sparse derivative is not straightforward
+  \item most optimization problems have similar structure;
+  \item exploiting structure while computing a sparse derivative is not straightforward.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -1268,7 +1303,7 @@ $\mvec{c}^\top =
 %  Spoken, as before: an atom picks its representation when it allocates its Jacobian, and
 %  the kernels dispatch on what they are handed (7-Theme1.tex:121-127); the dispatch half is
 %  the frame two on.
-\begin{frame}{Overview}
+\begin{frame}{Contribution}
 \vspace{-0.5ex}
 {\small \sde{} is a small C library that computes sparse {\color{polyblue}Jacobians} and
 {\color{polyblue}Hessians} from the expression trees of \cvxpy{} atoms.}
@@ -1318,11 +1353,16 @@ problem data.
 \onslide<2->{%
 \vspace{1.5ex}
 \begin{itemize}\small\bul
-  \item {\color{polyblue}problem level}: the canonicalized data is mostly zeros
-  \item {\color{polyblue}block level}: each data matrix enters as a dense block inside it
+  \item {\color{polyblue}problem level}: the structure is fixed and mostly zeros;
+  \item {\color{polyblue}block level}: there are sometimes dense blocks which shouldn't be treated as sparse.
 \end{itemize}}
 \end{frame}
 
+% --- CSR ----------------------------------------------------------------------------
+%  The format itself, before the three representations that are built on it. The grey
+%  attribution follows I0b's pattern and cites davis2006direct -- the standard reference for
+%  the compressed formats and the algorithms over them; it is the book to name if the floor
+%  asks where CSR/CSC come from. On References, between the CVXPY suite and Diamond.
 \begin{frame}[fragile]{Compressed sparse row (CSR) matrix}
 \vfill
 \begin{columns}[c,onlytextwidth]
@@ -1350,11 +1390,12 @@ double vals[] = {1,  2,  3,  4,  5,  6};
 
 \vspace{2ex}
 \begin{itemize}\small\bul
-  \item CVXPY stores all problem data as CSR matrices
-  \item Compressed sparse column (CSC) matrices are preferred for column-oriented operations
-  \item CSR/CSC matrices are the format that most solvers expect
+  \item \cvxpy{} stores all problem data as CSR matrices;
+  \item compressed sparse column (CSC) matrices are preferred for column-oriented operations;
+  \item CSR/CSC matrices are the format that most solvers expect.
 \end{itemize}
 \vfill
+{\scriptsize\color{black!55} Davis (2006).}
 \end{frame}
 % --- SC2 --------------------------------------------------------------------------
 %  The thesis's own figure, fig:permuted-dense at 7-Theme1.tex:206-272, put on the slide
@@ -1474,8 +1515,8 @@ some row and column selections.
 \onslide<2->{%
 \vspace{0.5ex}
 \begin{itemize}\footnotesize\bul
-  \item unlocks dense linear algebra storage and operations.
-  \item BLAS: basic linear algebra subprograms are highly optimized dense operations.
+  \item unlocks dense linear algebra storage and operations;
+  \item BLAS: basic linear algebra subprograms are highly optimized dense operations;
   \item the stacked version can exploit different blocks at disjoint rows and columns.
 \end{itemize}
 
@@ -1594,8 +1635,8 @@ some row and column selections.
 \vspace{0.3ex}
 \begin{itemize}\small\bul
   \item $\mmat{A}$ is a {\color{polyblue}Jacobian}; $\mmat{B}$ and
-        $\mmat{D} = \diag(\mvec{d})$ are problem data
-  \item {\color{polyblue}ten affine operations cover most of the atom library}
+        $\mmat{D} = \diag(\mvec{d})$ are problem data;
+  \item {\color{polyblue}ten affine operations cover most of the atom library};
   \item each operation has a corresponding kernel for every matrix representation.
 \end{itemize}
 \end{frame}
@@ -1607,6 +1648,8 @@ some row and column selections.
 %  was room for the mechanism again. It is the ONLY frame of the parametric argument that comes
 %  back: `what the symbolic pass stores', `the parameter maps' and `parametric problems' stay
 %  backups, and the numbers they carry are the one closing line below instead of a table.
+%  UPDATE 2026-09-30: `what the symbolic pass stores' (next frame) and `parametric problems'
+%  (end of Results) are back in the main deck too; `the parameter maps' stays a backup.
 %  Placed at the end of the engine section, not in a section of its own -- the section builds
 %  three representations and then the algorithms over them, and this is what those algorithms
 %  are split BY. SC3's own comment already carries "each kernel is a pair of functions, one per
@@ -1656,8 +1699,111 @@ some row and column selections.
 
 \vspace{1.5ex}
 \begin{itemize}\small\bul
-  \item re-solving a parametrized problem costs {\color{polyblue}one numeric pass}
+  \item re-solving a parametrized problem costs {\color{polyblue}one numeric pass}.
 \end{itemize}
+\end{frame}
+
+% --- PC2 -------------------------------------------------------------------------
+%  RESTORED to the main deck 2026-09-30: the slot is 35 minutes and the practice ran ~30, so
+%  two frames came back. This one gives `Canonicalization in two phases', just before it, one
+%  worked example. History of the demotion kept below.
+%  Q: "what does the symbolic pass actually store?"  Demoted 2026-09-22. PC1, `Two passes', was
+%  demoted with it and restored to the engine section the same day; this is the frame behind it.
+%  Shown cold, so the lead sentence has to carry what the frame before it used to: the three
+%  kinds of stored structure are named there, and the figure is one of them worked out.
+%  The mechanism, with the worked example. fig:sum-idx-map is lifted from
+%  7-Theme1.tex:619-697; its local `nz' style is renamed `sm' here, because the deck's
+%  preamble already defines `nz' for the sparsity-pattern figure (I4).
+%  Three-item list: 7-Theme1.tex:533-534. Closing line: 7-Theme1.tex:706-713.
+\begin{frame}{What the symbolic pass stores}
+% \vspace tightened 2026-09-22 (-1ex -> -2ex, 1.5ex -> 0.5ex): the frame was 6pt overfull as a
+% presented slide and the demotion did not fix it. Nothing else on it moved.
+\vspace{-1ex}
+{\small Depending on the kernel, the stored structure is a \textbf{sparsity pattern}, a
+\textbf{block layout}, or an \textbf{index map}.}
+
+\vspace{0.5ex}
+\begin{center}
+\fitfig{%
+\begin{tikzpicture}[
+  sm/.style={draw=black!60, fill=blue!12, minimum width=0.78cm, minimum height=0.5cm,
+             font=\small\ttfamily, anchor=center},
+  outc/.style={draw=black!60, minimum width=0.78cm, minimum height=0.5cm,
+               font=\small\ttfamily, anchor=center},
+  zero/.style={font=\normalsize, text=black!50, anchor=center},
+  map/.style={-{Stealth[length=2mm]}, black!55},
+  ttl/.style={font=\small\itshape, anchor=center},
+  brk/.style={black!70, line width=0.5pt},
+]
+\def\dx{1.05}
+\def\dy{0.72}
+\def\oy{-2.95}
+% ---------- left panel: symbolic ----------
+\node[ttl] at (\dx, 0.9) {symbolic pass, once};
+\node[sm] (L0) at (0, 0)          {$v_0$};
+\node[sm] (L1) at (\dx, 0)        {$v_1$};
+\node[zero] at (2*\dx, 0)         {$\cdot$};
+\node[sm] (L2) at (0, -\dy)       {$v_2$};
+\node[zero] at (\dx, -\dy)        {$\cdot$};
+\node[sm] (L3) at (2*\dx, -\dy)   {$v_3$};
+\node[zero] at (0, -2*\dy)        {$\cdot$};
+\node[sm] (L4) at (\dx, -2*\dy)   {$v_4$};
+\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
+\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
+\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
+        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
+\node[outc] (M0) at (0, \oy)      {$w_0$};
+\node[outc] (M1) at (\dx, \oy)    {$w_1$};
+\node[outc] (M2) at (2*\dx, \oy)  {$w_2$};
+\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
+\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
+        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
+\draw[map] (L0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (M0.north east);
+\draw[map] (L1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (M1.north east);
+\draw[map] (L2.south) to[bend right=12] (M0.north west);
+\draw[map] (L3.south) to[bend right=12] (M2.north west);
+\draw[map] (L4.south) -- (M1.north);
+\node[font=\small, anchor=north] at (\dx, \oy-0.5)
+  {$\mathtt{map} = (0, 1, 0, 2, 1)$};
+% ---------- right panel: numeric ----------
+\begin{scope}[xshift=6.6cm]
+\node[ttl] at (\dx, 0.9) {numeric pass, per evaluation};
+\node[sm] (R0) at (0, 0)          {2.0};
+\node[sm] (R1) at (\dx, 0)        {3.0};
+\node[zero] at (2*\dx, 0)         {$\cdot$};
+\node[sm] (R2) at (0, -\dy)       {1.5};
+\node[zero] at (\dx, -\dy)        {$\cdot$};
+\node[sm] (R3) at (2*\dx, -\dy)   {0.5};
+\node[zero] at (0, -2*\dy)        {$\cdot$};
+\node[sm] (R4) at (\dx, -2*\dy)   {4.0};
+\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
+\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
+\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
+        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
+\node[outc] (S0) at (0, \oy)      {3.5};
+\node[outc] (S1) at (\dx, \oy)    {7.0};
+\node[outc] (S2) at (2*\dx, \oy)  {0.5};
+\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
+\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
+        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
+\draw[map] (R0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (S0.north east);
+\draw[map] (R1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (S1.north east);
+\draw[map] (R2.south) to[bend right=12] (S0.north west);
+\draw[map] (R3.south) to[bend right=12] (S2.north west);
+\draw[map] (R4.south) -- (S1.north);
+\node[font=\small, anchor=north] at (\dx, \oy-0.5)
+  {$\mathtt{out[map[}j\mathtt{]]} \mathrel{+}= \mathtt{vals[}j\mathtt{]}$};
+\end{scope}
+\end{tikzpicture}}
+\end{center}
+
+\vspace{0.2ex}
+\begin{center}\small
+The \texttt{sum} atom: the symbolic pass records where each nonzero lands, the numeric pass
+follows the fixed arrows.\\[0.5ex]
+{\color{polyblue}\texttt{index}, \texttt{transpose} and \texttt{broadcast} build the same map,
+with a copy in place of an addition.}
+\end{center}
 \end{frame}
 
 % ==================================================================================
@@ -1818,24 +1964,38 @@ applications} of convex optimization.}
 data, _, _ = problem.get_problem_data(
     solver=cp.CLARABEL,
     canon_backend="DIFFENGINE",   # CPP | SCIPY | COO
-    ignore_dpp=True)
+    ignore_dpp=True)              # no DPP cache: full canonicalization
 \end{lstlisting}
 \end{minipage}
 \end{center}
+% What ignore_dpp is, on the slide (advisor, 2026-09-29: ``what is that? and why set to this
+% here?''). It makes the four backends do the same one-shot job; the cached DPP tensor is the
+% parametric comparison, backups `disciplined parametrized programming' and `parametric
+% problems'.
+{\footnotesize\color{black!55} \texttt{ignore\_dpp=True}: parameters take their current
+values, so all four backends do the same job, a full canonicalization.}
 
-\vspace{2ex}
+\vspace{1.2ex}
+{\small \cvxpy{}'s backends:}
+\vspace{0.5ex}
+% Fill says what the backend is written in -- the compiled ones light, the two Python ones a
+% step bluer -- so the row reads as "two compiled, two interpreted" before a word is said.
+% \de{} is the compiled fill with the accent border on it: the border, not the tint, is what
+% carries "this is the one that is new", which leaves the tint free to mean the language.
 \begin{center}
 \fitfig{%
 \begin{tikzpicture}[x=1cm, y=1cm]
   \node[art, text width=2.7cm, align=center, minimum height=1.25cm] (b1) at (0,0)
     {{\ttfamily CPP} ({\ttfamily cvxcore})\\[0.7ex]
      {\footnotesize\color{black!55}C++, the default}};
-  \node[art, text width=2.7cm, align=center, minimum height=1.25cm] (b2) at (3.3,0)
+  \node[art, text width=2.7cm, align=center, minimum height=1.25cm,
+        fill=polyblue!22] (b2) at (3.3,0)
     {{\ttfamily SCIPY}\\[0.7ex]{\footnotesize\color{black!55}Python}};
-  \node[art, text width=2.7cm, align=center, minimum height=1.25cm] (b3) at (6.6,0)
+  \node[art, text width=2.7cm, align=center, minimum height=1.25cm,
+        fill=polyblue!22] (b3) at (6.6,0)
     {{\ttfamily COO}\\[0.7ex]{\footnotesize\color{black!55}Python}};
   \node[art, text width=2.7cm, align=center, minimum height=1.25cm,
-        fill=polyblue!14] (b4) at (9.9,0)
+        draw=polyblue, very thick] (b4) at (9.9,0)
     {\de{}\\[0.7ex]{\footnotesize\color{black!55}C}};
 \end{tikzpicture}}
 \end{center}
@@ -1869,7 +2029,9 @@ data, _, _ = problem.get_problem_data(
 fastest backend on that problem:}
 \vspace{-0.5ex}
 \begin{center}
-\includegraphics[width=0.72\textwidth]{performance_profile_thesis}
+% Deck copies (thicker lines, boxed axes, sans legend so COO does not read as C-zero-zero):
+% Jacobian-accumulation/canonicalization/plot_deck_profiles.py.
+\includegraphics[width=0.82\textwidth]{performance_profile_deck}
 \end{center}
 
 % -2.5ex -> -3.6ex: the frame was 2.3pt overfull, a long-standing warning and the only one
@@ -1885,23 +2047,69 @@ fast as the best \cvxpy{} backend on $17$.}
 % --- R2b --------------------------------------------------------------------------
 %  Promoted out of the backups: the speed profile on its own is not a fair picture.
 %  Panel (b) of fig:profiles. Source: 7-Theme2.tex:77-82.
-%  NOTE: the standalone memory_profile_thesis.pdf labels its x axis "within factor tau of the
-%  best backend", where panel (b) of the combined figure says "lowest-memory backend". That
-%  discrepancy is in the source figures, not introduced here.
+%  The deck copy (memory_profile_deck.pdf) labels its x axis "lowest-memory backend", as
+%  panel (b) of the combined thesis figure does.
 \begin{frame}{Peak memory}
 \vspace{-0.5ex}
 {\small The same profile with $t_{p,s}$ replaced by the growth of the process's peak resident
 memory during canonicalization:}
 \vspace{-0.5ex}
 \begin{center}
-\includegraphics[width=0.60\textwidth]{memory_profile_thesis}
+\includegraphics[width=0.82\textwidth]{memory_profile_deck}
 \end{center}
 
-\vspace{-1ex}
+% -3.6ex, as on `Performance profile': the figure is now the same size as that one.
+\vspace{-3.6ex}
 \begin{center}\small
 \texttt{SCIPY} has the lowest peak memory on $16$ of the $25$ problems.\\[0.4ex]
 {\color{black!55}\footnotesize \de{} matches \texttt{CPP} and \texttt{COO} in geometric mean,
 and uses about $1.4\times$ the memory of \texttt{SCIPY}.}
+\end{center}
+\end{frame}
+
+% --- R3 -------------------------------------------------------------------------
+%  RESTORED to the main deck 2026-09-30 (35-minute slot, practice ~30): the only evidence in the
+%  talk for the second contribution, the symbolic and numeric split, which Takeaways claims.
+%  Cut from 8 columns to 5 for the main deck: CPP/SCIPY/COO collapse to their best (the min of
+%  the three, always COO or SCIPY here, so no dash survives), and the Ratio column went -- the
+%  closing line carries it. On-slide wording avoids `DPP', as the rest of the presented deck
+%  does (see PC1's comment): the tensor is `CVXPY's cached tensor', and `the parameter maps'
+%  (backup) is the frame for it.
+%  History: demoted 2026-09-22 -- "the mechanism is worth a frame, a 7 x 8 table of timings is
+%  not". The two rows where the tensor wins are the B3 backup's subject (`what the two-phase
+%  split costs').
+%  Source: tab:param-tensor, 7-Theme2.tex:165-180; the two-regime explanation 7-Theme2.tex:184-189.
+\begin{frame}{Parametric problems}
+\vspace{-1ex}
+{\scriptsize\color{black!55} The seven parametric problems of the suite \textbullet{} times in
+seconds \textbullet{} re-solve: \cvxpy{}'s cached tensor against one numeric pass}
+
+\vspace{1.5ex}
+\begin{center}\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l rr rr@{}}
+\toprule
+& \multicolumn{2}{c}{first canonicalization} & \multicolumn{2}{c}{re-solve} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Benchmark & best \cvxpy{} & \de{} & cached tensor & \de{} \\
+\midrule
+ParamSmallMatrixStuffing   &  0.40 & \textbf{0.21} & 0.005 & \textbf{0.001} \\
+ParamConeMatrixStuffing    &  0.26 & \textbf{0.14} & 0.003 & \textbf{0.001} \\
+SimpleFullyParametrizedLP  &  2.17 & \textbf{0.54} & 0.261 & \textbf{0.126} \\
+ParametrizedQP             & 10.87 & \textbf{2.53} & 1.485 & \textbf{0.985} \\
+SimpleScalarParametrizedLP &  4.15 & \textbf{1.03} & 0.304 & \textbf{0.247} \\
+SVMWithL1Regularization    &  8.21 & \textbf{1.86} & \textbf{0.252} & 0.496 \\
+FactorCovarianceModel      &  4.15 & \textbf{0.86} & \textbf{0.139} & 0.279 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1.5ex}
+\begin{center}\small
+Fastest first canonicalization on every problem; re-solve within about $2\times$ the tensor.
+\\[0.4ex]
+{\color{black!55}\footnotesize The last two: data almost all constant, and an update still
+recomputes it.}
 \end{center}
 \end{frame}
 
@@ -1910,55 +2118,47 @@ and uses about $1.4\times$ the memory of \texttt{SCIPY}.}
 % ==================================================================================
 
 % --- C0 ---------------------------------------------------------------------------
-%  New 2026-09-22, fourth pass. The Conclusion used to be one frame that restated the results;
-%  this one gives the room something to use instead. The lead line states what the deck taught
-%  rather than wishing for it.
-%  SPOKEN over that line, in the speaker's own words: "I hope you now understand better how
-%  CVXPY, canonicalization, and perhaps even convex optimization work."
-%  The three practices are the speaker's, from writing and reading the backend. They are NOT in
-%  the thesis and have no source -- do not give them a citation, and do not look for one.
-%  Beat 2 is the example of the third practice, and it is a real, current CVXPY feature, not an
-%  illustration: `sparsity' is a Leaf attribute taking COO-style index arrays
-%  (cvxpy/expressions/leaf.py:89, :105, :149-150, :179-196), the exact call form is the one in
-%  cvxpy/tests/test_attributes.py:59, and `sparsity' is in `dim_reducing_attr' (leaf.py:156),
-%  which is what makes the grey line under the listing true: the variable carries one scalar
-%  per stored entry, not n^2.
-%  \onslide<2-> is used WITHOUT an argument here. It has to be: lstlisting is verbatim and
-%  cannot sit inside a macro argument, and the no-argument form is a switch that runs to the
-%  end of the frame. It still reserves the space, so nothing moves between the two beats.
-\begin{frame}[fragile]{Takeaways}
+%  The one closing frame of the deck: the old `Conclusion' frame is merged in here (its
+%  comment block is the next one down).
+%  Two lists. The first is three bullets: the goal, then the two contributions -- the
+%  symbolic/numeric split (PC1) and the block representations (SC-OV, SC2). The second is the speaker's own advice;
+%  those three practices are NOT in the thesis and have no source.
+%  The first list does not say "the goal of this talk was to ...": the deck never narrates
+%  itself. That sentence is SPOKEN over it, in the speaker's own words: "I hope you now
+%  understand better how CVXPY, canonicalization, and perhaps even convex optimization work."
+%  CUT with the merge: the `sparsity=(rows, cols)' listing that used to be beat 2. It is a
+%  real, current CVXPY feature (Leaf attribute taking COO-style index arrays,
+%  cvxpy/expressions/leaf.py:89, :105, :149-150, :179-196; call form as in
+%  cvxpy/tests/test_attributes.py:59; in `dim_reducing_attr', leaf.py:156, hence one scalar per
+%  stored entry and not n^2) -- the example to reach for if the third practice is questioned.
+\begin{frame}[fragile]{Takeaways and conclusions}
 \vspace{-0.5ex}
-{\small What \cvxpy{} does between \texttt{cp.Problem} and the solver --- and what it costs.}
-
-\vspace{2.5ex}
-{\small From a lot of time spent in the backend:}
+{\small Summary:}
 \vspace{0.5ex}
+% The contributions only (advisor, 2026-09-29: the old first bullet, `goal: learn how CVXPY
+% works internally', is background and not a contribution). Same order as `Contributions'.
 \begin{itemize}\small\bul
-  \item use a {\color{polyblue}\texttt{cp.Parameter}} when the same problem is solved again
-  \item {\color{polyblue}vectorize} --- one operation rather than a loop, where it does not
-        cost readability
-  \item {\color{polyblue}read the release notes}: the library keeps growing features that do
-        this for you
+  \item dense blocks: {\color{polyblue}new matrix representations};
+  \item parametric problems: a {\color{polyblue}symbolic and numeric split};
+  \item a \de{} backend for \cvxpy{}, fastest of the four on $21$ of the $25$ problems.
 \end{itemize}
 
-\vspace{2ex}
-\onslide<2->
-\begin{center}
-\begin{minipage}{0.80\textwidth}
-\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\footnotesize,
-                   aboveskip=0.4em, belowskip=0.4em]
-rows, cols = pattern.nonzero()
-X = cp.Variable((n, n), sparsity=(rows, cols))
-\end{lstlisting}
-\end{minipage}
-\end{center}
+\vspace{2.5ex}
+{\small Suggestions from my experience:}
 \vspace{0.5ex}
-\begin{center}
-{\scriptsize\color{black!55} one scalar variable per stored entry, not $n^2$.}
-\end{center}
+\begin{itemize}\small\bul
+  \item use a {\color{polyblue}\texttt{cp.Parameter}} when the same problem is solved again, it can really help;
+  \item always try to {\color{polyblue}vectorize} your code instead of using loops;
+  \item help the modelling language help you, use NumPy for dense data and SciPy for sparse ones.
+\end{itemize}
+
 \end{frame}
 
 % --- R4 ---------------------------------------------------------------------------
+%  MERGED 2026-09-23: the frame this block documented is gone and its two forward-looking
+%  lines are SPOKEN over C0 above -- what CVXPY does instead (the parameter-to-data tensor,
+%  and what the split costs against it), and solvers that accept or mix matrix
+%  representations. The block is kept for why each of those lines exists.
 %  One frame in place of the old "Three observations" and "Future work". The three
 %  observations are spoken -- the results are three slides back and they make the argument
 %  themselves -- and the development items of 8-Conclusion.tex are not on the deck at all.
@@ -1991,71 +2191,86 @@ X = cp.Variable((n, n), sparsity=(rows, cols))
 %  Bullet 2 is NOT in 8-Conclusion.tex:68-120 and is not in the thesis anywhere. It is the
 %  speaker's, new to the deck on 2026-09-22, and the honest answer to "is that written up?" is
 %  no.
-\begin{frame}{Conclusion}
-\vspace{-0.5ex}
-\begin{itemize}\small\bul
-  \item not covered today: {\color{polyblue}what \cvxpy{} does instead} --- the
-        parameter-to-data tensor, and what the split costs against it
-  \item ahead: solvers that {\color{polyblue}accept, or mix, matrix representations}, so the
-        structure survives canonicalization into the solve itself
-\end{itemize}
-
-\vspace{9ex}
-\onslide<2->{%
-\begin{center}\small\color{polyblue}
-The structure is in the problem already. The engine is what keeps it.
-\end{center}}
-\end{frame}
 
 % --- closing ----------------------------------------------------------------------
 \begin{frame}
 \vspace{2cm}
 \begin{center}
-{\Large \textbf{Thank you}} \\[2ex]
+{\Large \textbf{Thank you for listening!}} \\[2ex]
 \end{center}
 \vfill
 \end{frame}
 
+% =====================================================================================
+%  BACKUP SLIDES (not presented). appendixnumberbeamer stops the visible frame count
+%  at the Thank-you slide, so these do not inflate "slide n of N". Moved above
+%  References on 2026-09-30 (advisor): the two References frames are backups too.
+%
+%  Regrouped 2026-09-30 to follow the talk: References, then a clickable index, then one
+%  \section per group -- Background, Positioning and scope, The engine, Results.
+%  The main deck's Example section has no backups of its own, so it has no group. Every
+%  frame carries label=bk-..., which is what the index links to, and the footline links back
+%  to the index from every backup. Legrain's examiner report (24 Sept 2026) is the model of
+%  the questions: the frames tagged NEW-AL answer one of its points each. Wherever an experiment has not been run, the frame says so.
+% =====================================================================================
+\appendix
+% \appendix starts a new beamer part, so these sections stay out of the main Outline; the
+% empty \AtBeginSection keeps them from firing an Outline frame of their own.
+\AtBeginSection[]{}
+% In the appendix appendixnumberbeamer restarts the count, so a backup slide would otherwise
+% read "2 / 13" in the same corner where the main deck reads "25 / 37". The word disambiguates
+% the two, and "backup 7" is what someone asking for one will say out loud. The `index' link
+% beside it is the way back from any backup to the list of all of them.
+\setbeamertemplate{footline}{%
+  \hfill{\scriptsize\color{black!40}%
+  \hyperlink{bk-index}{\color{polyblue!70}index}\quad
+  backup \insertframenumber\,/\,\inserttotalframenumber}\hspace{2.5ex}\vspace{1.5ex}}
+
 % --- REFS ---------------------------------------------------------------------------
-%  Every work the deck names, in one place, and the last presented slide -- so it is what is
-%  on the screen during questions, which is where a reference is actually wanted.
+%  Every work the deck names, in one place, and the first thing after the Thank-you slide --
+%  so it is what is on the screen during questions, which is where a reference is actually
+%  wanted.
 %  Written out by hand rather than through bibtex: the `presentation' target of the Makefile
-%  (lines 80-83) runs pdflatex three times and no bibtex, the deck's four existing citations
-%  were already hand-set grey lines, and nine entries do not justify a build-system change.
-%  Each entry is copied from Document.bib and its key is in the comment beside it, so the two
-%  can be diffed by eye. Alphabetical by first author. Grey attributions in the deck, and the
-%  frames that carry them:
-%    boyd2004convex       Convex optimization
-%    bental2001lectures   Conic form
-%    grant2006disciplined Disciplined convex programming
-%    grant2008graph       DCP-based modelling languages  (CVX)
-%    udell2014convex      DCP-based modelling languages  (Convex.jl)
-%    Fu_2020              DCP-based modelling languages  (CVXR)
-%    lofberg2004yalmip    DCP-based modelling languages  (YALMIP)
-%    diamond2016cvxpy     DCP-based modelling languages  (CVXPY)
-%    lawson1979blas       Permuted-Dense matrix
-%    dongarra1990level3   Permuted-Dense matrix
-%    gustavson1978two     backup: which kernel runs on which pair  (came off `Algorithms'
-%                         with the two named kernels, 2026-09-22)
-%    cvxpybenchmarks      Setup  (the 25-problem suite)
-%    dolan2002            backup: how to read a performance profile
+%  runs pdflatex three times and no bibtex, and the entries do not justify a build-system
+%  change. Each entry is copied from Document.bib (or, for the eight marked AL, from the bib
+%  entries drafted in Appendix A of plans/legrain-rebuttal.md, not yet in Document.bib) and
+%  its key is in the list below, so the two can be diffed by eye. Alphabetical by first
+%  author. Keys, and the frames that cite them:
+%    agarwal2023ceres     (AL) backup: what is borrowed, what is new
 %    agrawal2019dpp       backup: disciplined parametrized programming
-%  TWO FRAMES, not one, and one full-width column on each. Thirteen entries in a single column
-%  needed \scriptsize and still filled the frame edge to edge; two columns on one frame fixed
-%  the density but gave every entry three short broken lines. Split across two frames instead,
-%  each list is eight entries at \footnotesize running the full width, which is two
-%  clean lines per entry and the full journal names rather than JMLR / ACM TOMS / NeurIPS.
-%  Alphabetical, continuing from the first frame to the second; 8 then 6 since 2026-09-22,
-%  when `Setup' added the benchmark suite and `Why benchmark?' was cut again the same day --
-%  Clarabel came off with it, the solver being named nowhere the deck now speaks.
-%  The cost is one presented frame (34 now) and one shown slide. Neither is budgeted: this is
-%  the slide the deck sits on during questions, and the second frame is where it sits if the
-%  question is about a reference on it.
-\begin{frame}{References}
+%    bental2001lectures   Conic form
+%    boyd2004convex       Convex optimization
+%    cederberg2025disciplined  backup: SparseDiffEngine and DNLP
+%    chen2008cholmod      (AL) backup: what is borrowed, what is new
+%    convexjl2024release  (AL) backup: other answers to the same question
+%    cvxpybenchmarks      Setup  (the 25-problem suite)
+%    davis2006direct      Compressed sparse row (CSR) matrix
+%    diamond2016cvxpy     DCP-based modelling languages  (CVXPY)
+%    diamond2016matrixfree (AL) backups: why not matrix-free?, other answers
+%    dolan2002            backup: how to read a performance profile
+%    dongarra1990level3   Permuted-Dense matrix
+%    Fu_2020              DCP-based modelling languages  (CVXR)
+%    george1981computer   (AL) backup: what is borrowed, what is new
+%    grant2008graph       DCP-based modelling languages  (CVX)
+%    grant2006disciplined Disciplined convex programming
+%    gustavson1978two     backups: which kernel runs on which pair, what is borrowed
+%    lawson1979blas       Permuted-Dense matrix
+%    lofberg2004yalmip    DCP-based modelling languages  (YALMIP)
+%    mattingley2012cvxgen (AL) backup: other answers to the same question
+%    miller2015cvxcanon   (AL) backup: other answers to the same question
+%    schaller2022cvxpygen backup: other answers to the same question
+%    udell2014convex      DCP-based modelling languages  (Convex.jl)
+%  THREE FRAMES of eight, one full-width column on each, at \footnotesize: two clean lines per
+%  entry and the full journal names. (A single column needed \scriptsize and still filled the
+%  frame; two columns on one frame broke every entry into three short lines.) Grew from two
+%  frames to three on 2026-09-30, with the nine works the Legrain backups name.
+\begin{frame}[label=bk-refs]{References}
 \vspace{-0.5ex}
 {\footnotesize
 \begin{list}{}{\leftmargin=1.4em \itemindent=-1.4em \itemsep=1.0ex
                \parsep=0pt \topsep=0pt}
+\item Agarwal, S., Mierle, K. and the Ceres Solver Team (2023). Ceres Solver.
+      \url{https://github.com/ceres-solver/ceres-solver}
 \item Agrawal, A., Amos, B., Barratt, S., Boyd, S., Diamond, S. and Kolter, Z. (2019).
       Differentiable convex optimization layers. \emph{Advances in Neural Information
       Processing Systems}, 32.
@@ -2063,17 +2278,15 @@ The structure is in the problem already. The engine is what keeps it.
       Analysis, Algorithms, and Engineering Applications}. SIAM.
 \item Boyd, S. and Vandenberghe, L. (2004). \emph{Convex Optimization}. Cambridge University
       Press.
+\item Cederberg, D., Zhang, W., Nobel, P. and Boyd, S. (2026). Disciplined nonlinear
+      programming. arXiv:2606.02896.
+\item Chen, Y., Davis, T. A., Hager, W. W. and Rajamanickam, S. (2008). Algorithm 887:
+      CHOLMOD, supernodal sparse Cholesky factorization and update/downdate. \emph{ACM
+      Transactions on Mathematical Software}, 35(3), art.\ no.\ 22.
+\item The Convex.jl developers (2024). Convex.jl release notes, v0.16.0.
+      \url{https://jump.dev/Convex.jl/stable/release_notes/}
 \item The CVXPY developers (2025). CVXPY benchmarks.
       \url{https://github.com/cvxpy/benchmarks}
-\item Diamond, S. and Boyd, S. (2016). CVXPY: a Python-embedded modeling language for convex
-      optimization. \emph{Journal of Machine Learning Research}, 17(83):1--5.
-\item Dolan, E. D. and Mor\'e, J. J. (2002). Benchmarking optimization software with
-      performance profiles. \emph{Mathematical Programming}, 91(2):201--213.
-\item Dongarra, J. J., Du Croz, J., Hammarling, S. and Duff, I. S. (1990). A set of Level 3
-      basic linear algebra subprograms. \emph{ACM Transactions on Mathematical Software},
-      16(1):1--17.
-\item Fu, A., Narasimhan, B. and Boyd, S. (2020). CVXR: an R package for disciplined convex
-      optimization. \emph{Journal of Statistical Software}, 94(14).
 \end{list}}
 \end{frame}
 
@@ -2082,9 +2295,32 @@ The structure is in the problem already. The engine is what keeps it.
 {\footnotesize
 \begin{list}{}{\leftmargin=1.4em \itemindent=-1.4em \itemsep=1.0ex
                \parsep=0pt \topsep=0pt}
+\item Davis, T. A. (2006). \emph{Direct Methods for Sparse Linear Systems}. SIAM.
+\item Diamond, S. and Boyd, S. (2016). CVXPY: a Python-embedded modeling language for convex
+      optimization. \emph{Journal of Machine Learning Research}, 17(83):1--5.
+\item Diamond, S. and Boyd, S. (2016). Matrix-free convex optimization modeling. In
+      \emph{Optimization and its Applications in Control and Data Sciences}, Springer
+      Optimization and Its Applications 115, pages 221--264. Springer.
+\item Dolan, E. D. and Mor\'e, J. J. (2002). Benchmarking optimization software with
+      performance profiles. \emph{Mathematical Programming}, 91(2):201--213.
+\item Dongarra, J. J., Du Croz, J., Hammarling, S. and Duff, I. S. (1990). A set of Level 3
+      basic linear algebra subprograms. \emph{ACM Transactions on Mathematical Software},
+      16(1):1--17.
+\item Fu, A., Narasimhan, B. and Boyd, S. (2020). CVXR: an R package for disciplined convex
+      optimization. \emph{Journal of Statistical Software}, 94(14).
+\item George, A. and Liu, J. W. H. (1981). \emph{Computer Solution of Large Sparse Positive
+      Definite Systems}. Prentice-Hall.
 \item Grant, M. and Boyd, S. (2008). Graph implementations for nonsmooth convex programs. In
       \emph{Recent Advances in Learning and Control}, Lecture Notes in Control and Information
       Sciences 371. Springer.
+\end{list}}
+\end{frame}
+
+\begin{frame}{References (continued)}
+\vspace{-0.5ex}
+{\footnotesize
+\begin{list}{}{\leftmargin=1.4em \itemindent=-1.4em \itemsep=1.0ex
+               \parsep=0pt \topsep=0pt}
 \item Grant, M., Boyd, S. and Ye, Y. (2006). Disciplined convex programming. In
       \emph{Global Optimization: From Theory to Implementation}, pages 155--210. Springer.
 \item Gustavson, F. G. (1978). Two fast algorithms for sparse matrices: multiplication and
@@ -2095,23 +2331,71 @@ The structure is in the problem already. The engine is what keeps it.
       Software}, 5(3):308--323.
 \item L\"ofberg, J. (2004). YALMIP: a toolbox for modeling and optimization in MATLAB.
       \emph{IEEE International Conference on Robotics and Automation}, pages 284--289.
+\item Mattingley, J. and Boyd, S. (2012). CVXGEN: a code generator for embedded convex
+      optimization. \emph{Optimization and Engineering}, 13(1):1--27.
+\item Miller, J., Quigley, P. and Zhu, J. (2015). CVXcanon: automatic canonicalization of
+      disciplined convex programs. EE364B project report, Stanford University.
+\item Schaller, M., Banjac, G., Diamond, S., Agrawal, A., Stellato, B. and Boyd, S. (2022).
+      Embedded code generation with CVXPY. \emph{IEEE Control Systems Letters}, 6:2653--2658.
 \item Udell, M., Mohan, K., Zeng, D., Hong, J., Diamond, S. and Boyd, S. (2014). Convex
       optimization in Julia. \emph{First Workshop for High Performance Technical Computing in
       Dynamic Languages}, pages 18--28.
 \end{list}}
 \end{frame}
 
+% --- INDEX ------------------------------------------------------------------------
+%  One click to any backup. Written by hand: \tableofcontents lists sections, not frames, and
+%  the titles here are the frames' own. Keep it in sync when a backup is added or moved --
+%  a stale label is an `undefined destination' warning in the log, not a compile error.
+\newcommand{\bkgroup}[1]{\par\vspace{1.2ex}{\color{polyblue}\bfseries #1}\par\vspace{0.4ex}}
+\newcommand{\bkitem}[2]{\hyperlink{#1}{#2}\par\vspace{0.25ex}}
+\begin{frame}[label=bk-index]{Backup slides}
+\vspace{-1ex}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.32\textwidth}\footnotesize
+\bkgroup{Background}
+\bkitem{bk-dcp}{The DCP rules}
+\bkitem{bk-nondcp}{Sufficient, not necessary}
+\bkitem{bk-whycvxpy}{Why \cvxpy{}}
+\bkitem{bk-dpp}{Disciplined parametrized programming}
+\bkitem{bk-parammaps}{The parameter maps}
+\bkgroup{Positioning and scope}
+\bkitem{bk-families}{Two ways to get the coefficients}
+\bkitem{bk-gap}{The research gap}
+\bkitem{bk-matfree}{Why not matrix-free?}
+\bkitem{bk-others}{Other answers to the same question}
+\bkitem{bk-novelty}{What is borrowed, what is new}
+\bkitem{bk-dnlp}{\sde{} and DNLP}
+\end{column}
+\begin{column}{0.32\textwidth}\footnotesize
+\bkgroup{The engine}
+\bkitem{bk-stacked}{When the variable is a matrix}
+\bkitem{bk-kernels}{The ten kernels}
+\bkitem{bk-dispatch}{Which kernel runs on which pair}
+\bkitem{bk-cost}{An elementary cost count}
+\bkitem{bk-addition}{Addition is where the dense path stops}
+\bkitem{bk-splitcost}{What the two-phase split costs}
+\bkgroup{References}
+\bkitem{bk-refs}{References}
+\end{column}
+\begin{column}{0.32\textwidth}\footnotesize
+\bkgroup{Results}
+\bkitem{bk-profile}{How to read a performance profile}
+\bkitem{bk-pertimes}{The per-problem times}
+\bkitem{bk-losses}{Where \de{} is not faster}
+\bkitem{bk-loss}{SDPSegfault1132: the code}
+\bkitem{bk-sdpbreak}{Where the time goes on SDPSegfault1132}
+\bkitem{bk-plasticity}{ConvexPlasticity: a diagonal stored as dense}
+\bkitem{bk-sizes}{Instance sizes}
+\bkitem{bk-variance}{Run-to-run variation}
+\bkitem{bk-nondpp}{Caching without DPP}
+\bkitem{bk-ablation}{Isolating the dense representations}
+\end{column}
+\end{columns}
+\end{frame}
+
 % =====================================================================================
-%  BACKUP SLIDES (not presented). appendixnumberbeamer stops the visible frame count
-%  at the Thank-you slide, so these do not inflate "slide n of N".
-% =====================================================================================
-\appendix
-% In the appendix appendixnumberbeamer restarts the count, so a backup slide would otherwise
-% read "2 / 13" in the same corner where the main deck reads "25 / 37". The word disambiguates
-% the two, and "backup 7" is what someone asking for one will say out loud.
-\setbeamertemplate{footline}{%
-  \hfill{\scriptsize\color{black!40}%
-  backup \insertframenumber\,/\,\inserttotalframenumber}\hspace{2.5ex}\vspace{1.5ex}}
+\section{Background}
 
 % --- B-DCP ------------------------------------------------------------------------
 %  Q: "what exactly are the DCP rules?"  The slide dropped from the Introduction (F1).
@@ -2122,7 +2406,7 @@ The structure is in the problem already. The engine is what keeps it.
 %  one answers "what exactly are the rules?" -- all three clauses, the DCP-compliance
 %  conditions, and the sufficient-not-necessary caveat. Keep both; the overlap is the table,
 %  and it is four rows of it.
-\begin{frame}{Backup: the DCP rules}
+\begin{frame}[label=bk-dcp]{The DCP rules}
 \vspace{-0.5ex}
 {\small Every atom declares its curvature, its monotonicity in each argument, and the sign of
 its output:}
@@ -2167,7 +2451,7 @@ unrecognized form is rejected.
 %  Q: "give me a problem the rules reject."  The textbook one. The composition analysis is
 %  the rule set of the previous slide applied to sqrt(x^2+1); the rewrite is the SOC
 %  reformulation of the norm atom, 5-Introduction.tex:283-288.
-\begin{frame}[fragile]{Backup: sufficient, not necessary}
+\begin{frame}[fragile,label=bk-nondcp]{Sufficient, not necessary}
 \vspace{-0.5ex}
 {\small The same function, written two ways. Only one of them compiles.}
 \vspace{0.5ex}
@@ -2212,7 +2496,9 @@ atom library is what makes it possible.
 \end{center}
 \end{frame}
 
-\begin{frame}{Backup: why \cvxpy{}}
+% --- B-WHY --------------------------------------------------------------------------
+%  Q: "why build on CVXPY at all?"
+\begin{frame}[label=bk-whycvxpy]{Why \cvxpy{}}
 \vspace{-0.5ex}
 \begin{itemize}\small\bul
   \item open source, embedded in Python, the most widely used programming language
@@ -2223,11 +2509,12 @@ atom library is what makes it possible.
 {\scriptsize\color{black!55} TIOBE index, \texttt{pypistats.org},
 \texttt{github.com/cvxpy/cvxpy} and Google Scholar, September 2026.}
 \end{frame}
+
 % --- B-DPP ------------------------------------------------------------------------
 %  Q: "what is DPP, and why does the tensor backend need it?"
 %  Source: 6-Revue_litterature.tex:376-397 (the grammar, the maps, the third tensor
 %  dimension) and :423-431 (the ignore_dpp path).
-\begin{frame}{Backup: disciplined parametrized programming}
+\begin{frame}[label=bk-dpp]{Disciplined parametrized programming}
 \vspace{-0.5ex}
 {\small DPP is a second grammar, on top of DCP, restricting how parameters may enter an
 expression: every parameter is treated as affine, and products of two parametrized expressions
@@ -2250,14 +2537,14 @@ parameters}:}
         coefficient matrix of the pass, indexed by the parameter entries
   \item after a parameter change, a re-solve costs one sparse matrix-vector product per map:
         no tree is traversed again
-  \item a problem outside the grammar, or one passing \texttt{ignore\_dpp}, takes the
-        \texttt{EvalParams} path instead: each parameter leaf is replaced by its current value
+  \item a problem outside the grammar, or one passing \texttt{ignore\_dpp=True} (as the main
+        benchmark does), builds no tensor: each parameter leaf is replaced by its current value
         and the whole canonicalization repeats
 \end{itemize}
 
 \vspace{1ex}
 \begin{center}\small
-This is the baseline the parametric results are measured against.
+The tensor is the baseline the parametric results are measured against.
 \end{center}
 
 \vfill
@@ -2266,10 +2553,46 @@ This is the baseline the parametric results are measured against.
 {\scriptsize\color{black!55} Agrawal et al. (2019).}
 \end{frame}
 
+% --- PC3 (demoted) ----------------------------------------------------------------
+%  Q: "what does CVXPY do instead, and what is DPP?"  Demoted 2026-09-22; PC1, `Two passes', is
+%  presented again and this is what it is measured against.
+%  This is what the benchmarks are measured against, so it is the frame to reach for when a
+%  results number is questioned rather than the mechanism. B-DPP states the DPP ruleset itself.
+%  What we are actually compared against, stated once, at the end of the method section.
+%  Sources: 6-Revue_litterature.tex:383-396 (eq:param-maps, one sparse matvec per map),
+%           6-Revue_litterature.tex:458-470 (the three backends and how each represents the
+%           parameter axis), 6-Revue_litterature.tex:478-479 (the default-selection rule).
+%  Two framing sentences came off and are spoken: "a re-solve is then one sparse
+%  matrix-vector product per map", which is what the display says once it is read, and the
+%  closing "the benchmarks that follow compare against all three", which the Results section
+%  shows rather than something to announce.
+\begin{frame}[label=bk-parammaps]{The parameter maps}
+\vspace{-0.5ex}
+{\small Under DPP the data is affine in the parameters, so the family collapses to two
+cached maps:}
+\[
+  \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta},
+  \qquad
+  \vect([\mmat{A}\ \mvec{b}]) = \mmat{R}\,\gvec{\tilde\theta},
+  \qquad
+  \gvec{\tilde\theta} = \begin{bmatrix} \gvec{\theta} \\ 1 \end{bmatrix}
+\]
+\vspace{2ex}
+{\small \cvxpy{}'s three backends are three representations of that same tensor:}
+\begin{itemize}\small\bul
+  \item \texttt{cvxcore} (C++) --- one sparse matrix per parameter
+  \item \texttt{SCIPY} --- the slices stacked into one strided sparse matrix
+  \item \texttt{COO} --- never formed: triples with a parameter index
+\end{itemize}
+\end{frame}
+
+% =====================================================================================
+\section{Positioning and scope}
+
 % --- B-OTHERLANG ------------------------------------------------------------------
 %  Q: "how is this different from JuMP / AMPL / CasADi?"
 %  Source: 6-Revue_litterature.tex:1055-1074 (the two families and the parameter handling).
-\begin{frame}{Backup: two ways to get the coefficients}
+\begin{frame}[label=bk-families]{Two ways to get the coefficients}
 \vspace{-0.5ex}
 {\small Every modelling language reviewed produces the same output, the solver problem data. They
 split into two families by what they ask of the user.}
@@ -2301,7 +2624,7 @@ split into two families by what they ask of the user.}
 % --- B-GAP ------------------------------------------------------------------------
 %  Q: "so what is actually new?"  tab:systems-summary, 6-Revue_litterature.tex:1084-1131,
 %  with the acronyms spelled out (the deck does not load the acronym package).
-\begin{frame}{Backup: the research gap}
+\begin{frame}[label=bk-gap]{The research gap}
 \vspace{-1ex}
 \begin{center}
 \adjustbox{max size={0.98\textwidth}{0.62\textheight}}{%
@@ -2354,6 +2677,167 @@ at once instead of matrix-vector products, and dense storage where the structure
 \end{center}
 \end{frame}
 
+% --- P-MATFREE (NEW-AL) -----------------------------------------------------------
+%  Q: "why form A at all? Diamond and Boyd never do."  Legrain, reservation (1) and required
+%  revision (i). Source: plans/legrain-rebuttal.md, section i-a (the drafted paragraph).
+\begin{frame}[label=bk-matfree]{Why not matrix-free?}
+\vspace{-0.5ex}
+{\small Diamond and Boyd answer the same question with the opposite design: never form
+$\mmat{A}$ at all.}
+
+\vspace{1.5ex}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+{\small\color{polyblue}\textbf{Matrix-free}}
+\begin{itemize}\footnotesize\bul
+  \item every linear function is an abstract operator that only applies $\mmat{A}\mvec{x}$
+        and $\mmat{A}^\top\mvec{y}$
+  \item no assembly, so no assembly cost
+  \item serves first-order and Krylov-based solvers, which need nothing more than those
+        products
+\end{itemize}
+\end{column}
+\begin{column}{0.47\textwidth}
+{\small\color{polyblue}\textbf{Explicit matrix}}
+\begin{itemize}\footnotesize\bul
+  \item \texttt{Clarabel} and \texttt{MOSEK} (interior point), \texttt{SCS} and \texttt{OSQP}
+        in their default direct mode all factorize a matrix built from $\mmat{A}$ and
+        $\mmat{P}$
+  \item a factorization needs the entries, so these solvers need $\mmat{A}$ formed
+  \item this thesis keeps $\mmat{A}$ explicit and makes it cheaper to form
+\end{itemize}
+\end{column}
+\end{columns}
+
+\vspace{2ex}
+\begin{center}\small\color{polyblue}
+Matrix-free removes the cost for the solvers that can do without $\mmat{A}$; the solvers
+\cvxpy{} calls by default cannot.
+\end{center}
+
+\vfill
+{\scriptsize\color{black!55} Diamond and Boyd (2016), matrix-free convex optimization
+modeling.}
+\end{frame}
+
+% --- P-OTHERS (NEW-AL) ------------------------------------------------------------
+%  Q: "what about CVXcanon, CVXGEN, the Convex.jl rewrite?"  Legrain, reservation (1).
+%  Source: plans/legrain-rebuttal.md, sections i-a and i-c. CVXPYgen is already cited in the
+%  thesis (schaller2022cvxpygen); the other three are new bib entries drafted in Appendix A
+%  of the rebuttal file. No claim here about what each system does with parameters: the one
+%  thing the frame says about each is what it does about the cost of forming the data.
+\begin{frame}[label=bk-others]{Other answers to the same question}
+\vspace{-0.5ex}
+{\small What each system does about the cost of forming the problem data:}
+
+\vspace{1.5ex}
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l l >{\raggedright\arraybackslash}p{8.4cm}@{}}
+\toprule
+System & & Approach \\
+\midrule
+\texttt{CVXGEN} & 2012 & generates a custom C solver for one family of small QPs, so
+  canonicalization happens once, offline \\
+\texttt{CVXcanon} & 2015 & the same matrix stuffing, moved from Python into C++; renamed
+  \texttt{cvxcore}, it is the \texttt{CPP} backend of the benchmarks \\
+matrix-free \cvxpy{} & 2016 & never forms $\mmat{A}$ (previous slide) \\
+\texttt{CVXPYgen} & 2022 & the same idea as \texttt{CVXGEN}, for \cvxpy{}: code generation for
+  one parametrized problem \\
+\texttt{Convex.jl} & 2024 & internals rewritten on top of JuMP's \texttt{MathOptInterface} \\
+\midrule
+\textcolor{polyblue}{\de{}} & & \textcolor{polyblue}{forms $\mmat{A}$ explicitly and online,
+  with a two-pass engine that keeps the dense blocks dense} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vfill
+{\scriptsize\color{black!55} Mattingley and Boyd (2012); Miller et al.\ (2015); Diamond and
+Boyd (2016); Schaller et al.\ (2022); the Convex.jl developers (2024).}
+\end{frame}
+
+% --- P-NOVELTY (NEW-AL) -----------------------------------------------------------
+%  Q: "the two-phase split is decades old -- what is actually new?"  Legrain, reservation (1):
+%  "the novelty is real but architectural, and must be stated frankly".
+%  Source: plans/legrain-rebuttal.md, sections i-b and i-d. The right column deliberately
+%  keeps the matrix representations as new data structures, not only as an application of old
+%  ideas -- the concern recorded under i-d. The merge date is the one drafted for the Ch. 4
+%  intro (rebuttal, `Minor corrections', last row).
+\begin{frame}[label=bk-novelty]{What is borrowed, what is new}
+\vspace{-0.5ex}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.47\textwidth}
+{\small\color{polyblue}\textbf{Borrowed}}
+\begin{itemize}\footnotesize\bul
+  \item the symbolic and numeric split: sparse direct solvers analyse a pattern once and
+        refactorize on it for new values (George and Liu, 1981; \texttt{CHOLMOD}), and
+        Gustavson's sparse product has the same two phases
+  \item the same split in the Jacobian interfaces of NLP solvers such as \texttt{IPOPT}
+  \item dense blocks inside sparse Jacobians: finite-element assembly, and nonlinear least
+        squares in \texttt{Ceres}
+\end{itemize}
+\end{column}
+\begin{column}{0.47\textwidth}
+{\small\color{polyblue}\textbf{New here}}
+\begin{itemize}\footnotesize\bul
+  \item permuted dense and stacked permuted dense as the matrix classes of a
+        differentiation engine, with kernels under which a dense block stays dense through
+        every product
+  \item the split applied to the backend of a DCP modelling language: the structure is
+        cached per problem, with no grammar asked of the parameters
+  \item a working \cvxpy{} backend, merged on September 9, 2026 as an opt-in for
+        parameter-free problems
+\end{itemize}
+\end{column}
+\end{columns}
+
+\vspace{2.5ex}
+\begin{center}\small\color{polyblue}
+The ideas are known; what is new is where they are applied, and the data structures that let
+them apply.
+\end{center}
+
+\vfill
+{\scriptsize\color{black!55} George and Liu (1981); Chen et al.\ (2008); Gustavson (1978);
+Agarwal et al.\ (2023).}
+\end{frame}
+
+% --- P-DNLP (NEW-AL) --------------------------------------------------------------
+%  Q: "SparseDiffEngine is also the engine of DNLP -- what is yours?"  Legrain, reservation (3)
+%  and revision (i). Source: plans/legrain-rebuttal.md, section i-e, and 7-Theme1.tex:48-62
+%  (the atom classes: only affine atoms and quadratic forms reach the engine from a
+%  canonicalized problem; the rest serve the NLP interface).
+%  AUTHORSHIP: the library is joint work with Daniel Cederberg. Do NOT add a finer split of
+%  who wrote which part of it (memory `sparsediffengine-authorship`). The PR number is the
+%  follow-up named in the rebuttal's `Minor corrections'.
+\begin{frame}[label=bk-dnlp]{\sde{} and DNLP}
+\vspace{-0.5ex}
+{\small One library, two uses.}
+
+\vspace{1ex}
+\begin{itemize}\small\bul
+  \item \sde{} was developed jointly by Daniel Cederberg and the author
+  \item it is also the differentiation engine of disciplined nonlinear programming (DNLP),
+        which uses the atoms canonicalization never reaches: \texttt{exp}, \texttt{log},
+        \texttt{entr}, \dots
+  \item canonicalization only sends it affine atoms and quadratic forms
+  \item this thesis contributes the use of the engine for canonicalization:
+  \begin{itemize}\footnotesize
+    \item the \cvxpy{} backend \de{}, merged as an opt-in for parameter-free problems
+    \item the re-solve path that keeps the symbolic pass for parametric problems, under
+          review (\cvxpy{} pull request \#3449)
+    \item the benchmark study of Chapter 4
+  \end{itemize}
+\end{itemize}
+
+\vfill
+{\scriptsize\color{black!55} Cederberg, Zhang, Nobel and Boyd (2026).}
+\end{frame}
+
+% =====================================================================================
+\section{The engine}
+
 % --- SUM1b ------------------------------------------------------------------------
 %  Q: "what happens when the variable is a matrix?"  The third representation, which the
 %  main line deliberately never names: SC2 ends on the permuted dense triple and stops.
@@ -2371,7 +2855,7 @@ at once instead of matrix-vector products, and dense storage where the structure
 %           and the single shared value buffer).
 \colorlet{pdRowB}{green!16!white}
 \colorlet{pdRowC}{orange!22!white}
-\begin{frame}{Backup: when the variable is a matrix}
+\begin{frame}[label=bk-stacked]{When the variable is a matrix}
 \vspace{-0.5ex}
 {\footnotesize Multiplying a matrix variable $\mmat{V} \in \reals^{2\times2}$ by dense
 $\mmat{B}$ acts on each column separately: one dense block per column of $\mmat{V}$, at
@@ -2422,7 +2906,7 @@ $\mmat{X}_1 = \mmat{X}_2 = \mmat{B}, \qquad
 %  Placed before SUM2: this table is the ordinary case, dispatch on the expression, and
 %  SUM2's 3 x 3 grid is the case that needs both operands.
 %  Source: 7-Theme1.tex:386-411 (tab:kernel-operations).
-\begin{frame}{Backup: the ten kernels}
+\begin{frame}[label=bk-kernels]{The ten kernels}
 \vspace{-0.5ex}
 {\footnotesize Ten operations cover the whole atom library, each implemented once per
 representation, as a symbolic-pass and a numeric-pass function.}
@@ -2455,13 +2939,14 @@ Expression & Kernel \\
         flattens a block
 \end{itemize}
 \end{frame}
+
 % --- SUM2 -------------------------------------------------------------------------
 %  Q: "what actually runs when a dense block meets a sparse matrix?"  The 3 x 3 table on the
 %  operand pair, which SC3 and the SUM1 backup above both keep off the board -- they
 %  dispatch on the expression, which is what almost every call does.
 %  sPD is spelled out in a line under the table, a backup frame having to stand on its own.
 %  Source: 7-Theme1.tex:440-492 (fig:kernel-dispatch, redrawn smaller for the slide).
-\begin{frame}{Backup: which kernel runs on which pair}
+\begin{frame}[label=bk-dispatch]{Which kernel runs on which pair}
 \vspace{-0.5ex}
 {\footnotesize PD is a dense block at permuted positions $(\mmat{X}, \mvec{r}, \mvec{c})$;
 sPD is the stack of such blocks of the previous slide. Written out, the product of two
@@ -2522,12 +3007,54 @@ Eight of the nine kernels come out dense; cost depends on block size, not on $m$
 \end{center}
 \end{frame}
 
+% --- E-COST (NEW-AL) --------------------------------------------------------------
+%  Q: "no complexity analysis, even elementary?"  Legrain, reservation (3).
+%  Source: plans/legrain-rebuttal.md, section i-f (the drafted count after eq. pd-product).
+%  Placed after the dispatch frame, whose displayed product is the one priced here.
+\begin{frame}[label=bk-cost]{An elementary cost count}
+\vspace{-0.5ex}
+{\small The product $\mmat{B}^\top\mmat{A}$ of two permuted dense blocks,
+$\mmat{X}_A \in \reals^{m_A\times n_A}$ and $\mmat{X}_B \in \reals^{m_B\times n_B}$, with
+$s = |\mvec{r}_A \cap \mvec{r}_B|$ shared rows:}
+
+\vspace{1.5ex}
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l >{\raggedright\arraybackslash}p{3.6cm}
+  >{\raggedright\arraybackslash}p{3.6cm} l@{}}
+\toprule
+& Symbolic pass & Numeric pass & Indices stored \\
+\midrule
+permuted dense & merge two sorted index vectors, $O(m_A + m_B)$ &
+  $n_B\,s\,n_A$ multiply-adds, one \texttt{dgemm} & $n_A + n_B$ \\
+\addlinespace
+Gustavson, same blocks & build the full pattern, $O(n_B\,s\,n_A)$ &
+  the same $n_B\,s\,n_A$, index-driven loop & $n_A\,n_B$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1ex}
+\begin{itemize}\footnotesize\bul
+  \item a stacked operand: the same counts, summed over the pairs of blocks whose rows
+        intersect
+  \item dense times generic sparse: one multiply-add per stored nonzero of the sparse operand
+        in the shared rows, per column of the dense block
+\end{itemize}
+
+\vspace{1ex}
+\begin{center}\small\color{polyblue}
+An asymptotic gain in the symbolic pass and the index storage; the same operation count in the
+numeric pass, where BLAS gains a constant factor.
+\end{center}
+\end{frame}
+
 % --- B1 ---------------------------------------------------------------------------
 %  Q: "permuted dense cannot be closed under addition, surely?"  SC3's `add' row says that
 %  the sum runs on CSR views of both operands and stops there; this is why, and it carries
 %  the one detail the row cannot -- that the views alias the dense blocks, so nothing is
 %  copied.  Source: 7-Theme1.tex:325-331.
-\begin{frame}{Backup: addition is where the dense path stops}
+\begin{frame}[label=bk-addition]{Addition is where the dense path stops}
 \vspace{-0.5ex}
 \begin{itemize}\small\bul
   \item the Jacobian of $\mmat{F}\mvec{x} + \mvec{y}$ holds the block of $\mmat{F}$ at the
@@ -2541,71 +3068,15 @@ Eight of the nine kernels come out dense; cost depends on block size, not on $m$
 
 \vspace{2ex}
 \begin{center}\small
-The dense representations are sticky in the other direction: a product with a permuted dense or
-stacked operand gives back a matrix of the same kind.
+Products, by contrast, keep the dense representations: a product with a permuted dense or
+stacked permuted dense operand gives back a matrix of the same kind.
 \end{center}
-\end{frame}
-
-% --- B-LOSS -----------------------------------------------------------------------
-%  Q: "which of the 25 do you lose, and why?"  Was a presented frame between R1 and R2, which
-%  spent a full slide of a 30-minute slot on a loss. R1's closing footnote already names both
-%  losses and gives the reason, so the frame is the answer to a question rather than something
-%  to walk through; it is only needed if the question is actually asked.
-%
-%  SDPSegfault1132 rather than ConvexPlasticity, though ConvexPlasticity has the worse ratio
-%  (2.48 vs 1.39): its absolute times are 0.35 s against 0.85 s, which invites "half a second"
-%  as the reply and loses the point, and its source needs the plasticity physics explained
-%  before the code means anything. SDPSegfault1132 is ten lines, is a recognizable SDP, and
-%  its constants are visibly dense on the slide -- V is 100 x 99, D and W are 100 x 100, and
-%  V @ G @ V.T sandwiches a PSD variable between two of them three times over.
-%
-%  Code trimmed from benchmark/sdp_segfault_1132_benchmark.py in cvxpy/benchmarks: the
-%  construction of D, V and points is replaced by comments giving their shapes, since the
-%  shapes are the whole content and the arithmetic that builds them is not. The name is the
-%  suite's own (it was filed as a segfault report, cvxpy issue 1132) -- kept as-is so it
-%  matches the table on the previous slide. p='fro' uses single quotes: the deck is OT1 and
-%  \textquotedbl is unavailable there, so a double quote in a listing is a compile error.
-%
-%  Sources: 7-Theme2.tex:56-59 (the two losses and the reason), tab:oneshot-compile
-%           (7-Theme2.tex:119) for the timings quoted.
-\begin{frame}[fragile]{Backup: a problem we do not win}
-\vspace{-1ex}
-{\scriptsize\color{black!55} \texttt{SDPSegfault1132}, one of the two problems of the suite
-where \de{} is behind}
-
-\vspace{0.5ex}
-\begin{center}
-\begin{minipage}{0.82\textwidth}
-\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
-                   aboveskip=0.4em, belowskip=0.4em]
-n = 100
-V = ...                      # dense, (n, n-1)
-D = ...                      # dense, (n, n)
-W = np.ones((n, n))          # dense, (n, n)
-
-G = cp.Variable((n-1, n-1), PSD=True)
-A = cp.kron(e,   cp.reshape(cp.diag(V @ G @ V.T), (1, n)))
-B = cp.kron(e.T, cp.reshape(cp.diag(V @ G @ V.T), (n, 1)))
-C = cp.norm(cp.multiply(W, A + B - 2 * V @ G @ V.T - D), p='fro')
-
-prob = cp.Problem(cp.Maximize(cp.trace(G) - C))
-\end{lstlisting}
-\end{minipage}
-\end{center}
-
-\vspace{0.5ex}
-\begin{itemize}\small\bul
-  \item every constant is dense, and \texttt{V @ G @ V.T} sandwiches the variable between
-        two of them
-  \item \de{} takes $13.21$ s against \texttt{SCIPY}'s $9.51$ s: processing the dense
-        constant data dominates
-\end{itemize}
 \end{frame}
 
 % --- B3 ---------------------------------------------------------------------------
 %  Q: "what does your caching cost you?"  Source: 8-Conclusion.tex:57-66. The one place the
 %  tensor is genuinely better -- say it first.
-\begin{frame}{Backup: what the two-phase split costs}
+\begin{frame}[label=bk-splitcost]{What the two-phase split costs}
 \vspace{-0.5ex}
 \begin{itemize}\small\bul
   \item the numeric pass re-evaluates the expression trees at every parameter change, so the
@@ -2623,183 +3094,39 @@ This is the one place the tensor is genuinely the better object.
 \end{center}
 \end{frame}
 
+% =====================================================================================
+\section{Results}
 
-% --- PC2 (demoted) ----------------------------------------------------------------
-%  Q: "what does the symbolic pass actually store?"  Demoted 2026-09-22. PC1, `Two passes', was
-%  demoted with it and restored to the engine section the same day; this is the frame behind it.
-%  Shown cold, so the lead sentence has to carry what the frame before it used to: the three
-%  kinds of stored structure are named there, and the figure is one of them worked out.
-%  The mechanism, with the worked example. fig:sum-idx-map is lifted from
-%  7-Theme1.tex:619-697; its local `nz' style is renamed `sm' here, because the deck's
-%  preamble already defines `nz' for the sparsity-pattern figure (I4).
-%  Three-item list: 7-Theme1.tex:533-534. Closing line: 7-Theme1.tex:706-713.
-\begin{frame}{Backup: what the symbolic pass stores}
-% \vspace tightened 2026-09-22 (-1ex -> -2ex, 1.5ex -> 0.5ex): the frame was 6pt overfull as a
-% presented slide and the demotion did not fix it. Nothing else on it moved.
-\vspace{-2ex}
-{\small Depending on the kernel, the stored structure is a \textbf{sparsity pattern}, a
-\textbf{block layout}, or an \textbf{index map}.}
-
-\vspace{0.5ex}
-\begin{center}
-\fitfig{%
-\begin{tikzpicture}[
-  sm/.style={draw=black!60, fill=blue!12, minimum width=0.78cm, minimum height=0.5cm,
-             font=\small\ttfamily, anchor=center},
-  outc/.style={draw=black!60, minimum width=0.78cm, minimum height=0.5cm,
-               font=\small\ttfamily, anchor=center},
-  zero/.style={font=\normalsize, text=black!50, anchor=center},
-  map/.style={-{Stealth[length=2mm]}, black!55},
-  ttl/.style={font=\small\itshape, anchor=center},
-  brk/.style={black!70, line width=0.5pt},
-]
-\def\dx{1.05}
-\def\dy{0.72}
-\def\oy{-2.95}
-% ---------- left panel: symbolic ----------
-\node[ttl] at (\dx, 0.9) {symbolic pass, once};
-\node[sm] (L0) at (0, 0)          {$v_0$};
-\node[sm] (L1) at (\dx, 0)        {$v_1$};
-\node[zero] at (2*\dx, 0)         {$\cdot$};
-\node[sm] (L2) at (0, -\dy)       {$v_2$};
-\node[zero] at (\dx, -\dy)        {$\cdot$};
-\node[sm] (L3) at (2*\dx, -\dy)   {$v_3$};
-\node[zero] at (0, -2*\dy)        {$\cdot$};
-\node[sm] (L4) at (\dx, -2*\dy)   {$v_4$};
-\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
-\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
-\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
-        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
-\node[outc] (M0) at (0, \oy)      {$w_0$};
-\node[outc] (M1) at (\dx, \oy)    {$w_1$};
-\node[outc] (M2) at (2*\dx, \oy)  {$w_2$};
-\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
-\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
-        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
-\draw[map] (L0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (M0.north east);
-\draw[map] (L1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (M1.north east);
-\draw[map] (L2.south) to[bend right=12] (M0.north west);
-\draw[map] (L3.south) to[bend right=12] (M2.north west);
-\draw[map] (L4.south) -- (M1.north);
-\node[font=\small, anchor=north] at (\dx, \oy-0.5)
-  {$\mathtt{map} = (0, 1, 0, 2, 1)$};
-% ---------- right panel: numeric ----------
-\begin{scope}[xshift=6.6cm]
-\node[ttl] at (\dx, 0.9) {numeric pass, per evaluation};
-\node[sm] (R0) at (0, 0)          {2.0};
-\node[sm] (R1) at (\dx, 0)        {3.0};
-\node[zero] at (2*\dx, 0)         {$\cdot$};
-\node[sm] (R2) at (0, -\dy)       {1.5};
-\node[zero] at (\dx, -\dy)        {$\cdot$};
-\node[sm] (R3) at (2*\dx, -\dy)   {0.5};
-\node[zero] at (0, -2*\dy)        {$\cdot$};
-\node[sm] (R4) at (\dx, -2*\dy)   {4.0};
-\node[zero] at (2*\dx, -2*\dy)    {$\cdot$};
-\draw[brk] (-0.58, 0.34) -- (-0.70, 0.34) -- (-0.70, -2*\dy-0.34) -- (-0.58, -2*\dy-0.34);
-\draw[brk] (2*\dx+0.58, 0.34) -- (2*\dx+0.70, 0.34)
-        -- (2*\dx+0.70, -2*\dy-0.34) -- (2*\dx+0.58, -2*\dy-0.34);
-\node[outc] (S0) at (0, \oy)      {3.5};
-\node[outc] (S1) at (\dx, \oy)    {7.0};
-\node[outc] (S2) at (2*\dx, \oy)  {0.5};
-\draw[brk] (-0.58, \oy+0.34) -- (-0.70, \oy+0.34) -- (-0.70, \oy-0.34) -- (-0.58, \oy-0.34);
-\draw[brk] (2*\dx+0.58, \oy+0.34) -- (2*\dx+0.70, \oy+0.34)
-        -- (2*\dx+0.70, \oy-0.34) -- (2*\dx+0.58, \oy-0.34);
-\draw[map] (R0.south east) .. controls (0.66,-1.05) and (0.56,-2.0) .. (S0.north east);
-\draw[map] (R1.south east) .. controls (1.70,-1.2) and (1.63,-2.1) .. (S1.north east);
-\draw[map] (R2.south) to[bend right=12] (S0.north west);
-\draw[map] (R3.south) to[bend right=12] (S2.north west);
-\draw[map] (R4.south) -- (S1.north);
-\node[font=\small, anchor=north] at (\dx, \oy-0.5)
-  {$\mathtt{out[map[}j\mathtt{]]} \mathrel{+}= \mathtt{vals[}j\mathtt{]}$};
-\end{scope}
-\end{tikzpicture}}
-\end{center}
-
-\vspace{0.2ex}
-\begin{center}\small
-The \texttt{sum} atom: the symbolic pass records where each nonzero lands, the numeric pass
-follows the fixed arrows.\\[0.5ex]
-{\color{polyblue}\texttt{index}, \texttt{transpose} and \texttt{broadcast} build the same map,
-with a copy in place of an addition.}
-\end{center}
-\end{frame}
-
-
-% --- PC3 (demoted) ----------------------------------------------------------------
-%  Q: "what does CVXPY do instead, and what is DPP?"  Demoted 2026-09-22; PC1, `Two passes', is
-%  presented again and this is what it is measured against.
-%  This is what the benchmarks are measured against, so it is the frame to reach for when a
-%  results number is questioned rather than the mechanism. B-DPP states the DPP ruleset itself.
-%  What we are actually compared against, stated once, at the end of the method section.
-%  Sources: 6-Revue_litterature.tex:383-396 (eq:param-maps, one sparse matvec per map),
-%           6-Revue_litterature.tex:458-470 (the three backends and how each represents the
-%           parameter axis), 6-Revue_litterature.tex:478-479 (the default-selection rule).
-%  Two framing sentences came off and are spoken: "a re-solve is then one sparse
-%  matrix-vector product per map", which is what the display says once it is read, and the
-%  closing "the benchmarks that follow compare against all three", which the Results section
-%  shows rather than something to announce.
-\begin{frame}{Backup: the parameter maps}
+% --- B-PROFILE -----------------------------------------------------------------------
+%  The definition dropped from the Results profile slide. Source: 7-Theme2.tex:61-75
+%  (eq:perf-profile and the reading of the two ends of the curve).
+\begin{frame}[label=bk-profile]{How to read a performance profile}
 \vspace{-0.5ex}
-{\small Under DPP the data is affine in the parameters, so the family collapses to two
-cached maps:}
-\[
-  \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta},
-  \qquad
-  \vect([\mmat{A}\ \mvec{b}]) = \mmat{R}\,\gvec{\tilde\theta},
-  \qquad
-  \gvec{\tilde\theta} = \begin{bmatrix} \gvec{\theta} \\ 1 \end{bmatrix}
-\]
+{\small A performance profile compares the backends over the whole suite at once, rather than
+one problem at a time.}
+
 \vspace{2ex}
-{\small \cvxpy{}'s three backends are three representations of that same tensor:}
+\[
+  f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \textstyle\min_b t_{p,b}
+  \,\}\bigr|
+\]
+
+\vspace{1ex}
 \begin{itemize}\small\bul
-  \item \texttt{cvxcore} (C++) --- one sparse matrix per parameter
-  \item \texttt{SCIPY} --- the slices stacked into one strided sparse matrix
-  \item \texttt{COO} --- never formed: triples with a parameter index
+  \item $t_{p,s}$ is the time of backend $s$ on problem $p$, and $\min_b t_{p,b}$ is the time
+        of the fastest backend on that same problem
+  \item $f_s(\tau)$ is the fraction of the $n$ problems on which backend $s$ lands within a
+        factor $\tau$ of that best time
+  \item {\color{polyblue}at $\tau = 1$}: the fraction of problems on which the backend is
+        outright fastest
+  \item {\color{polyblue}where the curve reaches $1$}: the factor the backend needs in order to
+        cover every problem in the suite
 \end{itemize}
-\end{frame}
-
-
-% --- R3 (demoted) -----------------------------------------------------------------
-%  Q: "and on parametric problems?"  Demoted 2026-09-22. It stayed demoted when PC1 was restored
-%  the same day: the mechanism is worth a frame, a 7 x 8 table of timings is not, and the two
-%  sentences it exists to deliver are the closing line of `Two passes'. Fastest first
-%  canonicalization on all seven, re-solve within about 2x the tensor, and the two rows where the
-%  tensor wins are the B3 backup's subject. This is the table to put up if either is questioned.
-%  tab:param-tensor, 7-Theme2.tex:165-180, verbatim (7 rows fit a slide as they are).
-%  The two-regime explanation is 7-Theme2.tex:184-189.
-\begin{frame}{Backup: parametric problems}
-\vspace{-1ex}
-{\scriptsize\color{black!55} The seven DPP parametric problems \textbullet{} a dash is a
-tensor that did not finish inside the time limit}
 
 \vspace{1.5ex}
-\begin{center}\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}l rrrr rr r@{}}
-\toprule
-& \multicolumn{4}{c}{first canonicalization} & \multicolumn{2}{c}{re-solve} & \\
-\cmidrule(lr){2-5}\cmidrule(lr){6-7}
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \de{} & tensor & \de{} & Ratio \\
-\midrule
-ParamSmallMatrixStuffing   &  7.78 & 29.06 &  0.40 & \textbf{0.21} & 0.005 & \textbf{0.001} & 0.29 \\
-ParamConeMatrixStuffing    &  3.16 &  7.63 &  0.26 & \textbf{0.14} & 0.003 & \textbf{0.001} & 0.29 \\
-SimpleFullyParametrizedLP  &   --- &   --- &  2.17 & \textbf{0.54} & 0.261 & \textbf{0.126} & 0.48 \\
-ParametrizedQP             &   --- &   --- & 10.87 & \textbf{2.53} & 1.485 & \textbf{0.985} & 0.66 \\
-SimpleScalarParametrizedLP &  4.68 &  4.15 &  4.48 & \textbf{1.03} & 0.304 & \textbf{0.247} & 0.81 \\
-SVMWithL1Regularization    & 11.00 &  8.21 &  9.62 & \textbf{1.86} & \textbf{0.252} & 0.496 & 1.97 \\
-FactorCovarianceModel      &  4.92 &  4.15 &  4.66 & \textbf{0.86} & \textbf{0.139} & 0.279 & 2.00 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\vspace{1.5ex}
-\begin{center}\small
-Fastest first canonicalization on every problem; re-solve within about $2\times$ the tensor.
-\\[0.4ex]
-{\color{black!55}\footnotesize The last two: data almost all constant, and an update still
-recomputes it.}
-\end{center}
+{\scriptsize\color{black!55} Dolan and Mor\'e (2002).}
 \end{frame}
+
 % --- R1 (demoted) -----------------------------------------------------------------
 %  Q: "can we see the per-problem numbers?"  The Results section's opening frame until
 %  2026-09-22, when it was cut from the presented deck: 25 rows of timings is the shape of
@@ -2809,7 +3136,7 @@ recomputes it.}
 %  Still cut to the two tails, with the elision row explicit so nothing is hidden.
 %  Source: 7-Theme2.tex:20-59 (setup + headline), tab:oneshot-compile at 7-Theme2.tex:91-124.
 %  Note siunitx is NOT loaded in this deck, so memory is written out in plain text.
-\begin{frame}{Backup: the per-problem times}
+\begin{frame}[label=bk-pertimes]{The per-problem times}
 \vspace{-1ex}
 {\scriptsize\color{black!55} 25 problems of \cvxpy{}'s public benchmark suite \textbullet{}
 \texttt{get\_problem\_data} with \texttt{Clarabel}, solver excluded \textbullet{} the
@@ -2844,34 +3171,400 @@ Fastest of the four on $21$ of the $25$ problems, and more than twice as fast as
 \end{center}
 \end{frame}
 
-% --- B3 ---------------------------------------------------------------------------
-%  The definition dropped from the Results profile slide. Source: 7-Theme2.tex:61-75
-%  (eq:perf-profile and the reading of the two ends of the curve).
-\begin{frame}{Backup: how to read a performance profile}
+% --- R-LOSSES (NEW-AL) ------------------------------------------------------------
+%  Q: "which problems do you lose, and why?"  Legrain, revision (vi): "explains the
+%  underperforming problems". The four ratios above 1 in tab:oneshot-compile
+%  (7-Theme2.tex:91-124). Sources per row:
+%    CVaR -- theme2_tensor_amortization_cut.md:262-266 (copying a large constant block);
+%            sizes from sparsity_metrics.json; cross-day ratios 0.95-1.02 computed from
+%            variance_report_20260822.md section B.
+%    OptimalAdvertising -- 1.05 on the thesis build; 2.50-2.57 on the two earlier builds.
+%            The per-block inverse-map mechanism of diffengine_plan_lazy_inv_memory.md was
+%            measured on build 4172c5e, NOT on the thesis build -- the row says only what
+%            is known, a tie.
+%    SDPSegfault1132, ConvexPlasticity -- the frames linked in the last column.
+\begin{frame}[label=bk-losses]{Where \de{} is not faster}
 \vspace{-0.5ex}
-{\small A performance profile compares the backends over the whole suite at once, rather than
-one problem at a time.}
+{\small Four of the $25$ problems have a ratio above $1$:}
 
-\vspace{2ex}
-\[
-  f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \textstyle\min_b t_{p,b}
-  \,\}\bigr|
-\]
+\vspace{1.5ex}
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l r >{\raggedright\arraybackslash}p{8.2cm} c@{}}
+\toprule
+Problem & Ratio & What dominates & Slide \\
+\midrule
+CVaR & 1.01 & copying one dense $131\,072 \times 768$ scenario block: no structure to exploit,
+  and \texttt{SCIPY} copies it as fast; the ratio was $0.95$--$1.02$ over three days & --- \\
+\addlinespace
+OptimalAdvertising & 1.05 & a tie with \texttt{COO} and \texttt{SCIPY} ($2.36$ s against
+  $2.25$ s) & --- \\
+\addlinespace
+SDPSegfault1132 & 1.39 & three dense $49.5$\,M-entry blocks that cancel only in the final
+  sum & \hyperlink{bk-loss}{code}, \hyperlink{bk-sdpbreak}{profile} \\
+\addlinespace
+ConvexPlasticity & 2.48 & a diagonal matrix stored as a dense array, taken as a dense
+  $N\times N$ block & \hyperlink{bk-plasticity}{mechanism} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1ex}
+{\footnotesize\color{black!55} Close to $1$ but faster: Murray ($0.96$) and
+SemidefiniteProgramming ($0.83$).}
+
+\vspace{1.5ex}
+\begin{center}\small\color{polyblue}
+Two are ties within the run-to-run spread; the other two come from how constant data is
+handled, not from computing derivatives.
+\end{center}
+\end{frame}
+
+% --- B-LOSS -----------------------------------------------------------------------
+%  Q: "which of the 25 do you lose, and why?"  Was a presented frame between R1 and R2, which
+%  spent a full slide of a 30-minute slot on a loss. R1's closing footnote already names both
+%  losses and gives the reason, so the frame is the answer to a question rather than something
+%  to walk through; it is only needed if the question is actually asked.
+%
+%  SDPSegfault1132 rather than ConvexPlasticity, though ConvexPlasticity has the worse ratio
+%  (2.48 vs 1.39): its absolute times are 0.35 s against 0.85 s, which invites "half a second"
+%  as the reply and loses the point, and its source needs the plasticity physics explained
+%  before the code means anything. SDPSegfault1132 is ten lines, is a recognizable SDP, and
+%  its constants are visibly dense on the slide -- V is 100 x 99, D and W are 100 x 100, and
+%  V @ G @ V.T sandwiches a PSD variable between two of them three times over.
+%
+%  Code trimmed from benchmark/sdp_segfault_1132_benchmark.py in cvxpy/benchmarks: the
+%  construction of D, V and points is replaced by comments giving their shapes, since the
+%  shapes are the whole content and the arithmetic that builds them is not. The name is the
+%  suite's own (it was filed as a segfault report, cvxpy issue 1132) -- kept as-is so it
+%  matches the table on the previous slide. p='fro' uses single quotes: the deck is OT1 and
+%  \textquotedbl is unavailable there, so a double quote in a listing is a compile error.
+%
+%  Sources: 7-Theme2.tex:56-59 (the two losses and the reason), tab:oneshot-compile
+%           (7-Theme2.tex:119) for the timings quoted.
+\begin{frame}[fragile,label=bk-loss]{SDPSegfault1132: the code}
+\vspace{-1ex}
+{\scriptsize\color{black!55} \texttt{SDPSegfault1132}, where \de{} is
+$1.39\times$ behind}
+
+\vspace{0.5ex}
+\begin{center}
+\begin{minipage}{0.82\textwidth}
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
+                   aboveskip=0.4em, belowskip=0.4em]
+n = 100
+V = ...                      # dense, (n, n-1)
+D = ...                      # dense, (n, n)
+W = np.ones((n, n))          # dense, (n, n)
+
+G = cp.Variable((n-1, n-1), PSD=True)
+A = cp.kron(e,   cp.reshape(cp.diag(V @ G @ V.T), (1, n)))
+B = cp.kron(e.T, cp.reshape(cp.diag(V @ G @ V.T), (n, 1)))
+C = cp.norm(cp.multiply(W, A + B - 2 * V @ G @ V.T - D), p='fro')
+
+prob = cp.Problem(cp.Maximize(cp.trace(G) - C))
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\vspace{0.5ex}
+\begin{itemize}\small\bul
+  \item every constant is dense, and \texttt{V @ G @ V.T} sandwiches the variable between
+        two of them
+  \item \de{} takes $13.21$ s against \texttt{SCIPY}'s $9.51$ s: processing the dense
+        constant data dominates
+\end{itemize}
+\end{frame}
+
+% --- R-SDPBREAK (NEW-AL) ----------------------------------------------------------
+%  Q: "explain the problems you lose -- where does the time go?"  Legrain, revision (vi).
+%  Source: plans/sdpsegfault_analysis_20260822.md (cProfile, 2026-08-22). The engine profile is
+%  of the DEV build, 25 s in all against 13.2 s for the pinned build of the table -- the frame
+%  says so. The 4.1 s vs 15.7 s is the `Deeper dig' table: engine symbolic + numeric on
+%  V G V^T alone (2.8 + 1.3) against SCIPY's build_matrix on the same expression.
+%  The SCIPY `CSR additions' row is the remainder, 8.6 - 3.4 - 3.0.
+\begin{frame}[label=bk-sdpbreak]{Where the time goes on SDPSegfault1132}
+\vspace{-0.5ex}
+{\small With dense $\mmat{V} \in \reals^{100\times 99}$, the Jacobian of
+$\mmat{V}\mmat{G}\mmat{V}^\top$ is one dense block of $49.5$\,M entries, and the problem
+builds it three times.}
+
+\vspace{0.5ex}
+\begin{columns}[T,onlytextwidth]
+\begin{column}{0.44\textwidth}
+\begin{center}\footnotesize
+\begin{tabular}{@{}l r@{}}
+\toprule
+\de{} (development build) & s \\
+\midrule
+symbolic pass       & 5.6 \\
+numeric pass        & 7.2 \\
+COO to CSR          & 4.0 \\
+cone encoding       & 2.8 \\
+cone formatting     & 5.5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{center}\footnotesize
+\begin{tabular}{@{}l r@{}}
+\toprule
+\texttt{SCIPY} & s \\
+\midrule
+CSR products ($\mmat{V}\otimes\mmat{V}$) & 3.4 \\
+Kronecker products  & 3.0 \\
+CSR additions       & 2.2 \\
+rest                & 0.3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{column}
+\end{columns}
+
+\vspace{0.5ex}
+\begin{itemize}\footnotesize
+  \item the sum $\mmat{A} + \mmat{B} - 2\mmat{V}\mmat{G}\mmat{V}^\top - \mmat{D}$ cancels to
+        $1.01$\,M nonzeros, and neither backend can see this in advance
+  \item \texttt{SCIPY}'s CSR addition drops the zeros at the ``$+$''; the engine keeps the
+        $49.5$\,M-entry pattern, $48.5$\,M of them exact zeros, until the cone formatting
+  \item on one $\mmat{V}\mmat{G}\mmat{V}^\top$ alone the engine's two passes take $4.1$\,s,
+        against $15.7$\,s for \texttt{SCIPY}: the loss is in the sum, not in the dense block
+\end{itemize}
+
+\vfill
+{\scriptsize\color{black!55} cProfile, 2026-08-22; the development build takes 25\,s here,
+the pinned build of the table 13.2\,s. Fix, not yet done: drop exact zeros on emission.}
+\end{frame}
+
+% --- R-PLASTICITY (NEW-AL) --------------------------------------------------------
+%  Q: "and ConvexPlasticity, your worst ratio?"  Root-caused 2026-08-13.
+%  Sources: ../Jacobian-accumulation/canonicalization/diffengine_issue_draft_warm_extraction.md,
+%  Finding 2 (mechanism; the pattern decomposition N^2 + 16N stored, 11N true, verified by a
+%  scaling probe at N = 25/50/100; upstream 1.9.2's P is clean; +1.2 GB);
+%  diffengine_pr_quadform_density_fix.md (the fix); plans/document8-advisor-comments.md,
+%  `ConvexPlasticity retiming' (0.85/0.87/0.94 s on the later build) and item 41 (2.03 s, the
+%  fastest pinned-build run). Listing trimmed from cvxpy_benchmarks/benchmark/
+%  high_dim_convex_plasticity.py:81-86.
+%  BUILD DISCLOSURE: the Table 4.1 row (0.85 s, 2.48) is the later build; every other
+%  diffengine cell is the pinned build. The frame says so -- it is the honest answer if asked,
+%  and the final single-build re-run is already planned.
+%  NOT PROFILED: the 0.85 s vs 0.35 s that remains after the fix. Say so; do not guess.
+\begin{frame}[fragile,label=bk-plasticity]{ConvexPlasticity: a diagonal stored as dense}
+\vspace{-0.5ex}
+\begin{center}
+\begin{minipage}{0.80\textwidth}
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
+                   aboveskip=0.4em, belowskip=0.4em]
+N = 3000
+D = H * np.eye(N)            # diagonal content, dense ndarray
+... + 0.5 * cp.quad_form(p - p_old, D)
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\begin{itemize}\small\bul
+  \item the quad-form converter chose the dense path by the \emph{container}, not the content,
+        so $\mmat{D}$ became a dense $N \times N$ Hessian block
+  \item $\mmat{P}$ stored $9.05$\,M entries where the true pattern has $33$\,k: $274\times$
+        padding, almost all of it explicit zeros; \cvxpy{}'s own $\mmat{P}$ is clean
+  \item on the pinned build: $2.03$\,s against $0.35$\,s for all three \cvxpy{} backends, and
+        $1.2$\,GB more peak memory
+  \item the fix is the density test the matmul converter already had: a constant with under
+        $5\,\%$ nonzeros takes the sparse path, and the time drops to $0.85$\,s
+\end{itemize}
+
+\begin{center}\small\color{polyblue}
+The three \cvxpy{} backends take the same $0.35$\,s, so that time is the shared reductions;
+the $0.5$\,s \de{} still spends above it has not been profiled yet.
+\end{center}
+
+\vfill
+{\scriptsize\color{black!55} The table's row is from the later build with the fix; the rest
+of the \de{} column is the pinned build. Revision (vi) re-runs the column on one build.}
+\end{frame}
+
+% --- R-SIZES (NEW-AL) -------------------------------------------------------------
+%  Q: "how big are these instances?"  Legrain, revision (v).
+%  Source: ../Jacobian-accumulation/canonicalization/results/sparsity_metrics.json
+%  (2026-08-11, cvxpy ca08a26d1, sparsediffpy 0.7.0, CLARABEL, ignore_dpp): the shape and
+%  stored nonzeros of A and P as diffengine emits them, and n_params (parameter OBJECTS, not
+%  entries). Rows generated by a one-off script and ordered as tab:oneshot-compile
+%  (7-Theme2.tex:91-124), whose Ratio column is copied beside them. nnz(P) is `---' where
+%  no P is emitted. ConvexPlasticity's nnz(P) is from before the quad-form fix (true pattern
+%  33 k), while its ratio is from the later build with the fix: see the ConvexPlasticity backup.
+\begin{frame}[label=bk-sizes]{Instance sizes}
+\vspace{-1.5ex}
+{\scriptsize\color{black!55} $\mmat{A} \in \reals^{m\times n}$ and $\mmat{P}$ as \de{} emits
+them \textbullet{} params: the number of parameter objects \textbullet{} ratio as in the
+per-problem table}
+
+\vspace{0.5ex}
+\begin{center}
+\adjustbox{max size={0.98\textwidth}{0.80\textheight}}{%
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}l rrrr r r@{}}
+\toprule
+Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & ratio \\
+\midrule
+UnconstrainedQP & 1\,009 & 289 & 18.6\,k & --- & --- & 0.01 \\
+LeastSquares & 7\,000 & 9\,000 & 14\,M & 7\,000 & --- & 0.15 \\
+Yitzhaki & 89.8\,k & 44.9\,k & 4.57\,M & --- & --- & 0.16 \\
+HuberRegression & 13.5\,k & 16.5\,k & 13.5\,M & 4\,500 & --- & 0.16 \\
+SimpleQP & 8\,020 & 1\,600 & 12.8\,M & 2.56\,M & --- & 0.18 \\
+FactorCovarianceModel & 75.3\,k & 75.2\,k & 6.45\,M & 87.5\,k & 2 & 0.20 \\
+SimpleLP & 20\,M & 10\,M & 20\,M & --- & --- & 0.20 \\
+SVMWithL1Regularization & 51\,k & 26\,k & 12.6\,M & --- & 1 & 0.23 \\
+SimpleScalarParametrizedLP & 4\,M & 2\,M & 4\,M & --- & 1 & 0.25 \\
+SimpleFullyParametrizedLP & 2\,M & 1\,M & 2\,M & --- & 1 & 0.25 \\
+ParametrizedQP & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 2 & 0.26 \\
+TvInpainting & 2.61\,M & 1.05\,M & 3.63\,M & --- & --- & 0.34 \\
+Cajas & 641\,k & 2\,450 & 1.96\,M & --- & --- & 0.37 \\
+\bottomrule
+\end{tabular}
+\hspace{1.5em}
+\begin{tabular}{@{}l rrrr r r@{}}
+\toprule
+Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & ratio \\
+\midrule
+SlowPruning & 400\,k & 402\,k & 8.4\,M & 400\,k & --- & 0.39 \\
+SmallMatrixStuffing & 4\,000 & 4\,000 & 4\,000 & --- & --- & 0.40 \\
+QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & 0.41 \\
+ConeMatrixStuffing & 5\,000 & 5\,000 & 5\,000 & --- & --- & 0.42 \\
+ParamSmallMatrixStuffing & 300 & 300 & 300 & --- & 3 & 0.75 \\
+ParamConeMatrixStuffing & 200 & 200 & 200 & --- & 3 & 0.79 \\
+SemidefiniteProgramming & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & 0.83 \\
+Murray & 490\,k & 245\,k & 1.5\,M & --- & --- & 0.96 \\
+CVaR & 264\,k & 132\,k & 25.7\,M & --- & --- & 1.01 \\
+OptimalAdvertising & 252\,k & 250\,k & 1\,M & --- & --- & 1.05 \\
+SDPSegfault1132 & 15\,k & 4\,951 & 1.01\,M & --- & --- & 1.39 \\
+ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & 2.48 \\
+\bottomrule
+\end{tabular}}
+\end{center}
+
+\end{frame}
+
+% --- R-VARIANCE (NEW-AL) ----------------------------------------------------------
+%  Q: "each measurement is run once -- how do you know it is not noise?"  Legrain,
+%  revision (iv). Source: plans/variance_report_20260822.md.
+%    Same day: sections A1-A3, the five DPP parametric problems, three replicates. 45 distinct
+%    cells (A1 and A2 share their diffengine column); 40 spread under 9%. The five others:
+%    diffengine on ParamSmallMatrixStuffing (first canon, 0.21 s), three millisecond re-solve
+%    cells, and one COO run on FactorCovarianceModel (4.66 / 6.45 / 4.76 s).
+%    Cross-day: section B, the 17 parameter-free rows on 07-11, 07-24, 08-08 (engine builds
+%    differ between days). Ratios diffengine / best-of-three computed from those cells
+%    (2026-09-30): within 0.04 on 13 of 17; SemidefiniteProgramming 0.55-0.84,
+%    SDPSegfault1132 1.23-1.41, OptimalAdvertising 1.05-2.57, SlowPruning 0.31-0.39.
+\begin{frame}[label=bk-variance]{Run-to-run variation}
+\vspace{-0.5ex}
+{\small The printed tables are single runs. The runs that were repeated:}
 
 \vspace{1ex}
 \begin{itemize}\small\bul
-  \item $t_{p,s}$ is the time of backend $s$ on problem $p$, and $\min_b t_{p,b}$ is the time
-        of the fastest backend on that same problem
-  \item $f_s(\tau)$ is the fraction of the $n$ problems on which backend $s$ lands within a
-        factor $\tau$ of that best time
-  \item {\color{polyblue}at $\tau = 1$}: the fraction of problems on which the backend is
-        outright fastest
-  \item {\color{polyblue}where the curve reaches $1$}: the factor the backend needs in order to
-        cover every problem in the suite
+  \item {\color{polyblue}same day, three runs}, the five DPP parametric problems, all backends:
+        $40$ of $45$ cells spread by less than $9\,\%$; four of the other five are under a
+        second
+  \item {\color{polyblue}three days}, the $17$ parameter-free problems, with a different engine
+        build each day: times move by up to $40\,\%$, but the ratio to the best \cvxpy{}
+        backend moves by at most $0.04$ on $13$ of the $17$
+  \item the ratios that move more are SemidefiniteProgramming ($0.55$--$0.84$),
+        SlowPruning ($0.31$--$0.39$), SDPSegfault1132 ($1.23$--$1.41$) and OptimalAdvertising
+        ($1.05$--$2.57$)
 \end{itemize}
 
 \vspace{1.5ex}
-{\scriptsize\color{black!55} Dolan and Mor\'e (2002).}
+\begin{center}\small\color{polyblue}
+Gaps of $3$ to $100\times$ are far outside this spread; the ratios near $1$ are not, and could
+go either way.
+\end{center}
+
+\vfill
+{\scriptsize\color{black!55} Revision (iv): five runs of every cell, each in a fresh
+process, reported as mean $\pm$ standard deviation.}
 \end{frame}
+
+% --- R-NONDPP (NEW-AL) ------------------------------------------------------------
+%  Q: "your central claim is caching without DPP -- where is the non-DPP problem?"  Legrain,
+%  reservation (2) and revision (iii). NOT MEASURED: the frame gives the mechanism and says so.
+%  The listing was checked on 2026-09-30 in the harness venv (.venv-de-base, cvxpy fork
+%  b7bb765): is_dcp() True, is_dpp() False. A parametric quad_form(x, Sigma) is the more
+%  natural non-DPP example, but QuadForm._supports_diffengine keeps it off the diffengine
+%  backend, so it is not used. ConvexPlasticity: run_backend_benchmarks.py:245-256 (the chain
+%  sends it down the non-DPP branch although plain is_dpp() says DPP).
+%  CHECK before the defence: in the harness, the cached re-solve strategy `de_cached' is in
+%  REQUIRES_DPP (run_backend_benchmarks.py:159) -- confirm how a non-DPP family reaches the
+%  cached path in the fork before claiming more than the mechanism.
+\begin{frame}[fragile,label=bk-nondpp]{Caching without DPP}
+\vspace{-0.5ex}
+{\small The numeric pass needs a fixed expression tree and fixed sparsity patterns. It never
+asks whether the data is affine in the parameters.}
+
+\vspace{0.5ex}
+\begin{center}
+\begin{minipage}{0.80\textwidth}
+\begin{lstlisting}[language=mypython, basicstyle=\ttfamily\small,
+                   aboveskip=0.4em, belowskip=0.4em]
+sigma = cp.Parameter(pos=True)
+prob  = cp.Problem(cp.Minimize(cp.norm1(A @ x - b) / sigma
+                               + cp.norm1(x)))
+prob.is_dpp()      # False: division by a parameter
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+\vspace{0.5ex}
+\begin{itemize}\small\bul
+  \item \cvxpy{}: the data is not affine in $\sigma$, so no tensor can be built, and every
+        solve repeats the whole canonicalization
+  \item \de{}: the tree and the patterns are the same for every $\sigma$, so a new value
+        re-runs the numeric pass only
+\end{itemize}
+
+\vfill
+{\scriptsize\color{black!55} Not yet measured. Revision (iii): this problem and
+ConvexPlasticity, which \cvxpy{}'s QP path treats as non-DPP, against \cvxpy{}
+re-canonicalizing at every solve.}
+\end{frame}
+
+% --- R-ABLATION (NEW-AL) ----------------------------------------------------------
+%  Q: "is it the dense representations, the split, or just leaner C?"  Legrain, reservation
+%  (2) and revision (ii), the one he calls mandatory. NOT MEASURED: the frame is the design.
+%  Source: plans/legrain-deferred-experiments.md, item (ii): DIFFENGINE_NO_DENSE raises
+%  SPARSE_DENSITY_THRESHOLD above 1 for constants (diff_engine/converters.py:67-85) and in
+%  the quad_form branch; parametric matrices stay dense.
+\begin{frame}[label=bk-ablation]{Isolating the dense representations}
+\vspace{-0.5ex}
+{\small The benchmark compares whole backends, so the speedup mixes three things: the dense
+representations, the two-pass split, and the C code of the engine itself.}
+
+\vspace{1.5ex}
+\begin{center}\footnotesize
+\begin{tabular}{@{}l c c c@{}}
+\toprule
+& dense blocks & two passes & \sde{} code \\
+\midrule
+\de{}                                   & \checkmark & \checkmark & \checkmark \\
+\de{}, constants stored as CSR          & ---        & \checkmark & \checkmark \\
+\cvxpy{} backends                       & ---        & ---        & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1ex}
+\begin{itemize}\small\bul
+  \item first row against second: the same passes and the same C code, so the difference is
+        the dense representations alone
+  \item second row against third: what remains is the split and the implementation
+  \item one switch, \texttt{DIFFENGINE\_NO\_DENSE}, stores every constant as CSR;
+        parametric matrices stay dense in both variants
+\end{itemize}
+
+\vfill
+{\scriptsize\color{black!55} Not yet measured. Revision (ii): both variants on the full
+suite.}
+\end{frame}
+
 
 \end{document}
