@@ -36,6 +36,11 @@ available as a pull request:
 \begin{center}
   \url{https://github.com/cvxpy/cvxpy/pull/3448}
 \end{center}
+This pull request has since been merged into the main branch of \texttt{CVXPY}, on
+September 9, 2026, as an opt-in backend for parameter-free problems. The parametric re-solve
+path of \S\ref{sec:bench-param} is not yet integrated into \texttt{CVXPY}.
+The author also contributed to the \texttt{SCIPY} and \texttt{COO} backends that
+\texttt{diffengine} is compared against.
 Each measurement runs \texttt{get\_problem\_data} once with
 \texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 20
 minutes. The method canonicalizes the
@@ -61,18 +66,18 @@ canonicalization time.
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends
 over the whole suite at once. We define $t_{p,s}$ as the time of backend $s$ on
-problem $p$. The profile of backend $s$ is the fraction of the $n$ problems on which it
+problem $p$. The profile of backend $s$ is the fraction of the $N$ problems on which it
 is within a factor $\tau$ of the fastest backend,
 \BEQ\label{eq:perf-profile}
-f_s(\tau) = \frac{1}{n}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{p,b}
+f_s(\tau) = \frac{1}{N}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{p,b}
 \,\}\bigr|.
 \EEQ
 The minimum $\min_b t_{p,b}$ is the time of the fastest backend on problem~$p$.
 The value at $\tau = 1$ is the fraction of
 problems on which the backend is the fastest, and the curve reaches $1$ at the factor the
 backend needs to cover every problem. \texttt{diffengine} is within $3\times$ of
-the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than two problems,
-and each needs $\tau \approx 8$ to cover $92$--$96\%$ of the problems.
+the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than three
+problems (\texttt{SCIPY}, counting a three-way tie on ConvexPlasticity), and each needs $\tau \approx 8$ to cover $92$--$96\%$ of the problems.
 
 Figure~\ref{fig:profiles}b reports the same profile for peak memory,
 with $t_{p,s}$ replaced by the growth of the process's peak resident memory during
@@ -128,7 +133,7 @@ ConvexPlasticity            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  
 \centering
 \includegraphics{profiles_combined_thesis}
 \caption[Performance profiles of canonicalization time and peak memory]{Performance
-profiles \eqref{eq:perf-profile} of canonicalization time (a) and peak
+profiles~\eqref{eq:perf-profile} of canonicalization time (a) and peak
 memory (b) over all $25$ problems, every backend on the \texttt{ignore\_dpp} path.}
 \label{fig:profiles}
 \end{figure}
@@ -202,8 +207,8 @@ about two of the cached tensor on every problem while ignoring the ruleset.
 Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
 the tensor on every problem, and its re-solve is also faster on five of the seven
 problems.
-\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster on $24$ of
-the $25$ problems, as reported in Table~\ref{tab:oneshot-compile} and
+\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster than
+\texttt{cvxcore} on $24$ of the $25$ problems, as reported in Table~\ref{tab:oneshot-compile} and
 Figure~\ref{fig:profiles}. On the parametric problems of Table~\ref{tab:param-tensor},
 \texttt{COO} builds the parameter-to-data tensor faster than \texttt{cvxcore} on all seven.
 \end{itemize}

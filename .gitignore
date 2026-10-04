@@ -321,3 +321,7 @@ TSWLatexianTemp*
 *.app
 *.lof
 *.lot
+
+## latexdiff against the jury version (make diff)
+Document-diff.*
+.diff-*/
