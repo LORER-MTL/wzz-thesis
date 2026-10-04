@@ -55,13 +55,13 @@ The **Where** column gets the section and page in the new PDF once an item is do
 
 | ID | Request | Response | Where | Status |
 |---|---|---|---|---|
-| AL-m1 | Attribute the symbolic/numeric split to sparse factorization first (p. 3, p. 46) | | §1, §3.5 | todo |
+| AL-m1 | Attribute the symbolic/numeric split to sparse factorization first (p. 3, p. 46) | Davis and Gustavson cited before the NLP interfaces in the Intro's approach paragraph, §1.5, the Ch. 3 opening and §3.5 | §1, §1.5, Ch. 3, §3.5 | done (draft) |
 | AL-m2 | Table 2.2: qualify the AMPL/Pyomo row (Pyomo persistent interfaces) | | §2.4 | todo |
 | AL-m3 | §1.5, §3.1: delineate the contribution relative to DNLP | | §1.5, §3.1 | needs William |
 | AL-m4 | p. 48: PR #3448 merged 9 Sept 2026 (opt-in, parameter-free); parametric path not yet merged | Merged 9 Sept 2026, opt-in, parameter-free; parametric path not yet integrated (verified via GitHub API) | Ch. 4 setup | done |
 | AL-m5 | Ch. 4: the author contributed to the SCIPY and COO backends | One sentence in the setup | Ch. 4 setup | done |
 | AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 24 of the 25 » | §4.3 | done |
-| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | | §1.5, Ch. 3, §3.5 | needs William |
+| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Matrix classes are the main contribution, the split comes second, everywhere: §1.5 item 1 names both, the Ch. 3 opening is reordered, §3.5 was already in this order | §1.5, Ch. 3, §3.5 | done (draft) |
 | AL-m8 | p. 48: number of repetitions and the BLAS implementation | | Ch. 4 | todo |
 | AL-m9 | Fig. 3.5: do not rely on colour alone | Letters (a)–(d) in cells and legend; caption mentions them | Fig. 3.5 | done |
 | AL-m10 | Refs [41] [42] [43] [76] [88]: p. → pp. | En-dashes → --; [88] page → « Art. no. 2 » | bib | done |

@@ -145,8 +145,11 @@ The symbolic phase runs once on the first solve, where it computes the sparsity 
 allocates memory for all intermediate matrices, and caches other computations that remain valid
 across the problem family.
 The numeric phase then fills in new values at every solve.
-This separation between structure and values is inspired by the interfaces of \ac{NLP}
-solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
+This separation between structure and values goes back to sparse direct solvers, which
+analyse the sparsity pattern of a matrix once and repeat the numeric factorization for new
+values \cite{davis2006direct}, and to Gustavson's two-phase sparse
+product \cite{gustavson1978two}. Our use of it is inspired more directly by the interfaces
+of \ac{NLP} solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
 The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
 numeric phase is often similar in cost to applying the matrix-vector product.
@@ -913,7 +916,12 @@ In this Master's thesis, we make the following contributions:
 \begin{enumerate}
   \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that assembles
   sparse Jacobians and Hessians directly from the expression structure, with no sparsity
-  detection or graph colouring.
+  detection or graph colouring. Within the library, our main contribution is two matrix
+  representations, permuted dense and stacked permuted dense, together with the kernels
+  that operate on them. They keep the dense blocks of the problem data intact and process
+  them with \ac{BLAS}. The library also splits the computation into a symbolic and a
+  numeric pass, an idea we borrow from sparse direct factorization and from the interfaces
+  of \ac{NLP} solvers.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
   \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.
