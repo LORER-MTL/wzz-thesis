@@ -16,7 +16,8 @@ This separation is particularly useful for compiling problems involving paramete
 the structure is fixed but the numerical values can change. The two-phase approach is
 borrowed from sparse direct factorization and from the interfaces of \ac{NLP} solvers.
 Neither the two matrix classes nor the two-phase approach exists in \texttt{CVXPY}'s backends.
-Together, they address the research gap we identify in \S\ref{sec:research-gap}.
+By bringing both to canonicalization, we address the research gap we identify
+in \S\ref{sec:research-gap}.
 
 Other important design decisions differ from \texttt{CVXPY}'s backends for
 simplicity rather than performance. Every node carries one Jacobian taken with respect to
