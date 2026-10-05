@@ -89,7 +89,7 @@ $
 of $\mmat{F}$ per column of $\mmat{X}$.}
 \label{fig:vec-variable-kron}
 \end{subfigure}
-\caption{Jacobians under the vectorization \eqref{eq:vec}, for a matrix variable $\mmat{X}$ and
+\caption{Jacobians under the vectorization~\eqref{eq:vec}, for a matrix variable $\mmat{X}$ and
 the product $\mmat{F}\mmat{X}$,
 with
 $\mmat{X}, \mmat{F} \in \reals^{2 \times 2}$. The entries of $\vect(\mmat{X})$, in column-major
@@ -109,19 +109,20 @@ f(\mvec{z}) = \mmat{A}_f\,\mvec{z} + \mvec{b}_f
 where $\mvec{z}$ is the stacked vector of all the problem variables, $\mmat{A}_f$ is the
 Jacobian of $f$ with respect to $\mvec{z}$, and $\mvec{b}_f$ is a
 constant vector. Stacking the augmented matrices of the constraint trees yields the problem
-data $[\mmat{A}\ \mvec{b}]$ of \eqref{e:quad-conic-form}.
+data $[\mmat{A}\ \mvec{b}]$ of~\eqref{e:quad-conic-form}.
 Matrix stuffing computes the augmented matrix in one bottom-up pass over the
 tree. A variable leaf contributes an identity block and a constant leaf contributes its value
 to the last column, as shown in Figure~\ref{fig:matrix-stuffing}. An interior node with a
 single argument applies a constant linear operator $\mmat{L}$ to the argument, which has the
-affine form
-\eqref{eq:linop-form} with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$. Applying $\mmat{L}$ gives
+affine form~\eqref{eq:linop-form}
+with augmented matrix $[\mmat{A}_1\ \mvec{b}_1]$. Applying $\mmat{L}$ gives
 \BEQ\label{eq:linop-chain-rule-unary}
 \begin{bmatrix} \mmat{A}_f & \mvec{b}_f \end{bmatrix}
   = \mmat{L} \begin{bmatrix} \mmat{A}_1 & \mvec{b}_1 \end{bmatrix}.
 \EEQ
-The operator $\mmat{L}$ is the Jacobian of the node with respect to its argument, so
-\eqref{eq:linop-chain-rule-unary} is exactly the chain rule of matrix calculus.
+The operator $\mmat{L}$ is the Jacobian of the node with respect to its argument,
+so~\eqref{eq:linop-chain-rule-unary}
+is exactly the chain rule of matrix calculus.
 A node with $k$ arguments applies one operator per argument,
 $f = \sum_{i=1}^{k} \mmat{L}_i f_i$, which gives
 \BEQ\label{eq:linop-chain-rule}
@@ -172,8 +173,8 @@ $f_1 / \mmat{C}$ & $\diag(\vect(\mmat{C}))^{-1}$ & multiply by the reciprocal di
 \end{table}
 
 \subsection{Example}\label{sec:ms-example}
-We continue the example of \S\ref{sec:canon-example}, which canonicalized problem
-\eqref{eq:example} into the conic-form trees of Figure~\ref{fig:conic-form-tree}. We now
+We continue the example of \S\ref{sec:canon-example}, which canonicalized problem~\eqref{eq:example}
+into the conic-form trees of Figure~\ref{fig:conic-form-tree}. We now
 compute the problem data of these trees. The variables are first stacked into
 $\mvec{z} = (t_1, t_2, \mvec{x})$. Each variable then occupies a contiguous block of columns of
 $\mmat{A}_f$, starting at its column offset within $\mvec{z}$. The columns of the variables
@@ -305,17 +306,18 @@ augmented matrices of its children at their constraint row offsets into $[\mmat{
 \caption{Matrix stuffing tree of the constraints}
 \end{center}
 \end{subfigure}
-\caption{Matrix stuffing of \eqref{eq:example} by a bottom-up pass over the conic-form
+\caption{Matrix stuffing of~\eqref{eq:example} by a bottom-up pass over the conic-form
 expression trees of Figure~\ref{fig:conic-form-tree}: each node's matrix is obtained by applying a
-linear operation to the matrices of its children. The coefficients appear negated because
-\eqref{e:quad-conic-form} writes the constraints as $\mvec{b} - \mmat{A}\mvec{x} \in \cone{K}$.
+linear operation to the matrices of its children. The coefficients appear negated
+because~\eqref{e:quad-conic-form}
+writes the constraints as $\mvec{b} - \mmat{A}\mvec{x} \in \cone{K}$.
 The horizontal rules in $[\mmat{A}\ \mvec{b}]$
 separate the rows of the three constraints.}
 \label{fig:matrix-stuffing}
 \end{figure}
 
 % \paragraph{Local versus global derivatives.}  (heading removed per advisor style; kept for reference)
-The augmented matrices of \eqref{eq:linop-form} can be stored in two ways,
+The augmented matrices of~\eqref{eq:linop-form} can be stored in two ways,
 shown in Figure~\ref{fig:local-vs-global}. In the global layout, drawn in
 Figure~\ref{fig:matrix-stuffing}, each node stores one matrix whose columns span the whole
 stacked vector $\mvec{z}$, with the column offsets applied from the start. In the local
@@ -379,7 +381,7 @@ In a problem family the structure is fixed and only the numeric parameter values
 between solves. Under additional rules on how the parameters enter the expressions, known as
 \ac{DPP}, the problem data is affine in the parameters~\cite{agrawal2019dpp}.
 The rules classify each parameter as affine and forbid products of two parametrized
-expressions, so that the dependence can be represented by the maps of \eqref{eq:param-maps}.
+expressions, so that the dependence can be represented by the maps of~\eqref{eq:param-maps}.
 To keep track of the parameter dependence, \texttt{CVXPY} adds a third dimension to the
 problem data, indexed by the parameter entries. Every coefficient matrix throughout the
 bottom-up pass becomes a tensor. At the root nodes we thus get the cached parameter maps
@@ -392,7 +394,7 @@ bottom-up pass becomes a tensor. At the root nodes we thus get the cached parame
 \EEQ
 where $\mmat{Q} \in \reals^{n \times (p+1)}$ and
 $\mmat{R} \in \reals^{m(n+1) \times (p+1)}$. The objective map $\mmat{Q}$ is shown in
-Figure~\ref{fig:param-map-dpp} for \eqref{eq:example}. After a parameter change, a
+Figure~\ref{fig:param-map-dpp} for~\eqref{eq:example}. After a parameter change, a
 re-solve costs one sparse matrix-vector product per map.
 
 \begin{figure}[htbp]
@@ -411,7 +413,7 @@ $
 \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta}
 = \begin{bmatrix}1\\ \mu\\ \plotzero\end{bmatrix}
 $
-\caption{The DPP path on the objective data of \eqref{eq:example}: the parameter map
+\caption{The DPP path on the objective data of~\eqref{eq:example}: the parameter map
 $\mmat{Q}$
 is built and cached once, and each re-solve recovers $\mvec{c}$ with the single sparse
 product
@@ -445,7 +447,7 @@ more general, as it supports arbitrary functions of the parameters.
 
 \vspace{1ex}
 $\Rightarrow\quad \mvec{c} = \begin{bmatrix}1 & 2.5 & \plotzero\end{bmatrix}$
-\caption{The \texttt{ignore\_dpp} path on the objective of \eqref{eq:example}: the
+\caption{The \texttt{ignore\_dpp} path on the objective of~\eqref{eq:example}: the
 parameter leaf $\mu$ is replaced by a constant holding its current value $2.5$, and the pass
 is repeated on the parameter-free tree on every change of the parameters.}
 \label{fig:param-map-evalparams}
@@ -479,15 +481,16 @@ When no backend is requested, \texttt{CVXPY} uses \texttt{cvxcore}, and substitu
 \texttt{COO} for a DPP problem with at least $1000$ parameter entries in total.
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile a DPP problem ahead of
 time~\cite{schaller2022cvxpygen}. It generates C code specific to the problem family, with
-the entries of the cached maps \eqref{eq:param-maps} written into the source as constants,
+the entries of the cached maps~\eqref{eq:param-maps} written into the source as constants,
 so a re-solve applies the parameter maps in compiled code.
 
 The pass of this section produces the affine data $\mvec{c}$ and $[\mmat{A}\ \mvec{b}]$.
 For a quadratic objective, \texttt{CVXPY} replaces the affine argument of each quadratic
 atom by a new variable, adding the corresponding equality constraint. The objective becomes
 a sum of quadratic forms with constant matrices. A second matrix stuffing pass then
-assembles these matrices into the diagonal blocks of the matrix $\mmat{P}$ of
-\eqref{e:quad-conic-form}~\cite{cvxpy2026source}.
+assembles these matrices into the diagonal blocks of the matrix $\mmat{P}$
+of~\eqref{e:quad-conic-form}
+~\cite{cvxpy2026source}.
 
 % \paragraph{Implementation details.}  (heading removed per advisor style; kept for reference)
 All three backends share two limitations. Firstly, they delegate their matrix operations to a
@@ -868,7 +871,7 @@ $\mvec{b}$ and $\mvec{c}$
 are expressions of $\mvec{g}$ and $\mu$, re-evaluated for each parameter value. This is how
 the \texttt{qpsol} interface builds its problem data internally, for problems with a
 quadratic objective and affine constraints. A model written at the same high level as in
-\texttt{CVXPY}, with the norms of \eqref{eq:example} kept in the expression graph, is solved
+\texttt{CVXPY}, with the norms of~\eqref{eq:example} kept in the expression graph, is solved
 through \texttt{nlpsol} instead. The same sweeps assemble the gradient, constraint
 Jacobian, and Hessian of the Lagrangian that the \ac{NLP} solver queries at each iteration.
 
@@ -925,13 +928,13 @@ The linear part of each record is an explicit list of (variable, coefficient) pa
 alongside the bounds and the nonzero counts of the instance. Only the nonlinear parts are kept
 as expression graphs, written in prefix notation~\cite{gay2005writing}.
 
-The language has no norm atom and no canonicalization step, so the norms of
-\eqref{eq:example} are entered as square roots of sums of squares. What the solver receives
+The language has no norm atom and no canonicalization step, so the norms of~\eqref{eq:example}
+are entered as square roots of sums of squares. What the solver receives
 depends on its driver.
 An \texttt{MP}-based driver rewrites
 the two norms into second-order cones for a conic solver, and an ASL-based driver passes on a
 general nonlinear program. Listing~\ref{lst:ampl-example} states the model.
-\begin{lstlisting}[language=Ampl, caption={The running example \eqref{eq:example} in
+\begin{lstlisting}[language=Ampl, caption={The running example~\eqref{eq:example} in
 \texttt{AMPL}.}, label=lst:ampl-example]
 param m; param n;
 param F {1..m, 1..n};
@@ -1006,9 +1009,9 @@ or a second-order cone, this is exactly the functional conic form
 of \S\ref{sec:bg-canonicalization}. MOI also supports other sets, such as integrality,
 special ordered sets, and indicator constraints~\cite{moidocs}.
 
-The user declares the epigraph variables and cone memberships of \eqref{eq:graph}
+The user declares the epigraph variables and cone memberships of~\eqref{eq:graph}
 directly, as in Listing~\ref{lst:jump-example}.
-\begin{lstlisting}[caption={The running example \eqref{eq:example} in \texttt{JuMP}.},
+\begin{lstlisting}[caption={The running example~\eqref{eq:example} in \texttt{JuMP}.},
 label=lst:jump-example]
 using JuMP
 model = Model()
