@@ -53,9 +53,10 @@ The standard form of a convex optimization problem is
 \EEQ
 where $\mvec{x} \in \reals^n$ is the optimization variable, the objective
 $f_0 : \reals^n \times \reals^p \to \reals$ and inequality constraint functions
-$f_1,\ldots,f_{m_1} : \reals^n \times \reals^p \to \reals$ are convex, and the equality
-constraint functions $g_1,\ldots,g_{m_2} : \reals^n \times \reals^p \to \reals$ are affine
-\cite{boyd2004convex}.
+$f_1,\ldots,f_{m_1} : \reals^n \times \reals^p \to \reals$ are convex in $\mvec{x}$ for every
+fixed $\gvec{\theta}$, and the equality constraint functions
+$g_1,\ldots,g_{m_2} : \reals^n \times \reals^p \to \reals$ are affine in $\mvec{x}$ for every
+fixed $\gvec{\theta}$ \cite{boyd2004convex}.
 The parameter $\gvec{\theta} \in \reals^p$ specifies data that can change between solves but is fixed
 and given when solving an instance of the problem. We call the parametrized
 problem~\eqref{e:parametric-family}
@@ -76,7 +77,10 @@ the matrix $\mmat{A}(\gvec{\theta}) \in \reals^{m \times n}$, the vectors
 $\mvec{b}(\gvec{\theta}) \in \reals^m$ and
 $\mvec{c}(\gvec{\theta}) \in \reals^n$, and the non-empty closed convex cone
 $\cone{K} \subseteq \reals^m$.
-Problem \eqref{e:quad-conic-form} generalizes both \acp{QP}, when
+The number of rows $m$ is in general not $m_1 + m_2$: a vector constraint takes several rows of
+$\mmat{A}$, and canonicalization introduces auxiliary constraints, together with auxiliary
+variables that are appended to $\mvec{x}$ (so that $n$ also grows).
+Problem~\eqref{e:quad-conic-form} generalizes both \acp{QP}, when
 $\cone{K} = \reals^m_+$ is the nonnegative orthant, and standard conic programs, when
 $\mmat{P}(\gvec{\theta}) = \mmat{0}$.
 
@@ -157,12 +161,14 @@ background on dense and sparse matrix computations in \S\ref{sec:intro-matrix}).
 \section{Canonicalization}\label{sec:intro-canon}
 The problem family~\eqref{e:parametric-family} is written in functional form, meaning the
 objective and constraints are given as functions of the variables and parameters.
-In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$ are collected
-into a single
-vector $\mvec{x} \in \reals^n$, and likewise the parameters $\gvec{\theta}_1,\ldots,\gvec{\theta}_l$
-into $\gvec{\theta} \in \reals^p$~\cite{boyd2004convex}.
-Users are not required to write constraints with a zero right-hand side as in
-\eqref{e:parametric-family}. Modelling languages accept inequalities with a convex left-hand
+In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$, each a
+scalar, a vector, or a vectorized matrix $\mvec{x}_j \in \reals^{n_j}$, are collected into a single
+vector $\mvec{x} \in \reals^n$ with $n = \sum_j n_j$, and likewise the parameters
+$\gvec{\theta}_j \in \reals^{p_j}$, $j = 1,\ldots,l$, into $\gvec{\theta} \in \reals^p$ with
+$p = \sum_j p_j$~\cite{boyd2004convex}.
+Users are not required to write constraints with a zero right-hand side as
+in~\eqref{e:parametric-family}.
+Modelling languages accept inequalities with a convex left-hand
 side and a concave right-hand side, and equalities with both sides affine.
 Converting to the form~\eqref{e:parametric-family} is trivial and only requires moving every
 term to the left-hand side.
@@ -258,7 +264,7 @@ rewrites its functional form~\eqref{e:parametric-family} into an equivalent func
 \BEQ\label{eq:conic-form}
 \begin{array}{ll}
 \underset{\mvec{x} \in \reals^n}{\mbox{minimize}}   & f_0(\mvec{x}; \gvec{\theta}) \\
-\mbox{subject to} & h_i(\mvec{x}; \gvec{\theta}) \in \cone{K}_i, \quad i = 1,\ldots,m,
+\mbox{subject to} & h_i(\mvec{x}; \gvec{\theta}) \in \cone{K}_i, \quad i = 1,\ldots,r,
 \end{array}
 \EEQ
 where $f_0$ is affine or quadratic, each $h_i : \reals^n \times \reals^p \to \reals^{d_i}$ is
@@ -322,7 +328,7 @@ parameter support grew into \ac{DPP}, a restricted grammar
 under which canonicalized programs can be updated efficiently \cite{agrawal2019dpp}.
 
 The open source project has since grown through contributions from many other enthusiastic
-developers. A recent paper surveys the new canonicalization and modelling features
+developers. A recent report surveys the new canonicalization and modelling features
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 % \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
@@ -544,6 +550,7 @@ It can therefore be obtained by differentiating the gradient with the
 same methods used for the Jacobian, although dedicated methods that compute it directly also exist.
 The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$
 of~\eqref{e:quad-conic-form}.
+
 
 \subsection{Numerical differentiation}\label{sec:bg-numerical-diff}
 Other than computing derivatives analytically, the simplest method is to use numerical

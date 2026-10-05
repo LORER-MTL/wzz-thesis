@@ -166,6 +166,7 @@ Modeling languages
   author       = {{CVX Research, Inc.}},
   title        = {{CVX}: Matlab Software for Disciplined Convex Programming, version 2.0},
   howpublished = {\url{https://cvxr.com/cvx}},
+  note         = {Canonical reference for {CVX}; current release 2.2},
   month        = aug,
   year         = 2012
 }
@@ -268,9 +269,10 @@ Modeling languages
    url    = {https://www.gurobi.com},
 }
 
-@manual{mosekSolver,
+@misc{mosekSolver,
    author = {{MOSEK ApS}},
    title = {{MOSEK optimization suite 11.0}},
+   howpublished = {\url{https://docs.mosek.com/11.0/intro/index.html}},
    year = {2026}
 }
 
@@ -573,7 +575,7 @@ doi = {10.1007/BF01386029},
 abstract = {A bound is obtained for the error incurred when derivatives are found in terms of differences. The method depends on the use of an auxiliary function, and it is shown that by appropriately choosing the auxiliary function one may considerably improve the estimate of the error, especially in the neighbourhood of a singularity. The result, in addition, provides an alternative form for the remainder term in interpolation formulae, and it can also be regarded as an extension of Cauchy's generalised mean-value theorem.},
 journal = {Numerische Mathematik},
 month = dec,
-pages = {279–284},
+pages = {279--284},
 numpages = {6}
 }
 
@@ -591,7 +593,7 @@ url = {https://doi.org/10.1145/356012.356013},
 doi = {10.1145/356012.356013},
 journal = {ACM Transactions on Mathematical Software},
 month = dec,
-pages = {337–343},
+pages = {337--343},
 numpages = {7}
 }
 
@@ -607,7 +609,7 @@ issn = {1532-4435},
 abstract = {Derivatives, mostly in the form of gradients and Hessians, are ubiquitous in machine learning. Automatic differentiation (AD), also called algorithmic differentiation or simply "auto-diff", is a family of techniques similar to but more general than backpropagation for efficiently and accurately evaluating derivatives of numeric functions expressed as computer programs. AD is a small but established field with applications in areas including computational uid dynamics, atmospheric sciences, and engineering design optimization. Until very recently, the fields of machine learning and AD have largely been unaware of each other and, in some cases, have independently discovered each other's results. Despite its relevance, general-purpose AD has been missing from the machine learning toolbox, a situation slowly changing with its ongoing adoption under the names "dynamic computational graphs" and "differentiable programming". We survey the intersection of AD and machine learning, cover applications where AD has direct relevance, and address the main implementation techniques. By precisely defining the main differentiation techniques and their interrelationships, we aim to bring clarity to the usage of the terms "autodiff", "automatic differentiation", and "symbolic differentiation" as these are encountered more and more in machine learning settings.},
 journal = {Journal of Machine Learning Research},
 month = jan,
-pages = {5595–5637},
+pages = {5595--5637},
 numpages = {43},
 keywords = {backpropagation, differentiable programming}
 }
@@ -651,7 +653,7 @@ doi = {10.1287/ijoc.1080.0286},
 abstract = {The computation of a sparse Hessian matrix H using automatic differentiation (AD) can be made efficient using the following four-step procedure: (1) Determine the sparsity structure of H, (2) obtain a seed matrix S that defines a column partition of H using a specialized coloring on the adjacency graph of H, (3) compute the compressed Hessian matrix B ≡ HS, and (4) recover the numerical values of the entries of H from B.The coloring variant used in the second step depends on whether the recovery in the fourth step is direct or indirect: a direct method uses star coloring and an indirect method uses acyclic coloring. In an earlier work, we had designed and implemented effective heuristic algorithms for these two NP-hard coloring problems. Recently, we integrated part of the developed software with the AD tool ADOL-C, which has recently acquired a sparsity detection capability. In this paper, we provide a detailed description and analysis of the recovery algorithms and experimentally demonstrate the efficacy of the coloring techniques in the overall process of computing the Hessian of a given function using ADOL-C as an example of an AD tool. We also present new analytical results on star and acyclic coloring of chordal graphs. The experimental results show that sparsity exploitation via coloring yields enormous savings in runtime and makes the computation of Hessians of very large size feasible. The results also show that evaluating a Hessian via an indirect method is often faster than a direct evaluation. This speedup is achieved without compromising numerical accuracy.},
 journal = {INFORMS Journal on Computing},
 month = apr,
-pages = {209–223},
+pages = {209--223},
 numpages = {15},
 keywords = {acyclic coloring, automatic differentiation, combinatorial scientific computing, sparse Hessian computation, star coloring}
 }
@@ -756,7 +758,7 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   title  = {{CppAD}: A Package for {C++} Algorithmic Differentiation},
   year   = {2023},
   note   = {{Computational Infrastructure for Operations Research}},
-  url    = {https://github.com/coin-or/CppAD}
+  howpublished = {\url{https://github.com/coin-or/CppAD}}
 }
 
 @article{zou2025vectorized,
@@ -836,7 +838,8 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   author    = {Guennebaud, Ga{\"e}l and Jacob, Beno{\^i}t and others},
   title     = {Eigen v3},
   year      = {2010},
-  url       = {http://eigen.tuxfamily.org}
+  howpublished = {\url{https://eigen.tuxfamily.org}},
+  note      = {Version 3.4.0, as bundled with \texttt{cvxcore}}
 }
 
 @book{magnus2019matrix,
@@ -1093,7 +1096,7 @@ Benchmarking
   journal      = {SN Operations Research Forum},
   volume       = {1},
   number       = {1},
-  pages        = {2},
+  note         = {Art. no. 2},
   year         = {2020}
 }
 
