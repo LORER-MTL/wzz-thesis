@@ -148,8 +148,9 @@ The numeric phase then fills in new values at every solve.
 This separation between structure and values goes back to sparse direct solvers, which
 analyse the sparsity pattern of a matrix once and repeat the numeric factorization for new
 values \cite{davis2006direct}, and to Gustavson's two-phase sparse
-product \cite{gustavson1978two}. Our use of it is inspired more directly by the interfaces
-of \ac{NLP} solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
+product \cite{gustavson1978two}. Our use of the two-phase approach is inspired more directly
+by the interfaces of \ac{NLP} solvers such as \texttt{IPOPT}
+\cite{wachter2006ipopt, cederberg2025disciplined}.
 
 The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
 numeric phase is often similar in cost to applying the matrix-vector product.
