@@ -57,11 +57,12 @@ $f_1,\ldots,f_{m_1} : \reals^n \times \reals^p \to \reals$ are convex, and the e
 constraint functions $g_1,\ldots,g_{m_2} : \reals^n \times \reals^p \to \reals$ are affine
 \cite{boyd2004convex}.
 The parameter $\gvec{\theta} \in \reals^p$ specifies data that can change between solves but is fixed
-and given when solving an instance of the problem. We call the parametrized problem \eqref{e:parametric-family}
+and given when solving an instance of the problem. We call the parametrized
+problem~\eqref{e:parametric-family}
 a problem family. For a fixed value of $\gvec{\theta}$, we call it a problem instance.
 
 % \paragraph{Quadratic conic form.}  (heading removed per advisor; kept for reference)
-Canonicalization converts the high-level description \eqref{e:parametric-family} to a
+Canonicalization converts the high-level description~\eqref{e:parametric-family} to a
 quadratic conic form used by many general-purpose convex solvers
 \BEQ \label{e:quad-conic-form}
 \begin{array}{ll}
@@ -154,7 +155,7 @@ kernels, rather than always relying on generic sparse formats and routines (we p
 background on dense and sparse matrix computations in \S\ref{sec:intro-matrix}).
 
 \section{Canonicalization}\label{sec:intro-canon}
-The problem family \eqref{e:parametric-family} is written in functional form, meaning the
+The problem family~\eqref{e:parametric-family} is written in functional form, meaning the
 objective and constraints are given as functions of the variables and parameters.
 In a modelling language, the optimization variables $\mvec{x}_1,\ldots,\mvec{x}_k$ are collected
 into a single
@@ -163,7 +164,7 @@ into $\gvec{\theta} \in \reals^p$~\cite{boyd2004convex}.
 Users are not required to write constraints with a zero right-hand side as in
 \eqref{e:parametric-family}. Modelling languages accept inequalities with a convex left-hand
 side and a concave right-hand side, and equalities with both sides affine.
-Converting to the form \eqref{e:parametric-family} is trivial and only requires moving every
+Converting to the form~\eqref{e:parametric-family} is trivial and only requires moving every
 term to the left-hand side.
 Internally, each function is represented as an expression tree.
 
@@ -325,8 +326,9 @@ developers. A recent paper surveys the new canonicalization and modelling featur
 introduced between versions 1.1 and 1.9 \cite{zhang2026cvxpy}.
 
 % \paragraph{Reductions.}  (heading removed per advisor; kept for reference)
-The rewriting from the functional form \eqref{e:parametric-family} to the functional conic form
-\eqref{eq:conic-form} is carried out as a sequence of reductions. Each reduction provides an
+The rewriting from the functional form~\eqref{e:parametric-family} to the functional conic
+form~\eqref{eq:conic-form}
+is carried out as a sequence of reductions. Each reduction provides an
 \texttt{apply} step that converts a problem into an equivalent one, and a \texttt{retrieve}
 step that recovers a solution of the original problem from a solution of the rewritten one
 \cite{agrawal2018rewriting}.
@@ -362,7 +364,7 @@ parameters
 $\mvec{g}\in \reals^m$ and $\mu \geq 0$. The constraint $\mvec{x} \ge \zeros$ requires every entry of
 $\mvec{x}$ to be nonnegative.
 Listing~\ref{lst:cvxpy-example} states the problem in \texttt{CVXPY} code.
-\begin{lstlisting}[language=Python, caption={The running example \eqref{eq:example} in
+\begin{lstlisting}[language=Python, caption={The running example~\eqref{eq:example} in
 \texttt{CVXPY}.}, label=lst:cvxpy-example]
 import cvxpy as cp
 import numpy as np
@@ -426,17 +428,18 @@ After applying the reductions, the problem has been canonicalized to
 & (t_2, \mvec{x}) \in \cone{K}_{\mathrm{soc},n+1}, \\
 \end{array}
 \EEQ
-where $t_1, t_2 \in \reals$ are new epigraph variables, and the cone $\cone{K}$ from
-\eqref{e:quad-conic-form} is the product $\reals_+^n \times \cone{K}_{\mathrm{soc},m+1}
+where $t_1, t_2 \in \reals$ are new epigraph variables, and the cone $\cone{K}$
+from~\eqref{e:quad-conic-form}
+is the product $\reals_+^n \times \cone{K}_{\mathrm{soc},m+1}
 \times \cone{K}_{\mathrm{soc},n+1}$.
-Problem \eqref{eq:graph} is now in the functional conic form of \S\ref{sec:bg-canonicalization}:
+Problem~\eqref{eq:graph} is now in the functional conic form of \S\ref{sec:bg-canonicalization}:
 every constraint
 is a cone membership, and the objective and constraint expressions are affine.
 Comparing the DCP trees of Figure~\ref{fig:dcp-expression-tree} with the trees of
 Figure~\ref{fig:conic-form-tree} shows the effect of canonicalization: the nonlinear norm atoms
 have been replaced by epigraph variables, leaving affine expression trees in the variables,
 which we call the conic-form trees of the problem.
-The three rows of \eqref{eq:graph} remain three separate cone constraints, each carrying the
+The three rows of~\eqref{eq:graph} remain three separate cone constraints, each carrying the
 affine expressions that must lie in its cone. Figure~\ref{fig:conic-form-tree} accordingly shows
 one expression tree per constraint, rather than a single combined tree.
 
@@ -525,7 +528,7 @@ with respect to the inputs,
 \EEQ
 We mainly consider the constraint function, which stacks the potentially many affine
 expressions of a canonicalized problem into a single vector function of the variables.
-Its Jacobian is the constant constraint matrix~$\mmat{A}$ of \eqref{e:quad-conic-form}, whose
+Its Jacobian is the constant constraint matrix~$\mmat{A}$ of~\eqref{e:quad-conic-form}, whose
 sparsity
 pattern is fixed although its values may change from one solve to the next.
 
@@ -539,8 +542,8 @@ The Hessian is symmetric whenever $f$ is twice continuously differentiable, and 
 the Jacobian of the gradient of $f$.
 It can therefore be obtained by differentiating the gradient with the
 same methods used for the Jacobian, although dedicated methods that compute it directly also exist.
-The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$ of
-\eqref{e:quad-conic-form}.
+The function we consider is the canonicalized objective, whose Hessian is the matrix~$\mmat{P}$
+of~\eqref{e:quad-conic-form}.
 
 \subsection{Numerical differentiation}\label{sec:bg-numerical-diff}
 Other than computing derivatives analytically, the simplest method is to use numerical
@@ -765,7 +768,7 @@ For example, the matrix
 is stored in \ac{COO} format as in Listing~\ref{lst:coo-format}, where we use
 zero-based indexing and array declaration notation from the C programming
 language \cite{Kernighan1988}.
-\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in COO
+\begin{lstlisting}[language=C, caption={The matrix~\eqref{eq:sparse-matrix} in COO
 format.}, label=lst:coo-format]
 int    rows[] = {0,  1,  1,  1,  2,  2};
 int    cols[] = {1,  0,  2,  3,  1,  2};
@@ -779,10 +782,10 @@ The \ac{CSR} format is commonly used instead.
 The CSR format differs from the \ac{COO} format in that it replaces the \texttt{rows} array with
 a row pointer array \texttt{idxptr} of length equal to the number of rows plus one.
 The row pointer array indicates the starting index of each row in the \texttt{cols} arrays.
-For example, Listing~\ref{lst:csr-format} represents the matrix \eqref{eq:sparse-matrix} in
+For example, Listing~\ref{lst:csr-format} represents the matrix~\eqref{eq:sparse-matrix} in
 CSR format, where we deliberately format \texttt{idxptr} to align with the start of each
 row in the \texttt{cols} arrays.
-\begin{lstlisting}[language=C, caption={The matrix \eqref{eq:sparse-matrix} in CSR
+\begin{lstlisting}[language=C, caption={The matrix~\eqref{eq:sparse-matrix} in CSR
 format.}, label=lst:csr-format]
 int  idxptr[] = {0,  1,          4,      6};
 int    cols[] = {1,  0,  2,  3,  1,  2};
@@ -821,7 +824,7 @@ Both compressed formats multiply a dense vector in one pass over the nonzeros, b
 must follow the storage.
 CSR gathers, computing each output entry as a sparse dot product along its row, while CSC
 scatters, accumulating each column's contribution into the output vector.
-Figure~\ref{fig:sparse-matvec} traces one product of the matrix in \eqref{eq:sparse-matrix}
+Figure~\ref{fig:sparse-matvec} traces one product of the matrix in~\eqref{eq:sparse-matrix}
 under both formats.
 
 \begin{figure}[htbp]
@@ -869,7 +872,7 @@ under both formats.
 \end{tikzpicture}
 \caption{CSC scatters a column}
 \end{subfigure}
-\caption{The product $\mvec{y} = \mmat{S}\mvec{v}$ with the matrix of \eqref{eq:sparse-matrix}.
+\caption{The product $\mvec{y} = \mmat{S}\mvec{v}$ with the matrix of~\eqref{eq:sparse-matrix}.
 In CSR, the nonzeros of one row form a dot product that produces one output entry.
 In CSC, the nonzeros of one column are scaled by one input entry and accumulated into several
 output entries.}
