@@ -945,14 +945,14 @@ and the kernels let sparse and dense Jacobians mix in the same tree without conv
 to one specific format.
 
 In addition, for parametric problems, our contribution is the two-phase approach to computing
-derivatives. The idea goes back to the symbolic analysis and numeric factorization of sparse
-direct solvers~\cite{davis2006direct} and to Gustavson's sparse
-product~\cite{gustavson1978two}, and we borrow it more directly from the interfaces of
-\ac{NLP} solvers outlined in \S\ref{sec:casadi}. Although the process is similar, what we
-store during the symbolic pass is very different. Instead of a compressed sparsity pattern and a graph colouring,
-we store index maps and sparsity patterns, and the numeric pass writes the coefficient
-values directly into them. The cached structure also covers every problem, not only the
-problems that conform to the \ac{DPP} ruleset.
+derivatives. The idea goes back to sparse direct solvers, which separate symbolic analysis
+from numeric factorization~\cite{davis2006direct}, and to Gustavson's sparse
+product~\cite{gustavson1978two}. Compared with the \ac{NLP} interfaces outlined in
+\S\ref{sec:casadi}, what we store during the symbolic pass is very different. Instead of a
+compressed sparsity pattern and a graph colouring, we store index maps and sparsity patterns,
+and the numeric pass writes the coefficient values directly into them.
+The cached structure also covers every problem, not only the problems that conform to the
+\ac{DPP} ruleset.
 
 Finally, the choice to implement the engine in C with custom matrix classes forced us to
 think carefully about memory allocation, sparse formats, and opportunities to cache
