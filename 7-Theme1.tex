@@ -14,7 +14,7 @@ In addition, we split the computation into a symbolic pass, which computes and
 caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
 This separation is particularly useful for compiling problems involving parameters, where
 the structure is fixed but the numerical values can change. The two-phase approach is
-borrowed from sparse direct factorization and from the interfaces of \ac{NLP} solvers.
+standard in sparse direct factorization and in the interfaces of \ac{NLP} solvers.
 Neither the two matrix classes nor the two-phase approach exists in \texttt{CVXPY}'s backends.
 By bringing both to canonicalization, we address the research gap we identified
 in \S\ref{sec:research-gap}.
