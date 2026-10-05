@@ -4,9 +4,8 @@ This chapter presents \texttt{SparseDiffEngine}, our C library for assembling th
 constraint and objective matrices of a canonicalized problem. The engine computes the same
 derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
 chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
-implementation. Our main contribution addresses the structure of the problem data. The
-data of most optimization problems is not only sparse but also structured, with dense
-blocks and diagonal patterns.
+implementation. Our main contribution exploits the fact that the data of most optimization
+problems is not only sparse but also structured, with dense blocks and diagonal patterns.
 We introduce two new matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
 dense storage and BLAS subroutines.
