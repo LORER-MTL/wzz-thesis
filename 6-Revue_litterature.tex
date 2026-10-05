@@ -369,9 +369,10 @@ $
 \label{fig:global-layout}
 \end{subfigure}
 \caption{What each layout stores during the pass, at the node $-(\mmat{F}\mvec{x} - \mvec{g})$
-of
-\eqref{eq:example}: a dictionary of narrow per-variable blocks, or a single matrix spanning
-all columns.}
+of~\eqref{eq:example}:
+a dictionary of narrow per-variable blocks, or a single matrix spanning
+all columns. The key $-1$ is the identifier \texttt{CVXPY} uses for the constant (offset)
+column, labelled $1$ in both layouts.}
 \label{fig:local-vs-global}
 \end{figure}
 

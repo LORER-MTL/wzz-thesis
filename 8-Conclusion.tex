@@ -63,6 +63,12 @@ formulation can be set aside. This decoupling brings similar benefits as \texttt
 \texttt{.nl} format, which separates the problem instance from the model.
 The separated data can be archived, shipped to another machine, and used by downstream packages
 such as \texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}.
+Another part of the memory cost comes from the global layout. Every node of the expression
+trees holds a Jacobian over all $n$ variables, together with integer work arrays of
+length~$n$. The values stored remain proportional to the nonzeros, but this overhead grows
+with the number of nodes times the number of variables. On problems with very many
+variables and deep trees, it can exceed the memory of \texttt{CVXPY}'s local layout, whose
+blocks span only the variables that each node depends on.
 
 %%
 %%  AMELIORATIONS FUTURES / FUTURE RESEARCH
@@ -87,7 +93,12 @@ without breaking backwards compatibility. The next task is the removal of
 would mean that \texttt{CVXPY} no longer needs to compile and ship C++ binaries, which
 would simplify the build process of the library. As a replacement, \texttt{diffengine} can
 become the new default backend, with \texttt{COO} as an alternative candidate for \ac{DPP}
-problems.
+problems. A further improvement concerns parameter updates. The numeric pass currently
+re-evaluates every node, including the constant parts of the trees that no updated
+parameter reaches. Marking, in the symbolic pass, the subtrees that depend on each
+parameter would let the numeric pass skip the others. This would address the two problems of
+Table~\ref{tab:param-tensor} on which the tensor re-solves faster, SVMWithL1Regularization
+and FactorCovarianceModel, where the parameters are a few scalars.
 
 The final direction would be to extend the permuted dense matrix classes of
 Chapter~\ref{sec:Theme1} to the rest of the

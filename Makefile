@@ -82,6 +82,23 @@ presentation: presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 
+# Changes since the version sent to the jury (21b013b), for the final-deposit review.
+# The old revision is exported and built first so both sides have a .bbl for --flatten
+# to inline; otherwise the bibliography shows up as deleted. Needs a built Document.bbl.
+DIFFREV = 21b013b
+DIFFOLD = .diff-$(DIFFREV)
+diff: $(SRC:%.tex=%.pdf)
+	@rm -rf $(DIFFOLD); mkdir $(DIFFOLD)
+	git archive $(DIFFREV) | tar -x -C $(DIFFOLD)
+	-cd $(DIFFOLD) && $(MAKE) -s > /dev/null 2>&1
+	latexdiff --flatten $(DIFFOLD)/$(SRC) $(SRC) > $(SRC:%.tex=%)-diff.tex
+	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
+	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
+	@rm -rf $(DIFFOLD)
+
+diff_clean:
+	@rm -rf $(SRC:%.tex=%)-diff*.{tex,aux,bbl,blg,log,out,lof,lot,loa,toc,pdf} .diff-*
+
 presentation_clean:
 	@rm -f presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}
 
@@ -116,4 +133,4 @@ help:
 	@echo "  make images     Génération de toutes les images"
 	@echo
 
-.PHONY	: show clean all_clean pdf archive final draft help images presentation presentation_clean
+.PHONY	: diff diff_clean show clean all_clean pdf archive final draft help images presentation presentation_clean

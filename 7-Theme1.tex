@@ -331,13 +331,13 @@ stored as a generic sparse matrix, and so is everything computed from it.
 
 \subsection{Stacked permuted dense matrix}\label{sec:theme1-stacked-pd}
 
-Multiplying a matrix-valued expression with $n$ rows and $p$ columns by
-data~$\mmat{B} \in \reals^{m \times n}$ multiplies each of the $p$ columns by~$\mmat{B}$. On
+Multiplying a matrix-valued expression with $k$ rows and $q$ columns by
+data~$\mmat{B} \in \reals^{r \times k}$ multiplies each of the $q$ columns by~$\mmat{B}$. On
 the vectorized expression the multiplication acts as the block diagonal
-operator~$\mmat{I}_p \otimes \mmat{B}$ of Table~\ref{tab:views-copies}. In practice this
+operator~$\mmat{I}_q \otimes \mmat{B}$ of Table~\ref{tab:views-copies}. In practice this
 operator is not formed, unlike in \texttt{CVXPY}'s backends. The atom stores a single copy
 of~$\mmat{B}$ and applies it to one column at a time. Its Jacobian contains
-one dense block for each of the $p$ columns, at pairwise disjoint rows and in general at
+one dense block for each of the $q$ columns, at pairwise disjoint rows and in general at
 different columns, as in Figure~\ref{fig:stacked-pd}. No single
 triple~$(\mmat{X}, \mvec{r}, \mvec{c})$ describes such a matrix. Merging the blocks into one
 larger block would store the zeros between them, and falling back to the generic sparse
@@ -386,8 +386,9 @@ by the numeric pass.
 \begin{table}[tb]
 \caption{The kernels, the operation each computes, and the atoms of a canonicalized DCP
 problem that call them, grouped into unary and binary operations. In the second column,
-$\mmat{A}$ denotes the Jacobian operand, $\mmat{B}$ a data matrix, $\mvec{d}$ a data vector,
-and $\mmat{D} = \diag(\mvec{d})$.}
+$\mmat{A}$ denotes the Jacobian operand, $\mvec{d}$ a data vector, and
+$\mmat{D} = \diag(\mvec{d})$. The matrix~$\mmat{B}$ is data in \texttt{BA}, and a second
+Jacobian in \texttt{sum\_matrices}, \texttt{BTA}, and \texttt{BTDA}.}
 \label{tab:kernel-operations}
 \centering
 \begin{tabular}{lll}
@@ -431,8 +432,9 @@ Of the three binary operations, only the transposed products dispatch on both op
 Addition always operates in the CSR format. Both operands are read through their CSR views
 and the result is a generic sparse matrix, so no dispatch is needed.
 In the product~$\mmat{B}\mmat{A}$, the matrix~$\mmat{B}$ is data rather than a Jacobian, so
-only the representation of~$\mmat{A}$ selects the kernel. We select the kernel of the transposed
-products~$\mmat{B}^\top \mmat{A}$ and~$\mmat{B}^\top \mmat{D} \mmat{A}$ by
+only the representation of~$\mmat{A}$ selects the kernel. In the transposed
+products~$\mmat{B}^\top \mmat{A}$ and~$\mmat{B}^\top \mmat{D} \mmat{A}$, both operands are
+Jacobians, each with its own representation. We select their kernel by
 double dispatch, meaning that the pair formed by the representations of both operands
 selects the implementation. Figure~\ref{fig:kernel-dispatch} lists the nine possible
 combinations.
@@ -461,33 +463,36 @@ combinations.
 \node[hdr, anchor=east] at (-1.45, -\dy)   {sPD};
 \node[hdr, anchor=east] at (-1.45, -2*\dy) {sparse};
 % cells: output type of B^\top A
-\node[blas]  at (0, 0)          {PD};
-\node[bblas] at (\dx, 0)        {sPD};
-\node[mixed] at (2*\dx, 0)      {PD};
-\node[bblas] at (0, -\dy)       {sPD};
-\node[bblas] at (\dx, -\dy)     {sPD};
-\node[mixed] at (2*\dx, -\dy)   {sPD};
-\node[mixed] at (0, -2*\dy)     {PD};
-\node[mixed] at (\dx, -2*\dy)   {sPD};
-\node[hand]  at (2*\dx, -2*\dy) {sparse};
+% the second line in each cell names the kernel family, so the figure reads without colour
+\newcommand{\dcell}[2]{\shortstack{#1\\[-1pt]{\scriptsize\rmfamily #2}}}
+\node[blas]  at (0, 0)          {\dcell{PD}{(a)}};
+\node[bblas] at (\dx, 0)        {\dcell{sPD}{(b)}};
+\node[mixed] at (2*\dx, 0)      {\dcell{PD}{(c)}};
+\node[bblas] at (0, -\dy)       {\dcell{sPD}{(b)}};
+\node[bblas] at (\dx, -\dy)     {\dcell{sPD}{(b)}};
+\node[mixed] at (2*\dx, -\dy)   {\dcell{sPD}{(c)}};
+\node[mixed] at (0, -2*\dy)     {\dcell{PD}{(c)}};
+\node[mixed] at (\dx, -2*\dy)   {\dcell{sPD}{(c)}};
+\node[hand]  at (2*\dx, -2*\dy) {\dcell{sparse}{(d)}};
 % legend
 \node[blas, minimum width=0.42cm, minimum height=0.3cm]
   at (-1.1, -3.15) {};
-\node[font=\small, anchor=west] at (-0.8, -3.15) {one \texttt{dgemm}};
+\node[font=\small, anchor=west] at (-0.8, -3.15) {(a) one \texttt{dgemm}};
 \node[bblas, minimum width=0.42cm, minimum height=0.3cm]
-  at (4.3, -3.15) {};
-\node[font=\small, anchor=west] at (4.6, -3.15) {\texttt{dgemm} per pair of blocks};
+  at (5.2, -3.15) {};
+\node[font=\small, anchor=west] at (5.5, -3.15) {(b) \texttt{dgemm} per pair of blocks};
 \node[mixed, minimum width=0.42cm, minimum height=0.3cm]
   at (-1.1, -3.75) {};
-\node[font=\small, anchor=west] at (-0.8, -3.75) {hand-written sparse-dense};
+\node[font=\small, anchor=west] at (-0.8, -3.75) {(c) hand-written sparse-dense};
 \node[hand, minimum width=0.42cm, minimum height=0.3cm]
-  at (4.3, -3.75) {};
-\node[font=\small, anchor=west] at (4.6, -3.75) {Gustavson's algorithm};
+  at (5.2, -3.75) {};
+\node[font=\small, anchor=west] at (5.5, -3.75) {(d) Gustavson's algorithm};
 \end{tikzpicture}
 \caption{Double dispatch of the transposed products $\mmat{B}^\top \mmat{A}$ and
 $\mmat{B}^\top \mmat{D} \mmat{A}$. Each cell names the representation of the result for one
 combination of operand types (PD is permuted dense and sPD is stacked permuted dense), and
-its colour indicates how the product is computed.}
+its colour and letter (a)--(d) indicate how the product is computed. Here $\mmat{B}$ is a
+Jacobian, like~$\mmat{A}$.}
 \label{fig:kernel-dispatch}
 \end{figure}
 
@@ -512,11 +517,19 @@ and $\mmat{B} = (\mmat{X}_B, \mvec{r}_B, \mvec{c}_B)$ expands to
 \underbrace{\left(\mmat{S}_{r_B} \mmat{S}_{r_A}^\top\right)}_{\mathclap{\text{index-set intersection}}}
 \mmat{X}_A \mmat{S}_{c_A},
 \EEQ
-and $\mmat{B}\mmat{A}$ expands the same way, with $\mvec{c}_B$ in place of $\mvec{r}_B$.
-The term~$\mmat{S}_{r_B} \mmat{S}_{r_A}^\top$ keeps the rows that appear in
-both~$\mvec{r}_B$ and~$\mvec{r}_A$, and the outer selectors place the product at the
-rows~$\mvec{c}_B$ and the columns~$\mvec{c}_A$, so the result is again one dense block at
-permuted positions. In practice, the symbolic pass
+and the product without transpose expands to
+\BEQ\label{eq:pd-product-ba}
+\mmat{B} \mmat{A}
+= \mmat{S}_{r_B}^\top \mmat{X}_B
+\left(\mmat{S}_{c_B} \mmat{S}_{r_A}^\top\right)
+\mmat{X}_A \mmat{S}_{c_A}.
+\EEQ
+In~\eqref{eq:pd-product}, the term~$\mmat{S}_{r_B} \mmat{S}_{r_A}^\top$ keeps the rows that
+appear in both~$\mvec{r}_B$ and~$\mvec{r}_A$, and the outer selectors place the product at
+the rows~$\mvec{c}_B$ and the columns~$\mvec{c}_A$. In~\eqref{eq:pd-product-ba}, both
+selectors of~$\mmat{B}$ swap roles: the inner term intersects~$\mvec{c}_B$ with~$\mvec{r}_A$,
+and the product is placed at the rows~$\mvec{r}_B$. In both cases the result is again one
+dense block at permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
 on the sizes of the blocks and not on the global dimensions.
@@ -877,16 +890,19 @@ unchanged. Listing~\ref{lst:diffengine-cone-program} outlines the class.
 
 The class is built once per problem family. Its constructor converts the Python problem
 to C trees with the converter and runs the symbolic pass. It then evaluates the
-\texttt{problem} object once at the origin, which recovers the problem data of
-\eqref{e:quad-conic-form}. \texttt{CVXPY} applies the sign
-convention of the cone form afterwards, by negating~$\mmat{A}$. A parameter update
+\texttt{problem} object once at the origin, which recovers the problem data
+of~\eqref{e:quad-conic-form}.
+The class stores each constraint as the affine function it evaluates, $\mmat{A}\mvec{x} +
+\mvec{b} \in \cone{K}$, as in the docstring of Listing~\ref{lst:diffengine-cone-program}.
+\texttt{CVXPY} then negates~$\mmat{A}$ to obtain the form
+$\mvec{b} - \mmat{A}\mvec{x} \in \cone{K}$ of~\eqref{e:quad-conic-form}. A parameter update
 involves only the numeric pass. The method \texttt{apply\_parameters} writes the new
 values into the parameter leaves and repeats the evaluations at the origin. After the
 solve, \texttt{split\_solution} slices the stacked solution vector into the variables of
 the original problem. Listing~\ref{lst:extract-at-origin} shows the evaluations at the
 origin.
-\begin{lstlisting}[language=Python, caption={A simplified version of the
-\texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
+\begin{lstlisting}[language=Python, showstringspaces=false, caption={A simplified version of
+the \texttt{DiffengineConeProgram} class.}, label=lst:diffengine-cone-program]
 class DiffengineConeProgram:
     """minimize (1/2) x'Px + c'x  subject to  Ax + b in K"""
 
