@@ -12,5 +12,457 @@
 %%  Toutes les annexes doivent être inclues dans ce document
 %%  les unes à la suite des autres.
 %%  All annexes must be included in this document one after the other.
-\Annexe{Démo}
-Texte de l'annexe A\@.
+
+% Long-table captions as wide as the text (the default is 4 in).
+\setlength\LTcapwidth{\textwidth}
+
+% ------------------------------------------------------------------------------------------
+\Annexe{DENSE BLOCKS IN SPARSE MATRICES}\label{app:dense-blocks}
+
+The permuted dense and stacked permuted dense matrices of
+\S\ref{sec:theme1-matrix-representations} keep dense blocks inside a sparse matrix. This
+idea appears in several other places, and this appendix compares our representations with
+the closest of them. The comparison is informal. Each of these formats was designed for a
+different task, and none of them was designed to hold the Jacobians of an expression tree.
+
+The block compressed sparse row format, available for example in
+\texttt{scipy.sparse}~\cite{2020SciPy-NMeth}, stores a matrix as a regular grid of dense
+blocks of equal size. The block size must divide the dimensions of the matrix, and every
+block starts at a multiple of the block size. The format suits matrices whose nonzeros come
+in small blocks of a known size, such as the node blocks of a vector-valued finite-element
+discretization. The variable block row format of the sparse \ac{BLAS} relaxes the equal
+size. The rows and the columns are partitioned into consecutive groups of any size, and
+every block covers one group of rows and one group of columns. In both formats, the
+partition is fixed before any value is stored, and a block covers consecutive rows and
+columns. A permuted dense matrix instead places its block at any sorted set of rows and any
+sorted set of columns. These sets are not known in advance. The symbolic pass computes them,
+and they change from node to node of the tree as the selectors of the products in
+\S\ref{sec:theme1-permuted-dense} combine.
+
+Finite-element codes compute a small dense matrix for each element of the mesh and add it
+into a sparse global matrix, through a map from the local degrees of freedom of the element
+to the global ones. The dense blocks exist only during the assembly. Once they are added
+into a compressed sparse row matrix, the matrix no longer records which entries came from
+which element, and the products that follow treat it as a generic sparse matrix. Our
+representations keep the blocks as blocks from one node to the next, so that every product
+along the expression tree can use them.
+
+The nonlinear least-squares libraries \texttt{Ceres}~\cite{agarwal2023ceres} and
+\texttt{g2o}~\cite{kummerle2011g2o} come closest to our stacked permuted dense matrix. In
+\texttt{Ceres}, the user adds residual blocks, each connected to a few parameter blocks,
+and the Jacobian is partitioned accordingly. Each nonzero block, one residual block by one
+parameter block, is stored as a dense matrix. The blocks of a residual are computed by the
+user's cost function, analytically or by automatic differentiation, so the chain rule
+happens inside the cost function. The assembled Jacobian is then used to form the normal
+equations or a Schur complement, whose blocks are processed with fixed-size dense
+operations. \texttt{g2o} stores its matrices in the same way, as dense blocks on a grid
+given by a partition of the rows and the columns. Three differences separate these
+libraries from our engine. Their block structure is declared by the user rather than
+derived from an expression tree. Their blocks follow a fixed partition, one per variable,
+rather than arbitrary index sets. And the Jacobian is not composed through a chain of
+matrix products, which is where our representations save the most work.
+
+Finally, supernodal sparse direct solvers such as \texttt{CHOLMOD}~\cite{chen2008cholmod}
+group the columns of a sparse factor with the same sparsity pattern into dense blocks, the
+supernodes, and process them with level-3 \ac{BLAS} routines. This is the closest analogue
+to our use of the \ac{BLAS}. As in our engine, the blocks are found by a symbolic
+analysis, before any value is computed, and the numeric phase then reuses them. The
+analysis is the one of sparse factorization that the symbolic and numeric split of
+Chapter~\ref{sec:Theme1} descends from.
+
+% ------------------------------------------------------------------------------------------
+\Annexe{BENCHMARK INSTANCES}\label{app:instances}
+
+Table~\ref{tab:instances} describes the $25$ problems of the benchmark
+suite~\cite{cvxpybenchmarks} used in Chapter~\ref{sec:Theme2}, in the order of
+Table~\ref{tab:oneshot-compile}. The dimensions are those of the problem data that
+\texttt{diffengine} returns for \texttt{Clarabel}: the matrix
+$\mmat{A} \in \reals^{m \times n}$ of the constraints and the matrix $\mmat{P}$ of the
+objective, both counted after canonicalization, so $n$ includes the auxiliary variables of
+the reductions. The column ``params'' counts the parameter objects of the problem, not their
+entries, and the last column says whether the problem is \ac{DPP}. A dash denotes a problem
+without a quadratic objective or without parameters.
+
+% TODO(final runs): regenerate the dimension columns from the `dims' field of the final
+% runs (thesis_final_benchmarks.py). Current values: sparsity_metrics.json (2026-08-11).
+% ConvexPlasticity's nnz(P) predates the quad-form fix (true pattern about 33 k).
+% CHECK ConvexPlasticity's DPP column: CVXPY's is_dpp() is True, but the harness sends it
+% down the non-DPP branch (run_backend_benchmarks.py:245-256), which is why it is not in
+% Table 4.2.
+\begin{landscape}
+\setlength\LTcapwidth{\linewidth}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{l p{9.4cm} rrrr rc}
+\caption[Dimensions of the benchmark problems]{The $25$ problems of the benchmark suite and
+the dimensions of their problem data.}\label{tab:instances}\\
+\toprule
+Benchmark & Description & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & Description & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
+LeastSquares & Dense least squares, $\lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2$ with $\mmat{A} \in \reals^{7000 \times 2000}$. & 7\,000 & 9\,000 & 14\,M & 7\,000 & --- & --- \\
+Yitzhaki & Gini mean-difference portfolio \ac{LP} over a dense matrix of all $44\,850$ pairwise return differences of $50$ assets. & 89.8\,k & 44.9\,k & 4.57\,M & --- & --- & --- \\
+HuberRegression & Huber regression with $3000$ features and $4500$ samples, $12\,\%$ of the labels flipped. & 13.5\,k & 16.5\,k & 13.5\,M & 4\,500 & --- & --- \\
+SimpleQP & \ac{QP} with a dense $1600 \times 1600$ quadratic form, $8000$ inequality and $20$ equality constraints. & 8\,020 & 1\,600 & 12.8\,M & 2.56\,M & --- & --- \\
+FactorCovarianceModel & Factor-model portfolio selection with $25\,000$ assets and $250$ factors. The risk aversion and the leverage limit are parameters. & 75.3\,k & 75.2\,k & 6.45\,M & 87.5\,k & 2 & yes \\
+SimpleLP & Box-constrained \ac{LP} with $10^7$ variables and a linear objective. & 20\,M & 10\,M & 20\,M & --- & --- & --- \\
+SVMWithL1Regularization & Hinge-loss classifier with an $\ell_1$ penalty, $25\,000$ samples and $500$ features. The penalty weight is a parameter. & 51\,k & 26\,k & 12.6\,M & --- & 1 & yes \\
+SimpleScalarParametrizedLP & Box-constrained \ac{LP} with $2 \times 10^6$ variables whose cost vector is scaled by a scalar parameter. & 4\,M & 2\,M & 4\,M & --- & 1 & yes \\
+SimpleFullyParametrizedLP & Box-constrained \ac{LP} with $10^6$ variables whose cost vector is a parameter. & 2\,M & 1\,M & 2\,M & --- & 1 & yes \\
+ParametrizedQP & Box-constrained least squares whose $6000 \times 2400$ matrix and right-hand side are parameters. & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 2 & yes \\
+TvInpainting & Total-variation inpainting of a $512 \times 512$ colour image, with about $30\,\%$ of the pixels known. & 2.61\,M & 1.05\,M & 3.63\,M & --- & --- & --- \\
+Cajas & Gini portfolio \ac{LP} in ordered-weighted-average form, with $800$ vector constraints added one by one. & 641\,k & 2\,450 & 1.96\,M & --- & --- & --- \\
+SlowPruning & Matrix least squares with a $100 \times 20$ variable and dense data, from \texttt{CVXPY} issue 1668. & 400\,k & 402\,k & 8.4\,M & 400\,k & --- & --- \\
+SmallMatrixStuffing & \ac{LP} with $4000$ variables and $4000$ scalar constraints, each a separate constraint object. & 4\,000 & 4\,000 & 4\,000 & --- & --- & --- \\
+QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
+ConeMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $5000$. & 5\,000 & 5\,000 & 5\,000 & --- & --- & --- \\
+ParamSmallMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $300$, with its matrix, constraint coefficients and right-hand side as parameters. & 300 & 300 & 300 & --- & 3 & yes \\
+ParamConeMatrixStuffing & The same parametric \ac{LP} at size $200$. & 200 & 200 & 200 & --- & 3 & yes \\
+SemidefiniteProgramming & Standard-form \ac{SDP} with a $200 \times 200$ variable and $120$ dense equality constraints. & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & --- \\
+Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix of pairwise differences. & 490\,k & 245\,k & 1.5\,M & --- & --- & --- \\
+CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
+OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
+SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
+ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. & 36\,k & 33\,k & 72\,k & \tbd{9.05\,M} & 3 & \tbd{no} \\
+\end{longtable}}
+\end{landscape}
+
+\section{Additional problem families}\label{app:extra-problems}
+
+The experiments of \S\ref{sec:bench-nondpp} and \S\ref{sec:bench-sensitivity} use four
+problem families beyond the suite. Each is generated from a size and a random seed, with
+standard normal data unless stated otherwise.
+
+The \texttt{lasso} family minimizes
+\BEQ\label{eq:lasso-family}
+\lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2 + \lambda \lVert \mvec{x} \rVert_1
+\EEQ
+over $\mvec{x} \in \reals^n$, with $\mmat{A} \in \reals^{2n \times n}$. In the sensitivity
+experiment, a fraction $1 - \rho$ of the entries of $\mmat{A}$ is set to zero, with
+$n \in \{100, 300, 1000, 3000\}$ and $\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. In the
+\ac{DPP} variant, $\mvec{b}$ and $\lambda$ are parameters. In the non-\ac{DPP} variant,
+$\lambda$ is replaced by the product $\alpha\lambda$ of two parameters, which \ac{DPP}
+forbids, with $\alpha = 1$. In the parameter-free variant, both are constants.
+
+The \texttt{factor\_cov} family is FactorCovarianceModel with $n$ assets and
+$\max(\lfloor n/100 \rfloor, 2)$ factors. Its risk aversion $\gamma$ is a parameter in the
+\ac{DPP} variant, the product $\gamma\delta$ of two parameters in the non-\ac{DPP} variant,
+and a constant in the parameter-free variant. The \texttt{huber} and \texttt{advertising}
+families are HuberRegression with $n$ features and $1.5n$ samples, and OptimalAdvertising
+with $n$ time slots and $\max(\lfloor n/4 \rfloor, 2)$ advertisers, both parameter-free.
+The scaling experiment uses $n \in \{300, 1000, 3000, 6000\}$ for \texttt{huber},
+$n \in \{200, 500, 1000, 2000\}$ for \texttt{advertising}, and
+$n \in \{1000, 5000, 25\,000, 50\,000\}$ for \texttt{factor\_cov}, each with five seeds.
+
+% ------------------------------------------------------------------------------------------
+\Annexe{EXPERIMENTAL PROTOCOL}\label{app:protocol}
+
+\textbf{Environment.} \tbd{Apple M2, XX GB of memory, macOS XX, Python XX, NumPy XX, SciPy
+XX, Clarabel XX}. The \texttt{CVXPY} backends run on the released \texttt{CVXPY}~1.9.2.
+\texttt{diffengine} runs on the branch \texttt{thesis-ablation} of \texttt{CVXPY}, at commit
+\tbd{XX}, with \texttt{SparseDiffEngine} at commit \tbd{64f7432}, built against Apple's
+Accelerate framework. The number of OpenMP and \ac{BLAS} threads is set to one through
+four environment variables:
+\begin{center}
+\small\texttt{OMP\_NUM\_THREADS}, \texttt{OPENBLAS\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS},
+\texttt{VECLIB\_MAXIMUM\_THREADS}.
+\end{center}
+The machine runs on mains power with no other application open.
+
+\textbf{Timing.} Each replicate is a new Python process that builds the problem, assigns its
+parameters, and times one call to \texttt{get\_problem\_data} with \texttt{time.perf\_counter}.
+The process is killed after $30$ minutes. A measurement has $20$ replicates, or $5$ when the
+first one exceeds $30$ seconds. Replicate $k$ draws its parameter values from seed $k$, so
+the parametric problems change instance from one replicate to the next. A re-solve
+replicate runs one first canonicalization, then five parameter updates, each followed by a
+timed call, and records the median of the five.
+
+\textbf{Phases.} The branch times the phases of \texttt{diffengine} with wall-clock timers
+around the conversion of the expressions, the symbolic pass, the numeric pass, the assembly
+of the compressed sparse column matrices, and the reordering of the cone rows. The front end
+is the rest of the call.
+
+\textbf{Ablation switches.} With \texttt{DIFFENGINE\_NO\_DENSE=1}, the converters of the
+matrix product and of the quadratic form pass every constant matrix to the engine in the
+compressed sparse row format, so no permuted dense block is built from constant data.
+Parametric matrices keep the dense format. With \texttt{DIFFENGINE\_REBUILD=1}, every
+parameter update discards the engine's problem and builds it again, repeating the
+conversion and the symbolic pass before the numeric pass.
+
+\textbf{Memory.} Peak memory is measured in a separate process for each problem and
+backend, as the growth of the peak resident set size during the call, after a garbage
+collection. On a re-solve, the measurement covers the five updates after the first
+canonicalization.
+
+\textbf{Correctness.} For each problem, the problem data $(\mmat{P}, \mvec{c}, \mmat{A},
+\mvec{b})$ of \texttt{diffengine}, of its two ablation variants and of \texttt{SCIPY} and
+\texttt{COO} is compared with that of \texttt{CPP} at the same parameter values. Explicit
+zeros are removed first. Two results are equal when the largest absolute difference is at
+most $10^{-9}$ times the largest magnitude of the reference, or $10^{-9}$ when that
+magnitude is below one. Parametric problems are checked twice, at the first
+canonicalization and after a parameter update. Table~\ref{tab:verify} gives the result.
+
+{\small
+\begin{longtable}{l c c r}
+\caption[Correctness check of the problem data]{Result of the correctness check on every
+problem, at the first canonicalization and after a parameter update, and the largest
+relative difference over all the compared backends.}\label{tab:verify}\\
+\toprule
+Benchmark & First & After update & Largest difference \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & First & After update & Largest difference \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+UnconstrainedQP & \tbd{pass} & --- & \tbd{XX} \\
+LeastSquares & \tbd{pass} & --- & \tbd{XX} \\
+Yitzhaki & \tbd{pass} & --- & \tbd{XX} \\
+HuberRegression & \tbd{pass} & --- & \tbd{XX} \\
+SimpleQP & \tbd{pass} & --- & \tbd{XX} \\
+FactorCovarianceModel & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+SimpleLP & \tbd{pass} & --- & \tbd{XX} \\
+SVMWithL1Regularization & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+SimpleScalarParametrizedLP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+SimpleFullyParametrizedLP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+ParametrizedQP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+TvInpainting & \tbd{pass} & --- & \tbd{XX} \\
+Cajas & \tbd{pass} & --- & \tbd{XX} \\
+SlowPruning & \tbd{pass} & --- & \tbd{XX} \\
+SmallMatrixStuffing & \tbd{pass} & --- & \tbd{XX} \\
+QuantumHilbertMatrix & \tbd{pass} & --- & \tbd{XX} \\
+ConeMatrixStuffing & \tbd{pass} & --- & \tbd{XX} \\
+ParamSmallMatrixStuffing & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+ParamConeMatrixStuffing & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+SemidefiniteProgramming & \tbd{pass} & --- & \tbd{XX} \\
+Murray & \tbd{pass} & --- & \tbd{XX} \\
+CVaR & \tbd{pass} & --- & \tbd{XX} \\
+OptimalAdvertising & \tbd{pass} & --- & \tbd{XX} \\
+SDPSegfault1132 & \tbd{pass} & --- & \tbd{XX} \\
+ConvexPlasticity & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+\end{longtable}}
+
+% ------------------------------------------------------------------------------------------
+\Annexe{COMPLETE RESULTS}\label{app:results}
+
+This appendix gives every measurement behind the tables of Chapter~\ref{sec:Theme2}, as the
+mean $\pm$ standard deviation of the replicates, in seconds. The $p$-values compare
+\texttt{diffengine} with the best \texttt{CVXPY} backend of each problem, with the
+Mann--Whitney test, adjusted with the Holm--Bonferroni method across the $25$ problems.
+% TODO(final runs): the rows below are generated from thesis_stats.py's CSV files.
+
+\begin{landscape}
+\setlength\LTcapwidth{\linewidth}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{l rrrrr r}
+\caption[First canonicalization, all backends]{First canonicalization on the
+\texttt{ignore\_dpp} path, in seconds, with the dense-block ablation, and the Holm-adjusted
+$p$-value of \texttt{diffengine} against the best \texttt{CVXPY} backend.}
+\label{tab:app-cold}\\
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
+no dense blocks & $p$ \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
+no dense blocks & $p$ \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+UnconstrainedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+LeastSquares & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+Yitzhaki & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+HuberRegression & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SimpleQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+FactorCovarianceModel & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SimpleLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SVMWithL1Regularization & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SimpleScalarParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SimpleFullyParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+ParametrizedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+TvInpainting & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+Cajas & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SlowPruning & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+QuantumHilbertMatrix & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+ConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+ParamSmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+ParamConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SemidefiniteProgramming & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+Murray & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+CVaR & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+OptimalAdvertising & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SDPSegfault1132 & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+ConvexPlasticity & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+\end{longtable}}
+\end{landscape}
+
+\begin{landscape}
+\setlength\LTcapwidth{\linewidth}
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{l rrr rrr}
+\caption[Re-solve, all variants]{Re-solve time in milliseconds on the seven \ac{DPP}
+problems: the cached tensor of \texttt{CVXPY}, and \texttt{diffengine} with and without its
+dense representations and its split.}
+\label{tab:app-warm}\\
+\toprule
+& \multicolumn{2}{c}{\texttt{CVXPY}} & \multicolumn{4}{c}{\texttt{diffengine}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-7}
+Benchmark & tensor & recompile & cached & no dense blocks & no split & neither \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & tensor & recompile & cached & no dense blocks & no split & neither \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+ParamSmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+ParamConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+SimpleFullyParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+ParametrizedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+SimpleScalarParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+SVMWithL1Regularization & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+FactorCovarianceModel & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+\end{longtable}}
+\end{landscape}
+
+{\small
+\begin{longtable}{l rrrrr}
+\caption[Peak memory, all backends]{Growth of the peak resident memory during the first
+canonicalization, in megabytes.}\label{tab:app-memory}\\
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
+no dense blocks \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
+no dense blocks \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+UnconstrainedQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+LeastSquares & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+Yitzhaki & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+HuberRegression & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SimpleQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+FactorCovarianceModel & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SimpleLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SVMWithL1Regularization & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SimpleScalarParametrizedLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SimpleFullyParametrizedLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ParametrizedQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+TvInpainting & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+Cajas & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SlowPruning & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SmallMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+QuantumHilbertMatrix & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ConeMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ParamSmallMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ParamConeMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SemidefiniteProgramming & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+Murray & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+CVaR & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+OptimalAdvertising & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SDPSegfault1132 & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ConvexPlasticity & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+\end{longtable}}
+
+% ------------------------------------------------------------------------------------------
+\Annexe{TWO SLOWER PROBLEMS}\label{app:cases}
+
+This appendix describes the two problems of \S\ref{sec:bench-phases} on which the dense
+representations of \texttt{diffengine} work against it.
+
+\section{SDPSegfault1132}
+
+Listing~\ref{lst:sdpsegfault} shows the problem, shortened from the benchmark suite. The
+variable $\mmat{G} \in \symm^{99}$ is a positive semidefinite Gram matrix, and the matrices
+$\mmat{V} \in \reals^{100 \times 99}$, $\mmat{D}$ and $\mmat{W}$ are dense constants.
+\begin{lstlisting}[language=Python, showstringspaces=false, caption={The SDPSegfault1132
+problem, shortened.}, label=lst:sdpsegfault]
+n = 100
+V = ...                      # dense, (n, n-1)
+D = ...                      # dense, (n, n)
+W = np.ones((n, n))          # dense, (n, n)
+
+G = cp.Variable((n-1, n-1), PSD=True)
+A = cp.kron(e,   cp.reshape(cp.diag(V @ G @ V.T), (1, n)))
+B = cp.kron(e.T, cp.reshape(cp.diag(V @ G @ V.T), (n, 1)))
+C = cp.norm(cp.multiply(W, A + B - 2 * V @ G @ V.T - D), "fro")
+
+prob = cp.Problem(cp.Maximize(cp.trace(G) - C))
+\end{lstlisting}
+The map $\mmat{G} \mapsto \mmat{V}\mmat{G}\mmat{V}^\top$ has the dense Jacobian
+$\mmat{V} \otimes \mmat{V}$, restricted to the $4950$ free entries of the symmetric
+$\mmat{G}$, so it has $10\,000 \times 4950 = 49.5$ million entries. The expression uses it
+three times, once directly and twice through the diagonal in $\mmat{A}$ and $\mmat{B}$. In
+the sum $\mmat{A} + \mmat{B} - 2\mmat{V}\mmat{G}\mmat{V}^\top$, almost all of these entries
+cancel. The entry $(i, j)$ of the sum is $K_{ii} + K_{jj} - 2K_{ij}$ with
+$\mmat{K} = \mmat{V}\mmat{G}\mmat{V}^\top$, the identity that turns a Gram matrix into a
+matrix of squared distances. Only $1.01$ million nonzeros are left. No backend can know
+this in advance, so every backend builds the three dense intermediates.
+
+\texttt{SCIPY} builds them as compressed sparse row matrices, and its sparse addition drops
+the entries that sum to zero, so the result of the sum has $1.01$ million entries. The
+permuted dense blocks of \texttt{diffengine} have a fixed pattern, so the sum keeps the
+$49.5$ million entries, of which $48.5$ million are zero, until the assembly removes them.
+% CHECK on the final build: the fork's assembly phase drops the zeros (keep = vals != 0).
+% The 2026-08-22 profile (development build) had them dropped only in the cone formatting.
+Table~\ref{tab:sdpsegfault-phases} compares where the time goes in the two backends.
+On one dense intermediate alone, \texttt{diffengine} is faster, \tbd{$4.1$} seconds against
+\tbd{$15.7$}. Its loss is in carrying the cancelled entries through the sum. Removing exact
+zeros as soon as a sum produces them would fix this, at the cost of a sparsity pattern that
+depends on the values.
+
+\begin{table}[htbp]
+\centering
+\caption[Phases of SDPSegfault1132]{Canonicalization time of SDPSegfault1132 by phase,
+in seconds.}
+\label{tab:sdpsegfault-phases}
+{\small
+\begin{tabular}{l r @{\hspace{3em}} l r}
+\toprule
+\multicolumn{2}{c}{\texttt{diffengine}} & \multicolumn{2}{c}{\texttt{SCIPY}} \\
+\cmidrule(r){1-2}\cmidrule(l){3-4}
+symbolic pass & \tbd{5.6} & products with $\mmat{V}$ & \tbd{3.4} \\
+numeric pass  & \tbd{7.2} & Kronecker products      & \tbd{3.0} \\
+assembly      & \tbd{4.0} & additions               & \tbd{2.2} \\
+formatting    & \tbd{5.5} & rest                    & \tbd{0.3} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\section{ConvexPlasticity}
+
+ConvexPlasticity computes one step of a plasticity model at $N = 3000$ points. Its
+objective contains the term
+\begin{lstlisting}[language=Python, showstringspaces=false]
+D = H * np.eye(N)            # diagonal content, dense array
+... + 0.5 * cp.quad_form(p - p_old, D)
+\end{lstlisting}
+The matrix $\mmat{D}$ is diagonal, but it is given as a dense array. The converter of the
+quadratic form chose its representation from the type of the array rather than from its
+content, so $\mmat{D}$ became a dense $3000 \times 3000$ block of the Hessian. The matrix
+$\mmat{P}$ then stored $9.05$ million entries, where its true pattern has about $33$
+thousand. The fix applies the same density test as the converter of the matrix product. A
+constant with fewer than $5\,\%$ nonzeros takes the sparse representation. With the fix,
+the time of \texttt{diffengine} on this problem fell from \tbd{$2.03$} to \tbd{$0.85$}
+seconds. The three \texttt{CVXPY} backends take the same \tbd{$0.35$} seconds, which suggests
+that this time is spent in the front end they share. The time \texttt{diffengine} spends
+above it is \tbd{spent in XX, according to the phases of Table~\ref{tab:phases}}.

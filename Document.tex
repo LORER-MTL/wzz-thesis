@@ -307,7 +307,7 @@ a été dûment accepté\ifthenelse{\equal{\monDiplome}{M}}{}{e} par le jury d'e
 }
 
 \include{4-Sigles_Abrev}       % Liste des sigles et abréviations.
-%\ifthenelse{\equal{\AnnexesPresentes}{O}}{\listofappendices}{}
+\ifthenelse{\equal{\AnnexesPresentes}{O}}{\listofappendices}{}
 \mainmatter
 \include{5-Introduction}       % Introduction au sujet de recherche.
 \include{6-Revue_litterature}  % Revue de littérature / Literature review
@@ -326,9 +326,9 @@ a été dûment accepté\ifthenelse{\equal{\monDiplome}{M}}{}{e} par le jury d'e
 	\bibliographystyle{IEEEtran-francais}    % Style bibliographique / Bibliography style 
 }
 %
-%\ifthenelse{\equal{\AnnexesPresentes}{O}}{
-%	\appendix%
-%	\newcommand{\Annexe}[1]{\annexe{#1}\setcounter{figure}{0}\setcounter{table}{0}\setcounter{footnote}{0}}%
-%	\include{9-Annexes}}
+\ifthenelse{\equal{\AnnexesPresentes}{O}}{
+	\appendix%
+	\newcommand{\Annexe}[1]{\annexe{#1}\setcounter{figure}{0}\setcounter{table}{0}\setcounter{footnote}{0}}%
+	\include{9-Annexes}}
 
 \end{document}

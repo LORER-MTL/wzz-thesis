@@ -20,19 +20,32 @@ canonicalization. These comparisons allow us to assess whether
 We use the $25$ problems of \texttt{CVXPY}'s public benchmark suite
 \cite{cvxpybenchmarks}. The suite includes problems from portfolio selection, regression
 and classification, image inpainting, and many more applications in convex optimization.
+Appendix~\ref{app:instances} describes each problem and gives its dimensions.
 On parametric problems, canonicalization follows either
 the \ac{DPP} path or the \texttt{ignore\_dpp} path, both described in
-\S\ref{sec:ms-parameters}. We conduct numerical experiments on both. \S\ref{sec:bench-oneshot}
-compares the first
-canonicalization time of all $25$ problems on the \texttt{ignore\_dpp} path.
+\S\ref{sec:ms-parameters}. We conduct numerical experiments on both.
+\S\ref{sec:bench-setup} describes how the measurements are taken and tested.
+\S\ref{sec:bench-oneshot} compares the first canonicalization time of all $25$ problems on
+the \texttt{ignore\_dpp} path, and \S\ref{sec:bench-phases} breaks this time down by phase on
+the problems where \texttt{diffengine} is not faster.
 \S\ref{sec:bench-param} compares the parameter-to-data tensor against the symbolic and
-numeric split on the seven \ac{DPP} parametric problems of the suite.
+numeric split on the seven \ac{DPP} parametric problems of the suite, and
+\S\ref{sec:bench-nondpp} repeats the comparison on problems that are not \ac{DPP}.
+\S\ref{sec:bench-ablation} separates the gain of the dense representations from that of the
+split, and \S\ref{sec:bench-sensitivity} varies the size and the density of the problem data.
 
-All measurements run single-threaded on a 2018 MacBook
-Pro with a 6-core Intel Core i7-8850H and \SI{16}{\giga\byte} of memory. \texttt{CVXPY}'s
-backends run on the released
-version 1.9.2. The \texttt{diffengine} backend is in a separate branch,
-available as a pull request:
+\section{Experimental setup}
+\label{sec:bench-setup}
+
+All measurements run single-threaded on an Apple \tbd{M2} with \tbd{XX}~\si{\giga\byte} of
+memory, under macOS~\tbd{XX}. The engine is linked against Apple's Accelerate framework for
+its \ac{BLAS} calls, and the number of \ac{BLAS} and OpenMP threads is set to one.
+\texttt{CVXPY}'s backends run on the released version 1.9.2. The \texttt{diffengine}
+backend runs on a branch of \texttt{CVXPY} at commit \tbd{XX}, with \texttt{SparseDiffEngine}
+at commit \tbd{64f7432}. The branch adds to the backend only the timers of
+\S\ref{sec:bench-phases} and the two switches of \S\ref{sec:bench-ablation}, which are off
+unless stated otherwise.
+The backend itself is available as a pull request:
 \begin{center}
   \url{https://github.com/cvxpy/cvxpy/pull/3448}
 \end{center}
@@ -41,31 +54,68 @@ September 9, 2026, as an opt-in backend for parameter-free problems. The paramet
 path of \S\ref{sec:bench-param} is not yet integrated into \texttt{CVXPY}.
 The author also contributed to the \texttt{SCIPY} and \texttt{COO} backends that
 \texttt{diffengine} is compared against.
-Each measurement runs \texttt{get\_problem\_data} once with
-\texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 20
+
+Each measurement times one call to \texttt{get\_problem\_data} with
+\texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 30
 minutes. The method canonicalizes the
 problem and returns the resulting problem data without calling the solver. We exclude the
 solver because the choice of backend affects only canonicalization.
-The benchmark scripts and all recorded timings are available at
+Every measurement is repeated in a fresh process, so that no cache or allocation of one
+replicate carries over to the next. A measurement is repeated $20$ times, or $5$ times when
+its first replicate takes more than $30$ seconds. On a parametric problem, each replicate
+draws new parameter values from its own random seed, so the replicates are also different
+instances of the same problem family. The tables report the mean and the standard deviation
+of the replicates. Peak memory is measured once per problem and backend, in a separate
+process, as the growth of the process's peak resident memory during the call.
+
+We test every comparison for statistical significance. On each problem, a two-sided
+Mann--Whitney $U$ test~\cite{mann1947} compares the replicates of \texttt{diffengine} with
+those of the other backend. The test makes no assumption on the distribution of the times, which are
+skewed to the right and have only $5$ to $20$ samples. Because the same comparison is
+repeated on all $25$ problems, the $p$-values are adjusted with the Holm--Bonferroni
+method~\cite{holm1979}, and a difference is called significant when its adjusted $p$-value
+is below $0.05$. Over the whole suite, we summarize a comparison by the geometric mean of the
+per-problem ratios of median times, with a $95\,\%$ bootstrap confidence interval, and test
+whether the median log-ratio is zero with a Wilcoxon signed-rank test~\cite{wilcoxon1945}.
+
+Before any timing, we check that every backend produces the same problem data. On each
+problem, the matrices $\mmat{P}$ and $\mmat{A}$ and the vectors $\mvec{c}$ and $\mvec{b}$ of
+\texttt{diffengine} and of its two ablation variants are compared with those of
+\texttt{CPP}, once at the first canonicalization and once after a parameter update. Two
+results are considered equal when they differ by at most $10^{-9}$ times the largest
+magnitude of the reference, after explicit zeros are removed. \tbd{All $25$} problems pass
+this check. Appendix~\ref{app:protocol} gives the full protocol, the versions, and the
+result of the check on each problem. The benchmark scripts and all recorded timings are
+available at
 \begin{center}
-  \url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
-  % TODO cleanup experiments and put them in another repo called something more descriptive.
+  \tbd{\url{https://github.com/SparseDifferentiation/Jacobian-accumulation}}
 \end{center}
 
 \section{First canonicalization}
 \label{sec:bench-oneshot}
 
 Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
-fastest of the four backends on $21$ of the $25$ problems, with a geometric-mean ratio of
-$0.36$, and on $17$ problems it is more than twice as fast as the best
-\texttt{CVXPY} backend. It is slower on CVaR and OptimalAdvertising, where the times are
-similar. On SDPSegfault1132 and
-ConvexPlasticity, processing dense constant data dominates \texttt{diffengine}'s
-canonicalization time.
+fastest of the four backends on \tbd{$21$} of the $25$ problems, and the difference is
+significant on \tbd{XX} of them. The geometric mean of its ratio to the best \texttt{CVXPY}
+backend is \tbd{$0.36$}, with a $95\,\%$ confidence interval of \tbd{XX}--\tbd{XX}
+(Wilcoxon $p = \tbd{XX}$), and on \tbd{$17$} problems it is more than twice as fast as the
+best \texttt{CVXPY} backend. It is slower on CVaR and OptimalAdvertising, where the
+difference is \tbd{not significant}. On SDPSegfault1132 and ConvexPlasticity, processing
+dense constant data dominates \texttt{diffengine}'s canonicalization time;
+\S\ref{sec:bench-phases} examines these four problems.
+
+The smallest ratio, \tbd{$0.01$} on UnconstrainedQP, comes from a problem with very
+little data. Its matrix $\mmat{A}$ has only $18.6$ thousand nonzeros, yet the three
+\texttt{CVXPY} backends take about \tbd{$10$} seconds to build it.
+% CHECK against the phase data: the claim below is the hypothesis, not yet measured.
+The objective multiplies the variable by a chain of complex constant matrices, among them a
+Kronecker product with a $252 \times 252$ identity, and the \texttt{CVXPY} backends form
+each intermediate product of this chain as a generic sparse matrix. \texttt{diffengine}
+spends \tbd{XX} seconds on the same problem.
 
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends
-over the whole suite at once. We define $t_{p,s}$ as the time of backend $s$ on
+over the whole suite at once. We define $t_{p,s}$ as the median time of backend $s$ on
 problem $p$. The profile of backend $s$ is the fraction of the $N$ problems on which it
 is within a factor $\tau$ of the fastest backend,
 \BEQ\label{eq:perf-profile}
@@ -75,56 +125,64 @@ f_s(\tau) = \frac{1}{N}\,\bigl|\{\, p : t_{p,s} \le \tau \, \textstyle\min_b t_{
 The minimum $\min_b t_{p,b}$ is the time of the fastest backend on problem~$p$.
 The value at $\tau = 1$ is the fraction of
 problems on which the backend is the fastest, and the curve reaches $1$ at the factor the
-backend needs to cover every problem. \texttt{diffengine} is within $3\times$ of
-the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than three
-problems (\texttt{SCIPY}, counting a three-way tie on ConvexPlasticity), and each needs $\tau \approx 8$ to cover $92$--$96\%$ of the problems.
+backend needs to cover every problem. \texttt{diffengine} is within \tbd{$3\times$} of
+the best backend on every problem. No \texttt{CVXPY} backend is fastest on more than
+\tbd{three} problems, and each needs $\tau \approx \tbd{8}$ to cover \tbd{$92$--$96\%$} of
+the problems.
 
 Figure~\ref{fig:profiles}b reports the same profile for peak memory,
 with $t_{p,s}$ replaced by the growth of the process's peak resident memory during
 canonicalization. \texttt{SCIPY} has the lowest peak memory on
-$16$ of the $25$ problems. \texttt{diffengine}
-matches \texttt{CPP} and \texttt{COO} in geometric mean and uses about $1.4\times$ the memory
-of \texttt{SCIPY}.
+\tbd{$16$} of the $25$ problems. \texttt{diffengine}
+matches \texttt{CPP} and \texttt{COO} in geometric mean and uses about \tbd{$1.4\times$} the
+memory of \texttt{SCIPY}. Appendix~\ref{app:results} gives the peak memory of every backend on
+every problem.
+
 \begin{table}[tb]
 \centering
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
-time in seconds on all $25$ problems. Bold denotes the fastest of the four backends on each
-problem. The ratio is \texttt{diffengine} over the best of \texttt{CVXPY}'s three
-backends. The final row is the geometric mean of the per-problem ratios.}
+time in seconds on all $25$ problems, mean $\pm$ standard deviation over the replicates.
+Bold denotes the fastest of the four backends on each problem. The ratio is the median time
+of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends, marked
+with~$^{*}$ when the difference is significant (Mann--Whitney, Holm-adjusted $p < 0.05$).
+The final row is the geometric mean of the ratios, with its $95\,\%$ bootstrap confidence
+interval. Appendix~\ref{app:instances} gives the dimensions of each problem.}
 \label{tab:oneshot-compile}
-{\small
-\begin{tabular}{l r r r r r}
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l r r r r l}
 \toprule
-Benchmark & \texttt{CPP} (s) & \texttt{SCIPY} (s) & \texttt{COO} (s) &
-\texttt{diffengine} (s) & Ratio \\
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} &
+\texttt{diffengine} & Ratio \\
 \midrule
-UnconstrainedQP             & 10.32 &  8.52 & 13.54 &  \textbf{0.07} & 0.01 \\
-LeastSquares                &  9.61 & 10.08 & 10.68 &  \textbf{1.45} & 0.15 \\
-Yitzhaki                    &  3.56 &  3.28 &  3.55 &  \textbf{0.51} & 0.16 \\
-HuberRegression             & 12.05 & 10.72 & 11.60 &  \textbf{1.73} & 0.16 \\
-SimpleQP                    & 11.27 & 10.59 & 11.97 &  \textbf{1.87} & 0.18 \\
-FactorCovarianceModel       &  5.26 &  4.22 &  4.40 & \textbf{0.86} & 0.20 \\
-SimpleLP                    & 37.57 & 29.99 & 30.96 &  \textbf{6.12} & 0.20 \\
-SVMWithL1Regularization     & 11.14 &  8.24 &  9.78 & \textbf{1.86} & 0.23 \\
-SimpleScalarParametrizedLP  &  4.54 &  4.08 &  4.20 & \textbf{1.03} & 0.25 \\
-SimpleFullyParametrizedLP   &  2.22 &  2.16 &  2.22 &  \textbf{0.54} & 0.25 \\
-ParametrizedQP              & 11.51 &  9.68 & 10.76 &  \textbf{2.53} & 0.26 \\
-TvInpainting                &  3.89 &  3.50 &  3.57 &  \textbf{1.20} & 0.34 \\
-Cajas                       & 22.67 &  2.91 &  2.89 &  \textbf{1.07} & 0.37 \\
-SlowPruning                 &  7.69 &  7.82 &  8.60 &  \textbf{3.01} & 0.39 \\
-SmallMatrixStuffing         &  6.97 &  7.09 & 10.84 &  \textbf{2.76} & 0.40 \\
-QuantumHilbertMatrix        &  4.27 &  4.05 &  4.75 &  \textbf{1.67} & 0.41 \\
-ConeMatrixStuffing          & 11.06 &  9.34 & 16.99 &  \textbf{3.95} & 0.42 \\
-ParamSmallMatrixStuffing    &  0.28 &  0.50 &  0.49 & \textbf{0.21} & 0.75 \\
-ParamConeMatrixStuffing     &  0.18 &  0.32 &  0.32 & \textbf{0.14} & 0.79 \\
-SemidefiniteProgramming     &  5.96 &  2.43 &  3.78 &  \textbf{2.02} & 0.83 \\
-Murray                      &  7.13 &  3.87 &  4.00 &  \textbf{3.72} & 0.96 \\
-CVaR                        & 35.85 & \textbf{24.79} & 26.86 & 24.94 & 1.01 \\
-OptimalAdvertising          &  6.43 &  2.32 &  \textbf{2.25} &  2.36 & 1.05 \\
-SDPSegfault1132             & 64.84 &  \textbf{9.51} & 43.00 & 13.21 & 1.39 \\
-ConvexPlasticity            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  0.85 & 2.48 \\
+UnconstrainedQP             & \tbd{10.32 $\pm$ XX} &  \tbd{8.52 $\pm$ XX} & \tbd{13.54 $\pm$ XX} &  \textbf{\tbd{0.07 $\pm$ XX}} & \tbd{0.01} \\
+LeastSquares                &  \tbd{9.61 $\pm$ XX} & \tbd{10.08 $\pm$ XX} & \tbd{10.68 $\pm$ XX} &  \textbf{\tbd{1.45 $\pm$ XX}} & \tbd{0.15} \\
+Yitzhaki                    &  \tbd{3.56 $\pm$ XX} &  \tbd{3.28 $\pm$ XX} &  \tbd{3.55 $\pm$ XX} &  \textbf{\tbd{0.51 $\pm$ XX}} & \tbd{0.16} \\
+HuberRegression             & \tbd{12.05 $\pm$ XX} & \tbd{10.72 $\pm$ XX} & \tbd{11.60 $\pm$ XX} &  \textbf{\tbd{1.73 $\pm$ XX}} & \tbd{0.16} \\
+SimpleQP                    & \tbd{11.27 $\pm$ XX} & \tbd{10.59 $\pm$ XX} & \tbd{11.97 $\pm$ XX} &  \textbf{\tbd{1.87 $\pm$ XX}} & \tbd{0.18} \\
+FactorCovarianceModel       &  \tbd{5.26 $\pm$ XX} &  \tbd{4.22 $\pm$ XX} &  \tbd{4.40 $\pm$ XX} &  \textbf{\tbd{0.86 $\pm$ XX}} & \tbd{0.20} \\
+SimpleLP                    & \tbd{37.57 $\pm$ XX} & \tbd{29.99 $\pm$ XX} & \tbd{30.96 $\pm$ XX} &  \textbf{\tbd{6.12 $\pm$ XX}} & \tbd{0.20} \\
+SVMWithL1Regularization     & \tbd{11.14 $\pm$ XX} &  \tbd{8.24 $\pm$ XX} &  \tbd{9.78 $\pm$ XX} &  \textbf{\tbd{1.86 $\pm$ XX}} & \tbd{0.23} \\
+SimpleScalarParametrizedLP  &  \tbd{4.54 $\pm$ XX} &  \tbd{4.08 $\pm$ XX} &  \tbd{4.20 $\pm$ XX} &  \textbf{\tbd{1.03 $\pm$ XX}} & \tbd{0.25} \\
+SimpleFullyParametrizedLP   &  \tbd{2.22 $\pm$ XX} &  \tbd{2.16 $\pm$ XX} &  \tbd{2.22 $\pm$ XX} &  \textbf{\tbd{0.54 $\pm$ XX}} & \tbd{0.25} \\
+ParametrizedQP              & \tbd{11.51 $\pm$ XX} &  \tbd{9.68 $\pm$ XX} & \tbd{10.76 $\pm$ XX} &  \textbf{\tbd{2.53 $\pm$ XX}} & \tbd{0.26} \\
+TvInpainting                &  \tbd{3.89 $\pm$ XX} &  \tbd{3.50 $\pm$ XX} &  \tbd{3.57 $\pm$ XX} &  \textbf{\tbd{1.20 $\pm$ XX}} & \tbd{0.34} \\
+Cajas                       & \tbd{22.67 $\pm$ XX} &  \tbd{2.91 $\pm$ XX} &  \tbd{2.89 $\pm$ XX} &  \textbf{\tbd{1.07 $\pm$ XX}} & \tbd{0.37} \\
+SlowPruning                 &  \tbd{7.69 $\pm$ XX} &  \tbd{7.82 $\pm$ XX} &  \tbd{8.60 $\pm$ XX} &  \textbf{\tbd{3.01 $\pm$ XX}} & \tbd{0.39} \\
+SmallMatrixStuffing         &  \tbd{6.97 $\pm$ XX} &  \tbd{7.09 $\pm$ XX} & \tbd{10.84 $\pm$ XX} &  \textbf{\tbd{2.76 $\pm$ XX}} & \tbd{0.40} \\
+QuantumHilbertMatrix        &  \tbd{4.27 $\pm$ XX} &  \tbd{4.05 $\pm$ XX} &  \tbd{4.75 $\pm$ XX} &  \textbf{\tbd{1.67 $\pm$ XX}} & \tbd{0.41} \\
+ConeMatrixStuffing          & \tbd{11.06 $\pm$ XX} &  \tbd{9.34 $\pm$ XX} & \tbd{16.99 $\pm$ XX} &  \textbf{\tbd{3.95 $\pm$ XX}} & \tbd{0.42} \\
+ParamSmallMatrixStuffing    &  \tbd{0.28 $\pm$ XX} &  \tbd{0.50 $\pm$ XX} &  \tbd{0.49 $\pm$ XX} &  \textbf{\tbd{0.21 $\pm$ XX}} & \tbd{0.75} \\
+ParamConeMatrixStuffing     &  \tbd{0.18 $\pm$ XX} &  \tbd{0.32 $\pm$ XX} &  \tbd{0.32 $\pm$ XX} &  \textbf{\tbd{0.14 $\pm$ XX}} & \tbd{0.79} \\
+SemidefiniteProgramming     &  \tbd{5.96 $\pm$ XX} &  \tbd{2.43 $\pm$ XX} &  \tbd{3.78 $\pm$ XX} &  \textbf{\tbd{2.02 $\pm$ XX}} & \tbd{0.83} \\
+Murray                      &  \tbd{7.13 $\pm$ XX} &  \tbd{3.87 $\pm$ XX} &  \tbd{4.00 $\pm$ XX} &  \textbf{\tbd{3.72 $\pm$ XX}} & \tbd{0.96} \\
+CVaR                        & \tbd{35.85 $\pm$ XX} & \textbf{\tbd{24.79 $\pm$ XX}} & \tbd{26.86 $\pm$ XX} & \tbd{24.94 $\pm$ XX} & \tbd{1.01} \\
+OptimalAdvertising          &  \tbd{6.43 $\pm$ XX} &  \tbd{2.32 $\pm$ XX} &  \textbf{\tbd{2.25 $\pm$ XX}} &  \tbd{2.36 $\pm$ XX} & \tbd{1.05} \\
+SDPSegfault1132             & \tbd{64.84 $\pm$ XX} &  \textbf{\tbd{9.51 $\pm$ XX}} & \tbd{43.00 $\pm$ XX} & \tbd{13.21 $\pm$ XX} & \tbd{1.39} \\
+ConvexPlasticity            &  \textbf{\tbd{0.35 $\pm$ XX}} & \textbf{\tbd{0.35 $\pm$ XX}} & \textbf{\tbd{0.35 $\pm$ XX}} &  \tbd{0.85 $\pm$ XX} & \tbd{2.48} \\
 \midrule
-\textbf{Geometric mean}     &       &       &       &       & \textbf{0.36} \\
+\textbf{Geometric mean}     &       &       &       &       & \textbf{\tbd{0.36}} \\
+95\,\% confidence interval  &       &       &       &       & \tbd{XX--XX} \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -133,10 +191,68 @@ ConvexPlasticity            &  \textbf{0.35} & \textbf{0.35} & \textbf{0.35} &  
 \centering
 \includegraphics{profiles_combined_thesis}
 \caption[Performance profiles of canonicalization time and peak memory]{Performance
-profiles~\eqref{eq:perf-profile} of canonicalization time (a) and peak
-memory (b) over all $25$ problems, every backend on the \texttt{ignore\_dpp} path.}
+profiles~\eqref{eq:perf-profile} of canonicalization time (a), using the median of the
+replicates, and of peak memory (b) over all $25$ problems, every backend on the
+\texttt{ignore\_dpp} path. \tbd{To be regenerated from the final runs.}}
 \label{fig:profiles}
 \end{figure}
+
+\FloatBarrier
+
+\section{Where the time goes}
+\label{sec:bench-phases}
+
+To explain the four problems on which \texttt{diffengine} is not faster, we time the phases
+of its canonicalization separately. The front end is the part of \texttt{CVXPY}'s reduction
+chain that runs before the backend and is shared with the other backends. The conversion
+builds the \texttt{SparseDiffEngine} expression trees from the \texttt{CVXPY} expressions.
+The symbolic pass computes the sparsity patterns and the block layouts, and the numeric pass
+computes the values. The assembly converts the coordinate output of the engine to the
+compressed sparse column matrices $\mmat{A}$ and $\mmat{P}$, and the formatting reorders
+the rows of $\mmat{A}$ into the cone order of the solver. Table~\ref{tab:phases} reports the
+share of each phase on the four problems and the median share over the suite.
+
+\begin{table}[htbp]
+\centering
+\caption[Canonicalization time of \texttt{diffengine} by phase]{Canonicalization time of
+\texttt{diffengine} by phase, as a percentage of the total, on the four problems where
+it is not the fastest backend, and the median over the $25$ problems. Time is the mean
+total in seconds.}
+\label{tab:phases}
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l r rrrrrr}
+\toprule
+Benchmark & Time (s) & Front end & Conversion & Symbolic & Numeric & Assembly & Format \\
+\midrule
+CVaR               & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+OptimalAdvertising & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SDPSegfault1132    & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+ConvexPlasticity   & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+\midrule
+Median, all $25$   & ---      & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+On CVaR, the constraint matrix contains a dense block of $131\,072 \times 768$ scenario
+returns. The block has no structure to exploit, and the numeric pass copies it into
+$\mmat{A}$ at about the speed at which \texttt{SCIPY} copies it, which accounts for
+\tbd{XX}\,\% of the time. On OptimalAdvertising, the three fastest backends are within
+\tbd{XX}\,\% of each other, and the difference is \tbd{not significant}.
+
+SDPSegfault1132 and ConvexPlasticity are the two problems where dense constant data is
+handled poorly. On SDPSegfault1132, the expression $\mmat{V}\mmat{G}\mmat{V}^\top$, with a
+dense constant $\mmat{V} \in \reals^{100 \times 99}$ and a variable $\mmat{G}$, has a dense
+Jacobian of $49.5$ million entries, and the expression uses it three times. The three
+copies cancel in the final sum, which has only $1.01$ million nonzeros. \texttt{SCIPY}
+removes the cancelled entries at every addition. \texttt{diffengine} keeps the dense blocks
+through the sum, so its symbolic and numeric passes take \tbd{XX}\,\% of the time.
+% CHECK: the fork drops exact zeros in the assembly phase (keep = vals != 0); confirm where
+% the remaining time goes on the final build before writing more than this.
+On ConvexPlasticity, a diagonal matrix of size $3000$ is given as a dense array, so the
+quadratic term it defines is stored as a dense $3000 \times 3000$ block of the Hessian.
+\tbd{XX}. Appendix~\ref{app:cases} describes both problems in more detail.
 
 \FloatBarrier
 
@@ -146,10 +262,15 @@ memory (b) over all $25$ problems, every backend on the \texttt{ignore\_dpp} pat
 Table~\ref{tab:param-tensor} reports first canonicalization and re-solve times on the
 seven \ac{DPP} parametric problems. We refer to a re-solve in this context as rebuilding the
 problem data after a parameter update, so the reported times again exclude the solver.
+Each replicate performs one first canonicalization followed by five re-solves with new
+parameter values, and the re-solve time of the replicate is the median of the five.
 On the first
 canonicalization, each \texttt{CVXPY} backend runs the \ac{DPP} path and builds a
 parameter-to-data tensor. \texttt{diffengine} instead runs its symbolic pass and one
-numeric pass. It has the fastest first canonicalization on every problem, and among
+numeric pass. This is the same work as on the \texttt{ignore\_dpp} path, because
+\texttt{diffengine} builds no tensor, so its first canonicalization column repeats the
+corresponding times of Table~\ref{tab:oneshot-compile}. It has the fastest first
+canonicalization on \tbd{every} problem, and among
 the \texttt{CVXPY} backends only \texttt{COO} is able to build the tensor on all seven. On a
 parameter update, the three \texttt{CVXPY} backends re-solve by applying the cached
 tensor, so the tensor column is common to all three. \texttt{diffengine} instead
@@ -158,32 +279,31 @@ runs another numeric pass.
 \begin{table}[htbp]
 \centering
 \caption[First canonicalization and re-solve on the parametric problems]{First
-canonicalization and re-solve time in seconds on the seven \ac{DPP} parametric problems.
-A dash denotes a tensor
-that did not finish building
-within the time limit. Bold
-denotes the fastest first canonicalization and the faster re-solve. The ratio is the
-re-solve time of \texttt{diffengine} over the re-solve time of the tensor.}
+canonicalization time in seconds and re-solve time in milliseconds on the seven \ac{DPP}
+parametric problems, mean over the replicates. A dash denotes a tensor that did not finish
+building within the time limit. Bold denotes the fastest first canonicalization and the
+faster re-solve. The ratio is the median re-solve time of \texttt{diffengine} over that of
+the tensor, marked with~$^{*}$ when the difference is significant (Mann--Whitney,
+Holm-adjusted $p < 0.05$). Appendix~\ref{app:results} gives the standard deviations.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{l rrrr rr r}
+\begin{tabular}{l rrrr rr l}
 \toprule
-& \multicolumn{4}{c}{first canonicalization} & \multicolumn{2}{c}{re-solve} & \\
+& \multicolumn{4}{c}{first canonicalization (s)} & \multicolumn{2}{c}{re-solve (ms)} & \\
 \cmidrule(lr){2-5}\cmidrule(lr){6-7}
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine}
 & tensor & \texttt{diffengine} & Ratio \\
 \midrule
-ParamSmallMatrixStuffing    &  7.78 & 29.06 &  0.40 & \textbf{0.21} & 0.005 & \textbf{0.001} & 0.29 \\
-ParamConeMatrixStuffing     &  3.16 &  7.63 &  0.26 & \textbf{0.14} & 0.003 & \textbf{0.001} & 0.29 \\
-SimpleFullyParametrizedLP   &   --- &   --- &  2.17 & \textbf{0.54} & 0.261 & \textbf{0.126} & 0.48 \\
-ParametrizedQP              &   --- &   --- & 10.87 & \textbf{2.53} & 1.485 & \textbf{0.985} & 0.66 \\
-SimpleScalarParametrizedLP  &  4.68 &  4.15 &  4.48 & \textbf{1.03} & 0.304 & \textbf{0.247} & 0.81 \\
-SVMWithL1Regularization     & 11.00 &  8.21 &  9.62 & \textbf{1.86} & \textbf{0.252} & 0.496 & 1.97 \\
-FactorCovarianceModel       &  4.92 &  4.15 &  4.66 & \textbf{0.86} & \textbf{0.139} & 0.279 & 2.00 \\
+ParamSmallMatrixStuffing    &  \tbd{7.78} & \tbd{29.06} &  \tbd{0.40} & \textbf{\tbd{0.21}} &    \tbd{5} &   \textbf{\tbd{1}} & \tbd{0.29} \\
+ParamConeMatrixStuffing     &  \tbd{3.16} &  \tbd{7.63} &  \tbd{0.26} & \textbf{\tbd{0.14}} &    \tbd{3} &   \textbf{\tbd{1}} & \tbd{0.29} \\
+SimpleFullyParametrizedLP   &   \tbd{---} &   \tbd{---} &  \tbd{2.17} & \textbf{\tbd{0.54}} &  \tbd{261} & \textbf{\tbd{126}} & \tbd{0.48} \\
+ParametrizedQP              &   \tbd{---} &   \tbd{---} & \tbd{10.87} & \textbf{\tbd{2.53}} & \tbd{1485} & \textbf{\tbd{985}} & \tbd{0.66} \\
+SimpleScalarParametrizedLP  &  \tbd{4.68} &  \tbd{4.15} &  \tbd{4.48} & \textbf{\tbd{1.03}} &  \tbd{304} & \textbf{\tbd{247}} & \tbd{0.81} \\
+SVMWithL1Regularization     & \tbd{11.00} &  \tbd{8.21} &  \tbd{9.62} & \textbf{\tbd{1.86}} & \textbf{\tbd{252}} & \tbd{496} & \tbd{1.97} \\
+FactorCovarianceModel       &  \tbd{4.92} &  \tbd{4.15} &  \tbd{4.66} & \textbf{\tbd{0.86}} & \textbf{\tbd{139}} & \tbd{279} & \tbd{2.00} \\
 \bottomrule
 \end{tabular}}
-
 \end{table}
 
 On SVMWithL1Regularization and FactorCovarianceModel, the two problems where the parameter
@@ -195,22 +315,168 @@ numeric pass to recompute the entire constant part, which can be costly.
 
 \FloatBarrier
 
+\section{Problems that are not DPP}
+\label{sec:bench-nondpp}
+
+The comparison of \S\ref{sec:bench-param} is restricted to \ac{DPP} problems, the only ones
+on which \texttt{CVXPY} can build a tensor. The numeric pass has no such restriction. It
+needs a fixed expression tree and fixed sparsity patterns, and never asks whether the
+problem data is affine in the parameters. To measure what this means for re-solves, we
+write two problem families in three variants each. Appendix~\ref{app:extra-problems} defines
+them. In the \ac{DPP} variant, the parameters enter the problem as \ac{DPP} allows. In the
+non-\ac{DPP} variant, one parameter is replaced by the product of two parameters, which
+violates the \ac{DPP} rules without changing the problem data. In the parameter-free
+variant, the parameters are replaced by constants, so every solve is the canonicalization of
+a new problem. At the default parameter values the three variants have the same problem
+data, so their times are directly comparable.
+
+Table~\ref{tab:nondpp} reports the re-solve times. On the non-\ac{DPP} variant,
+\texttt{CVXPY} has no tensor and canonicalizes the problem again at every solve, at the cost
+of a first canonicalization. \texttt{diffengine} re-solves the \ac{DPP} and non-\ac{DPP}
+variants with the same numeric pass, in \tbd{XX} and \tbd{XX} milliseconds on the
+\texttt{lasso} family. Its re-solve on the non-\ac{DPP} variant is \tbd{XX} times faster than
+\texttt{CVXPY}'s, and \tbd{XX} times faster than its own canonicalization from scratch, the
+\texttt{rebuild} column.
+
+\begin{table}[htbp]
+\centering
+\caption[Re-solve time on problems that are not \ac{DPP}]{Re-solve time in milliseconds of
+two problem families in three variants, mean over the replicates. For \texttt{CVXPY}, the
+re-solve applies the tensor on the \ac{DPP} variant and repeats the whole canonicalization
+on the others, with the fastest of the three backends. For \texttt{diffengine}, the cached
+column runs the numeric pass only, and the rebuild column repeats the conversion and the
+symbolic pass as well. On the parameter-free variant, every re-solve is a first
+canonicalization.}
+\label{tab:nondpp}
+{\small
+\begin{tabular}{l l r rr l}
+\toprule
+& & & \multicolumn{2}{c}{\texttt{diffengine}} & \\
+\cmidrule(lr){4-5}
+Family & Variant & \texttt{CVXPY} & cached & rebuild & Ratio \\
+\midrule
+\texttt{lasso}, $n = 1000$      & \ac{DPP}        & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+                                & non-\ac{DPP}    & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+                                & parameter-free  & \tbd{XX} & ---      & \tbd{XX} & \tbd{XX} \\
+\addlinespace
+\texttt{factor\_cov}, $n = 5000$ & \ac{DPP}       & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+                                & non-\ac{DPP}    & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+                                & parameter-free  & \tbd{XX} & ---      & \tbd{XX} & \tbd{XX} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\FloatBarrier
+
+\section{Ablation}
+\label{sec:bench-ablation}
+
+The comparisons so far are between whole backends, so the gain of \texttt{diffengine}
+mixes three causes: the dense representations of
+\S\ref{sec:theme1-matrix-representations}, the split into a symbolic and a numeric pass,
+and the implementation of \texttt{SparseDiffEngine} itself. To separate them, the branch of \texttt{CVXPY} used in this
+chapter has two switches. The first stores every constant matrix in the sparse format, so
+that no dense block is built from constant data. Parametric matrices keep the dense format,
+because storing them as sparse would fix their sparsity pattern to the current parameter
+value. The second switch discards the engine's problem at every parameter update and
+repeats the conversion and the symbolic pass, which removes the split. Switching both off
+leaves the implementation alone.
+
+Table~\ref{tab:ablation} summarizes each contrast over the suite. On the first
+canonicalization, where the split plays no role, turning off the dense representations makes
+\texttt{diffengine} \tbd{XX} times slower in geometric mean, with a significant difference
+on \tbd{XX} of the $25$ problems. Without them, \texttt{diffengine} is still \tbd{XX} times
+faster than the best \texttt{CVXPY} backend, so \tbd{most / part} of the gain of
+Table~\ref{tab:oneshot-compile} comes from the implementation rather than from the dense
+representations. On the re-solves of the seven \ac{DPP} problems, removing the split costs a
+factor of \tbd{XX}, and removing the dense representations a factor of \tbd{XX}. Without
+the dense representations, the peak memory changes by a factor of \tbd{XX} in geometric
+mean. Appendix~\ref{app:results} gives every contrast on every problem.
+
+\begin{table}[htbp]
+\centering
+\caption[Ablation of the dense representations and the split]{Ablation of
+\texttt{diffengine} over the suite. Each row is the geometric mean of the per-problem
+ratios of median times, the variant over the reference, with its $95\,\%$ bootstrap
+confidence interval and the $p$-value of the Wilcoxon signed-rank test. The last column
+counts the problems on which the difference is significant (Mann--Whitney, Holm-adjusted
+$p < 0.05$).}
+\label{tab:ablation}
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l l r c r r}
+\toprule
+Variant & Reference & Ratio & $95\,\%$ CI & $p$ & Significant \\
+\midrule
+\multicolumn{6}{l}{\textit{First canonicalization, $25$ problems}} \\
+no dense blocks & \texttt{diffengine} & \tbd{XX} & \tbd{XX--XX} & \tbd{XX} & \tbd{XX}/$25$ \\
+no dense blocks & best \texttt{CVXPY}  & \tbd{XX} & \tbd{XX--XX} & \tbd{XX} & \tbd{XX}/$25$ \\
+\addlinespace
+\multicolumn{6}{l}{\textit{Re-solve, $7$ \ac{DPP} problems}} \\
+no dense blocks & \texttt{diffengine} & \tbd{XX} & \tbd{XX--XX} & \tbd{XX} & \tbd{XX}/$7$ \\
+no split        & \texttt{diffengine} & \tbd{XX} & \tbd{XX--XX} & \tbd{XX} & \tbd{XX}/$7$ \\
+neither         & \texttt{diffengine} & \tbd{XX} & \tbd{XX--XX} & \tbd{XX} & \tbd{XX}/$7$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\FloatBarrier
+
+\section{Sensitivity to size and density}
+\label{sec:bench-sensitivity}
+
+The problems of the suite have fixed sizes. To see how the comparison depends on the
+characteristics of the problem, we vary them on two kinds of families, defined in
+Appendix~\ref{app:extra-problems}. The first is a parameter-free \texttt{lasso} problem
+whose data matrix has $n \in \{100, 300, 1000, 3000\}$ columns and a fraction
+$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$ of nonzero entries. The second scales three problems
+of the suite, HuberRegression, OptimalAdvertising and FactorCovarianceModel, over four sizes
+each. Every point is the median of five instances drawn with different seeds.
+
+Figure~\ref{fig:sensitivity} reports the ratio of \texttt{diffengine} to the best
+\texttt{CVXPY} backend. On the dense \texttt{lasso} problems, the ratio \tbd{falls / stays
+near XX} as $n$ grows. As the density falls, the dense representations are used less often
+and the ratio \tbd{rises towards XX}, consistent with the ablation of
+\S\ref{sec:bench-ablation}. On the three scaled problems, \tbd{XX}.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.8\textwidth}{\centering\vspace{4em}
+\tbd{Placeholder. (a) \texttt{lasso}: ratio of \texttt{diffengine} to the best
+\texttt{CVXPY} backend against $n$, log--log, one line per density $\rho$, the dense-block
+variant dashed. (b) The three scaled problems: ratio against the number of nonzeros of
+$\mmat{A}$.}\vspace{4em}}}
+\caption[Sensitivity to size and density]{Ratio of the canonicalization time of
+\texttt{diffengine} to that of the best \texttt{CVXPY} backend, (a) on the \texttt{lasso}
+family as the size $n$ and the density $\rho$ of the data vary, and (b) on three problems of
+the suite at four sizes each. Each point is the median over five instances.}
+\label{fig:sensitivity}
+\end{figure}
+
+\FloatBarrier
+
 \section{Discussion}
 \label{sec:bench-summary}
 
-The benchmark experiments in this chapter lead us to make the following three observations:
+The benchmark experiments in this chapter lead us to make the following four observations:
 \begin{itemize}
-\item Caching canonicalization does not necessarily require the \ac{DPP} ruleset. In
+\item Caching canonicalization does not require the \ac{DPP} ruleset. In
 Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a factor of
-about two of the cached tensor on every problem while ignoring the ruleset.
+about \tbd{two} of the cached tensor on every \ac{DPP} problem. In
+Table~\ref{tab:nondpp}, it re-solves problems that are not \ac{DPP}, on which
+\texttt{CVXPY} has to canonicalize again, \tbd{XX} times faster.
 \item The tensor approach carries a large upfront cost that is not always justified. In
 Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
-the tensor on every problem, and its re-solve is also faster on five of the seven
+the tensor on \tbd{every} problem, and its re-solve is also faster on \tbd{five} of the seven
 problems.
 \item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster than
-\texttt{cvxcore} on $24$ of the $25$ problems, as reported in Table~\ref{tab:oneshot-compile} and
-Figure~\ref{fig:profiles}. On the parametric problems of Table~\ref{tab:param-tensor},
-\texttt{COO} builds the parameter-to-data tensor faster than \texttt{cvxcore} on all seven.
+\texttt{cvxcore} on \tbd{$24$} of the $25$ problems, as reported in
+Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}. On the parametric problems of
+Table~\ref{tab:param-tensor}, \texttt{COO} builds the parameter-to-data tensor faster than
+\texttt{cvxcore} on \tbd{all seven}.
+\item The gain has \tbd{more than one} source. In Table~\ref{tab:ablation}, the dense
+representations account for a factor of \tbd{XX} on the first canonicalization and the
+split for a factor of \tbd{XX} on the re-solves, and the rest comes from the implementation.
 \end{itemize}
 
 Traditionally, \texttt{CVXPY} has relied on \ac{DPP} to guarantee a meaningful
@@ -226,7 +492,7 @@ built on downstream packages that depend on the tensor, for example
 With our approach, a similar speedup can be obtained through the symbolic and numeric split
 without enforcing any rules about how parameters appear in the problem formulation.
 
-In addition, the second and third observations suggest that \texttt{diffengine} can 
+In addition, the second and third observations suggest that \texttt{diffengine} can
 replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}.
 Canonicalization is faster on nearly
 every benchmark problem, on both the first and subsequent canonicalizations, so there is
@@ -236,6 +502,7 @@ maintainers of \texttt{CVXPY}. We discuss these
 next steps and the roadmap of future work in \S\ref{sec:FutureResearch}.
 Finally, \texttt{diffengine} has downsides. Its peak
 memory is higher on several problems, and its re-solve requires the cached program to stay in
-memory. The benchmark suite also covers only a subset of possible optimization problems, and
-more experiments would be needed to validate these observations further. We return to these
-limitations in \S\ref{sec:Limitations}.
+memory. Its dense representations also slow it down when dense blocks cancel in a sum, as on
+SDPSegfault1132. The benchmark suite covers only a subset of possible optimization
+problems, and the families of \S\ref{sec:bench-nondpp} and \S\ref{sec:bench-sensitivity} add
+only a few more. We return to these limitations in \S\ref{sec:Limitations}.
