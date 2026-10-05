@@ -4,17 +4,19 @@ This chapter presents \texttt{SparseDiffEngine}, our C library for assembling th
 constraint and objective matrices of a canonicalized problem. The engine computes the same
 derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
 chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
-implementation. Firstly, we split the computation into a symbolic pass, which computes and
-caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
-This separation is particularly useful for compiling problems involving parameters, where
-the structure is fixed but the numerical values can change.
-Secondly, the data of most optimization problems is not only sparse but also
-structured, with dense blocks and diagonal patterns.
+implementation. Our main contribution exploits the fact that the data of most optimization
+problems is not only sparse but also structured, with dense blocks and diagonal patterns.
 We introduce two new matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
-dense storage and BLAS subroutines. Neither the two-phase approach nor the two matrix
-classes exists in \texttt{CVXPY}'s backends. Together, they address the research gap we
-identify in \S\ref{sec:research-gap}.
+dense storage and BLAS subroutines.
+In addition, we split the computation into a symbolic pass, which computes and
+caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
+This separation is particularly useful for compiling problems involving parameters, where
+the structure is fixed but the numerical values can change. The two-phase approach is
+standard in sparse direct factorization and in the interfaces of \ac{NLP} solvers.
+Neither the two matrix classes nor the two-phase approach exists in \texttt{CVXPY}'s backends.
+By bringing both to canonicalization, we address the research gap we identified
+in \S\ref{sec:research-gap}.
 
 Other important design decisions differ from \texttt{CVXPY}'s backends for
 simplicity rather than performance. Every node carries one Jacobian taken with respect to
@@ -943,12 +945,14 @@ and the kernels let sparse and dense Jacobians mix in the same tree without conv
 to one specific format.
 
 In addition, for parametric problems, our contribution is the two-phase approach to computing
-derivatives, which we borrow from the interfaces of \ac{NLP} solvers outlined in
-\S\ref{sec:casadi}. Although the process is similar, what we store during the symbolic
-pass is very different. Instead of a compressed sparsity pattern and a graph colouring,
-we store index maps and sparsity patterns, and the numeric pass writes the coefficient
-values directly into them. The cached structure also covers every problem, not only the
-problems that conform to the \ac{DPP} ruleset.
+derivatives. The idea goes back to sparse direct solvers, which separate symbolic analysis
+from numeric factorization~\cite{davis2006direct}, and to Gustavson's sparse
+product~\cite{gustavson1978two}. Like the sparse \ac{AD} of \texttt{CasADi}
+in \S\ref{sec:casadi}, the symbolic pass caches sparsity patterns, but we pair each pattern
+with index maps instead of a graph colouring, and our numeric pass writes the coefficient
+values directly in place rather than through compressed sweeps.
+The cached structure also covers every problem, not only the problems that conform to the
+\ac{DPP} ruleset.
 
 Finally, the choice to implement the engine in C with custom matrix classes forced us to
 think carefully about memory allocation, sparse formats, and opportunities to cache
