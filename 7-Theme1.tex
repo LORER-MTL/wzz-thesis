@@ -126,6 +126,15 @@ permuted dense matrix, or a stacked permuted dense matrix. The generic sparse ma
 default. The other two are created by matrix multiplication and the quadratic form, the
 operations whose data is dense. Each implements the same operations, so an atom picks one
 when it allocates its Jacobian during the symbolic pass.
+Keeping dense blocks inside a sparse matrix is an old idea. The block compressed sparse row
+format stores a matrix as a grid of small dense blocks, as in
+\texttt{scipy.sparse}~\cite{2020SciPy-NMeth}, finite-element codes assemble dense element
+matrices into a sparse global matrix, and nonlinear least-squares libraries such as
+\texttt{Ceres}~\cite{agarwal2023ceres} and \texttt{g2o}~\cite{kummerle2011g2o} store the
+block-sparse Jacobians of bundle adjustment as dense blocks processed with dense kernels.
+Our representations differ in where the blocks sit. A permuted dense matrix places one block
+at arbitrary rows and columns, and a stacked matrix places several at disjoint rows, which
+is how dense data appears in the Jacobians of a DCP problem.
 
 \subsection{Sparse matrix}\label{sec:theme1-generic-sparse}
 
@@ -535,6 +544,22 @@ dense block at permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
 on the sizes of the blocks and not on the global dimensions.
+
+An elementary count makes this precise. A permuted dense matrix with an
+$m' \times n'$ block stores $m'n'$ values and $m' + n'$ indices, whereas the same block in
+\ac{CSR} form stores $m'n'$ values, $m'n'$ column indices, and $m + 1$ row pointers, where $m$
+is the number of rows of the whole matrix. For the product~\eqref{eq:pd-product}, let
+$s = |\mvec{r}_A \cap \mvec{r}_B|$ be the number of shared rows. The symbolic pass merges two
+sorted index vectors in $O(m_A + m_B)$ operations, and the numeric pass performs
+$n_B\, s\, n_A$ multiply-adds in one \texttt{dgemm}. On the same blocks stored as generic
+sparse matrices, Gustavson's algorithm performs the same multiply-adds, but its symbolic
+pass builds the pattern of the result entry by entry, with $O(n_B\, s\, n_A)$ operations and
+one stored index per entry. The dense representations therefore reduce the symbolic work
+and the index storage from the number of entries of a block to the number of its rows and
+columns. In the numeric pass they keep the operation count, and replace an index-driven
+loop by a \ac{BLAS} call, a gain in the constant factor rather than in the asymptotic cost.
+For a stacked operand, these counts are summed over the pairs of blocks with intersecting
+rows.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 

@@ -1,6 +1,14 @@
 # Literature drafts for the final corrections (J2, Legrain i and AL-m2, AL-m13)
 
-Drafts for review. None of this is in the thesis yet. Each entry gives where it goes, the
+**Applied 2026-10-05** (D1–D7 and the bib entries), with these choices on the open
+questions: D1 cites the repository; D2 omits the "research fork" claim and keeps OSQP;
+D3 says "an early answer"; D5 gives finite-element assembly no citation, and Ceres uses the
+project's own citation (version 2.2, 2023); D6's table note is a line under the table rather
+than a `\footnote`, which does not print inside a float; D7 is kept in full. The Springer
+volume (115) and editor (Goldengorin) of `diamond2016matrixfree` were checked against the
+publisher listing.
+
+Drafts for review. None of this was in the thesis when written. Each entry gives where it goes, the
 LaTeX text, what was verified and how, and anything that needs a decision from William
 (marked **Q**). These are new drafts. The reverted text in `legrain-rebuttal.md` was used
 only as a checklist of what to cover.
