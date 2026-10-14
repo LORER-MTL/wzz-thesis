@@ -543,23 +543,13 @@ and the product is placed at the rows~$\mvec{r}_B$. In both cases the result is 
 dense block at permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
-on the sizes of the blocks and not on the global dimensions.
-
-An elementary count makes this precise. A permuted dense matrix with an
-$m' \times n'$ block stores $m'n'$ values and $m' + n'$ indices, whereas the same block in
-\ac{CSR} form stores $m'n'$ values, $m'n'$ column indices, and $m + 1$ row pointers, where $m$
-is the number of rows of the whole matrix. For the product~\eqref{eq:pd-product}, let
-$s = |\mvec{r}_A \cap \mvec{r}_B|$ be the number of shared rows. The symbolic pass merges two
-sorted index vectors in $O(m_A + m_B)$ operations, and the numeric pass performs
-$n_B\, s\, n_A$ multiply-adds in one \texttt{dgemm}. On the same blocks stored as generic
-sparse matrices, Gustavson's algorithm performs the same multiply-adds, but its symbolic
-pass builds the pattern of the result entry by entry, with $O(n_B\, s\, n_A)$ operations and
-one stored index per entry. The dense representations therefore reduce the symbolic work
-and the index storage from the number of entries of a block to the number of its rows and
-columns. In the numeric pass they keep the operation count, and replace an index-driven
-loop by a \ac{BLAS} call, a gain in the constant factor rather than in the asymptotic cost.
-For a stacked operand, these counts are summed over the pairs of blocks with intersecting
-rows.
+on the sizes of the blocks and not on the global dimensions. A permuted dense matrix with an
+$m' \times n'$ block stores $m'n' + m' + n'$ numbers, against $2m'n' + m + 1$ for the same
+block in \ac{CSR} form, where $m$ is the number of rows of the whole matrix.
+For~\eqref{eq:pd-product}, with $s = |\mvec{r}_A \cap \mvec{r}_B|$ shared rows, the symbolic
+pass costs $O(m_A + m_B)$ and the numeric pass performs $n_B\, s\, n_A$ multiply-adds in one
+\texttt{dgemm}, whereas Gustavson's algorithm performs the same multiply-adds after a symbolic
+pass of $O(n_B\, s\, n_A)$.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
