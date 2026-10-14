@@ -544,8 +544,9 @@ dense block at permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
 on the sizes of the blocks and not on the global dimensions. A permuted dense matrix with an
-$m' \times n'$ block stores $m'n' + m' + n'$ numbers, against $2m'n' + m + 1$ for the same
-block in \ac{CSR} form, where $m$ is the number of rows of the whole matrix.
+$m_0 \times n_0$ block stores $m_0 n_0$ values and $m_0 + n_0$ indices, against $m_0 n_0$
+values and $m_0 n_0 + m + 1$ indices for the same block in \ac{CSR} form, where $m$ is the
+number of rows of the whole matrix.
 For~\eqref{eq:pd-product}, with $s = |\mvec{r}_A \cap \mvec{r}_B|$ shared rows, the symbolic
 pass costs $O(m_A + m_B)$ and the numeric pass performs $n_B\, s\, n_A$ multiply-adds in one
 \texttt{dgemm}, whereas Gustavson's algorithm performs the same multiply-adds after a symbolic
