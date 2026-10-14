@@ -152,7 +152,8 @@ Our use of the two-phase approach is inspired more directly by the interfaces of
 solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
 The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
-numeric phase is often similar in cost to applying the matrix-vector product.
+numeric phase itself is often similar in cost to applying the matrix-vector product, although
+converting its output to the format of the solver can cost more (\S\ref{sec:bench-param}).
 The problem data is also assembled entirely in memory rather than through a separate model
 file.
 Finally, we exploit structure within the sparsity patterns themselves, which often contain dense
