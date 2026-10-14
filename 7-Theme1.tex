@@ -126,6 +126,10 @@ permuted dense matrix, or a stacked permuted dense matrix. The generic sparse ma
 default. The other two are created by matrix multiplication and the quadratic form, the
 operations whose data is dense. Each implements the same operations, so an atom picks one
 when it allocates its Jacobian during the symbolic pass.
+Keeping dense blocks inside a sparse matrix is not a new idea. Finite-element codes
+assemble dense element matrices into a sparse global matrix, and nonlinear least-squares
+libraries such as \texttt{Ceres}~\cite{agarwal2023ceres} and \texttt{g2o}~\cite{kummerle2011g2o}
+store the block-sparse Jacobians of bundle adjustment as dense blocks.
 
 \subsection{Sparse matrix}\label{sec:theme1-generic-sparse}
 
@@ -534,7 +538,15 @@ and the product is placed at the rows~$\mvec{r}_B$. In both cases the result is 
 dense block at permuted positions. In practice, the symbolic pass
 intersects the two sorted index vectors, the numeric pass multiplies the two blocks with
 one \texttt{dgemm}, and no selector matrix is formed. The cost of this operation depends
-on the sizes of the blocks and not on the global dimensions.
+on the sizes of the blocks and not on the global dimensions. A permuted dense matrix with an
+$m_0 \times n_0$ block stores $m_0 n_0$ values and $m_0 + n_0$ indices, against $m_0 n_0$
+values and $m_0 n_0 + m + 1$ indices for the same block in \ac{CSR} form, where $m$ is the
+number of rows of the whole matrix.
+For~\eqref{eq:pd-product}, with $\mmat{X}_A \in \reals^{m_A \times n_A}$,
+$\mmat{X}_B \in \reals^{m_B \times n_B}$, and $s = |\mvec{r}_A \cap \mvec{r}_B|$ shared rows,
+the symbolic pass costs $O(m_A + m_B)$ and the numeric pass performs $n_B\, s\, n_A$ multiply-adds in one
+\texttt{dgemm}, whereas Gustavson's algorithm performs the same multiply-adds after a symbolic
+pass of $O(n_B\, s\, n_A)$.
 
 \subsection{Caching structure across solves}\label{sec:theme1-reusing-work}
 
