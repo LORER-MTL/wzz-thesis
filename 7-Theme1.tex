@@ -6,7 +6,7 @@ derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
 chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
 implementation. The first exploits the fact that the data of most optimization
 problems is not only sparse but also structured, with dense blocks and diagonal patterns.
-We introduce two new matrix classes for this purpose,
+We introduce two matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
 dense storage and BLAS subroutines.
 In addition, we split the computation into a symbolic pass, which computes and
@@ -960,7 +960,7 @@ P.vals = problem.hessian_values()
 %  2026-08-22 to match §2.4 and §4.3; rewritten around the contributions from William's
 %  draft 2026-08-23)
 This chapter presents our approach to canonicalizing
-optimization problems faster. We introduce two new matrix classes that take
+optimization problems faster. We introduce two matrix classes that take
 advantage of the dense blocks in problem data. Along with these data structures, we
 present the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
 kernels are new but fairly straightforward, as each reduces to simple index manipulations
