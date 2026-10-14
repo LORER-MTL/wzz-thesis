@@ -329,22 +329,22 @@ characteristics of the problem, we vary them on the suite problems themselves, a
 Appendix~\ref{app:extra-problems} describes. Each problem is rescaled by a factor $s$ on its
 dimensions, which multiplies the number of nonzeros of its data by about $s$. Nine
 problems and the parameter-free \texttt{lasso} family are measured at
-$s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five problems with a dense data
-matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
+$s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five
+problems with a dense data matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
 $\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five runs.
 
 Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the best
-\texttt{CVXPY} backend as the size grows. On seven of the ten families, the ratio stays
-between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
+\texttt{CVXPY} backend as the size grows. On seven of the ten families measured at five sizes,
+the ratio stays between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
 SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exception: its
 ratio grows from $0.78$ to $1.67$ between $s = 1/4$ and $s = 1$. At the larger sizes,
 \texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising, and on two more
 instances the correctness check does not fit in the limit, so their times are not reported.
 
-Table~\ref{tab:sensitivity-size25} reports the same ratio on all $25$ problems. On $18$ of the
-$20$ problems on which \texttt{diffengine} is the fastest at $s = 1$, the ratio changes by at
-most $0.04$ between $s = 1/2$ and $s = 2$. CVaR goes from $0.55$ at $s = 1/2$ to the memory
-limit at $s = 2$, and Murray, at $0.95$ for $s = 1$, is slower at the other two sizes, at $1.14$ and $1.01$. On the
+Over the three sizes measured on all $25$ problems, the ratio changes by at most $0.04$
+between $s = 1/2$ and $s = 2$ on $18$ of the $20$ problems on which \texttt{diffengine} is the
+fastest at $s = 1$. CVaR goes from $0.55$ at $s = 1/2$ to the memory limit at $s = 2$, and
+Murray, at $0.95$ for $s = 1$, is slower at the other two sizes, at $1.14$ and $1.01$. On the
 five problems on which \texttt{diffengine} is slower, it stays slower at every size it
 completes, and on ConvexPlasticity the ratio grows from $5.29$ to $8.68$.
 
@@ -359,68 +359,43 @@ $\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
 \begin{table}[htbp]
 \centering
 \caption[Sensitivity to size]{Ratio of the canonicalization time of \texttt{diffengine} to
-that of the best \texttt{CVXPY} backend, medians of five runs, as the size of ten
-problem families is scaled by $s$. ``cap'' denotes a \texttt{diffengine} run that exceeded
-the $20$~\si{\giga\byte} memory limit, and ``unv.'' a size whose correctness check did not
-fit in the limit, so that its time is not reported.}
+that of the best \texttt{CVXPY} backend, medians of five runs, as the size of the $25$
+problems of the suite and of the \texttt{lasso} family is scaled by $s$. The column $s = 1$
+repeats Table~\ref{tab:oneshot-compile}. A dash denotes a size that was not measured, ``cap''
+a \texttt{diffengine} run that exceeded the $20$~\si{\giga\byte} memory limit, and ``unv.'' a
+size whose correctness check did not fit in the limit, so that its time is not reported.}
 \label{tab:sensitivity-size}
 {\small
 \begin{tabular}{l rrrrr}
 \toprule
 Problem & $s = 1/4$ & $s = 1/2$ & $s = 1$ & $s = 2$ & $s = 4$ \\
 \midrule
-HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
-FactorCovarianceModel       & 0.16 & 0.15 & 0.14 & 0.18 & 0.22 \\
-OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unv. & cap \\
 SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & unv. \\
-LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
-SimpleQP                    & 0.15 & 0.15 & 0.15 & 0.16 & 0.16 \\
+FactorCovarianceModel       & 0.16 & 0.15 & 0.14 & 0.18 & 0.22 \\
 Yitzhaki                    & 0.13 & 0.15 & 0.14 & 0.14 & 0.13 \\
-CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
+SimpleQP                    & 0.15 & 0.15 & 0.15 & 0.16 & 0.16 \\
+HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
+LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
+SimpleLP                    & --- & 0.19 & 0.18 & 0.17 & --- \\
+SimpleScalarParametrizedLP  & --- & 0.21 & 0.20 & 0.20 & --- \\
+SimpleFullyParametrizedLP   & --- & 0.22 & 0.21 & 0.20 & --- \\
+SlowPruning                 & --- & 0.21 & 0.22 & 0.21 & --- \\
+ParametrizedQP              & --- & 0.23 & 0.24 & 0.23 & --- \\
+Cajas                       & --- & 0.29 & 0.29 & 0.27 & --- \\
+ConeMatrixStuffing          & --- & 0.31 & 0.30 & 0.29 & --- \\
+SmallMatrixStuffing         & --- & 0.29 & 0.30 & 0.27 & --- \\
+TvInpainting                & --- & 0.31 & 0.30 & 0.30 & --- \\
+ParamSmallMatrixStuffing    & --- & 0.52 & 0.52 & 0.51 & --- \\
+ParamConeMatrixStuffing     & --- & 0.51 & 0.53 & 0.53 & --- \\
 SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
+CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
+Murray                      & --- & 1.14 & 0.95 & 1.01 & --- \\
+UnconstrainedQP             & --- & 1.05 & 1.20 & 1.08 & --- \\
+SDPSegfault1132             & --- & 1.29 & 1.27 & cap & --- \\
+OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unv. & cap \\
+QuantumHilbertMatrix        & --- & 1.17 & 1.85 & cap & --- \\
+ConvexPlasticity            & --- & 5.29 & 6.94 & 8.68 & --- \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
-\bottomrule
-\end{tabular}}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\caption[Sensitivity to size, all problems]{Ratio of the canonicalization time of
-\texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five runs,
-as the size of the $25$ problems of the suite is scaled by $s$. The column $s = 1$ repeats
-Table~\ref{tab:oneshot-compile}. ``cap'' and ``unv.'' are as in
-Table~\ref{tab:sensitivity-size}.}
-\label{tab:sensitivity-size25}
-{\small
-\begin{tabular}{l rrr}
-\toprule
-Problem & $s = 1/2$ & $s = 1$ & $s = 2$ \\
-\midrule
-SVMWithL1Regularization     & 0.14 & 0.14 & 0.15 \\
-FactorCovarianceModel       & 0.15 & 0.14 & 0.18 \\
-Yitzhaki                    & 0.15 & 0.14 & 0.14 \\
-SimpleQP                    & 0.15 & 0.15 & 0.16 \\
-HuberRegression             & 0.18 & 0.17 & 0.17 \\
-LeastSquares                & 0.15 & 0.17 & 0.17 \\
-SimpleLP                    & 0.19 & 0.18 & 0.17 \\
-SimpleScalarParametrizedLP  & 0.21 & 0.20 & 0.20 \\
-SimpleFullyParametrizedLP   & 0.22 & 0.21 & 0.20 \\
-SlowPruning                 & 0.21 & 0.22 & 0.21 \\
-ParametrizedQP              & 0.23 & 0.24 & 0.23 \\
-Cajas                       & 0.29 & 0.29 & 0.27 \\
-ConeMatrixStuffing          & 0.31 & 0.30 & 0.29 \\
-SmallMatrixStuffing         & 0.29 & 0.30 & 0.27 \\
-TvInpainting                & 0.31 & 0.30 & 0.30 \\
-ParamSmallMatrixStuffing    & 0.52 & 0.52 & 0.51 \\
-ParamConeMatrixStuffing     & 0.51 & 0.53 & 0.53 \\
-SemidefiniteProgramming     & 0.61 & 0.63 & 0.63 \\
-CVaR                        & 0.55 & 0.66 & cap \\
-Murray                      & 1.14 & 0.95 & 1.01 \\
-UnconstrainedQP             & 1.05 & 1.20 & 1.08 \\
-SDPSegfault1132             & 1.29 & 1.27 & cap \\
-OptimalAdvertising          & 1.09 & 1.67 & unv. \\
-QuantumHilbertMatrix        & 1.17 & 1.85 & cap \\
-ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \bottomrule
 \end{tabular}}
 \end{table}
