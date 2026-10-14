@@ -57,7 +57,10 @@ deviation of the runs. On each problem, the runs of
 Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the $25$ problems by the
 Holm--Bonferroni method~\cite{holm1979}. Before any timing, we check that the problem data of
 \texttt{diffengine} matches that of \texttt{CPP} to a relative tolerance of $10^{-9}$, at the
-first canonicalization and after a parameter update.
+first canonicalization and after a parameter update. The one exception is OptimalAdvertising,
+whose generator divides zero by zero and gives the problem one coefficient equal to NaN. Both
+backends carry it into $1000$ entries of $\mmat{A}$, and \texttt{diffengine}, which obtains
+$\mvec{b}$ by evaluating the constraints at the origin, also into one entry of $\mvec{b}$.
 The benchmark scripts and all recorded timings are available at
 \begin{center}
   \url{https://github.com/SparseDifferentiation/canonicalization-benchmarks}
@@ -74,7 +77,8 @@ best \texttt{CVXPY} backend. It is significantly slower on the other five: Conve
 QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132 and UnconstrainedQP, which we
 return to at the end of this section. On every problem, every run of \texttt{diffengine} is
 faster than every run of the best \texttt{CVXPY} backend, or slower than every one, so the
-Holm-adjusted $p$-value is $1.7 \times 10^{-6}$, the smallest possible for $20$ runs.
+Holm-adjusted $p$-value is $1.7 \times 10^{-6}$, the smallest that the normal approximation
+of the test gives for $20$ runs after the adjustment.
 
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends
@@ -174,7 +178,10 @@ given as a dense array and becomes a dense $3000 \times 3000$ block of the Hessi
 Two further experiments on the first canonicalization are reported in
 Appendix~\ref{app:results}. Without
 the dense blocks, \texttt{diffengine} is $1.27$ times slower in geometric mean
-(\S\ref{sec:bench-ablation}). As nine suite problems and the \texttt{lasso} family are
+(\S\ref{sec:bench-ablation}), and still $1.95$ times faster than the best \texttt{CVXPY}
+backend. The symbolic and numeric split plays no part here, because a first
+canonicalization runs each pass once, so most of the speedup comes from the rest of the
+implementation rather than from the dense blocks. As nine suite problems and the \texttt{lasso} family are
 rescaled over a factor of $16$ in size, its ratio to the best \texttt{CVXPY} backend stays
 between $0.13$ and $0.22$ on seven of the ten. At half and twice their size, the problems of
 the suite on which it is faster stay faster, apart from Murray and CVaR. Its advantage
