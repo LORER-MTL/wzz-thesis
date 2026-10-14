@@ -262,24 +262,11 @@ Modeling languages
   address = {London},
 }
 
-@manual{gurobi,
-   author = {{Gurobi Optimization, LLC}},
-   title  = {Gurobi Optimizer Reference Manual},
-   year   = {2026},
-   url    = {https://www.gurobi.com},
-}
-
 @misc{mosekSolver,
    author = {{MOSEK ApS}},
    title = {{MOSEK optimization suite 11.0}},
    howpublished = {\url{https://docs.mosek.com/11.0/intro/index.html}},
    year = {2026}
-}
-
-@misc{aps2025mosek,
-  title  = {{MOSEK} modeling cookbook},
-  author = {{MOSEK ApS}},
-  year   = {2026}
 }
 
 @article{andersson2019,
@@ -327,26 +314,6 @@ Modeling languages
   pages={2653-2658},
   keywords={Codes;Convex functions;Generators;Optimization;Sparse matrices;Real-time systems;DSL;Computational methods;embedded systems;optimization},
   doi={10.1109/LCSYS.2022.3173209}
-  }
-
-@inproceedings{domahidi2013ecos,
-  author    = {Domahidi, Alexander and Chu, Eric and Boyd, Stephen},
-  title     = {{ECOS}: An {SOCP} Solver for Embedded Systems},
-  booktitle = {European Control Conference (ECC)},
-  year      = {2013},
-  pages     = {3071--3076},
-}
-
-@inproceedings{chu2013codegen,
-  author={Chu, Eric and Parikh, Neal and Domahidi, Alexander and Boyd, Stephen},
-  booktitle={2013 European Control Conference (ECC)}, 
-  title={Code generation for embedded second-order cone programming}, 
-  year={2013},
-  volume={},
-  number={},
-  pages={1547-1552},
-  keywords={Vectors;Generators;Convex functions;Optimization;Programming;Portfolios;Electronic mail},
-  doi={10.23919/ECC.2013.6669712}
   }
 
 @techreport{gay2005writing,
@@ -530,14 +497,6 @@ Computing derivatives
   issn = {2376-5992},
   url = {https://doi.org/10.7717/peerj-cs.103},
   doi = {10.7717/peerj-cs.103}
-}
-
-@misc{jax2018github,
-  author = {James Bradbury and Roy Frostig and Peter Hawkins and Matthew James Johnson and Yash Katariya and Chris Leary and Dougal Maclaurin and George Necula and Adam Paszke and Jake Vander{P}las and Skye Wanderman-{M}ilne and Qiao Zhang},
-  title = {{JAX}: composable transformations of {P}ython+{N}um{P}y programs},
-  url = {http://github.com/jax-ml/jax},
-  version = {0.3.13},
-  year = {2018},
 }
 
 @Book{Naumann2011,
@@ -761,67 +720,12 @@ keywords = {acyclic coloring, automatic differentiation, combinatorial scientifi
   howpublished = {\url{https://github.com/coin-or/CppAD}}
 }
 
-@article{zou2025vectorized,
-  author  = {Zou, Yilin and Jiang, Fanghua},
-  title   = {Vectorized Sparse Second-Order Forward Automatic Differentiation
-             for Optimal Control Direct Methods},
-  journal = {arXiv preprint arXiv:2506.11537},
-  year    = {2025},
-  url     = {https://arxiv.org/abs/2506.11537}
-}
-
-@article{kwok2025vectorised,
-  author  = {Kwok, Chun Fung and Zhu, Dan and Jacobi, Liana},
-  title   = {An Analysis of Vectorised Automatic Differentiation for Statistical Applications},
-  journal = {Stats},
-  volume  = {8},
-  number  = {2},
-  articleno = {40},
-  year    = {2025},
-  publisher = {MDPI},
-  doi     = {10.3390/stats8020040},
-  url     = {https://doi.org/10.3390/stats8020040}
-}
-
 @article{hill2025sparser,
   author  = {Hill, Adrian and Dalle, Guillaume},
   title   = {Sparser, Better, Faster, Stronger: Sparsity Detection for Efficient
              Automatic Differentiation},
   journal = {Transactions on Machine Learning Research},
   year    = {2025}
-}
-
-@misc{hill2025illustrated,
-  author       = {Hill, Adrian and Dalle, Guillaume},
-  title        = {An Illustrated Guide to Automatic Sparse Differentiation},
-  year         = {2025},
-  howpublished = {ICLR 2025 Blogposts Track},
-  url          = {https://iclr-blogposts.github.io/2025/blog/sparse-autodiff/}
-}
-
-@misc{hill2025sct,
-  author       = {Hill, Adrian and Dalle, Guillaume},
-  title        = {{SparseConnectivityTracer.jl}: {J}acobian and {H}essian sparsity detection
-                  via operator overloading},
-  year         = {2025},
-  howpublished = {\url{https://github.com/adrhill/SparseConnectivityTracer.jl}},
-}
-
-@article{chi2026torchsla,
-  author  = {Chi, Mingyuan and Wen, Shizheng},
-  title   = {torch-sla: Differentiable Sparse Linear Algebra with Adjoint Solvers
-             and Sparse Tensor Parallelism for {PyTorch}},
-  journal = {arXiv preprint arXiv:2601.13994},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2601.13994}
-}
-
-@article{shaikhha2023sparse,
-  author  = {Shaikhha, Amir and Huot, Mathieu and Hashemian, Shideh},
-  title   = {{$\nabla$}SD: Differentiable Programming for Sparse Tensors},
-  journal = {arXiv preprint arXiv:2303.07030},
-  year    = {2023},
-  url     = {https://arxiv.org/abs/2303.07030}
 }
 
 @article{dwyer1948symbolic,
@@ -908,26 +812,6 @@ Sparse Matrix Formats
   url       = {https://epubs.siam.org/doi/book/10.1137/1.9780898718881}
 }
 
-@book{Duff1986Direct,
-  author = {Duff, Iain S. and Erisman, Albert M. and Reid, John K.},
-  title = {Direct Methods for Sparse Matrices},
-  publisher = {Oxford University Press},
-  year = {1986},
-  address = {Oxford, England},
-  isbn = {0-19-853408-6}
-}
-
-@article{gill1984sparse,
-  title={Sparse matrix methods in optimization},
-  author={Gill, Philip E and Murray, Walter and Saunders, Michael A and Wright, Margaret H},
-  journal={SIAM Journal on Scientific and Statistical Computing},
-  volume={5},
-  number={3},
-  pages={562--589},
-  year={1984},
-  publisher={SIAM}
-}
-
 @book{saad2003iterative,
   title={Iterative Methods for Sparse Linear Systems},
   author={Saad, Yousef},
@@ -937,89 +821,6 @@ Sparse Matrix Formats
   edition={2nd},
   isbn={978-0-898715-34-7},
   doi={10.1137/1.9780898718003}
-}
-
-@article{duff1983multifrontal,
-  author  = {Duff, Iain S. and Reid, John K.},
-  title   = {The Multifrontal Solution of Indefinite Sparse Symmetric Linear Equations},
-  journal = {ACM Transactions on Mathematical Software},
-  volume  = {9},
-  number  = {3},
-  pages   = {302--325},
-  year    = {1983},
-  doi     = {10.1145/356044.356047}
-}
-
-@article{liu1992multifrontal,
-  author  = {Liu, Joseph W. H.},
-  title   = {The Multifrontal Method for Sparse Matrix Solution: Theory and Practice},
-  journal = {SIAM Review},
-  volume  = {34},
-  number  = {1},
-  pages   = {82--109},
-  year    = {1992},
-  doi     = {10.1137/1034004}
-}
-
-@article{demmel1999supernodal,
-  author  = {Demmel, James W. and Eisenstat, Stanley C. and Gilbert, John R. and Li, Xiaoye S.
-             and Liu, Joseph W. H.},
-  title   = {A Supernodal Approach to Sparse Partial Pivoting},
-  journal = {SIAM Journal on Matrix Analysis and Applications},
-  volume  = {20},
-  number  = {3},
-  pages   = {720--755},
-  year    = {1999},
-  doi     = {10.1137/S0895479895291765}
-}
-
-@article{im2004sparsity,
-  author  = {Im, Eun-Jin and Yelick, Katherine and Vuduc, Richard},
-  title   = {Sparsity: Optimization Framework for Sparse Matrix Kernels},
-  journal = {International Journal of High Performance Computing Applications},
-  volume  = {18},
-  number  = {1},
-  pages   = {135--158},
-  year    = {2004},
-  doi     = {10.1177/1094342004041296}
-}
-
-@article{vuduc2005oski,
-  author  = {Vuduc, Richard and Demmel, James W. and Yelick, Katherine A.},
-  title   = {{OSKI}: A Library of Automatically Tuned Sparse Matrix Kernels},
-  journal = {Journal of Physics: Conference Series},
-  volume  = {16},
-  pages   = {521--530},
-  year    = {2005},
-  doi     = {10.1088/1742-6596/16/1/071}
-}
-
-@inproceedings{bell2009throughput,
-  author    = {Bell, Nathan and Garland, Michael},
-  title     = {Implementing Sparse Matrix-Vector Multiplication on Throughput-Oriented
-               Processors},
-  booktitle = {Proceedings of the Conference on High Performance Computing Networking, Storage
-               and Analysis (SC '09)},
-  year      = {2009},
-  pages     = {18:1--18:11},
-  publisher = {ACM},
-  doi       = {10.1145/1654059.1654078}
-}
-
-@techreport{gray2017blocksparse,
-  author      = {Gray, Scott and Radford, Alec and Kingma, Diederik P.},
-  title       = {{GPU} Kernels for Block-Sparse Weights},
-  institution = {OpenAI},
-  year        = {2017},
-  url         = {https://cdn.openai.com/blocksparse/blocksparsepaper.pdf}
-}
-
-@misc{nvidia2026cusparse,
-  author       = {{NVIDIA Corporation}},
-  title        = {{cuSPARSE}: The {CUDA} Sparse Matrix Library},
-  howpublished = {\url{https://docs.nvidia.com/cuda/cusparse}},
-  year         = {2026},
-  note         = {Version 13}
 }
 
 @ARTICLE{2020SciPy-NMeth,
@@ -1049,13 +850,6 @@ Sparse Matrix Formats
 ###
 Benchmarking
 ###
-@misc{asv,
-  title        = {airspeed velocity},
-  author       = {{airspeed velocity developers}},
-  howpublished = {\url{https://asv.readthedocs.io/}},
-  year         = {2025}
-}
-
 @misc{cvxpybenchmarks,
   title        = {{CVXPY} benchmarks},
   author       = {{The CVXPY developers}},
@@ -1113,17 +907,6 @@ Benchmarking
   author       = {Ge, Dongdong and Huangfu, Qi and Wang, Zizhuo and Wu, Jian and Ye, Yinyu},
   year         = {2022},
   howpublished = {arXiv:2208.14314}
-}
-
-@article{stellato2020osqp,
-  title        = {{OSQP}: an operator splitting solver for quadratic programs},
-  author       = {Stellato, Bartolomeo and Banjac, Goran and Goulart, Paul and Bemporad, Alberto
-                  and Boyd, Stephen},
-  journal      = {Mathematical Programming Computation},
-  volume       = {12},
-  number       = {4},
-  pages        = {637--672},
-  year         = {2020}
 }
 
 @misc{zhang2026cvxpy,
