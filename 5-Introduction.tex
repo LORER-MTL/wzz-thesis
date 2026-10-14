@@ -921,15 +921,21 @@ In this Master's thesis, we make the following contributions:
   them with \ac{BLAS}. The library also splits the computation into a symbolic and a
   numeric pass, an idea we borrow from sparse direct factorization and from the interfaces
   of \ac{NLP} solvers.
-  The engine is joint work with Daniel Cederberg and is also the differentiation engine of
-  \texttt{DNLP}~\cite{cederberg2025disciplined}; \S\ref{sec:theme1-atom-classes} delineates
-  the part specific to this thesis.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
   \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.
   \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
   backends.
 \end{enumerate}
+\texttt{SparseDiffEngine} is joint work with Daniel Cederberg, and it is also the
+differentiation engine of the \texttt{DNLP} extension of \texttt{CVXPY}
+\cite{cederberg2025disciplined}, where it differentiates nonlinear atoms such as
+\texttt{exp}, \texttt{log} and \texttt{entr} at every iterate of the solver. This thesis
+builds on the observation that canonicalization is a special case of the same computation:
+once a problem is canonicalized, only affine atoms and quadratic forms remain, and their
+derivatives are the problem data. \S\ref{sec:theme1-atom-classes} delineates the part of the
+work specific to this thesis.
+
 All code contributions are open source and available at
 \begin{center}
 \url{https://github.com/SparseDifferentiation/SparseDiffEngine} \\
