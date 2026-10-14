@@ -93,13 +93,11 @@ without breaking backwards compatibility. The next task is the removal of
 would mean that \texttt{CVXPY} no longer needs to compile and ship C++ binaries, which
 would simplify the build process of the library. As a replacement, \texttt{diffengine} can
 become the new default backend, with \texttt{COO} as an alternative candidate for \ac{DPP}
-problems. A further improvement concerns parameter updates. On the five problems of
-Table~\ref{tab:param-tensor} on which the tensor re-solves faster, the numeric pass takes
-only $3$ to $20\,\%$ of the re-solve. The rest goes to converting the engine's output to
-compressed sparse column matrices and reordering their rows into the cone order, which every
-re-solve repeats although the sparsity patterns do not change. Computing this conversion
-once, in the symbolic pass, would let a re-solve write the new values directly into the
-final matrices.
+problems. A further improvement concerns parameter updates. On the problems where the tensor
+re-solves faster, most of a re-solve goes to converting the engine's output to the solver's
+format (\S\ref{sec:bench-param}), although the sparsity patterns do not change between
+re-solves. Computing this conversion once, in the symbolic pass, would let a re-solve write
+the new values directly into the final matrices.
 
 The final direction would be to extend the permuted dense matrix classes of
 Chapter~\ref{sec:Theme1} to the rest of the
