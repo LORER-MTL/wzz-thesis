@@ -19,16 +19,16 @@ The **Where** column gets the section and page in the new PDF once an item is do
 
 | ID | Request | Response | Where | Status |
 |---|---|---|---|---|
-| J1a | Statistical significance (p-values) of every numerical test | Per problem: Mann–Whitney, Holm-adjusted; suite: Wilcoxon signed-rank + bootstrap CI of the geometric mean. `*` on significant ratios in Tables 4.1, 4.2; p in Table 4.5 and App. C | §4.1, §4.2, §4.4, §4.6, App. C | done |
-| J1b / AL-ii | Ablation: separate the two contributions (time, memory) | New §4.6: NO_DENSE (cold, 25 problems) and the 2×2 dense × split on the re-solves (7 DPP); fully sparse variant (parameters evaluated); memory sentence + App. C table; 4th Discussion observation | §4.6, App. B, C | done |
-| J1c | More instances (random parameters, modified instances) | Each replicate draws new parameter values from its own seed; the suite rescaled (25 problems at s = 1/2, 2; ten families at five sizes) | §4.1, §4.7, App. A.1 | done |
-| J1d / AL scaling | Sensitivity to problem characteristics (size, % sparsity) | New §4.7 on the scaling study of the results repo: ten families at five sizes (Table 4.6), five problems at five densities (Table 4.7), all 25 at s = 1/2, 2 (Table C.5); the figure placeholder became the two tables | §4.7, App. A.1, C | done |
-| J1e / AL-iii | Non-DPP problems: DPP versus non-DPP gain against CVXPY | New §4.5: lasso and factor_cov in DPP / non-DPP / parameter-free variants, Table 4.4; 1st Discussion observation now cites it | §4.5, App. A.1 | done |
+| J1a | Statistical significance (p-values) of every numerical test | Per problem: Mann–Whitney, Holm-adjusted; `*` on significant ratios in Tables 4.1, 4.2, significant counts in Table 4.4, p in App. C. Suite summarized by the geometric mean only | §4.1–4.4, App. C | done |
+| J1b / AL-ii | Ablation: separate the two contributions (time, memory) | §4.4: two contrasts, reported as measurements: no dense blocks on the first canonicalization (25 problems, with memory) and no split on the re-solves (7 DPP); per-problem values in App. C | §4.4, App. B, C | done |
+| J1c | More instances (random parameters, modified instances) | Each replicate draws new parameter values from its own seed; nine suite problems and the lasso family rescaled to five sizes, five problems at five densities | §4.1, §4.5, App. A.1 | done |
+| J1d / AL scaling | Sensitivity to problem characteristics (size, % sparsity) | §4.5: ten families at five sizes (Table 4.5), five problems at five densities (Table 4.6) | §4.5, App. A.1 | done |
+| J1e / AL-iii | Non-DPP problems: DPP versus non-DPP gain against CVXPY | §4.3.1: lasso and factor_cov in DPP / non-DPP / parameter-free variants, Table 4.3; 1st Discussion observation cites it | §4.3.1, App. A.1 | done |
 | J2 / AL-i | Related literature: matrix-free, CVXcanon, CVXGEN, Convex.jl 0.16, antecedents, Pyomo APPSI, DNLP delineation | Drafts D1–D7 (PR #3). Legrain 3e (dense blocks in sparse formats): two cited sentences in §3.2 and where our blocks differ; the informal appendix was dropped | Ch. 1–3 | done (draft) |
 | J3 | AI-use declaration | New front-matter page with the text of ai-usage-wzz.md as is (to be condensed later) | front matter, p. vii | done (draft) |
 | AL-iv | Repeated measurements, mean ± std | 20 replicates in fresh processes (10 above 30 s, never reached); tables in mean ± std | §4.1, Table 4.1, App. B, C | done |
 | AL-v | Dimensions of every instance | Landscape Table B.1: description, m, n, nnz(A), nnz(P), params, DPP (checked against the dims of the final runs) | App. A | done |
-| AL-vi | Time by phase, explaining the underperforming problems | New §4.3 with Table 4.3 (phases) on the five slower problems: ConvexPlasticity, QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132, UnconstrainedQP; detail in App. D | §4.3, App. D | done (two CHECK comments) |
+| AL-vi | Time by phase, explaining the underperforming problems | One paragraph at the end of §4.2 on the five slower problems (ConvexPlasticity, QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132, UnconstrainedQP); phase table and the two case studies in App. D | §4.2, App. D | done (one CHECK comment in App. D) |
 | AL-vii | Explicit statement of the correctness check against the existing backends | §4.1 paragraph (1e-9 relative, first and after update, against CPP); per-problem Table B.1 | §4.1, App. B | done |
 
 ## Le Digabel, minor corrections
@@ -60,7 +60,7 @@ The **Where** column gets the section and page in the new PDF once an item is do
 | AL-m3 | §1.5, §3.1: delineate the contribution relative to DNLP | | §1.5, §3.1 | needs William |
 | AL-m4 | p. 48: PR #3448 merged 9 Sept 2026 (opt-in, parameter-free); parametric path not yet merged | Merged 9 Sept 2026, opt-in, parameter-free; parametric path not yet integrated (verified via GitHub API) | Ch. 4 setup | done |
 | AL-m5 | Ch. 4: the author contributed to the SCIPY and COO backends | One sentence in the setup | Ch. 4 setup | done |
-| AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 22 of the 25 » (final runs) | §4.8 | done |
+| AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 22 of the 25 » (final runs) | §4.6 | done |
 | AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Matrix classes are the main contribution, the split comes second, everywhere: §1.5 item 1 names both, the Ch. 3 opening is reordered, §3.5 was already in this order | §1.5, Ch. 3, §3.5 | done (draft) |
 | AL-m8 | p. 48: number of repetitions and the BLAS implementation | Apple M2 (24 GB, macOS 26.5.1), Accelerate, single-threaded; 20 / 10 replicates; versions in App. B | §4.1, App. B | done |
 | AL-m9 | Fig. 3.5: do not rely on colour alone | Letters (a)–(d) in cells and legend; caption mentions them | Fig. 3.5 | done |
