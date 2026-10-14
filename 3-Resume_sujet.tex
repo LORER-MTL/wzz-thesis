@@ -19,8 +19,8 @@ construire. Pour tout autre problème, la
 compilation est répétée en entier à chaque résolution. Nous présentons
 \texttt{SparseDiffEngine}, une bibliothèque logicielle C \emph{open source} qui forme la jacobienne et la
 hessienne directement à partir de la structure des expressions. Le calcul est divisé en deux
-phases, une idée que nous empruntons aux interfaces des solveurs d'optimisation non
-linéaire.
+phases, une idée qui remonte à la factorisation directe des matrices creuses et que les
+interfaces des solveurs d'optimisation non linéaire utilisent aussi.
 La phase symbolique s'exécute une seule fois par problème et détermine les structures
 creuses des matrices. La phase numérique remplit ensuite les valeurs dans ces structures fixes à
 chaque résolution. Pour un problème paramétrique, seule la phase numérique est répétée d'une
@@ -31,4 +31,5 @@ apparaissent dans le problème. Nous comparons cette nouvelle approche aux trois
 actuelles de \texttt{CVXPY} sur une suite publique de $25$ problèmes de référence. La première
 compilation est la plus rapide sur $20$ des $25$ problèmes, avec une accélération d'un facteur
 $2{,}5$ en moyenne géométrique par rapport à la meilleure des trois. Résoudre de nouveau un
-problème paramétrique prend un temps comparable à celui de la mise en cache de \texttt{CVXPY}.
+problème paramétrique prend au plus quatre fois le temps de la mise en cache de
+\texttt{CVXPY}, sans avoir à construire celle-ci.

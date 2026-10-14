@@ -22,8 +22,8 @@ is expensive to build. For every other problem, the
 compilation is repeated in full at every solve.
 We present \texttt{SparseDiffEngine}, a lightweight open-source C library
 that computes the Jacobian and the Hessian directly from the expression structure. The computation
-is divided into two phases, which is an idea we borrow from the interfaces of nonlinear
-programming solvers.
+is divided into two phases, an idea that goes back to sparse direct factorization and that
+the interfaces of nonlinear programming solvers also use.
 A symbolic pass runs once per problem and determines the sparsity patterns of the
 matrices. A numeric pass fills new values into the fixed patterns at every solve. Re-solving a
 parametrized problem therefore costs only one numeric pass. Using \texttt{SparseDiffEngine}, we
@@ -32,7 +32,7 @@ alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and i
 restriction on how the parameters enter the problem. We compare this new approach with
 \texttt{CVXPY}'s three current implementations on a public benchmark suite of $25$ problems. The
 first compilation is the fastest on $20$ of the $25$ problems, with a geometric-mean speedup of
-$2.5\times$ over the best current implementation. Re-solves of parametrized problems run at times
-comparable to those of \texttt{CVXPY}'s existing caching.
+$2.5\times$ over the best current implementation. Re-solves of parametrized problems run within a
+factor of four of \texttt{CVXPY}'s existing caching, without building its cache.
 
 \end{otherlanguage}
