@@ -146,7 +146,7 @@ generator so that the other data is unchanged. The masked matrix stays a dense a
 \Annexe{COMPLETE RESULTS}\label{app:results}
 
 This appendix gives every measurement behind the tables of Chapter~\ref{sec:Theme2}, as the
-mean $\pm$ standard deviation of the replicates, in milliseconds. The $p$-values compare
+mean $\pm$ standard deviation of the runs, in milliseconds. The $p$-values compare
 \texttt{diffengine} with the best \texttt{CVXPY} backend of each problem, with the
 Mann--Whitney test, adjusted with the Holm--Bonferroni method across the $25$ problems.
 The \texttt{CVXPY} columns of Table~\ref{tab:app-cold} are measured without the rewrite
@@ -160,8 +160,8 @@ described in Chapter~\ref{sec:Theme2}, and Table~\ref{tab:app-ra} gives the time
 \caption[First canonicalization, all backends]{First canonicalization on the
 \texttt{ignore\_dpp} path, in milliseconds, with the dense-block ablation, and the Holm-adjusted
 $p$-value of \texttt{diffengine} against the best \texttt{CVXPY} backend. On every problem,
-every replicate of one backend is faster than every replicate of the other, so the test gives
-its smallest possible $p$-value for $20$ replicates, and the $p$-values are equal.}
+every run of one backend is faster than every run of the other, so the test gives
+its smallest possible $p$-value for $20$ runs, and the $p$-values are equal.}
 \label{tab:app-cold}\\
 \toprule
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
@@ -346,7 +346,7 @@ dimensions, which multiplies the number of nonzeros of its data by about $s$. Ni
 problems and the parameter-free \texttt{lasso} family are measured at
 $s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five problems with a dense data
 matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
-$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five replicates.
+$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five runs.
 
 Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the best
 \texttt{CVXPY} backend as the size grows. On seven of the ten families, the ratio stays
@@ -374,7 +374,7 @@ $\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
 \begin{table}[htbp]
 \centering
 \caption[Sensitivity to size]{Ratio of the canonicalization time of \texttt{diffengine} to
-that of the best \texttt{CVXPY} backend, medians of five replicates, as the size of ten
+that of the best \texttt{CVXPY} backend, medians of five runs, as the size of ten
 problem families is scaled by $s$. ``cap'' denotes a \texttt{diffengine} run that exceeded
 the $20$~\si{\giga\byte} memory limit, and ``unv.'' a size whose correctness check did not
 fit in the limit, so that its time is not reported.}
@@ -401,7 +401,7 @@ SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
 \begin{table}[htbp]
 \centering
 \caption[Sensitivity to size, all problems]{Ratio of the canonicalization time of
-\texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five replicates,
+\texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five runs,
 as the size of the $25$ problems of the suite is scaled by $s$. The column $s = 1$ repeats
 Table~\ref{tab:oneshot-compile}. ``cap'' and ``unv.'' are as in
 Table~\ref{tab:sensitivity-size}.}
@@ -443,7 +443,7 @@ ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \begin{table}[htbp]
 \centering
 \caption[Sensitivity to density]{Ratio of the canonicalization time of \texttt{diffengine} to
-that of the best \texttt{CVXPY} backend, medians of five replicates, as the density $\rho$
+that of the best \texttt{CVXPY} backend, medians of five runs, as the density $\rho$
 of the data matrix of five problems falls.}
 \label{tab:sensitivity-density}
 {\small

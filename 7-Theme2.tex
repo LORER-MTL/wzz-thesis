@@ -50,9 +50,9 @@ Each measurement times one call to \texttt{get\_problem\_data} with
 minutes and a memory limit of \SI{20}{\giga\byte}. The method canonicalizes the
 problem and returns the resulting problem data without calling the solver. We exclude the
 solver because the choice of backend affects only canonicalization.
-A measurement is repeated $20$ times, each in a fresh process, and on a parametric problem
-each replicate draws new parameter values. The tables report the mean and the standard
-deviation of the replicates. On each problem, the replicates of
+Each measurement is made in $20$ runs, each in a fresh process, and on a parametric problem
+each run draws new parameter values. The tables report the mean and the standard
+deviation of the runs. On each problem, the runs of
 \texttt{diffengine} and those of the other backend are compared with a two-sided
 Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the $25$ problems by the
 Holm--Bonferroni method~\cite{holm1979}. Before any timing, we check that the problem data of
@@ -102,7 +102,7 @@ every problem.
 \begin{table}[tb]
 \centering
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
-time in milliseconds on all $25$ problems, mean $\pm$ standard deviation over the replicates.
+time in milliseconds on all $25$ problems, mean $\pm$ standard deviation over the runs.
 Bold denotes the fastest of the four backends on each problem. The ratio is the median time
 of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends, marked
 with~$^{*}$ when the difference is significant (Mann--Whitney, Holm-adjusted $p < 0.05$).
@@ -151,7 +151,7 @@ ConvexPlasticity            & 78.8 $\pm$ 1.1 & 74.6 $\pm$ 0.8 & \textbf{71.8 $\p
 \includegraphics{profiles_combined_thesis}
 \caption[Performance profiles of canonicalization time and peak memory]{Performance
 profiles~\eqref{eq:perf-profile} of canonicalization time (a), using the median of the
-replicates, and of peak memory (b) over all $25$ problems, every backend on the
+runs, and of peak memory (b) over all $25$ problems, every backend on the
 \texttt{ignore\_dpp} path.}
 \label{fig:profiles}
 \end{figure}
@@ -186,8 +186,8 @@ shrinks as the density of the data falls, until it is slower on three of five pr
 Table~\ref{tab:param-tensor} reports first canonicalization and re-solve times on the
 seven \ac{DPP} parametric problems. We refer to a re-solve in this context as rebuilding the
 problem data after a parameter update, so the reported times again exclude the solver.
-Each replicate performs one first canonicalization followed by five re-solves with new
-parameter values, and the re-solve time of the replicate is the median of the five.
+Each run performs one first canonicalization followed by five re-solves with new
+parameter values, and the re-solve time of the run is the median of the five.
 On the first
 canonicalization, each \texttt{CVXPY} backend runs the \ac{DPP} path and builds a
 parameter-to-data tensor. \texttt{diffengine} instead runs its symbolic pass and one
@@ -204,7 +204,7 @@ runs another numeric pass.
 \centering
 \caption[First canonicalization and re-solve on the parametric problems]{First
 canonicalization time in seconds and re-solve time in milliseconds on the seven \ac{DPP}
-parametric problems, mean over the replicates. A dash denotes a tensor that exceeded the
+parametric problems, mean over the runs. A dash denotes a tensor that exceeded the
 memory limit or the time limit. Bold denotes the fastest first canonicalization and the
 faster re-solve. The tensor column is the fastest of the three \texttt{CVXPY} backends. The
 ratio is the median re-solve time of \texttt{diffengine} over that of the tensor, marked
@@ -273,7 +273,7 @@ faster, by a factor of $4.1$ on \texttt{lasso} and $2.9$ on \texttt{factor\_cov}
 \begin{table}[htbp]
 \centering
 \caption[Re-solve time on problems that are not \ac{DPP}]{Re-solve time in milliseconds of
-two problem families in three variants, mean over the replicates. For \texttt{CVXPY}, the
+two problem families in three variants, mean over the runs. For \texttt{CVXPY}, the
 re-solve applies the tensor on the \ac{DPP} variant and repeats the whole canonicalization
 on the others, with the fastest of the three backends. For \texttt{diffengine}, the cached
 column runs the numeric pass only, and the rebuild column repeats the conversion and the
