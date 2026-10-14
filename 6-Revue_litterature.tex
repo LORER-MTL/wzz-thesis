@@ -511,12 +511,6 @@ Secondly, the canonicalization backends store dense constant matrices as sparse 
 When dense blocks appear in the problem data, they are both stored in an inconvenient format
 and computed without optimized BLAS kernels.
 Our approach in Chapter~\ref{sec:Theme1} addresses these limitations.
-
-Diamond and Boyd take the opposite approach~\cite{diamond2016matrixfree}. Instead of
-forming~$\mmat{A}$, they represent the problem as a graph of linear operators, available only
-through their forward and adjoint products, which suits first-order solvers. The solvers that
-\texttt{CVXPY} calls by default factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$, so we
-keep the explicit matrix and reduce the cost of forming it.
 %%
 %%  COMPUTING DERIVATIVES
 %%
@@ -532,6 +526,11 @@ computational graph~\cite{baydin2017ADsurvey, blondel2024elements}. In those
 settings, AD refers to the evaluation of matrix-vector products with the Jacobian or the
 Hessian, and the explicit matrix is never formed. Factorizations, direct linear solves, and
 many optimization solvers instead require the explicit matrix~\cite{hill2025sparser}.
+In convex optimization, Diamond and Boyd take the matrix-free
+view~\cite{diamond2016matrixfree}. Instead of forming~$\mmat{A}$, they represent the problem
+as a graph of linear operators, available only through their forward and adjoint products,
+which suits first-order solvers. The solvers that \texttt{CVXPY} calls by default instead
+factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$.
 The methods of this section recover the full sparse matrix from multiple matrix-vector
 products~\cite{griewank2008evaluating}. To reduce the number of products, graph colouring
 groups the vectors that can be
