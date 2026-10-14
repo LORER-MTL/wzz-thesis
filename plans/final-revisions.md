@@ -61,7 +61,7 @@ The **Where** column gets the section and page in the new PDF once an item is do
 | AL-m4 | p. 48: PR #3448 merged 9 Sept 2026 (opt-in, parameter-free); parametric path not yet merged | Merged 9 Sept 2026, opt-in, parameter-free; parametric path not yet integrated (verified via GitHub API) | Ch. 4 setup | done |
 | AL-m5 | Ch. 4: the author contributed to the SCIPY and COO backends | One sentence in the setup | Ch. 4 setup | done |
 | AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 22 of the 25 » (final runs) | §4.6 | done |
-| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Matrix classes are the main contribution, the split comes second, everywhere: §1.5 item 1 names both, the Ch. 3 opening is reordered, §3.5 was already in this order | §1.5, Ch. 3, §3.5 | done (draft) |
+| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Same order everywhere, with no "main contribution": the matrix classes first, the split second, in §1.5 item 1, the Ch. 3 opening and §3.5 | §1.5, Ch. 3, §3.5 | done (draft) |
 | AL-m8 | p. 48: number of repetitions and the BLAS implementation | Apple M2 (24 GB, macOS 26.5.1), Accelerate, single-threaded; 20 / 10 replicates; versions in App. B | §4.1, App. B | done |
 | AL-m9 | Fig. 3.5: do not rely on colour alone | Letters (a)–(d) in cells and legend; caption mentions them | Fig. 3.5 | done |
 | AL-m10 | Refs [41] [42] [43] [76] [88]: p. → pp. | En-dashes → --; [88] page → « Art. no. 2 » | bib | done |
