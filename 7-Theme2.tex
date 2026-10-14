@@ -198,8 +198,7 @@ of its times with and without the rewrite of \S\ref{sec:bench-setup}.}
 
 \paragraph{The five slower problems.} To explain the five problems on which
 \texttt{diffengine} is not the fastest, we time the phases of its canonicalization
-separately. Table~\ref{tab:phases} in Appendix~\ref{app:cases} gives the breakdown. On four
-of the five, the symbolic pass takes the largest share, between $43$ and $90\,\%$ of the
+separately. On four of the five, the symbolic pass takes the largest share, between $43$ and $90\,\%$ of the
 time, against a median of $20\,\%$ over the suite. UnconstrainedQP is the smallest problem
 of the suite, and the whole canonicalization takes $16$ milliseconds, against $13$ for
 \texttt{CPP} with the rewrite. On SDPSegfault1132 and ConvexPlasticity, dense constant data
@@ -207,7 +206,6 @@ is handled poorly. On the first, three dense blocks of $49.5$ million entries ca
 that has only $1.01$ million nonzeros, and \texttt{diffengine} carries the cancelled entries
 through its symbolic and numeric passes. On the second, a diagonal matrix of size $3000$ is
 given as a dense array and becomes a dense $3000 \times 3000$ block of the Hessian.
-Appendix~\ref{app:cases} describes both problems in more detail.
 
 \FloatBarrier
 
