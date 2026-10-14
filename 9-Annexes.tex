@@ -19,8 +19,9 @@
 % ------------------------------------------------------------------------------------------
 \Annexe{BENCHMARK INSTANCES}\label{app:instances}
 
-Table~\ref{tab:instances} describes the $25$ problems of the benchmark
-suite~\cite{cvxpybenchmarks} used in Chapter~\ref{sec:Theme2}, in the order of
+Table~\ref{tab:instances-desc} describes the $25$ problems of the benchmark
+suite~\cite{cvxpybenchmarks} used in Chapter~\ref{sec:Theme2}, and
+Table~\ref{tab:instances} gives their dimensions, both in the order of
 Table~\ref{tab:oneshot-compile}. The dimensions are those of the problem data that
 \texttt{diffengine} returns for \texttt{Clarabel}: the matrix
 $\mmat{A} \in \reals^{m \times n}$ of the constraints and the matrix $\mmat{P}$ of the
@@ -31,50 +32,83 @@ without a quadratic objective or without parameters.
 
 % Dimensions checked against the `dims' field of the final runs (results/thesis-pr3524).
 % ConvexPlasticity: CVXPY 1.9.2's DPP targets refuse it as not DPP in the final runs.
-\begin{landscape}
-\setlength\LTcapwidth{\linewidth}
-{\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{longtable}{l p{9.4cm} rrrr rc}
-\caption[Dimensions of the benchmark problems]{The $25$ problems of the benchmark suite and
-the dimensions of their problem data.}\label{tab:instances}\\
+{\small
+\begin{longtable}{l >{\raggedright\arraybackslash}p{9.6cm}}
+\caption[Benchmark problems]{The $25$ problems of the benchmark suite.}\label{tab:instances-desc}\\
 \toprule
-Benchmark & Description & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+Benchmark & Description \\
 \midrule
 \endfirsthead
 \toprule
-Benchmark & Description & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+Benchmark & Description \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
-UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
-LeastSquares & Dense least squares, $\lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2$ with $\mmat{A} \in \reals^{7000 \times 2000}$. & 7\,000 & 9\,000 & 14\,M & 7\,000 & --- & --- \\
-Yitzhaki & Gini mean-difference portfolio \ac{LP} over a dense matrix of all $44\,850$ pairwise return differences of $50$ assets. & 89.8\,k & 44.9\,k & 4.57\,M & --- & --- & --- \\
-HuberRegression & Huber regression with $3000$ features and $4500$ samples, $12\,\%$ of the labels flipped. & 13.5\,k & 16.5\,k & 13.5\,M & 4\,500 & --- & --- \\
-SimpleQP & \ac{QP} with a dense $1600 \times 1600$ quadratic form, $8000$ inequality and $20$ equality constraints. & 8\,020 & 1\,600 & 12.8\,M & 2.56\,M & --- & --- \\
-FactorCovarianceModel & Factor-model portfolio selection with $25\,000$ assets and $250$ factors. The risk aversion and the leverage limit are parameters. & 75.3\,k & 75.2\,k & 6.45\,M & 87.5\,k & 2 & yes \\
-SimpleLP & Box-constrained \ac{LP} with $10^7$ variables and a linear objective. & 20\,M & 10\,M & 20\,M & --- & --- & --- \\
-SVMWithL1Regularization & Hinge-loss classifier with an $\ell_1$ penalty, $25\,000$ samples and $500$ features. The penalty weight is a parameter. & 51\,k & 26\,k & 12.6\,M & --- & 1 & yes \\
-SimpleScalarParametrizedLP & Box-constrained \ac{LP} with $2 \times 10^6$ variables whose cost vector is scaled by a scalar parameter. & 4\,M & 2\,M & 4\,M & --- & 1 & yes \\
-SimpleFullyParametrizedLP & Box-constrained \ac{LP} with $10^6$ variables whose cost vector is a parameter. & 2\,M & 1\,M & 2\,M & --- & 1 & yes \\
-ParametrizedQP & Box-constrained least squares whose $6000 \times 2400$ matrix and right-hand side are parameters. & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 2 & yes \\
-TvInpainting & Total-variation inpainting of a $512 \times 512$ colour image, with about $30\,\%$ of the pixels known. & 2.61\,M & 1.05\,M & 3.63\,M & --- & --- & --- \\
-Cajas & Gini portfolio \ac{LP} in ordered-weighted-average form, with $800$ vector constraints added one by one. & 641\,k & 2\,450 & 1.96\,M & --- & --- & --- \\
-SlowPruning & Matrix least squares with a $100 \times 20$ variable and dense data, from \texttt{CVXPY} issue 1668. & 400\,k & 402\,k & 8.4\,M & 400\,k & --- & --- \\
-SmallMatrixStuffing & \ac{LP} with $4000$ variables and $4000$ scalar constraints, each a separate constraint object. & 4\,000 & 4\,000 & 4\,000 & --- & --- & --- \\
-QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
-ConeMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $5000$. & 5\,000 & 5\,000 & 5\,000 & --- & --- & --- \\
-ParamSmallMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $300$, with its matrix, constraint coefficients and right-hand side as parameters. & 300 & 300 & 300 & --- & 3 & yes \\
-ParamConeMatrixStuffing & The same parametric \ac{LP} at size $200$. & 200 & 200 & 200 & --- & 3 & yes \\
-SemidefiniteProgramming & Standard-form \ac{SDP} with a $200 \times 200$ variable and $120$ dense equality constraints. & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & --- \\
-Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix of pairwise differences. & 490\,k & 245\,k & 1.5\,M & --- & --- & --- \\
-CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
-OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
-SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
-ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & no \\
+SVMWithL1Regularization & Hinge-loss classifier with an $\ell_1$ penalty, $25\,000$ samples and $500$ features. The penalty weight is a parameter. \\
+FactorCovarianceModel & Factor-model portfolio selection with $25\,000$ assets and $250$ factors. The risk aversion and the leverage limit are parameters. \\
+Yitzhaki & Gini mean-difference portfolio \ac{LP} over a dense matrix of all $44\,850$ pairwise return differences of $50$ assets. \\
+SimpleQP & \ac{QP} with a dense $1600 \times 1600$ quadratic form, $8000$ inequality and $20$ equality constraints. \\
+HuberRegression & Huber regression with $3000$ features and $4500$ samples, $12\,\%$ of the labels flipped. \\
+LeastSquares & Dense least squares, $\lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2$ with $\mmat{A} \in \reals^{7000 \times 2000}$. \\
+SimpleLP & Box-constrained \ac{LP} with $10^7$ variables and a linear objective. \\
+SimpleScalarParametrizedLP & Box-constrained \ac{LP} with $2 \times 10^6$ variables whose cost vector is scaled by a scalar parameter. \\
+SimpleFullyParametrizedLP & Box-constrained \ac{LP} with $10^6$ variables whose cost vector is a parameter. \\
+SlowPruning & Matrix least squares with a $100 \times 20$ variable and dense data, from \texttt{CVXPY} issue 1668. \\
+ParametrizedQP & Box-constrained least squares whose $6000 \times 2400$ matrix and right-hand side are parameters. \\
+Cajas & Gini portfolio \ac{LP} in ordered-weighted-average form, with $800$ vector constraints added one by one. \\
+ConeMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $5000$. \\
+SmallMatrixStuffing & \ac{LP} with $4000$ variables and $4000$ scalar constraints, each a separate constraint object. \\
+TvInpainting & Total-variation inpainting of a $512 \times 512$ colour image, with about $30\,\%$ of the pixels known. \\
+ParamSmallMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $300$, with its matrix, constraint coefficients and right-hand side as parameters. \\
+ParamConeMatrixStuffing & The same parametric \ac{LP} at size $200$. \\
+SemidefiniteProgramming & Standard-form \ac{SDP} with a $200 \times 200$ variable and $120$ dense equality constraints. \\
+CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. \\
+Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix of pairwise differences. \\
+UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. \\
+SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. \\
+OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. \\
+QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. \\
+ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. \\
 \end{longtable}}
-\end{landscape}
+
+\begin{table}[htbp]
+\centering
+\caption[Dimensions of the benchmark problems]{Dimensions of the problem data of the $25$
+benchmark problems.}\label{tab:instances}
+{\small
+\begin{tabular}{l rrrr rc}
+\toprule
+Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+\midrule
+SVMWithL1Regularization & 51\,k & 26\,k & 12.6\,M & --- & 1 & yes \\
+FactorCovarianceModel & 75.3\,k & 75.2\,k & 6.45\,M & 87.5\,k & 2 & yes \\
+Yitzhaki & 89.8\,k & 44.9\,k & 4.57\,M & --- & --- & --- \\
+SimpleQP & 8\,020 & 1\,600 & 12.8\,M & 2.56\,M & --- & --- \\
+HuberRegression & 13.5\,k & 16.5\,k & 13.5\,M & 4\,500 & --- & --- \\
+LeastSquares & 7\,000 & 9\,000 & 14\,M & 7\,000 & --- & --- \\
+SimpleLP & 20\,M & 10\,M & 20\,M & --- & --- & --- \\
+SimpleScalarParametrizedLP & 4\,M & 2\,M & 4\,M & --- & 1 & yes \\
+SimpleFullyParametrizedLP & 2\,M & 1\,M & 2\,M & --- & 1 & yes \\
+SlowPruning & 400\,k & 402\,k & 8.4\,M & 400\,k & --- & --- \\
+ParametrizedQP & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 2 & yes \\
+Cajas & 641\,k & 2\,450 & 1.96\,M & --- & --- & --- \\
+ConeMatrixStuffing & 5\,000 & 5\,000 & 5\,000 & --- & --- & --- \\
+SmallMatrixStuffing & 4\,000 & 4\,000 & 4\,000 & --- & --- & --- \\
+TvInpainting & 2.61\,M & 1.05\,M & 3.63\,M & --- & --- & --- \\
+ParamSmallMatrixStuffing & 300 & 300 & 300 & --- & 3 & yes \\
+ParamConeMatrixStuffing & 200 & 200 & 200 & --- & 3 & yes \\
+SemidefiniteProgramming & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & --- \\
+CVaR & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
+Murray & 490\,k & 245\,k & 1.5\,M & --- & --- & --- \\
+UnconstrainedQP & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
+SDPSegfault1132 & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
+OptimalAdvertising & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
+QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
+ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & no \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 \section{Additional problem families}\label{app:extra-problems}
 
