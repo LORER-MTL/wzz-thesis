@@ -112,7 +112,7 @@ ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & no \\
 
 \section{Additional problem families}\label{app:extra-problems}
 
-The experiments of \S\ref{sec:bench-nondpp} and \S\ref{sec:bench-sensitivity} use two
+The experiments of Appendix~\ref{app:nondpp} and \S\ref{sec:bench-sensitivity} use two
 problem families beyond the suite, and rescaled versions of the suite problems. Each family
 is generated from a size and a random seed, with standard normal data unless stated
 otherwise.
@@ -443,6 +443,62 @@ HuberRegression             & 2.56 & 1.70 & 0.65 & 0.34 & 0.17 \\
 SVMWithL1Regularization     & 0.72 & 1.40 & 0.63 & 0.32 & 0.14 \\
 SimpleQP                    & 0.40 & 0.60 & 0.45 & 0.29 & 0.15 \\
 \texttt{lasso}, $n = 1000$  & 0.88 & 0.57 & 0.58 & 0.32 & 0.14 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\FloatBarrier
+
+% ------------------------------------------------------------------------------------------
+\Annexe{PROBLEMS THAT ARE NOT DPP}\label{app:nondpp}
+
+The re-solves of Table~\ref{tab:param-tensor} are restricted to \ac{DPP} problems, the only
+ones on which \texttt{CVXPY} can build a tensor. The numeric pass has no such restriction. It
+needs a fixed expression tree and fixed sparsity patterns, and never asks whether the
+problem data is affine in the parameters. To measure what this means for re-solves, we
+write two problem families in three variants each. Appendix~\ref{app:extra-problems} defines
+them. In the \ac{DPP} variant, the parameters enter the problem as \ac{DPP} allows. In the
+non-\ac{DPP} variant, one parameter is replaced by the product of two parameters, which
+violates the \ac{DPP} rules without changing the problem data. In the parameter-free
+variant, the parameters are replaced by constants, so every solve is the canonicalization of
+a new problem. At the default parameter values the three variants have the same problem
+data, so their times are directly comparable.
+
+Table~\ref{tab:nondpp} reports the re-solve times. On the non-\ac{DPP} variant,
+\texttt{CVXPY} has no tensor and canonicalizes the problem again at every solve, at the cost
+of a first canonicalization. \texttt{diffengine} re-solves the \ac{DPP} and non-\ac{DPP}
+variants with the same numeric pass, in $26.4$ milliseconds on both variants of the
+\texttt{lasso} family. Its re-solve on the non-\ac{DPP} variant is $12$ times faster than
+\texttt{CVXPY}'s, and $1.35$ times faster than its own canonicalization from scratch, the
+rebuild column. The \texttt{factor\_cov} family gives the same picture, with a re-solve
+$13$ times faster than \texttt{CVXPY}'s. On the \ac{DPP} variants, the tensor remains
+faster, by a factor of $4.1$ on \texttt{lasso} and $2.9$ on \texttt{factor\_cov}.
+
+\begin{table}[htbp]
+\centering
+\caption[Re-solve time on problems that are not \ac{DPP}]{Re-solve time in milliseconds of
+two problem families in three variants, mean over the runs. For \texttt{CVXPY}, the
+re-solve applies the tensor on the \ac{DPP} variant and repeats the whole canonicalization
+on the others, with the fastest of the three backends. For \texttt{diffengine}, the cached
+column runs the numeric pass only, and the rebuild column repeats the conversion and the
+symbolic pass as well. On the parameter-free variant, every re-solve is a first
+canonicalization. The ratio is the median time of \texttt{diffengine}, cached when it can,
+over that of \texttt{CVXPY}.}
+\label{tab:nondpp}
+{\small
+\begin{tabular}{l l r rr l}
+\toprule
+& & & \multicolumn{2}{c}{\texttt{diffengine}} & \\
+\cmidrule(lr){4-5}
+Family & Variant & \texttt{CVXPY} & cached & rebuild & Ratio \\
+\midrule
+\texttt{lasso}, $n = 1000$         & \ac{DPP}        & 6.4 & 26.4 & 35.6 & 4.11 \\
+                                   & non-\ac{DPP}    & 315 & 26.4 & 35.7 & 0.08 \\
+                                   & parameter-free  & 334 & --- & 46.2 & 0.14 \\
+\addlinespace
+\texttt{factor\_cov}, $n = 5000$   & \ac{DPP}        & 1.2 & 3.6 & 6.9 & 2.88 \\
+                                   & non-\ac{DPP}    & 45.9 & 3.6 & 7.0 & 0.08 \\
+                                   & parameter-free  & 47.1 & --- & 10.8 & 0.23 \\
 \bottomrule
 \end{tabular}}
 \end{table}
