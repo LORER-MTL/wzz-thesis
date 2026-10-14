@@ -916,9 +916,8 @@ In this Master's thesis, we make the following contributions:
 \begin{enumerate}
   \item We build \texttt{SparseDiffEngine}, a C library with Python bindings that assembles
   sparse Jacobians and Hessians directly from the expression structure, with no sparsity
-  detection or graph colouring. Within the library, our main contribution is two matrix
-  representations, permuted dense and stacked permuted dense, together with the kernels
-  that operate on them. They keep the dense blocks of the problem data intact and process
+  detection or graph colouring. The library introduces two matrix representations, permuted
+  dense and stacked permuted dense, together with the kernels that operate on them. They keep the dense blocks of the problem data intact and process
   them with \ac{BLAS}. The library also splits the computation into a symbolic and a
   numeric pass, an idea we borrow from sparse direct factorization and from the interfaces
   of \ac{NLP} solvers.
