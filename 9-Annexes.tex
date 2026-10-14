@@ -473,8 +473,8 @@ data, so their times are directly comparable.
 
 Table~\ref{tab:nondpp} reports the re-solve times. On the non-\ac{DPP} variant,
 \texttt{CVXPY} has no tensor and canonicalizes the problem again at every solve, at the cost
-of a first canonicalization. \texttt{diffengine} re-solves the \ac{DPP} and non-\ac{DPP}
-variants with the same numeric pass, in $26.4$ milliseconds on both variants of the
+of a first canonicalization. The \ac{DPP} and non-\ac{DPP} variants are both re-solved by
+\texttt{diffengine} with the same numeric pass, in $26.4$ milliseconds on both variants of the
 \texttt{lasso} family. Its re-solve on the non-\ac{DPP} variant is $12$ times faster than
 \texttt{CVXPY}'s, and $1.35$ times faster than its own canonicalization from scratch, the
 rebuild column. The \texttt{factor\_cov} family gives the same picture, with a re-solve
