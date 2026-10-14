@@ -171,7 +171,8 @@ that has only $1.01$ million nonzeros, and \texttt{diffengine} carries the cance
 through its symbolic and numeric passes. On the second, a diagonal matrix of size $3000$ is
 given as a dense array and becomes a dense $3000 \times 3000$ block of the Hessian.
 
-Two further experiments on the first canonicalization are reported in the appendix. Without
+Two further experiments on the first canonicalization are reported in
+Appendix~\ref{app:results}. Without
 the dense blocks, \texttt{diffengine} is $1.27$ times slower in geometric mean
 (\S\ref{sec:bench-ablation}). As nine suite problems and the \texttt{lasso} family are
 rescaled over a factor of $16$ in size, its ratio to the best \texttt{CVXPY} backend stays
