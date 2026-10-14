@@ -294,3 +294,119 @@ OptimalAdvertising & 173 & 181 & 197 & 6\,066 & 945 \\
 QuantumHilbertMatrix & 222 & 218 & 288 & 910 & 910 \\
 ConvexPlasticity & 82.5 & 82.4 & 82.5 & 1\,330 & 25.6 \\
 \end{longtable}}
+
+\section{Ablation}
+\label{sec:bench-ablation}
+
+The branch of \texttt{CVXPY} used in Chapter~\ref{sec:Theme2} has two switches that turn parts of
+\texttt{diffengine} off. The first stores every constant matrix in the sparse format, so
+that no dense block is built from constant data. The second discards the engine's problem at
+every parameter update and repeats the conversion and the symbolic pass, which removes the
+split. Table~\ref{tab:ablation} reports each switch on the measurement it affects.
+
+Without the dense blocks, the first canonicalization is $1.27$ times slower in geometric
+mean, with a significant difference on $23$ of the $25$ problems, and the peak memory
+changes by a factor of $0.87$. The switch does not slow down every problem: without the
+dense blocks, \texttt{diffengine} is faster on $8$ problems, among them ConvexPlasticity by a
+factor of $5.1$ and CVaR by a factor of $1.6$. Without the dense blocks, \texttt{diffengine} is
+$1.95$ times faster than the best \texttt{CVXPY} backend in geometric mean. Without the
+split, the re-solves of the seven \ac{DPP} problems are $2.56$ times slower.
+Tables~\ref{tab:app-cold}, \ref{tab:app-warm} and~\ref{tab:app-memory} give both
+contrasts on every problem.
+
+\begin{table}[htbp]
+\centering
+\caption[Ablation of \texttt{diffengine}]{Ablation of \texttt{diffengine}. The ratio is
+the geometric mean over the problems of the median time of the variant over that of
+\texttt{diffengine}. The last column counts the problems on which the difference is
+significant (Mann--Whitney, Holm-adjusted $p < 0.05$).}
+\label{tab:ablation}
+{\small
+\begin{tabular}{l l r r}
+\toprule
+Variant & Measurement & Ratio & Significant \\
+\midrule
+no dense blocks & first canonicalization, $25$ problems & 1.27 & 23/$25$ \\
+no split        & re-solve, $7$ \ac{DPP} problems        & 2.56 & 7/$7$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\FloatBarrier
+
+\section{Sensitivity to size and density}
+\label{sec:bench-sensitivity}
+
+The problems of the suite have fixed sizes. To see how the comparison depends on the
+characteristics of the problem, we vary them on the suite problems themselves, as
+Appendix~\ref{app:extra-problems} describes. Each problem is rescaled by a factor $s$ on its
+dimensions, which multiplies the number of nonzeros of its data by about $s$. Nine
+problems and the parameter-free \texttt{lasso} family are measured at
+$s \in \{1/4, 1/2, 1, 2, 4\}$. On five problems with a dense data
+matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
+$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five replicates.
+
+Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the best
+\texttt{CVXPY} backend as the size grows. On seven of the ten families, the ratio stays
+between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
+SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exception: its
+ratio grows from $0.78$ to $1.67$ between $s = 1/4$ and $s = 1$. At the larger sizes,
+\texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising, and on two more
+instances the correctness check does not fit in the limit, so their times are not reported.
+
+Table~\ref{tab:sensitivity-density} reports the ratio as the density falls. On all five
+problems, \texttt{diffengine}'s advantage shrinks, from a ratio of $0.14$ to $0.17$ on dense
+data to a ratio between $0.40$ and $2.56$ at $\rho = 0.01$. The masked data stays a dense
+array, so much of the dense block that the matrix product builds from it is zero.
+Above a density of $20\,\%$, \texttt{diffengine} is faster on every problem.
+Below it, it is slower on HuberRegression, SVMWithL1Regularization and LeastSquares at
+$\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
+
+\begin{table}[htbp]
+\centering
+\caption[Sensitivity to size]{Ratio of the canonicalization time of \texttt{diffengine} to
+that of the best \texttt{CVXPY} backend, medians of five replicates, as the size of ten
+problem families is scaled by $s$. ``cap'' denotes a \texttt{diffengine} run that exceeded
+the $20$~\si{\giga\byte} memory limit, and ``unv.'' a size whose correctness check did not
+fit in the limit, so that its time is not reported.}
+\label{tab:sensitivity-size}
+{\small
+\begin{tabular}{l rrrrr}
+\toprule
+Problem & $s = 1/4$ & $s = 1/2$ & $s = 1$ & $s = 2$ & $s = 4$ \\
+\midrule
+HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
+FactorCovarianceModel       & 0.16 & 0.15 & 0.14 & 0.18 & 0.22 \\
+OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unv. & cap \\
+SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & unv. \\
+LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
+SimpleQP                    & 0.15 & 0.15 & 0.15 & 0.16 & 0.16 \\
+Yitzhaki                    & 0.13 & 0.15 & 0.14 & 0.14 & 0.13 \\
+CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
+SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
+\texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption[Sensitivity to density]{Ratio of the canonicalization time of \texttt{diffengine} to
+that of the best \texttt{CVXPY} backend, medians of five replicates, as the density $\rho$
+of the data matrix of five problems falls.}
+\label{tab:sensitivity-density}
+{\small
+\begin{tabular}{l rrrrr}
+\toprule
+Problem & $\rho = 0.01$ & $\rho = 0.05$ & $\rho = 0.2$ & $\rho = 0.5$ & $\rho = 1$ \\
+\midrule
+LeastSquares                & 0.81 & 1.13 & 0.58 & 0.33 & 0.17 \\
+HuberRegression             & 2.56 & 1.70 & 0.65 & 0.34 & 0.17 \\
+SVMWithL1Regularization     & 0.72 & 1.40 & 0.63 & 0.32 & 0.14 \\
+SimpleQP                    & 0.40 & 0.60 & 0.45 & 0.29 & 0.15 \\
+\texttt{lasso}, $n = 1000$  & 0.88 & 0.57 & 0.58 & 0.32 & 0.14 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\FloatBarrier

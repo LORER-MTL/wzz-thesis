@@ -19,10 +19,10 @@ The **Where** column gets the section and page in the new PDF once an item is do
 
 | ID | Request | Response | Where | Status |
 |---|---|---|---|---|
-| J1a | Statistical significance (p-values) of every numerical test | Per problem: Mann–Whitney, Holm-adjusted; `*` on significant ratios in Tables 4.1, 4.2, significant counts in Table 4.4, p in App. C. Suite summarized by the geometric mean only | §4.1–4.4, App. C | done |
-| J1b / AL-ii | Ablation: separate the two contributions (time, memory) | §4.4: two contrasts, reported as measurements: no dense blocks on the first canonicalization (25 problems, with memory) and no split on the re-solves (7 DPP); per-problem values in App. C | §4.4, App. B, C | done |
-| J1c | More instances (random parameters, modified instances) | Each replicate draws new parameter values from its own seed; nine suite problems and the lasso family rescaled to five sizes, five problems at five densities | §4.1, §4.5, App. A.1 | done |
-| J1d / AL scaling | Sensitivity to problem characteristics (size, % sparsity) | §4.5: ten families at five sizes (Table 4.5), five problems at five densities (Table 4.6) | §4.5, App. A.1 | done |
+| J1a | Statistical significance (p-values) of every numerical test | Per problem: Mann–Whitney, Holm-adjusted; `*` on significant ratios in Tables 4.1, 4.2, significant counts in Table B.5, p in App. B. Suite summarized by the geometric mean only | §4.1–4.3, App. B | done |
+| J1b / AL-ii | Ablation: separate the two contributions (time, memory) | App. B.1, pointed to from §4.2 and §4.3: two contrasts, reported as measurements: no dense blocks on the first canonicalization (25 problems, with memory) and no split on the re-solves (7 DPP); per-problem values in App. B | §4.2, §4.3, App. B.1 | done |
+| J1c | More instances (random parameters, modified instances) | Each replicate draws new parameter values from its own seed; nine suite problems and the lasso family rescaled to five sizes, five problems at five densities | §4.1, App. A.1, B.2 | done |
+| J1d / AL scaling | Sensitivity to problem characteristics (size, % sparsity) | App. B.2, pointed to from §4.2: ten families at five sizes (Table B.6), five problems at five densities (Table B.7) | §4.2, App. A.1, B.2 | done |
 | J1e / AL-iii | Non-DPP problems: DPP versus non-DPP gain against CVXPY | §4.3.1: lasso and factor_cov in DPP / non-DPP / parameter-free variants, Table 4.3; 1st Discussion observation cites it | §4.3.1, App. A.1 | done |
 | J2 / AL-i | Related literature: matrix-free, CVXcanon, CVXGEN, Convex.jl 0.16, antecedents, Pyomo APPSI, DNLP delineation | Drafts D1–D7 (PR #3). Legrain 3e (dense blocks in sparse formats): two cited sentences in §3.2 and where our blocks differ; the informal appendix was dropped | Ch. 1–3 | done (draft) |
 | J3 | AI-use declaration | New front-matter page with the text of ai-usage-wzz.md as is (to be condensed later) | front matter, p. vii | done (draft) |
