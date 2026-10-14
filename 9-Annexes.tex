@@ -335,7 +335,8 @@ dimensions, which multiplies the number of nonzeros of its data by about $s$. Ni
 problems and the parameter-free \texttt{lasso} family are measured at
 $s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five
 problems with a dense data matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
-$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five runs.
+$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five runs, reported
+without a significance test.
 
 Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the best
 \texttt{CVXPY} backend on the ten families measured at five sizes. On seven of them, the ratio
@@ -483,7 +484,9 @@ on the others, with the fastest of the three backends. For \texttt{diffengine}, 
 column runs the numeric pass only, and the rebuild column repeats the conversion and the
 symbolic pass as well. On the parameter-free variant, every re-solve is a first
 canonicalization. The ratio is the median time of \texttt{diffengine}, cached when it can,
-over that of \texttt{CVXPY}.}
+over that of \texttt{CVXPY}, marked with~$^{*}$ when the difference is significant
+(Mann--Whitney, Holm-adjusted $p < 0.05$). Every standard deviation is below $1\,\%$ of the
+mean.}
 \label{tab:nondpp}
 {\small
 \begin{tabular}{l l r rr l}
@@ -492,13 +495,13 @@ over that of \texttt{CVXPY}.}
 \cmidrule(lr){4-5}
 Family & Variant & \texttt{CVXPY} & cached & rebuild & Ratio \\
 \midrule
-\texttt{lasso}, $n = 1000$         & \ac{DPP}        & 6.4 & 26.4 & 35.6 & 4.11 \\
-                                   & non-\ac{DPP}    & 315 & 26.4 & 35.7 & 0.08 \\
-                                   & parameter-free  & 334 & --- & 46.2 & 0.14 \\
+\texttt{lasso}, $n = 1000$         & \ac{DPP}        & 6.4 & 26.4 & 35.6 & 4.11$^{*}$ \\
+                                   & non-\ac{DPP}    & 315 & 26.4 & 35.7 & 0.08$^{*}$ \\
+                                   & parameter-free  & 334 & --- & 46.2 & 0.14$^{*}$ \\
 \addlinespace
-\texttt{factor\_cov}, $n = 5000$   & \ac{DPP}        & 1.2 & 3.6 & 6.9 & 2.88 \\
-                                   & non-\ac{DPP}    & 45.9 & 3.6 & 7.0 & 0.08 \\
-                                   & parameter-free  & 47.1 & --- & 10.8 & 0.23 \\
+\texttt{factor\_cov}, $n = 5000$   & \ac{DPP}        & 1.2 & 3.6 & 6.9 & 2.88$^{*}$ \\
+                                   & non-\ac{DPP}    & 45.9 & 3.6 & 7.0 & 0.08$^{*}$ \\
+                                   & parameter-free  & 47.1 & --- & 10.8 & 0.23$^{*}$ \\
 \bottomrule
 \end{tabular}}
 \end{table}
