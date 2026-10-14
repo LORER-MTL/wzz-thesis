@@ -29,7 +29,7 @@ The **Where** column gets the section and page in the new PDF once an item is do
 | AL-iv | Repeated measurements, mean ± std | 20 replicates in fresh processes (10 above 30 s, never reached); tables in mean ± std | Ch. 4 intro, Table 4.1, App. B | done |
 | AL-v | Dimensions of every instance | Tables A.1 (descriptions) and A.2: m, n, nnz(A), nnz(P), params, DPP (checked against the dims of the final runs) | App. A | done |
 | AL-vi | Time by phase, explaining the underperforming problems | One paragraph at the end of §4.1 on the five slower problems (ConvexPlasticity, QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132, UnconstrainedQP), with their phase shares | §4.1 | done |
-| AL-vii | Explicit statement of the correctness check against the existing backends | Sentence in the Ch. 4 intro (1e-9 relative, first and after update, against CPP) | Ch. 4 intro | done |
+| AL-vii | Explicit statement of the correctness check against the existing backends | Sentence in the Ch. 4 intro (1e-9 relative, first and after update, against CPP). It names the one exception: OptimalAdvertising's generator divides 0/0, so its data holds a NaN. Both backends carry it into A, and diffengine (b = constraints at the origin) also into one entry of b | Ch. 4 intro | done |
 
 ## Le Digabel, minor corrections
 
@@ -68,5 +68,22 @@ The **Where** column gets the section and page in the new PDF once an item is do
 | AL-m11 | Refs [60] Eigen, [72] CppAD, [21] MOSEK: URLs, version | URLs as howpublished; MOSEK @misc + docs URL; Eigen version 3.4.0 (bundled with cvxcore) | bib | done |
 | AL-m12 | Ref [17] CVX: old version | Note « canonical reference; current release 2.2 » (checked cvxr.com) | bib | done |
 | AL-m13 | Complexity analysis of the representations (memory, product cost) | Draft D7 (PR #3): storage and symbolic/numeric operation counts against CSR + Gustavson | §3.3 | done (draft) |
-| AL-m14 | Future work: re-evaluate only the parameter-dependent subtrees | Future work: mark parameter-dependent subtrees in the symbolic pass, skip the rest | Conclusion §Future | done |
+| AL-m14 | Future work: re-evaluate only the parameter-dependent subtrees | Implemented in the measured engine (SparseDiffEngine #125): after a parameter update, the numeric pass re-evaluates only the subtrees that contain a parameter. One sentence in §3.4.1. With it, the numeric pass is 3–20 % of a re-solve on the five problems where the tensor is faster; the rest is the conversion to CSC and the cone order, which is now the future-work item | §3.4.1, Conclusion §Future | done |
 | AL-m15 | Defence Q5: memory of the global layout with many variables | Limitation: global layout costs O(nodes × n) integers (expr.c:54); local layout better for many variables + deep trees | Conclusion §Limitations | done |
+
+## Replies to Legrain that do not change the thesis
+
+Points raised by a second, adversarial reading. We answer them here rather than in the text.
+
+| Point | Reply |
+|---|---|
+| Why the speedup (ii) | §4.1 now says it: without dense blocks the engine is 1.27× slower but still 1.95× faster than the best CVXPY backend, and the split plays no part in a first canonicalization. Most of the speedup therefore comes from the rest of the implementation (C, one Jacobian per node over all variables, no materialized views, no tensor). The dense blocks add about 2× on the problems with dense data (Table B.4). |
+| Suite-level significance (J1a) | Over the 25 problems, the geometric mean 0.40 of Table 4.1 has a bootstrap 95 % CI of 0.28–0.61, and a Wilcoxon signed-rank test on the log-ratios gives p = 0.001. The ablation's 1.27× has a CI of 1.01–1.55 (p = 0.014). |
+| Why the dense blocks raise peak memory (0.87× without them) | A dense block stores every entry, including the zeros of a constant that is sparse in fact, e.g. the diagonal of ConvexPlasticity. On OptimalAdvertising (6 GB against 945 MB without dense blocks) the likely cause is per-node caches and work arrays sized by n_vars (250 000 variables), the global-layout overhead stated in the Limitations. **To confirm (William).** |
+| Split ablation | The 2.56× without the split includes the Python-to-C conversion as well as the symbolic pass. On the two small problems most of it is the conversion (14 % of a first canonicalization, against 1 % for the symbolic pass). Both are what the cached problem avoids. |
+| A real non-DPP problem | ConvexPlasticity is the suite's only non-DPP parametric problem. diffengine re-solves it in 203 ms, against 43 ms for CVXPY recompiling, because 88 % of the re-solve assembles the dense 3000 × 3000 Hessian block built from a diagonal given as a dense array. Without dense blocks it re-solves in 2.3 ms, 19× faster than CVXPY. The fix is a density test before keeping a constant dense (below). |
+| Sizes at which runs fail | At s = 2, diffengine exceeds 20 GB on CVaR, SDPSegfault1132 and QuantumHilbertMatrix, and at s = 4 on OptimalAdvertising. COO also fails at CVaR and SDPSegfault1132 s = 2, and every fork backend at QuantumHilbertMatrix s = 2. |
+| Slower problems (vi) | Symbolic-pass shares: OptimalAdvertising 90 %, QuantumHilbertMatrix 63 % (numeric 20 %), SDPSegfault1132 46 % (numeric 49 %), ConvexPlasticity 47 % (assembly 38 %), UnconstrainedQP 43 % of 16 ms. **Mechanism for OptimalAdvertising and QuantumHilbertMatrix to confirm (William);** the likely cause for the first is the n_vars-sized per-node structures above. |
+| Where to direct effort | Decide in the symbolic pass whether a constant operand is dense enough to keep as a dense block. This would remove the ConvexPlasticity, CVaR and density-sweep slowdowns. |
+| Q1, matrix-free | We materialize because the solvers CVXPY calls by default factorize a matrix built from A and P. Matrix-free wins for very large problems with fast transforms and first-order solvers. A permuted dense block sits between the two: a materialized matrix that keeps the operator's structure, its selectors and its dense block. |
+| Q7, BLAS and binaries | sparsediffpy is a compiled C extension, so wheels are still built per platform. It links against the platform BLAS (Accelerate on macOS, OpenBLAS on Linux through CMake's FindBLAS); unlike cvxcore it needs no C++ toolchain or Eigen. **William: confirm the wheel strategy.** |
