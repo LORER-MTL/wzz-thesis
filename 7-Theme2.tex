@@ -54,8 +54,8 @@ Each measurement is made in $20$ runs, each in a fresh process, and on a paramet
 each run uses new parameter values. The tables report the mean and the standard
 deviation of the runs. On each problem, the runs of
 \texttt{diffengine} and those of the other backend are compared with a two-sided
-Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the $25$ problems by the
-Holm--Bonferroni method~\cite{holm1979}. Before any timing, we check that the problem data of
+Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the number of problems in
+the comparison by the Holm--Bonferroni method~\cite{holm1979}. Before any timing, we check that the problem data of
 \texttt{diffengine} matches that of \texttt{CPP} to a relative tolerance of $10^{-9}$, at the
 first canonicalization and after a parameter update. The one exception is OptimalAdvertising,
 whose generator divides zero by zero and gives the problem one coefficient equal to NaN. Both
