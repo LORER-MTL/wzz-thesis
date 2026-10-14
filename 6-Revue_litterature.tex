@@ -530,7 +530,12 @@ In convex optimization, Diamond and Boyd take the matrix-free
 view~\cite{diamond2016matrixfree}. Instead of forming~$\mmat{A}$, they represent the problem
 as a graph of linear operators, available only through their forward and adjoint products,
 which suits first-order solvers. The solvers that \texttt{CVXPY} calls by default instead
-factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$.
+factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$. The matrix-free approach pays off on
+very large problems built from fast transforms, such as convolutions and Fourier transforms,
+and it needs solvers that accept operators instead of matrices. The permuted dense matrices of
+\S\ref{sec:theme1-matrix-representations} sit between the two: they form the matrix that the
+solver factorizes, but keep the structure of the operator, its row and column selectors and
+its dense block.
 The methods of this section recover the full sparse matrix from multiple matrix-vector
 products~\cite{griewank2008evaluating}. To reduce the number of products, graph colouring
 groups the vectors that can be
