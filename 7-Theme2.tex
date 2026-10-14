@@ -72,7 +72,9 @@ significant on all $20$. The geometric mean of its ratio to the best \texttt{CVX
 backend is $0.40$, and on $15$ problems it is more than twice as fast as the
 best \texttt{CVXPY} backend. It is significantly slower on the other five: ConvexPlasticity,
 QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132 and UnconstrainedQP, which we
-return to at the end of this section.
+return to at the end of this section. On every problem, every run of \texttt{diffengine} is
+faster than every run of the best \texttt{CVXPY} backend, or slower than every one, so the
+Holm-adjusted $p$-value is $1.7 \times 10^{-6}$, the smallest possible for $20$ runs.
 
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times. A performance profile compares the backends

@@ -145,77 +145,40 @@ generator so that the other data is unchanged. The masked matrix stays a dense a
 % ------------------------------------------------------------------------------------------
 \Annexe{COMPLETE RESULTS}\label{app:results}
 
-This appendix gives every measurement behind the tables of Chapter~\ref{sec:Theme2}, as the
-mean $\pm$ standard deviation of the runs, in milliseconds.
-Table~\ref{tab:app-cold} gives the \texttt{CVXPY} backends without the rewrite described in
-Chapter~\ref{sec:Theme2}, and Table~\ref{tab:app-ra} gives their times with it.
+This appendix gives the measurements behind the tables of Chapter~\ref{sec:Theme2} that the
+chapter does not show, as the mean $\pm$ standard deviation of the runs.
+Table~\ref{tab:oneshot-compile} gives the first canonicalization of every backend on all $25$
+problems. On five of them, the rewrite described in Chapter~\ref{sec:Theme2} changes the problem
+that the \texttt{CVXPY} backends receive, and Table~\ref{tab:app-ra} gives their times with and
+without it. Table~\ref{tab:oneshot-compile} reports the faster of the two.
 
+\begin{table}[htbp]
+\centering
+\caption[First canonicalization with and without the rewrite]{First canonicalization of
+\texttt{CVXPY}'s three backends on the \texttt{ignore\_dpp} path, in milliseconds, on the five
+problems on which the rewrite applies, without and with the rewrite.}\label{tab:app-ra}
 {\small
-\begin{longtable}{l rrr}
-\caption[First canonicalization, \texttt{CVXPY} backends]{First canonicalization of
-\texttt{CVXPY}'s three backends on the \texttt{ignore\_dpp} path, in milliseconds, without the
-rewrite. Table~\ref{tab:oneshot-compile} gives the times of \texttt{diffengine}. Against the
-best \texttt{CVXPY} backend, every run of one is faster than every run of the other on every
-problem, so the Holm-adjusted $p$-value is the smallest possible for $20$ runs,
-$1.7 \times 10^{-6}$, on all $25$ problems.}\label{tab:app-cold}\\
+\begin{tabular}{l l rrr}
 \toprule
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
+Benchmark & Rewrite & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
 \midrule
-\endfirsthead
-\toprule
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
-\midrule
-\endhead
+SlowPruning          & without & 1\,795 $\pm$ 13 & 2\,179 $\pm$ 4 & 2\,147 $\pm$ 7 \\
+                     & with    & 1\,781 $\pm$ 8 & 2\,174 $\pm$ 5 & 2\,158 $\pm$ 9 \\
+\addlinespace
+UnconstrainedQP      & without & 1\,951 $\pm$ 5 & 1\,983 $\pm$ 8 & 2\,434 $\pm$ 11 \\
+                     & with    & 13.2 $\pm$ 0.1 & 21.6 $\pm$ 0.1 & 25.0 $\pm$ 0.2 \\
+\addlinespace
+SDPSegfault1132      & without & 7\,979 $\pm$ 23 & 1\,510 $\pm$ 38 & 8\,929 $\pm$ 84 \\
+                     & with    & 8\,036 $\pm$ 11 & 6\,781 $\pm$ 28 & 7\,816 $\pm$ 96 \\
+\addlinespace
+OptimalAdvertising   & without & 2\,577 $\pm$ 10 & 596 $\pm$ 7 & 535 $\pm$ 2 \\
+                     & with    & 2\,574 $\pm$ 8 & 594 $\pm$ 6 & 537 $\pm$ 6 \\
+\addlinespace
+QuantumHilbertMatrix & without & 1\,060 $\pm$ 2 & 804 $\pm$ 6 & 789 $\pm$ 9 \\
+                     & with    & 267 $\pm$ 1 & 343 $\pm$ 2 & 448 $\pm$ 9 \\
 \bottomrule
-\endfoot
-SVMWithL1Regularization & 2\,782 $\pm$ 12 & 2\,625 $\pm$ 6 & 2\,740 $\pm$ 9 \\
-FactorCovarianceModel & 1\,205 $\pm$ 4 & 1\,161 $\pm$ 7 & 1\,151 $\pm$ 4 \\
-Yitzhaki & 925 $\pm$ 10 & 979 $\pm$ 11 & 1\,000 $\pm$ 19 \\
-SimpleQP & 2\,876 $\pm$ 10 & 2\,933 $\pm$ 6 & 2\,930 $\pm$ 6 \\
-HuberRegression & 2\,746 $\pm$ 17 & 2\,858 $\pm$ 18 & 2\,804 $\pm$ 15 \\
-LeastSquares & 2\,402 $\pm$ 15 & 2\,903 $\pm$ 16 & 2\,939 $\pm$ 15 \\
-SimpleLP & 6\,844 $\pm$ 11 & 6\,329 $\pm$ 27 & 5\,984 $\pm$ 16 \\
-SimpleScalarParametrizedLP & 1\,266 $\pm$ 5 & 1\,149 $\pm$ 5 & 1\,087 $\pm$ 3 \\
-SimpleFullyParametrizedLP & 613 $\pm$ 2 & 556 $\pm$ 1 & 525 $\pm$ 1 \\
-SlowPruning & 1\,795 $\pm$ 13 & 2\,179 $\pm$ 4 & 2\,147 $\pm$ 7 \\
-ParametrizedQP & 2\,971 $\pm$ 31 & 3\,011 $\pm$ 6 & 2\,991 $\pm$ 5 \\
-Cajas & 3\,554 $\pm$ 30 & 683 $\pm$ 3 & 691 $\pm$ 3 \\
-ConeMatrixStuffing & 2\,484 $\pm$ 20 & 2\,145 $\pm$ 15 & 3\,499 $\pm$ 12 \\
-SmallMatrixStuffing & 1\,664 $\pm$ 14 & 1\,818 $\pm$ 8 & 2\,490 $\pm$ 12 \\
-TvInpainting & 920 $\pm$ 3 & 908 $\pm$ 8 & 814 $\pm$ 2 \\
-ParamSmallMatrixStuffing & 63.5 $\pm$ 0.5 & 128 $\pm$ 0.5 & 113 $\pm$ 1 \\
-ParamConeMatrixStuffing & 42.8 $\pm$ 0.3 & 72.1 $\pm$ 0.4 & 89.0 $\pm$ 0.5 \\
-SemidefiniteProgramming & 1\,169 $\pm$ 6 & 633 $\pm$ 2 & 996 $\pm$ 8 \\
-CVaR & 7\,205 $\pm$ 17 & 6\,505 $\pm$ 20 & 6\,499 $\pm$ 33 \\
-Murray & 1\,235 $\pm$ 10 & 1\,225 $\pm$ 7 & 1\,221 $\pm$ 7 \\
-UnconstrainedQP & 1\,951 $\pm$ 5 & 1\,983 $\pm$ 8 & 2\,434 $\pm$ 11 \\
-SDPSegfault1132 & 7\,979 $\pm$ 23 & 1\,510 $\pm$ 38 & 8\,929 $\pm$ 84 \\
-OptimalAdvertising & 2\,577 $\pm$ 10 & 596 $\pm$ 7 & 535 $\pm$ 2 \\
-QuantumHilbertMatrix & 1\,060 $\pm$ 2 & 804 $\pm$ 6 & 789 $\pm$ 9 \\
-ConvexPlasticity & 78.8 $\pm$ 1.1 & 74.6 $\pm$ 0.8 & 71.8 $\pm$ 1.2 \\
-\end{longtable}}
-
-{\small
-\begin{longtable}{l rrr}
-\caption[First canonicalization with the rewrite]{First canonicalization of the five problems
-on which the rewrite described in Chapter~\ref{sec:Theme2} applies, in milliseconds, with the rewrite applied
-to the problem before each \texttt{CVXPY} backend.}\label{tab:app-ra}\\
-\toprule
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
-\midrule
-\endfirsthead
-\toprule
-Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-SlowPruning & 1\,781 $\pm$ 8 & 2\,174 $\pm$ 5 & 2\,158 $\pm$ 9 \\
-UnconstrainedQP & 13.2 $\pm$ 0.1 & 21.6 $\pm$ 0.1 & 25.0 $\pm$ 0.2 \\
-SDPSegfault1132 & 8\,036 $\pm$ 11 & 6\,781 $\pm$ 28 & 7\,816 $\pm$ 96 \\
-OptimalAdvertising & 2\,574 $\pm$ 8 & 594 $\pm$ 6 & 537 $\pm$ 6 \\
-QuantumHilbertMatrix & 267 $\pm$ 1 & 343 $\pm$ 2 & 448 $\pm$ 9 \\
-\end{longtable}}
+\end{tabular}}
+\end{table}
 
 {\footnotesize
 \setlength{\tabcolsep}{4pt}
