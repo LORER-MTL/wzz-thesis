@@ -1,7 +1,7 @@
 % Déclaration sur l'utilisation de l'IA / Declaration on the use of AI
 %
-% Requested by the jury (J3). For now, the text is the letter to the jury in
-% ai-usage-wzz.md, converted to LaTeX as is.
+% Requested by the jury (J3). The text is the letter to the jury in ai-usage-wzz.md,
+% with the letter framing removed and the language cleaned up.
 \ifthenelse{\equal{\Langue}{english}}{
 	\chapter*{DECLARATION ON THE USE OF AI}\thispagestyle{headings}
 	\addcontentsline{toc}{compteur}{DECLARATION ON THE USE OF AI}
@@ -9,114 +9,99 @@
 	\chapter*{DÉCLARATION SUR L'UTILISATION DE L'IA}\thispagestyle{headings}
 	\addcontentsline{toc}{compteur}{DÉCLARATION SUR L'UTILISATION DE L'IA}
 }
-Dear Members of the Jury,
+This page describes how I used AI tools in the work presented in this thesis on improving the
+canonicalization time of \texttt{CVXPY}.
 
-The following document describes how I used modern AI tools in the work presented in my Master's thesis
-on improving the canonicalization time of CVXPY. No assistance has been used to write this document.
-
-Like I mentioned in the acknowledgements section, I have used AI tools, in particular Claude Code
-from Anthropic, throughout almost all parts of the research process. Each part has greatly varying
-usages, so I will detail each of them in separate sections below.
+As mentioned in the acknowledgements, I used AI tools, in particular Claude Code from
+Anthropic, in almost all parts of the research process. The usage varied greatly from one part
+to another, so each is described in its own section below.
 
 \section*{Coding}
 
-By coding, I am referring to open source code contributions which has been (or is planning to be)
-added to the CVXPY and SparseDiffEngine repositories. I consider this code of higher importance
-than the ones in the experiments section below, since it can potentially affect lots of users.
+By coding, I mean the open-source code contributions that have been, or will be, added to the
+\texttt{CVXPY} and \texttt{SparseDiffEngine} repositories. I consider this code more important
+than the experiment code described below, since it can affect many users.
 
-For coding, I would first start with a plan of what I wanted to add and iterate with Claude
-Code until I was satisfied. Then Claude Code is able to implement everything, write new tests
-and verify that everything works. After that, I will make a pull request and do another
-more thorough code review which may include some stylistic cleanups as well.
-After iterating a few more times on cleaning up the code, one or maybe several of the
-other maintainers will verify my pull request and eventually merge it.
-Although Claude Code is used at basically all stages from making a plan, to writing the code
-and even acting sometimes as a reviewer, I still think the process highly depends on my ideas
-and vision I have for the software.
+For coding, I first started with a plan of what I wanted to add and iterated with Claude Code
+until I was satisfied. Claude Code then implemented the change, wrote new tests and verified
+that everything worked. After that, I opened a pull request and did a second, more thorough code
+review, which sometimes included stylistic cleanups. After a few more iterations on the code,
+one or several of the other maintainers reviewed the pull request and eventually merged it.
+Although Claude Code was used at almost every stage, from making a plan to writing the code and
+sometimes even acting as a reviewer, the process still depended heavily on my own ideas and
+vision for the software.
 
-From my experience, this is more or less standard practice in software engineering these days.
-I have thought a lot about AI usage in open source, and maybe it is unfortunate that it has gone
-this way, but it is atleast the standard practice that the two main packages I contribute
-to adopted recently.
+In my experience, this is more or less standard practice in software engineering today. I have
+thought a lot about AI usage in open source, and it may be unfortunate that it has gone this
+way, but it is at least the practice that the two main packages I contribute to have recently
+adopted.
 
 \section*{Experiments}
 
-In contrast to coding, I refer to experiments as more ``throw-away'' code that is written
-to test out some ideas or improvements I have in mind. They can sometimes become more serious
-and would then fall into the category of coding.
+In contrast to coding, by experiments I mean more ``throw-away'' code written to test ideas or
+improvements I had in mind. Experiments sometimes became more serious, and then fell into the
+category of coding.
 
-For experiments, I was a lot less severe with code quality than the section above.
-The only thing I verified thoroughly is that the experiments are running the right versions
-of the software and were measuring the right thing. Other than that, I left a lot of leeway
-for Claude Code to generate potentially nasty and duplicated code. On that end, one
-thing I am currently working on is to re-organize the experiments to only keep the final
-ones that appear in the thesis. I will make sure they are reproducible, easier to read,
-and of overall similar quality to the code I mention in the section above.
+For experiments, I was much less strict about code quality than in the section above. What I
+verified thoroughly is that the experiments ran the right versions of the software and measured
+the right thing. Beyond that, I left a lot of leeway to Claude Code, which could produce messy
+and duplicated code. I am currently reorganizing the experiments to keep only the final ones
+that appear in this thesis, and will make them reproducible, easier to read, and of a quality
+similar to the code described in the section above.
 
 \section*{Research}
 
-By research, I am referring specifically to the task of understanding other similar works
-in the literature review as well as solidifying the story of the contribution.
-I am proud to say the main ideas of the thesis were of my own, but a lot of
-the surrounding improvements that went between an initial idea to
-a completed thesis were supported with AI tools.
-In terms of understanding other works, Claude Code is able to organize agents that
-search for papers and documentation online, process them, and report back to me.
-I then get a compressed and more directed summary of what I am looking for, which I will
-of course verify on my own. I haven't blindly trusted AI tools because they can make mistakes,
-but I have used it as a search aggregator, and it has been tremendously helpful in giving
-me a direction to look for.
+By research, I mean specifically understanding related work for the literature review and
+solidifying the story of the contribution. The main ideas of this thesis are my own, but many
+of the improvements between an initial idea and a completed thesis were supported by AI tools.
+To understand other works, Claude Code can coordinate agents that search for papers and
+documentation online, process them, and report back to me. I then receive a condensed summary,
+focused on what I am looking for, which I verify myself. I have not blindly trusted AI tools,
+because they can make mistakes, but I have used them as a search aggregator, and they have been
+tremendously helpful in showing me where to look.
 
-With regards to polishing the story of the contribution, I have used AI tools
-as a sort of conversational companion which could verify the validity of some ideas
-as well as make them more concrete. I also got lots of help from discussions with
-Daniel Cederberg (the other developer of SparseDiffEngine) and Oscar Dowson
-(the main developer of JuMP, which is in the literature review),
-as well as feedback to ask the right questions and talk about the
-right things from my advisor Prof. Antoine Lesage-Landry. 
+To polish the story of the contribution, I used AI tools as a conversational companion that
+could check the validity of some ideas and make them more concrete. I also benefited greatly
+from discussions with Daniel Cederberg, the other developer of \texttt{SparseDiffEngine}, and
+with Oscar Dowson, the main developer of \texttt{JuMP}, which is covered in the literature
+review. My advisor, Prof.\ Antoine Lesage-Landry, gave me feedback on asking the right questions
+and discussing the right topics.
 
-It is hard to quantify the contribution of AI tools in this regard,
-but I am confident to say a lot of the main ideas and shape of the
-contribution came from our end, with AI tools helping only occasionally
-to verify, solidify and question our approach.
+It is hard to quantify the contribution of AI tools in this regard, but I am confident that
+most of the main ideas and the shape of the contribution came from us, with AI tools helping
+only occasionally to verify, solidify and question our approach.
 
 \section*{Writing}
 
-Finally, I have also used Claude Code for assistance in the actual prose of the thesis.
-A large part of this usage came down to improving the english and phrasing of the points
-I wanted to get across. The workflow would look as follows: I first wrote down some high level
-ideas I wanted to include in a section or paragraph on paper, then I would try to form
-coherent sentences in a very long prompt to Claude Code, which would make some edits
-and organize everything before adding it to the \texttt{.tex} file.
+Finally, I used Claude Code to assist with the prose of this thesis. A large part of this usage
+was improving the English and the phrasing of the points I wanted to make. The workflow was as
+follows. I first wrote down on paper the high-level ideas I wanted in a section or paragraph.
+I then tried to form coherent sentences in a long prompt to Claude Code, which edited and
+organized them before adding them to the \texttt{.tex} file.
 
-Claude Code is also able to provide immediate feedback on my writing,
-and will sometimes suggest ways to elaborate on particular ways to express my thoughts.
-I have always proofread and iterated many times with Claude Code before committing to a particular
-phrasing or way of saying something.
+Claude Code also gave immediate feedback on my writing, and sometimes suggested ways to
+elaborate on how I expressed my thoughts. I always proofread and iterated many times with
+Claude Code before committing to a particular phrasing.
 
-A smaller part of my AI usage in writing was in generating some starting sentences which
-could give me an idea of what I would like the final text to look like. This usage was especially
-helpful when I was stuck without any idea of what to write. Although the generated sentences weren't
-necessarily always being used, they were still helpful to give me some editing momentum.
-In these cases, I would act more as a reviewer where I would use
-my taste and the vision of what I wanted the paragraph to say to
-help dictate the writing of Claude Code.
+A smaller part of my AI usage in writing was generating starting sentences that gave me an idea
+of what the final text could look like. This was especially helpful when I was stuck without any
+idea of what to write. Although the generated sentences were not always used, they gave me some
+editing momentum. In these cases, I acted more as a reviewer, using my taste and my vision of
+what the paragraph should say to direct the writing of Claude Code.
 
-Overall, I am confident to take full responsibility of every potentially wrong claim
-that is part of my thesis. For the literature review, I have verified the validity
-of the JuMP section with Oscar Dowson, who is the expert on the subject, as well
-as searched through lots of the history and documentation of AMPL to validate my claims
-about how it worked. On CVXPY, I am confident about the exposition since I also have
-quite a lot of experience working on the internal codebase, and have verified what
-I talked about with other maintainers, including Steven Diamond, the original developer
-of CVXPY. Although I used AI a lot to help my writing, the final product is an accumulation
-of many choices of my own, from the initial organization of the thesis, down to proof-reading
-many times every sentence that the AI has edited or generated.
+Overall, I take full responsibility for every claim in this thesis. For the literature review,
+I verified the \texttt{JuMP} section with Oscar Dowson, who is the expert on the subject, and
+searched through much of the history and documentation of \texttt{AMPL} to validate my claims
+about how it works. On \texttt{CVXPY}, I am confident about the exposition, since I have
+substantial experience with its internal codebase and have verified what I describe with other
+maintainers, including Steven Diamond, the original developer of \texttt{CVXPY}. Although I used
+AI extensively in my writing, the final product is the result of many choices of my own, from
+the initial organization of the thesis to proofreading, many times, every sentence that the AI
+edited or generated.
 
 \section*{Miscellaneous}
 
-I can think of other usages that are worth mentioning: figures in LaTeX as well as formatting
-and editing the thesis document in LaTeX. For these tasks, I delegated them almost completely
-to the AI tools, which were surprisingly good at it.
-I have verified the output of the PDF conforms to what I expected or wanted,
-but have not looked at the actual \texttt{.tex} file as much (especially for the figures).
+Other uses worth mentioning are the figures, and the formatting and editing of the thesis
+document, all in \LaTeX. I delegated these tasks almost completely to AI tools, which were
+surprisingly good at them. I verified that the resulting PDF matches what I expected or
+wanted, but looked much less at the \texttt{.tex} source itself, especially for the figures.
