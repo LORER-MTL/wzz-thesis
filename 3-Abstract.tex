@@ -15,8 +15,8 @@ widely used modelling language, most of the compilation time is spent converting
 expression trees into the sparse constraint and objective matrices. The trees state the
 objective and constraints as functions of the variables and parameters. Because the constraint
 matrix is the Jacobian of these functions and the objective matrix is a Hessian, the conversion
-can be viewed as a sparse differentiation problem. None of the current implementations takes
-this perspective. For
+can be viewed as a sparse differentiation problem. None of \texttt{CVXPY}'s current
+implementations takes this perspective. For
 parametric problems, \texttt{CVXPY} caches a linear map from the parameters to the data, which
 is expensive to build. For every other problem, the
 compilation is repeated in full at every solve.
@@ -34,7 +34,8 @@ alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and i
 restriction on how the parameters enter the problem. We compare this new approach with
 \texttt{CVXPY}'s three current implementations on a public benchmark suite of $25$ problems. The
 first compilation is the fastest on $20$ of the $25$ problems, with a geometric-mean speedup of
-$2.5\times$ over the best current implementation. Re-solves of parametrized problems run within a
-factor of four of \texttt{CVXPY}'s existing caching, without building its cache.
+$2.5\times$ over the best current implementation. On the seven parametrized problems of the suite,
+re-solves run within a factor of four of \texttt{CVXPY}'s existing caching, without building
+its cache.
 
 \end{otherlanguage}
