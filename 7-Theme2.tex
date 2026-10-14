@@ -51,7 +51,7 @@ minutes and a memory limit of \SI{20}{\giga\byte}. The method canonicalizes the
 problem and returns the resulting problem data without calling the solver. We exclude the
 solver because the choice of backend affects only canonicalization.
 Each measurement is made in $20$ runs, each in a fresh process, and on a parametric problem
-each run draws new parameter values. The tables report the mean and the standard
+each run uses new parameter values. The tables report the mean and the standard
 deviation of the runs. On each problem, the runs of
 \texttt{diffengine} and those of the other backend are compared with a two-sided
 Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the $25$ problems by the
