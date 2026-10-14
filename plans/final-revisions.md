@@ -24,8 +24,8 @@ The **Where** column gets the section and page in the new PDF once an item is do
 | J1c | More instances (random parameters, modified instances) | Each replicate draws new parameter values from its own seed; all 25 suite problems at three sizes, nine of them and the lasso family at five, five problems at five densities | Ch. 4 intro, App. A.1, B.2 | done |
 | J1d / AL scaling | Sensitivity to problem characteristics (size, % sparsity) | App. B.2, pointed to from §4.1: all 25 problems at three sizes and ten families at five, in one table (Table B.5), five problems at five densities (Table B.6) | §4.1, App. A.1, B.2 | done |
 | J1e / AL-iii | Non-DPP problems: DPP versus non-DPP gain against CVXPY | App. C: lasso and factor_cov in DPP / non-DPP / parameter-free variants, Table C.1; §4.2 keeps the 12–13× headline, and the 1st Discussion observation cites App. C | §4.2, App. C, App. A | done |
-| J2 / AL-i | Related literature: matrix-free, CVXcanon, CVXGEN, Convex.jl 0.16, antecedents, Pyomo APPSI, DNLP delineation | Drafts D1–D7 (PR #3). Legrain 3e (dense blocks in sparse formats): two cited sentences in §3.2 and where our blocks differ; the informal appendix was dropped | Ch. 1–3 | done (draft) |
-| J3 | AI-use declaration | New front-matter page with the content of ai-usage-wzz.md: same sections and points, letter framing removed, language cleaned up | front matter, p. vii | done (draft) |
+| J2 / AL-i | Related literature: matrix-free, CVXcanon, CVXGEN, Convex.jl 0.16, antecedents, Pyomo APPSI, DNLP delineation | Drafts D1–D7 (PR #3). Legrain 3e (dense blocks in sparse formats): two cited sentences in §3.2 and where our blocks differ; the informal appendix was dropped | Ch. 1–3 | done |
+| J3 | AI-use declaration | New front-matter page with the content of ai-usage-wzz.md: same sections and points, letter framing removed, language cleaned up | front matter, p. vii | done |
 | AL-iv | Repeated measurements, mean ± std | 20 replicates in fresh processes (10 above 30 s, never reached); tables in mean ± std | Ch. 4 intro, Table 4.1, App. B | done |
 | AL-v | Dimensions of every instance | Tables A.1 (descriptions) and A.2: m, n, nnz(A), nnz(P), params, DPP (checked against the dims of the final runs) | App. A | done |
 | AL-vi | Time by phase, explaining the underperforming problems | One paragraph at the end of §4.1 on the five slower problems (ConvexPlasticity, QuantumHilbertMatrix, OptimalAdvertising, SDPSegfault1132, UnconstrainedQP), with their phase shares | §4.1 | done |
@@ -55,19 +55,19 @@ The **Where** column gets the section and page in the new PDF once an item is do
 
 | ID | Request | Response | Where | Status |
 |---|---|---|---|---|
-| AL-m1 | Attribute the symbolic/numeric split to sparse factorization first (p. 3, p. 46) | Davis and Gustavson cited before the NLP interfaces in the Intro's approach paragraph, §1.5, the Ch. 3 opening and §3.5 | §1, §1.5, Ch. 3, §3.5 | done (draft) |
-| AL-m2 | Table 2.2: qualify the AMPL/Pyomo row (Pyomo persistent interfaces) | Draft D6 (PR #3): Pyomo persistent interfaces after the .nl sentence, note under the table | §2.4 | done (draft) |
+| AL-m1 | Attribute the symbolic/numeric split to sparse factorization first (p. 3, p. 46) | Davis and Gustavson cited before the NLP interfaces in the Intro's approach paragraph, §1.5, the Ch. 3 opening and §3.5 | §1, §1.5, Ch. 3, §3.5 | done |
+| AL-m2 | Table 2.2: qualify the AMPL/Pyomo row (Pyomo persistent interfaces) | Draft D6 (PR #3): Pyomo persistent interfaces after the .nl sentence, note under the table | §2.4 | done |
 | AL-m3 | §1.5, §3.1: delineate the contribution relative to DNLP | §3.1: the engine is joint work with Daniel Cederberg and serves both uses; DNLP differentiates nonlinear atoms at every iterate, this thesis evaluates the affine atoms and the quadratic form to get the problem data; specific to the thesis are the diffengine backend, its re-solve path and the Ch. 4 benchmarks. §1.5 item 1 points there | §1.5, §3.1 | done |
 | AL-m4 | p. 48: PR #3448 merged 9 Sept 2026 (opt-in, parameter-free); parametric path not yet merged | Merged 9 Sept 2026, opt-in, parameter-free; parametric path not yet integrated (verified via GitHub API) | Ch. 4 setup | done |
 | AL-m5 | Ch. 4: the author contributed to the SCIPY and COO backends | One sentence in the setup | Ch. 4 setup | done |
 | AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 22 of the 25 » (final runs) | §4.3 | done |
-| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Same order everywhere, with no "main contribution": the matrix classes first, the split second, in §1.5 item 1, the Ch. 3 opening and §3.5 | §1.5, Ch. 3, §3.5 | done (draft) |
+| AL-m7 | p. 46: harmonize the « main contribution » with §1.5 and the Ch. 3 opening | Same order everywhere, with no "main contribution": the matrix classes first, the split second, in §1.5 item 1, the Ch. 3 opening and §3.5 | §1.5, Ch. 3, §3.5 | done |
 | AL-m8 | p. 48: number of repetitions and the BLAS implementation | Apple M2 (24 GB, macOS 26.5.1), Accelerate, single-threaded; 20 replicates | Ch. 4 intro | done |
 | AL-m9 | Fig. 3.5: do not rely on colour alone | Letters (a)–(d) in cells and legend; caption mentions them | Fig. 3.5 | done |
 | AL-m10 | Refs [41] [42] [43] [76] [88]: p. → pp. | En-dashes → --; [88] page → « Art. no. 2 » | bib | done |
 | AL-m11 | Refs [60] Eigen, [72] CppAD, [21] MOSEK: URLs, version | URLs as howpublished; MOSEK @misc + docs URL; Eigen version 3.4.0 (bundled with cvxcore) | bib | done |
 | AL-m12 | Ref [17] CVX: old version | Note « canonical reference; current release 2.2 » (checked cvxr.com) | bib | done |
-| AL-m13 | Complexity analysis of the representations (memory, product cost) | Draft D7 (PR #3): storage and symbolic/numeric operation counts against CSR + Gustavson | §3.3 | done (draft) |
+| AL-m13 | Complexity analysis of the representations (memory, product cost) | Draft D7 (PR #3): storage and symbolic/numeric operation counts against CSR + Gustavson | §3.3 | done |
 | AL-m14 | Future work: re-evaluate only the parameter-dependent subtrees | Implemented in the measured engine (SparseDiffEngine #125): after a parameter update, the numeric pass re-evaluates only the subtrees that contain a parameter. One sentence in §3.4.1. With it, the numeric pass is 3–20 % of a re-solve on the five problems where the tensor is faster; the rest is the conversion to CSC and the cone order, which is now the future-work item | §3.4.1, Conclusion §Future | done |
 | AL-m15 | Defence Q5: memory of the global layout with many variables | Limitation: global layout costs O(nodes × n) integers (expr.c:54); local layout better for many variables + deep trees | Conclusion §Limitations | done |
 
