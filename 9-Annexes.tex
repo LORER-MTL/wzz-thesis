@@ -366,7 +366,7 @@ $\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
 that of the best \texttt{CVXPY} backend, medians of five runs, as the size of the $25$
 problems of the suite and of the \texttt{lasso} family is scaled by $s$. The column $s = 1$
 repeats Table~\ref{tab:oneshot-compile}. A dash denotes a size that was not measured, ``cap''
-a \texttt{diffengine} run that exceeded the $20$~\si{\giga\byte} memory limit, and ``unv.'' a
+a \texttt{diffengine} run that exceeded the $20$~\si{\giga\byte} memory limit, and ``unchecked'' a
 size whose correctness check did not fit in the limit, so that its time is not reported.}
 \label{tab:sensitivity-size}
 {\small
@@ -374,7 +374,7 @@ size whose correctness check did not fit in the limit, so that its time is not r
 \toprule
 Problem & $s = 1/4$ & $s = 1/2$ & $s = 1$ & $s = 2$ & $s = 4$ \\
 \midrule
-SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & unv. \\
+SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & unchecked \\
 FactorCovarianceModel       & 0.16 & 0.15 & 0.14 & 0.18 & 0.22 \\
 Yitzhaki                    & 0.13 & 0.15 & 0.14 & 0.14 & 0.13 \\
 SimpleQP                    & 0.15 & 0.15 & 0.15 & 0.16 & 0.16 \\
@@ -396,7 +396,7 @@ CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
 Murray                      & --- & 1.14 & 0.95 & 1.01 & --- \\
 UnconstrainedQP             & --- & 1.05 & 1.20 & 1.08 & --- \\
 SDPSegfault1132             & --- & 1.29 & 1.27 & cap & --- \\
-OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unv. & cap \\
+OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unchecked & cap \\
 QuantumHilbertMatrix        & --- & 1.17 & 1.85 & cap & --- \\
 ConvexPlasticity            & --- & 5.29 & 6.94 & 8.68 & --- \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
