@@ -57,7 +57,7 @@ The **Where** column gets the section and page in the new PDF once an item is do
 |---|---|---|---|---|
 | AL-m1 | Attribute the symbolic/numeric split to sparse factorization first (p. 3, p. 46) | Davis and Gustavson cited before the NLP interfaces in the Intro's approach paragraph, §1.5, the Ch. 3 opening and §3.5 | §1, §1.5, Ch. 3, §3.5 | done (draft) |
 | AL-m2 | Table 2.2: qualify the AMPL/Pyomo row (Pyomo persistent interfaces) | Draft D6 (PR #3): Pyomo persistent interfaces after the .nl sentence, note under the table | §2.4 | done (draft) |
-| AL-m3 | §1.5, §3.1: delineate the contribution relative to DNLP | | §1.5, §3.1 | needs William |
+| AL-m3 | §1.5, §3.1: delineate the contribution relative to DNLP | §3.1: the engine is joint work with Daniel Cederberg and serves both uses; DNLP differentiates nonlinear atoms at every iterate, this thesis evaluates the affine atoms and the quadratic form to get the problem data; specific to the thesis are the diffengine backend, its re-solve path and the Ch. 4 benchmarks. §1.5 item 1 points there | §1.5, §3.1 | done |
 | AL-m4 | p. 48: PR #3448 merged 9 Sept 2026 (opt-in, parameter-free); parametric path not yet merged | Merged 9 Sept 2026, opt-in, parameter-free; parametric path not yet integrated (verified via GitHub API) | Ch. 4 setup | done |
 | AL-m5 | Ch. 4: the author contributed to the SCIPY and COO backends | One sentence in the setup | Ch. 4 setup | done |
 | AL-m6 | p. 52: « faster than cvxcore on 24 of the 25 » | « faster than cvxcore on 22 of the 25 » (final runs) | §4.3 | done |

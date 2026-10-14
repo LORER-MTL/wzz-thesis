@@ -921,8 +921,9 @@ In this Master's thesis, we make the following contributions:
   them with \ac{BLAS}. The library also splits the computation into a symbolic and a
   numeric pass, an idea we borrow from sparse direct factorization and from the interfaces
   of \ac{NLP} solvers.
-  % TODO(William): DNLP delineation (Legrain, required item (i)), as at the end of
-  % the atom-classes subsection of Chapter 3.
+  The engine is joint work with Daniel Cederberg and is also the differentiation engine of
+  \texttt{DNLP}~\cite{cederberg2025disciplined}; \S\ref{sec:theme1-atom-classes} delineates
+  the part specific to this thesis.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
   \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
   while still caching computations for subsequent solves.

@@ -59,8 +59,13 @@ The rest of the chapter describes the affine atoms. The quadratic form contribut
 objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-api}. The
 remaining classes are used by the \ac{NLP} interface of
 \texttt{CVXPY} \cite{cederberg2025disciplined}.
-% TODO(William): DNLP delineation (Legrain, required item (i)): what of SparseDiffEngine
-% is shared with the DNLP engine [cederberg2025disciplined] and what this thesis adds.
+The engine was developed jointly with Daniel Cederberg and serves both uses. In
+\texttt{DNLP}, the solver asks for the derivatives of the nonlinear atoms at every iterate.
+In this thesis, the engine evaluates the affine atoms and the quadratic form at the origin,
+once per problem and again after each parameter update, and the results are the problem
+data. What is specific to this use is the interface to \texttt{CVXPY} of
+\S\ref{sec:theme1-api}: the \texttt{diffengine} backend and its re-solve path for parametric
+problems. The benchmarks of Chapter~\ref{sec:Theme2} are also specific to it.
 \begin{table}[tb]
 \caption{The atom classes and how each computes its Jacobian.}
 \label{tab:atom-classes}
