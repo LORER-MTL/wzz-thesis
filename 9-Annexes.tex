@@ -17,60 +17,6 @@
 \setlength\LTcapwidth{\textwidth}
 
 % ------------------------------------------------------------------------------------------
-\Annexe{DENSE BLOCKS IN SPARSE MATRICES}\label{app:dense-blocks}
-
-The permuted dense and stacked permuted dense matrices of
-\S\ref{sec:theme1-matrix-representations} keep dense blocks inside a sparse matrix. This
-idea appears in several other places, and this appendix compares our representations with
-the closest of them. The comparison is informal. Each of these formats was designed for a
-different task, and none of them was designed to hold the Jacobians of an expression tree.
-
-The block compressed sparse row format, available for example in
-\texttt{scipy.sparse}~\cite{2020SciPy-NMeth}, stores a matrix as a regular grid of dense
-blocks of equal size. The block size must divide the dimensions of the matrix, and every
-block starts at a multiple of the block size. The format suits matrices whose nonzeros come
-in small blocks of a known size, such as the node blocks of a vector-valued finite-element
-discretization. The variable block row format of the sparse \ac{BLAS} relaxes the equal
-size. The rows and the columns are partitioned into consecutive groups of any size, and
-every block covers one group of rows and one group of columns. In both formats, the
-partition is fixed before any value is stored, and a block covers consecutive rows and
-columns. A permuted dense matrix instead places its block at any sorted set of rows and any
-sorted set of columns. These sets are not known in advance. The symbolic pass computes them,
-and they change from node to node of the tree as the selectors of the products in
-\S\ref{sec:theme1-permuted-dense} combine.
-
-Finite-element codes compute a small dense matrix for each element of the mesh and add it
-into a sparse global matrix, through a map from the local degrees of freedom of the element
-to the global ones. The dense blocks exist only during the assembly. Once they are added
-into a compressed sparse row matrix, the matrix no longer records which entries came from
-which element, and the products that follow treat it as a generic sparse matrix. Our
-representations keep the blocks as blocks from one node to the next, so that every product
-along the expression tree can use them.
-
-The nonlinear least-squares libraries \texttt{Ceres}~\cite{agarwal2023ceres} and
-\texttt{g2o}~\cite{kummerle2011g2o} come closest to our stacked permuted dense matrix. In
-\texttt{Ceres}, the user adds residual blocks, each connected to a few parameter blocks,
-and the Jacobian is partitioned accordingly. Each nonzero block, one residual block by one
-parameter block, is stored as a dense matrix. The blocks of a residual are computed by the
-user's cost function, analytically or by automatic differentiation, so the chain rule
-happens inside the cost function. The assembled Jacobian is then used to form the normal
-equations or a Schur complement, whose blocks are processed with fixed-size dense
-operations. \texttt{g2o} stores its matrices in the same way, as dense blocks on a grid
-given by a partition of the rows and the columns. Three differences separate these
-libraries from our engine. Their block structure is declared by the user rather than
-derived from an expression tree. Their blocks follow a fixed partition, one per variable,
-rather than arbitrary index sets. And the Jacobian is not composed through a chain of
-matrix products, which is where our representations save the most work.
-
-Finally, supernodal sparse direct solvers such as \texttt{CHOLMOD}~\cite{chen2008cholmod}
-group the columns of a sparse factor with the same sparsity pattern into dense blocks, the
-supernodes, and process them with level-3 \ac{BLAS} routines. This is the closest analogue
-to our use of the \ac{BLAS}. As in our engine, the blocks are found by a symbolic
-analysis, before any value is computed, and the numeric phase then reuses them. The
-analysis is the one of sparse factorization that the symbolic and numeric split of
-Chapter~\ref{sec:Theme1} descends from.
-
-% ------------------------------------------------------------------------------------------
 \Annexe{BENCHMARK INSTANCES}\label{app:instances}
 
 Table~\ref{tab:instances} describes the $25$ problems of the benchmark
