@@ -13,13 +13,15 @@ In addition, we split the computation into a symbolic pass, which computes and
 caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
 This separation is particularly useful for compiling problems involving parameters, where
 the structure is fixed but the numerical values can change. The two-phase approach is
-standard in sparse direct factorization and in the interfaces of \ac{NLP} solvers.
+standard in sparse direct factorization~\cite{davis2006direct} and in the interfaces of \ac{NLP}
+solvers~\cite{wachter2006ipopt}.
 Neither the two matrix classes nor the two-phase approach exists in \texttt{CVXPY}'s backends.
 By bringing both to canonicalization, we address the research gap we identified
 in \S\ref{sec:research-gap}.
 
-Other important design decisions differ from \texttt{CVXPY}'s backends for
-simplicity rather than performance. Every node carries one Jacobian taken with respect to
+Other important design decisions differ from \texttt{CVXPY}'s backends. We made them for
+simplicity, but together with the implementation in C, they account for most of the speedup
+measured in \S\ref{sec:bench-oneshot}. Every node carries one Jacobian taken with respect to
 all of the variables of the problem, rather than a dictionary of local Jacobians keyed by
 variable. As a consequence, the chain rule is a single matrix product, and the
 constraint matrix is built by stacking the Jacobians of the constraints.
