@@ -185,7 +185,8 @@ implementation rather than from the dense blocks. As nine suite problems and the
 rescaled over a factor of $16$ in size, its ratio to the best \texttt{CVXPY} backend stays
 between $0.13$ and $0.22$ on seven of the ten. At half and twice their size, the problems of
 the suite on which it is faster stay faster, apart from Murray and CVaR. Its advantage
-shrinks as the density of the data falls, until it is slower on three of five problems at a density of $5\,\%$
+shrinks as the density of the data falls to $5\,\%$, where it is slower on three of the five
+problems, and partly returns below $5\,\%$, where the data is stored in the sparse format
 (\S\ref{sec:bench-sensitivity}).
 
 \FloatBarrier

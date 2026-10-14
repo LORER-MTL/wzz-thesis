@@ -271,7 +271,10 @@ Table~\ref{tab:app-warm} the second.
 
 Without the dense blocks, the first canonicalization is $1.27$ times slower in geometric
 mean, with a significant difference on $23$ of the $25$ problems, and it uses $0.87$ times
-the peak memory in geometric mean (Table~\ref{tab:app-memory}). The switch does not slow down
+the peak memory in geometric mean (Table~\ref{tab:app-memory}). A dense block stores every
+entry, including the zeros of a constant that is sparse in fact, such as the diagonal of
+ConvexPlasticity, whose peak memory falls from $1\,330$ to $25.6$ megabytes without the dense
+blocks. The switch does not slow down
 every problem: without the dense blocks, \texttt{diffengine} is faster on $8$ problems, among
 them ConvexPlasticity by a factor of $5.1$ and CVaR by a factor of $1.6$. Without the dense blocks, \texttt{diffengine} is
 $1.95$ times faster than the best \texttt{CVXPY} backend in geometric mean. Without the
@@ -358,7 +361,10 @@ data to a ratio between $0.40$ and $2.56$ at $\rho = 0.01$. The masked data stay
 array, so much of the dense block that the matrix product builds from it is zero.
 Above a density of $20\,\%$, \texttt{diffengine} is faster on every problem.
 Below it, it is slower on HuberRegression, SVMWithL1Regularization and LeastSquares at
-$\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
+$\rho = 0.05$, and on HuberRegression at $\rho = 0.01$. The ratio is not monotone, because
+\texttt{diffengine} stores a constant factor of a matrix product with fewer than $5\,\%$
+nonzeros in the sparse format. At $\rho = 0.01$ the masked matrix builds no dense block, and
+the ratio is lower than at $\rho = 0.05$ on three of the five problems.
 
 \begin{table}[htbp]
 \centering
