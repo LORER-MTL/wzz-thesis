@@ -488,8 +488,7 @@ the entries of the cached maps~\eqref{eq:param-maps} written into the source as 
 so a re-solve applies the parameter maps in compiled code.
 \texttt{CVXPYgen} follows the earlier code generator
 \texttt{CVXGEN}~\cite{mattingley2012cvxgen}, which generates a custom C solver for a family
-of small quadratic programs, and was an early answer to the cost of repeatedly solving a
-parametric problem.
+of small quadratic programs.
 
 The pass of this section produces the affine data $\mvec{c}$ and $[\mmat{A}\ \mvec{b}]$.
 For a quadratic objective, \texttt{CVXPY} replaces the affine argument of each quadratic
@@ -513,27 +512,11 @@ When dense blocks appear in the problem data, they are both stored in an inconve
 and computed without optimized BLAS kernels.
 Our approach in Chapter~\ref{sec:Theme1} addresses these limitations.
 
-Diamond and Boyd answer the same question with the opposite
-approach~\cite{diamond2016matrixfree}. Instead of forming~$\mmat{A}$, they represent the
-problem as a graph of abstract linear operators, each available only through its forward and
-adjoint products. Structure such as Kronecker products, convolutions, and dense blocks is
-then never expanded into a sparse matrix, and forming the problem data costs nothing.
-This representation serves first-order and Krylov-based solvers, which need only products
-with~$\mmat{A}$ and~$\mmat{A}^\top$, and it pays off on very large problems built from fast
-transforms. The solvers that \texttt{CVXPY} calls by default factorize a matrix built
-from~$\mmat{A}$ and~$\mmat{P}$: interior-point solvers such as \texttt{Clarabel}, and
-operator-splitting solvers such as \texttt{SCS} and \texttt{OSQP} in their default direct
-mode. They need these matrices explicitly. We therefore keep the explicit matrix, and reduce
-the cost of forming it. The permuted dense representations of Chapter~\ref{sec:Theme1} sit
-between the two approaches: they are materialized, so a solver can factorize them, but they
-keep part of the operator structure, a dense block together with the row and column
-selectors that place it.
-
-Within the DCP paradigm, \texttt{Convex.jl} has also changed how it forms the problem
-data. Since version~0.16, it represents every affine expression as a sparse matrix and an
-offset over the variables of the solver, accumulated as the problem is converted to
-\ac{MOI}~\cite{convexjl2024release}. Like the backends of \texttt{CVXPY}, it stores the
-coefficients in a general-purpose sparse format.
+Diamond and Boyd take the opposite approach~\cite{diamond2016matrixfree}. Instead of
+forming~$\mmat{A}$, they represent the problem as a graph of linear operators, available only
+through their forward and adjoint products, which suits first-order solvers. The solvers that
+\texttt{CVXPY} calls by default factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$, so we
+keep the explicit matrix and reduce the cost of forming it.
 %%
 %%  COMPUTING DERIVATIVES
 %%
@@ -1079,6 +1062,12 @@ auxiliary variables and constraints. A parameter is a variable in the \texttt{Pa
 parameter multiplied by a variable is stored as a quadratic term, so keeping such a model affine
 requires \texttt{ParametricOptInterface.jl}, an extension that substitutes the parameter values
 before the solve~\cite{jumpdocs}.
+
+\texttt{Convex.jl}~\cite{udell2014convex}, the \ac{DCP} language of the Julia ecosystem, also
+targets \ac{MOI}. Since version~0.16, it represents every affine expression as a sparse matrix
+and an offset over the solver variables, accumulated as the problem is converted to
+\ac{MOI}~\cite{convexjl2024release}. Like the backends of \texttt{CVXPY}, it stores the
+coefficients in a general-purpose sparse format.
 
 %%
 %%  RESEARCH GAP
