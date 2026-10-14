@@ -475,6 +475,14 @@ rebuild column. The \texttt{factor\_cov} family gives the same picture, with a r
 $13$ times faster than \texttt{CVXPY}'s. On the \ac{DPP} variants, the tensor remains
 faster, by a factor of $4.1$ on \texttt{lasso} and $2.9$ on \texttt{factor\_cov}.
 
+ConvexPlasticity is the only problem of the suite that has parameters and is not \ac{DPP}
+(Table~\ref{tab:instances}). On it, the cached re-solve of \texttt{diffengine} is slower, at
+$204$ milliseconds against $42$ for \texttt{CVXPY}, which canonicalizes the problem again.
+Of these $204$ milliseconds, $88\,\%$ go to assembling $\mmat{P}$, whose dense
+$3000 \times 3000$ block comes from a diagonal given as a dense array
+(\S\ref{sec:bench-oneshot}). Without the dense blocks, \texttt{diffengine} re-solves the
+problem in $2.3$ milliseconds, $18$ times faster than \texttt{CVXPY}.
+
 \begin{table}[htbp]
 \centering
 \caption[Re-solve time on problems that are not \ac{DPP}]{Re-solve time in milliseconds of
