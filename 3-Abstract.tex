@@ -21,7 +21,9 @@ parametric problems, \texttt{CVXPY} caches a linear map from the parameters to t
 is expensive to build. For every other problem, the
 compilation is repeated in full at every solve.
 We present \texttt{SparseDiffEngine}, a lightweight open-source C library
-that computes the Jacobian and the Hessian directly from the expression structure. The computation
+that computes the Jacobian and the Hessian directly from the expression structure. It keeps the
+dense blocks of the problem data in two new matrix classes and processes them with BLAS. The
+computation
 is divided into two phases, an idea that goes back to sparse direct factorization and that
 the interfaces of nonlinear programming solvers also use.
 A symbolic pass runs once per problem and determines the sparsity patterns of the

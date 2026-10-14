@@ -18,7 +18,8 @@ implémentations actuelles n'adopte ce point de vue. Pour les problèmes paramé
 construire. Pour tout autre problème, la
 compilation est répétée en entier à chaque résolution. Nous présentons
 \texttt{SparseDiffEngine}, une bibliothèque logicielle C \emph{open source} qui forme la jacobienne et la
-hessienne directement à partir de la structure des expressions. Le calcul est divisé en deux
+hessienne directement à partir de la structure des expressions. Elle conserve les blocs denses
+des données dans deux nouvelles classes de matrices et les traite avec BLAS. Le calcul est divisé en deux
 phases, une idée qui remonte à la factorisation directe des matrices creuses et que les
 interfaces des solveurs d'optimisation non linéaire utilisent aussi.
 La phase symbolique s'exécute une seule fois par problème et détermine les structures
