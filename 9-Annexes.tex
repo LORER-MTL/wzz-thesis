@@ -341,9 +341,8 @@ Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the
 \texttt{CVXPY} backend on the ten families measured at five sizes. On seven of them, the ratio
 stays between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
 SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exception: its
-ratio grows from $0.78$ to $1.67$ between $s = 1/4$ and $s = 1$. At the larger sizes,
-\texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising, and on two more
-instances the correctness check does not fit in the limit, so their times are not reported.
+ratio grows from $0.78$ to $3.06$ between $s = 1/4$ and $s = 2$. At the larger sizes,
+\texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising.
 
 Table~\ref{tab:sensitivity-size-all} gives the three sizes measured on all $25$ problems. The
 ratio changes by at most $0.04$ between $s = 1/2$ and $s = 2$ on $18$ of the $20$ problems on
@@ -365,16 +364,15 @@ $\rho = 0.05$, and on HuberRegression at $\rho = 0.01$.
 \caption[Sensitivity to size, five sizes]{Ratio of the canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five runs, as the size
 of nine problems of the suite and of the \texttt{lasso} family is scaled by $s$. The column
-$s = 1$ repeats Table~\ref{tab:oneshot-compile}. ``cap'' denotes a \texttt{diffengine} run that
-exceeded the $20$~\si{\giga\byte} memory limit, and ``unchecked'' a size whose correctness check
-did not fit in the limit, so that its time is not reported.}
+$s = 1$ repeats Table~\ref{tab:oneshot-compile}, and ``cap'' denotes a \texttt{diffengine} run
+that exceeded the $20$~\si{\giga\byte} memory limit.}
 \label{tab:sensitivity-size}
 {\small
 \begin{tabular}{l rrrrr}
 \toprule
 Problem & $s = 1/4$ & $s = 1/2$ & $s = 1$ & $s = 2$ & $s = 4$ \\
 \midrule
-SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & unchecked \\
+SVMWithL1Regularization     & 0.15 & 0.14 & 0.14 & 0.15 & 0.16 \\
 FactorCovarianceModel       & 0.16 & 0.15 & 0.14 & 0.18 & 0.22 \\
 Yitzhaki                    & 0.13 & 0.15 & 0.14 & 0.14 & 0.13 \\
 SimpleQP                    & 0.15 & 0.15 & 0.15 & 0.16 & 0.16 \\
@@ -382,7 +380,7 @@ HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
 LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
 SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
 CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
-OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unchecked & cap \\
+OptimalAdvertising          & 0.78 & 1.09 & 1.67 & 3.06 & cap \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
 \bottomrule
 \end{tabular}}
@@ -393,8 +391,7 @@ OptimalAdvertising          & 0.78 & 1.09 & 1.67 & unchecked & cap \\
 \caption[Sensitivity to size, all problems]{Ratio of the canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five runs, as the size
 of the $25$ problems of the suite is scaled by $s$. The column $s = 1$ repeats
-Table~\ref{tab:oneshot-compile}, and ``cap'' and ``unchecked'' are as in
-Table~\ref{tab:sensitivity-size}.}
+Table~\ref{tab:oneshot-compile}, and ``cap'' is as in Table~\ref{tab:sensitivity-size}.}
 \label{tab:sensitivity-size-all}
 {\small
 \begin{tabular}{l rrr}
@@ -423,7 +420,7 @@ CVaR                        & 0.55 & 0.66 & cap \\
 Murray                      & 1.14 & 0.95 & 1.01 \\
 UnconstrainedQP             & 1.05 & 1.20 & 1.08 \\
 SDPSegfault1132             & 1.29 & 1.27 & cap \\
-OptimalAdvertising          & 1.09 & 1.67 & unchecked \\
+OptimalAdvertising          & 1.09 & 1.67 & 3.06 \\
 QuantumHilbertMatrix        & 1.17 & 1.85 & cap \\
 ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \bottomrule
