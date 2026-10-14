@@ -151,6 +151,10 @@ Table~\ref{tab:oneshot-compile} gives the first canonicalization of every backen
 problems. On five of them, the rewrite described in Chapter~\ref{sec:Theme2} changes the problem
 that the \texttt{CVXPY} backends receive, and Table~\ref{tab:app-ra} gives their times with and
 without it. Table~\ref{tab:oneshot-compile} reports the faster of the two.
+Table~\ref{tab:app-memory} gives the peak memory behind Figure~\ref{fig:profiles}b, and
+Table~\ref{tab:app-warm} the re-solve times of Table~\ref{tab:param-tensor} with their standard
+deviations, together with a full recompilation by \texttt{CVXPY} and the re-solve of
+\texttt{diffengine} without its split.
 
 \begin{table}[htbp]
 \centering
@@ -179,38 +183,6 @@ QuantumHilbertMatrix & without & 1\,060 $\pm$ 2 & 804 $\pm$ 6 & 789 $\pm$ 9 \\
 \bottomrule
 \end{tabular}}
 \end{table}
-
-{\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{longtable}{l rr rr l}
-\caption[Re-solve, all variants]{Re-solve time in milliseconds on the seven \ac{DPP}
-problems: the cached tensor of \texttt{CVXPY}, a full canonicalization on the
-\texttt{ignore\_dpp} path, both with the fastest backend, and \texttt{diffengine} with and
-without its split. The ratio is the median time without the split over that with it, marked
-with~$^{*}$ when the difference is significant (Mann--Whitney, Holm-adjusted $p < 0.05$).}
-\label{tab:app-warm}\\
-\toprule
-& \multicolumn{2}{c}{\texttt{CVXPY}} & \multicolumn{3}{c}{\texttt{diffengine}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-6}
-Benchmark & tensor & recompile & cached & no split & Ratio \\
-\midrule
-\endfirsthead
-\toprule
-Benchmark & tensor & recompile & cached & no split & Ratio \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-ParamSmallMatrixStuffing & 1.84 $\pm$ 0.01 & 57.7 $\pm$ 0.3 & 0.480 $\pm$ 0.008 & 4.07 $\pm$ 0.04 & 8.48$^{*}$ \\
-ParamConeMatrixStuffing & 0.960 $\pm$ 0.006 & 38.3 $\pm$ 1.7 & 0.305 $\pm$ 0.004 & 2.68 $\pm$ 0.02 & 8.79$^{*}$ \\
-SimpleFullyParametrizedLP & 46.8 $\pm$ 0.1 & 520 $\pm$ 2 & 52.7 $\pm$ 0.2 & 84.3 $\pm$ 0.6 & 1.60$^{*}$ \\
-ParametrizedQP & 306 $\pm$ 12 & 2\,866 $\pm$ 22 & 425 $\pm$ 8 & 561 $\pm$ 14 & 1.33$^{*}$ \\
-SimpleScalarParametrizedLP & 62.9 $\pm$ 0.6 & 1\,078 $\pm$ 2 & 104 $\pm$ 1 & 167 $\pm$ 1 & 1.60$^{*}$ \\
-FactorCovarianceModel & 20.6 $\pm$ 0.1 & 1\,138 $\pm$ 2 & 80.6 $\pm$ 0.1 & 129 $\pm$ 0.3 & 1.60$^{*}$ \\
-SVMWithL1Regularization & 38.3 $\pm$ 0.1 & 2\,569 $\pm$ 5 & 153 $\pm$ 1 & 272 $\pm$ 1 & 1.78$^{*}$ \\
-\midrule
-\textbf{Geometric mean} & & & & & \textbf{2.56} \\
-\end{longtable}}
 
 {\small
 \begin{longtable}{l rrrrr}
@@ -253,6 +225,38 @@ SDPSegfault1132 & 7\,537 & 3\,460 & 12\,983 & 9\,254 & 11\,186 \\
 OptimalAdvertising & 173 & 181 & 197 & 6\,066 & 945 \\
 QuantumHilbertMatrix & 222 & 218 & 288 & 910 & 910 \\
 ConvexPlasticity & 82.5 & 82.4 & 82.5 & 1\,330 & 25.6 \\
+\end{longtable}}
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{l rr rr l}
+\caption[Re-solve, all variants]{Re-solve time in milliseconds on the seven \ac{DPP}
+problems: the cached tensor of \texttt{CVXPY}, a full canonicalization on the
+\texttt{ignore\_dpp} path, both with the fastest backend, and \texttt{diffengine} with and
+without its split. The ratio is the median time without the split over that with it, marked
+with~$^{*}$ when the difference is significant (Mann--Whitney, Holm-adjusted $p < 0.05$).}
+\label{tab:app-warm}\\
+\toprule
+& \multicolumn{2}{c}{\texttt{CVXPY}} & \multicolumn{3}{c}{\texttt{diffengine}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}
+Benchmark & tensor & recompile & cached & no split & Ratio \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & tensor & recompile & cached & no split & Ratio \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+ParamSmallMatrixStuffing & 1.84 $\pm$ 0.01 & 57.7 $\pm$ 0.3 & 0.480 $\pm$ 0.008 & 4.07 $\pm$ 0.04 & 8.48$^{*}$ \\
+ParamConeMatrixStuffing & 0.960 $\pm$ 0.006 & 38.3 $\pm$ 1.7 & 0.305 $\pm$ 0.004 & 2.68 $\pm$ 0.02 & 8.79$^{*}$ \\
+SimpleFullyParametrizedLP & 46.8 $\pm$ 0.1 & 520 $\pm$ 2 & 52.7 $\pm$ 0.2 & 84.3 $\pm$ 0.6 & 1.60$^{*}$ \\
+ParametrizedQP & 306 $\pm$ 12 & 2\,866 $\pm$ 22 & 425 $\pm$ 8 & 561 $\pm$ 14 & 1.33$^{*}$ \\
+SimpleScalarParametrizedLP & 62.9 $\pm$ 0.6 & 1\,078 $\pm$ 2 & 104 $\pm$ 1 & 167 $\pm$ 1 & 1.60$^{*}$ \\
+FactorCovarianceModel & 20.6 $\pm$ 0.1 & 1\,138 $\pm$ 2 & 80.6 $\pm$ 0.1 & 129 $\pm$ 0.3 & 1.60$^{*}$ \\
+SVMWithL1Regularization & 38.3 $\pm$ 0.1 & 2\,569 $\pm$ 5 & 153 $\pm$ 1 & 272 $\pm$ 1 & 1.78$^{*}$ \\
+\midrule
+\textbf{Geometric mean} & & & & & \textbf{2.56} \\
 \end{longtable}}
 
 \section{Ablation}
