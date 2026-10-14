@@ -130,9 +130,10 @@ Keeping dense blocks inside a sparse matrix is not a new idea. Finite-element co
 assemble dense element matrices into a sparse global matrix, and nonlinear least-squares
 libraries such as \texttt{Ceres}~\cite{agarwal2023ceres} and \texttt{g2o}~\cite{kummerle2011g2o}
 store the block-sparse Jacobians of bundle adjustment as dense blocks.
-Our representations differ in where the blocks sit. A permuted dense matrix places one
-block at arbitrary rows and columns, and a stacked matrix places several at disjoint rows,
-and the symbolic pass computes these rows and columns.
+In those codes, the position of each block follows from the structure of the problem, one
+element or one residual at a time. In our representations, the symbolic pass derives it from
+the expression tree. A permuted dense matrix holds one dense block on any subset of rows and
+columns, and a stacked permuted dense matrix holds several, each on its own set of rows.
 
 \subsection{Sparse matrix}\label{sec:theme1-generic-sparse}
 
