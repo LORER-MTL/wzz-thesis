@@ -341,7 +341,7 @@ Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the
 \texttt{CVXPY} backend on the ten families measured at five sizes. On seven of them, the ratio
 stays between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
 SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exception: its
-ratio grows from $0.78$ to $3.06$ between $s = 1/4$ and $s = 2$. At the larger sizes,
+ratio grows from $0.78$ to $3.10$ between $s = 1/4$ and $s = 2$. At the larger sizes,
 \texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising.
 
 Table~\ref{tab:sensitivity-size-all} gives the three sizes measured on all $25$ problems. The
@@ -380,7 +380,7 @@ HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
 LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
 SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
 CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
-OptimalAdvertising          & 0.78 & 1.09 & 1.67 & 3.06 & cap \\
+OptimalAdvertising          & 0.78 & 1.09 & 1.67 & 3.10 & cap \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
 \bottomrule
 \end{tabular}}
@@ -420,7 +420,7 @@ CVaR                        & 0.55 & 0.66 & cap \\
 Murray                      & 1.14 & 0.95 & 1.01 \\
 UnconstrainedQP             & 1.05 & 1.20 & 1.08 \\
 SDPSegfault1132             & 1.29 & 1.27 & cap \\
-OptimalAdvertising          & 1.09 & 1.67 & 3.06 \\
+OptimalAdvertising          & 1.09 & 1.67 & 3.10 \\
 QuantumHilbertMatrix        & 1.17 & 1.85 & cap \\
 ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \bottomrule
