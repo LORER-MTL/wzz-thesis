@@ -53,7 +53,6 @@ chain of matrix products that ends in a constant, for example $(\mmat{A}\mmat{B}
 into $\mmat{A}(\mmat{B}\mvec{c})$. The rewrite is not part of version 1.9.2 and would speed
 up \texttt{CVXPY}'s backends too, so we also apply it before them on the five problems where
 it applies, and credit each \texttt{CVXPY} backend with the faster of its two times.
-Appendix~\ref{app:protocol} gives the details.
 
 Each measurement times one call to \texttt{get\_problem\_data} with
 \texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 30
@@ -79,8 +78,7 @@ Before any timing, we check that every backend produces the same problem data. T
 matrices $\mmat{P}$ and $\mmat{A}$ and the vectors $\mvec{c}$ and $\mvec{b}$ of
 \texttt{diffengine} are compared with those of \texttt{CPP} to a relative tolerance of
 $10^{-9}$, at the first canonicalization and after a parameter update. Every problem of this
-chapter passes. Appendix~\ref{app:protocol} gives the protocol, the versions, and the result
-of the check on each problem. The benchmark scripts and all recorded timings are available at
+chapter passes. The benchmark scripts and all recorded timings are available at
 \begin{center}
   \url{https://github.com/SparseDifferentiation/canonicalization-benchmarks}
 \end{center}
