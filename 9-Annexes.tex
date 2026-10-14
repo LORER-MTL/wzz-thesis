@@ -159,7 +159,9 @@ The \texttt{CVXPY} columns of Table~\ref{tab:app-cold} are measured without the 
 \begin{longtable}{l rrrrr r}
 \caption[First canonicalization, all backends]{First canonicalization on the
 \texttt{ignore\_dpp} path, in milliseconds, with the dense-block ablation, and the Holm-adjusted
-$p$-value of \texttt{diffengine} against the best \texttt{CVXPY} backend.}
+$p$-value of \texttt{diffengine} against the best \texttt{CVXPY} backend. On every problem,
+every replicate of one backend is faster than every replicate of the other, so the test gives
+its smallest possible $p$-value for $20$ replicates, and the $p$-values are equal.}
 \label{tab:app-cold}\\
 \toprule
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
