@@ -37,9 +37,9 @@ available as a pull request:
 \begin{center}
   \url{https://github.com/cvxpy/cvxpy/pull/3448}
 \end{center}
-This pull request has since been merged into the main branch of \texttt{CVXPY}, on
-September 9, 2026, as an opt-in backend for parameter-free problems. The parametric re-solve
-path of \S\ref{sec:bench-param} is not yet integrated into \texttt{CVXPY}.
+This pull request was merged into \texttt{CVXPY} on September 9, 2026, as an opt-in backend
+for parameter-free problems; the parametric re-solve path of \S\ref{sec:bench-param} is not
+yet integrated.
 The author also contributed to the \texttt{SCIPY} and \texttt{COO} backends that
 \texttt{diffengine} is compared against.
 The \texttt{diffengine} branch also reassociates a chain of matrix products that ends in a
@@ -58,9 +58,9 @@ Mann--Whitney $U$ test~\cite{mann1947}, with $p$-values adjusted for the number 
 the comparison by the Holm--Bonferroni method~\cite{holm1979}. Before any timing, we check that the problem data of
 \texttt{diffengine} matches that of \texttt{CPP} to a relative tolerance of $10^{-9}$, at the
 first canonicalization and after a parameter update. The one exception is OptimalAdvertising,
-whose generator divides zero by zero and gives the problem one coefficient equal to NaN. Both
-backends carry it into $1000$ entries of $\mmat{A}$, and \texttt{diffengine}, which obtains
-$\mvec{b}$ by evaluating the constraints at the origin, also into one entry of $\mvec{b}$.
+whose generator divides zero by zero and gives one coefficient equal to NaN; \texttt{diffengine},
+which obtains $\mvec{b}$ by evaluating the constraints at the origin, carries it into one entry
+of $\mvec{b}$ as well as into $\mmat{A}$.
 The benchmark scripts and all recorded timings are available at
 \begin{center}
   \url{https://github.com/SparseDifferentiation/canonicalization-benchmarks}
