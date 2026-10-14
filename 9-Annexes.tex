@@ -149,8 +149,8 @@ This appendix gives every measurement behind the tables of Chapter~\ref{sec:Them
 mean $\pm$ standard deviation of the replicates, in milliseconds. The $p$-values compare
 \texttt{diffengine} with the best \texttt{CVXPY} backend of each problem, with the
 Mann--Whitney test, adjusted with the Holm--Bonferroni method across the $25$ problems.
-The \texttt{CVXPY} columns of Table~\ref{tab:app-cold} are measured without the rewrite of
-\S\ref{sec:bench-setup}, and Table~\ref{tab:app-ra} gives the times with it.
+The \texttt{CVXPY} columns of Table~\ref{tab:app-cold} are measured without the rewrite
+described in Chapter~\ref{sec:Theme2}, and Table~\ref{tab:app-ra} gives the times with it.
 
 \begin{landscape}
 \setlength\LTcapwidth{\linewidth}
@@ -206,7 +206,7 @@ ConvexPlasticity & 78.8 $\pm$ 1.1 & 74.6 $\pm$ 0.8 & 71.8 $\pm$ 1.2 & 499 $\pm$ 
 {\small
 \begin{longtable}{l rrr}
 \caption[First canonicalization with the rewrite]{First canonicalization of the five problems
-on which the rewrite of \S\ref{sec:bench-setup} applies, in milliseconds, with the rewrite applied
+on which the rewrite described in Chapter~\ref{sec:Theme2} applies, in milliseconds, with the rewrite applied
 to the problem before each \texttt{CVXPY} backend.}\label{tab:app-ra}\\
 \toprule
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
@@ -344,7 +344,7 @@ characteristics of the problem, we vary them on the suite problems themselves, a
 Appendix~\ref{app:extra-problems} describes. Each problem is rescaled by a factor $s$ on its
 dimensions, which multiplies the number of nonzeros of its data by about $s$. Nine
 problems and the parameter-free \texttt{lasso} family are measured at
-$s \in \{1/4, 1/2, 1, 2, 4\}$. On five problems with a dense data
+$s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five problems with a dense data
 matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
 $\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five replicates.
 
@@ -355,6 +355,13 @@ SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exc
 ratio grows from $0.78$ to $1.67$ between $s = 1/4$ and $s = 1$. At the larger sizes,
 \texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising, and on two more
 instances the correctness check does not fit in the limit, so their times are not reported.
+
+Table~\ref{tab:sensitivity-size25} reports the same ratio on all $25$ problems. On $18$ of the
+$20$ problems on which \texttt{diffengine} is the fastest at $s = 1$, the ratio changes by at
+most $0.04$ between $s = 1/2$ and $s = 2$. CVaR goes from $0.55$ at $s = 1/2$ to the memory
+limit at $s = 2$, and Murray, at $0.95$ for $s = 1$, is slower at the other two sizes, at $1.14$ and $1.01$. On the
+five problems on which \texttt{diffengine} is slower, it stays slower at every size it
+completes, and on ConvexPlasticity the ratio grows from $5.29$ to $8.68$.
 
 Table~\ref{tab:sensitivity-density} reports the ratio as the density falls. On all five
 problems, \texttt{diffengine}'s advantage shrinks, from a ratio of $0.14$ to $0.17$ on dense
@@ -387,6 +394,48 @@ Yitzhaki                    & 0.13 & 0.15 & 0.14 & 0.14 & 0.13 \\
 CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
 SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption[Sensitivity to size, all problems]{Ratio of the canonicalization time of
+\texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five replicates,
+as the size of the $25$ problems of the suite is scaled by $s$. The column $s = 1$ repeats
+Table~\ref{tab:oneshot-compile}. ``cap'' and ``unv.'' are as in
+Table~\ref{tab:sensitivity-size}.}
+\label{tab:sensitivity-size25}
+{\small
+\begin{tabular}{l rrr}
+\toprule
+Problem & $s = 1/2$ & $s = 1$ & $s = 2$ \\
+\midrule
+SVMWithL1Regularization     & 0.14 & 0.14 & 0.15 \\
+FactorCovarianceModel       & 0.15 & 0.14 & 0.18 \\
+Yitzhaki                    & 0.15 & 0.14 & 0.14 \\
+SimpleQP                    & 0.15 & 0.15 & 0.16 \\
+HuberRegression             & 0.18 & 0.17 & 0.17 \\
+LeastSquares                & 0.15 & 0.17 & 0.17 \\
+SimpleLP                    & 0.19 & 0.18 & 0.17 \\
+SimpleScalarParametrizedLP  & 0.21 & 0.20 & 0.20 \\
+SimpleFullyParametrizedLP   & 0.22 & 0.21 & 0.20 \\
+SlowPruning                 & 0.21 & 0.22 & 0.21 \\
+ParametrizedQP              & 0.23 & 0.24 & 0.23 \\
+Cajas                       & 0.29 & 0.29 & 0.27 \\
+ConeMatrixStuffing          & 0.31 & 0.30 & 0.29 \\
+SmallMatrixStuffing         & 0.29 & 0.30 & 0.27 \\
+TvInpainting                & 0.31 & 0.30 & 0.30 \\
+ParamSmallMatrixStuffing    & 0.52 & 0.52 & 0.51 \\
+ParamConeMatrixStuffing     & 0.51 & 0.53 & 0.53 \\
+SemidefiniteProgramming     & 0.61 & 0.63 & 0.63 \\
+CVaR                        & 0.55 & 0.66 & cap \\
+Murray                      & 1.14 & 0.95 & 1.01 \\
+UnconstrainedQP             & 1.05 & 1.20 & 1.08 \\
+SDPSegfault1132             & 1.29 & 1.27 & cap \\
+OptimalAdvertising          & 1.09 & 1.67 & unv. \\
+QuantumHilbertMatrix        & 1.17 & 1.85 & cap \\
+ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \bottomrule
 \end{tabular}}
 \end{table}
