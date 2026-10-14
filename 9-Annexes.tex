@@ -29,12 +29,8 @@ the reductions. The column ``params'' counts the parameter objects of the proble
 entries, and the last column says whether the problem is \ac{DPP}. A dash denotes a problem
 without a quadratic objective or without parameters.
 
-% TODO(final runs): regenerate the dimension columns from the `dims' field of the final
-% runs (thesis_final_benchmarks.py). Current values: sparsity_metrics.json (2026-08-11).
-% ConvexPlasticity's nnz(P) predates the quad-form fix (true pattern about 33 k).
-% CHECK ConvexPlasticity's DPP column: CVXPY's is_dpp() is True, but the harness sends it
-% down the non-DPP branch (run_backend_benchmarks.py:245-256), which is why it is not in
-% Table 4.2.
+% Dimensions checked against the `dims' field of the final runs (results/thesis-pr3524).
+% ConvexPlasticity: CVXPY 1.9.2's DPP targets refuse it as not DPP in the final runs.
 \begin{landscape}
 \setlength\LTcapwidth{\linewidth}
 {\footnotesize
@@ -76,45 +72,56 @@ Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix 
 CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
 OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
 SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
-ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. & 36\,k & 33\,k & 72\,k & \tbd{9.05\,M} & 3 & \tbd{no} \\
+ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & no \\
 \end{longtable}}
 \end{landscape}
 
 \section{Additional problem families}\label{app:extra-problems}
 
-The experiments of \S\ref{sec:bench-nondpp} and \S\ref{sec:bench-sensitivity} use four
-problem families beyond the suite. Each is generated from a size and a random seed, with
-standard normal data unless stated otherwise.
+The experiments of \S\ref{sec:bench-nondpp} and \S\ref{sec:bench-sensitivity} use two
+problem families beyond the suite, and rescaled versions of the suite problems. Each family
+is generated from a size and a random seed, with standard normal data unless stated
+otherwise.
 
 The \texttt{lasso} family minimizes
 \BEQ\label{eq:lasso-family}
 \lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2 + \lambda \lVert \mvec{x} \rVert_1
 \EEQ
-over $\mvec{x} \in \reals^n$, with $\mmat{A} \in \reals^{2n \times n}$. In the sensitivity
-experiment, a fraction $1 - \rho$ of the entries of $\mmat{A}$ is set to zero, with
-$n \in \{100, 300, 1000, 3000\}$ and $\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. In the
-\ac{DPP} variant, $\mvec{b}$ and $\lambda$ are parameters. In the non-\ac{DPP} variant,
+over $\mvec{x} \in \reals^n$, with $\mmat{A} \in \reals^{2n \times n}$. In the \ac{DPP}
+variant, $\mvec{b}$ and $\lambda$ are parameters. In the non-\ac{DPP} variant,
 $\lambda$ is replaced by the product $\alpha\lambda$ of two parameters, which \ac{DPP}
 forbids, with $\alpha = 1$. In the parameter-free variant, both are constants.
-
 The \texttt{factor\_cov} family is FactorCovarianceModel with $n$ assets and
 $\max(\lfloor n/100 \rfloor, 2)$ factors. Its risk aversion $\gamma$ is a parameter in the
 \ac{DPP} variant, the product $\gamma\delta$ of two parameters in the non-\ac{DPP} variant,
-and a constant in the parameter-free variant. The \texttt{huber} and \texttt{advertising}
-families are HuberRegression with $n$ features and $1.5n$ samples, and OptimalAdvertising
-with $n$ time slots and $\max(\lfloor n/4 \rfloor, 2)$ advertisers, both parameter-free.
-The scaling experiment uses $n \in \{300, 1000, 3000, 6000\}$ for \texttt{huber},
-$n \in \{200, 500, 1000, 2000\}$ for \texttt{advertising}, and
-$n \in \{1000, 5000, 25\,000, 50\,000\}$ for \texttt{factor\_cov}, each with five seeds.
+and a constant in the parameter-free variant.
+
+The sensitivity experiment rescales the problems of the suite. Each problem fixes its sizes
+as literals in its source, and the rescaled version multiplies these literals by a factor
+$s$ before the problem is built, so that its data has about $s$ times as many nonzeros. All
+$25$ problems are rescaled with $s \in \{1/2, 2\}$. Nine of them, HuberRegression,
+FactorCovarianceModel, OptimalAdvertising, SVMWithL1Regularization, LeastSquares, SimpleQP,
+Yitzhaki, CVaR and SemidefiniteProgramming, are also rescaled with $s \in \{1/4, 4\}$, and
+the parameter-free \texttt{lasso} family is measured at $n \in \{250, 500, 1000, 2000,
+4000\}$. For the density experiment, the data matrix of LeastSquares, HuberRegression,
+SVMWithL1Regularization and SimpleQP, and the matrix $\mmat{A}$ of \texttt{lasso} with
+$n = 1000$, is multiplied entrywise by a random $0/1$ mask with a fraction $\rho$ of ones,
+drawn from its own generator so that the other data is unchanged. The masked matrix stays a
+dense array.
 
 % ------------------------------------------------------------------------------------------
 \Annexe{EXPERIMENTAL PROTOCOL}\label{app:protocol}
 
-\textbf{Environment.} \tbd{Apple M2, XX GB of memory, macOS XX, Python XX, NumPy XX, SciPy
-XX, Clarabel XX}. The \texttt{CVXPY} backends run on the released \texttt{CVXPY}~1.9.2.
-\texttt{diffengine} runs on the branch \texttt{thesis-ablation} of \texttt{CVXPY}, at commit
-\tbd{XX}, with \texttt{SparseDiffEngine} at commit \tbd{64f7432}, built against Apple's
-Accelerate framework. The number of OpenMP and \ac{BLAS} threads is set to one through
+\textbf{Environment.} The machine is an Apple M2 with $24$~\si{\giga\byte} of memory,
+under macOS~26.5.1, with Python~3.13.5, NumPy~2.5.3, SciPy~1.18.1 and
+\texttt{Clarabel}~0.11.1. The \texttt{CVXPY}
+backends run on the released \texttt{CVXPY}~1.9.2. \texttt{diffengine} runs on the branch
+\texttt{thesis-ablation-pr3524} of \texttt{CVXPY}, at commit \texttt{5c07151}, with
+\texttt{SparseDiffEngine} at commit \texttt{4f42e05}, built against Apple's Accelerate
+framework. The commit \texttt{5c07151} adds the rewrite of \texttt{CVXPY} pull
+request~3524 to its parent \texttt{35e81b1}, on which Murray, Cajas,
+SemidefiniteProgramming, TvInpainting and the families of \S\ref{sec:bench-nondpp} were
+measured. The number of OpenMP and \ac{BLAS} threads is set to one through
 four environment variables:
 \begin{center}
 \small\texttt{OMP\_NUM\_THREADS}, \texttt{OPENBLAS\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS},
@@ -124,11 +131,19 @@ The machine runs on mains power with no other application open.
 
 \textbf{Timing.} Each replicate is a new Python process that builds the problem, assigns its
 parameters, and times one call to \texttt{get\_problem\_data} with \texttt{time.perf\_counter}.
-The process is killed after $30$ minutes. A measurement has $20$ replicates, or $5$ when the
-first one exceeds $30$ seconds. Replicate $k$ draws its parameter values from seed $k$, so
+The process is killed after $30$ minutes, or when its memory exceeds
+$20$~\si{\giga\byte}. A measurement has $20$ replicates, or $10$ when the first one exceeds
+$30$ seconds, which none did. Replicate $k$ draws its parameter values from seed $k$, so
 the parametric problems change instance from one replicate to the next. A re-solve
 replicate runs one first canonicalization, then five parameter updates, each followed by a
 timed call, and records the median of the five.
+
+\textbf{Rewrite of the \texttt{CVXPY} backends.} On UnconstrainedQP,
+QuantumHilbertMatrix, SDPSegfault1132, OptimalAdvertising and SlowPruning, the five problems
+on which it applies, the rewrite of pull request~3524 is also applied to the problem before
+\texttt{CPP}, \texttt{SCIPY} and \texttt{COO} canonicalize it, inside the timed call. It
+takes less than $2$ milliseconds. The problem data of the rewritten problem is checked
+against that of \texttt{CPP} on the original problem, with the test below.
 
 \textbf{Phases.} The branch times the phases of \texttt{diffengine} with wall-clock timers
 around the conversion of the expressions, the symbolic pass, the numeric pass, the assembly
@@ -138,7 +153,9 @@ is the rest of the call.
 \textbf{Ablation switches.} With \texttt{DIFFENGINE\_NO\_DENSE=1}, the converters of the
 matrix product and of the quadratic form pass every constant matrix to the engine in the
 compressed sparse row format, so no permuted dense block is built from constant data.
-Parametric matrices keep the dense format. With \texttt{DIFFENGINE\_REBUILD=1}, every
+Parametric matrices keep the dense format. The fully sparse variant of
+Table~\ref{tab:ablation} sets the same switch and evaluates the parameters before the
+canonicalization, so that every matrix is constant. With \texttt{DIFFENGINE\_REBUILD=1}, every
 parameter update discards the engine's problem and builds it again, repeating the
 conversion and the symbolic pass before the numeric pass.
 
@@ -148,63 +165,69 @@ collection. On a re-solve, the measurement covers the five updates after the fir
 canonicalization.
 
 \textbf{Correctness.} For each problem, the problem data $(\mmat{P}, \mvec{c}, \mmat{A},
-\mvec{b})$ of \texttt{diffengine}, of its two ablation variants and of \texttt{SCIPY} and
-\texttt{COO} is compared with that of \texttt{CPP} at the same parameter values. Explicit
+\mvec{b})$ of \texttt{diffengine}, of its ablation variants and of \texttt{SCIPY} and
+\texttt{COO} is compared with that of \texttt{CPP} at the same parameter values. On a
+parametric problem, the reference is \texttt{CPP} on the problem with its parameters
+evaluated. Explicit
 zeros are removed first. Two results are equal when the largest absolute difference is at
 most $10^{-9}$ times the largest magnitude of the reference, or $10^{-9}$ when that
 magnitude is below one. Parametric problems are checked twice, at the first
-canonicalization and after a parameter update. Table~\ref{tab:verify} gives the result.
+canonicalization and after a parameter update. Table~\ref{tab:verify} gives the result. The
+rescaled problems of \S\ref{sec:bench-sensitivity} are checked in the same way. On seven of
+them, the check needs more than $20$~\si{\giga\byte}, so their times are not reported.
 
 {\small
-\begin{longtable}{l c c r}
+\begin{longtable}{l c c r r}
 \caption[Correctness check of the problem data]{Result of the correctness check on every
-problem, at the first canonicalization and after a parameter update, and the largest
-relative difference over all the compared backends.}\label{tab:verify}\\
+problem, at the first canonicalization and after a parameter update, the number of checks
+passed over all compared backends and variants, and the largest absolute difference.}
+\label{tab:verify}\\
 \toprule
-Benchmark & First & After update & Largest difference \\
+Benchmark & First & After update & Checks & Largest difference \\
 \midrule
 \endfirsthead
 \toprule
-Benchmark & First & After update & Largest difference \\
+Benchmark & First & After update & Checks & Largest difference \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
-UnconstrainedQP & \tbd{pass} & --- & \tbd{XX} \\
-LeastSquares & \tbd{pass} & --- & \tbd{XX} \\
-Yitzhaki & \tbd{pass} & --- & \tbd{XX} \\
-HuberRegression & \tbd{pass} & --- & \tbd{XX} \\
-SimpleQP & \tbd{pass} & --- & \tbd{XX} \\
-FactorCovarianceModel & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-SimpleLP & \tbd{pass} & --- & \tbd{XX} \\
-SVMWithL1Regularization & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-SimpleScalarParametrizedLP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-SimpleFullyParametrizedLP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-ParametrizedQP & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-TvInpainting & \tbd{pass} & --- & \tbd{XX} \\
-Cajas & \tbd{pass} & --- & \tbd{XX} \\
-SlowPruning & \tbd{pass} & --- & \tbd{XX} \\
-SmallMatrixStuffing & \tbd{pass} & --- & \tbd{XX} \\
-QuantumHilbertMatrix & \tbd{pass} & --- & \tbd{XX} \\
-ConeMatrixStuffing & \tbd{pass} & --- & \tbd{XX} \\
-ParamSmallMatrixStuffing & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-ParamConeMatrixStuffing & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
-SemidefiniteProgramming & \tbd{pass} & --- & \tbd{XX} \\
-Murray & \tbd{pass} & --- & \tbd{XX} \\
-CVaR & \tbd{pass} & --- & \tbd{XX} \\
-OptimalAdvertising & \tbd{pass} & --- & \tbd{XX} \\
-SDPSegfault1132 & \tbd{pass} & --- & \tbd{XX} \\
-ConvexPlasticity & \tbd{pass} & \tbd{pass} & \tbd{XX} \\
+SVMWithL1Regularization & pass & pass & 20/20 & 0 \\
+FactorCovarianceModel & pass & pass & 20/20 & 0 \\
+Yitzhaki & pass & --- & 4/4 & 0 \\
+SimpleQP & pass & --- & 4/4 & 0 \\
+HuberRegression & pass & --- & 4/4 & 0 \\
+LeastSquares & pass & --- & 4/4 & 0 \\
+SimpleLP & pass & --- & 4/4 & 0 \\
+SimpleScalarParametrizedLP & pass & pass & 20/20 & 0 \\
+SimpleFullyParametrizedLP & pass & pass & 20/20 & 0 \\
+SlowPruning & pass & --- & 3/3 & 0 \\
+ParametrizedQP & pass & pass & 20/20 & 0 \\
+Cajas & pass & --- & 4/4 & 0 \\
+ConeMatrixStuffing & pass & --- & 4/4 & $1.3 \times 10^{-12}$ \\
+SmallMatrixStuffing & pass & --- & 4/4 & $1.1 \times 10^{-12}$ \\
+TvInpainting & pass & --- & 4/4 & 0 \\
+ParamSmallMatrixStuffing & pass & pass & 20/20 & $7.1 \times 10^{-14}$ \\
+ParamConeMatrixStuffing & pass & pass & 20/20 & $3.6 \times 10^{-14}$ \\
+SemidefiniteProgramming & pass & --- & 4/4 & 0 \\
+CVaR & pass & --- & 4/4 & 0 \\
+Murray & pass & --- & 4/4 & 0 \\
+UnconstrainedQP & pass & --- & 3/3 & $1.7 \times 10^{-13}$ \\
+SDPSegfault1132 & pass & --- & 3/3 & $2.2 \times 10^{-16}$ \\
+OptimalAdvertising & pass & --- & 3/3 & 0 \\
+QuantumHilbertMatrix & pass & --- & 3/3 & 0 \\
+ConvexPlasticity & pass & pass & 20/20 & $5.6 \times 10^{-17}$ \\
 \end{longtable}}
 
 % ------------------------------------------------------------------------------------------
 \Annexe{COMPLETE RESULTS}\label{app:results}
 
 This appendix gives every measurement behind the tables of Chapter~\ref{sec:Theme2}, as the
-mean $\pm$ standard deviation of the replicates, in seconds. The $p$-values compare
+mean $\pm$ standard deviation of the replicates, in milliseconds. The $p$-values compare
 \texttt{diffengine} with the best \texttt{CVXPY} backend of each problem, with the
 Mann--Whitney test, adjusted with the Holm--Bonferroni method across the $25$ problems.
-% TODO(final runs): the rows below are generated from thesis_stats.py's CSV files.
+The \texttt{CVXPY} columns of Table~\ref{tab:app-cold} are measured without the rewrite of
+\S\ref{sec:bench-setup}, and Table~\ref{tab:app-ra} gives the times with it.
 
 \begin{landscape}
 \setlength\LTcapwidth{\linewidth}
@@ -212,7 +235,7 @@ Mann--Whitney test, adjusted with the Holm--Bonferroni method across the $25$ pr
 \setlength{\tabcolsep}{4pt}
 \begin{longtable}{l rrrrr r}
 \caption[First canonicalization, all backends]{First canonicalization on the
-\texttt{ignore\_dpp} path, in seconds, with the dense-block ablation, and the Holm-adjusted
+\texttt{ignore\_dpp} path, in milliseconds, with the dense-block ablation, and the Holm-adjusted
 $p$-value of \texttt{diffengine} against the best \texttt{CVXPY} backend.}
 \label{tab:app-cold}\\
 \toprule
@@ -227,33 +250,55 @@ no dense blocks & $p$ \\
 \endhead
 \bottomrule
 \endfoot
-UnconstrainedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-LeastSquares & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-Yitzhaki & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-HuberRegression & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SimpleQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-FactorCovarianceModel & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SimpleLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SVMWithL1Regularization & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SimpleScalarParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SimpleFullyParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-ParametrizedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-TvInpainting & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-Cajas & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SlowPruning & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-QuantumHilbertMatrix & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-ConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-ParamSmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-ParamConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SemidefiniteProgramming & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-Murray & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-CVaR & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-OptimalAdvertising & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-SDPSegfault1132 & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
-ConvexPlasticity & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX} \\
+SVMWithL1Regularization & 2\,782 $\pm$ 12 & 2\,625 $\pm$ 6 & 2\,740 $\pm$ 9 & 363 $\pm$ 4 & 746 $\pm$ 3 & $1.7 \times 10^{-6}$ \\
+FactorCovarianceModel & 1\,205 $\pm$ 4 & 1\,161 $\pm$ 7 & 1\,151 $\pm$ 4 & 165 $\pm$ 1 & 347 $\pm$ 2 & $1.7 \times 10^{-6}$ \\
+Yitzhaki & 925 $\pm$ 10 & 979 $\pm$ 11 & 1\,000 $\pm$ 19 & 133 $\pm$ 0.5 & 253 $\pm$ 1 & $1.7 \times 10^{-6}$ \\
+SimpleQP & 2\,876 $\pm$ 10 & 2\,933 $\pm$ 6 & 2\,930 $\pm$ 6 & 433 $\pm$ 3 & 912 $\pm$ 4 & $1.7 \times 10^{-6}$ \\
+HuberRegression & 2\,746 $\pm$ 17 & 2\,858 $\pm$ 18 & 2\,804 $\pm$ 15 & 475 $\pm$ 2 & 1\,005 $\pm$ 7 & $1.7 \times 10^{-6}$ \\
+LeastSquares & 2\,402 $\pm$ 15 & 2\,903 $\pm$ 16 & 2\,939 $\pm$ 15 & 416 $\pm$ 2 & 898 $\pm$ 4 & $1.7 \times 10^{-6}$ \\
+SimpleLP & 6\,844 $\pm$ 11 & 6\,329 $\pm$ 27 & 5\,984 $\pm$ 16 & 1\,098 $\pm$ 7 & 1\,497 $\pm$ 10 & $1.7 \times 10^{-6}$ \\
+SimpleScalarParametrizedLP & 1\,266 $\pm$ 5 & 1\,149 $\pm$ 5 & 1\,087 $\pm$ 3 & 220 $\pm$ 1 & 214 $\pm$ 1 & $1.7 \times 10^{-6}$ \\
+SimpleFullyParametrizedLP & 613 $\pm$ 2 & 556 $\pm$ 1 & 525 $\pm$ 1 & 111 $\pm$ 0.2 & 109 $\pm$ 0.3 & $1.7 \times 10^{-6}$ \\
+SlowPruning & 1\,795 $\pm$ 13 & 2\,179 $\pm$ 4 & 2\,147 $\pm$ 7 & 393 $\pm$ 1 & 416 $\pm$ 1 & $1.7 \times 10^{-6}$ \\
+ParametrizedQP & 2\,971 $\pm$ 31 & 3\,011 $\pm$ 6 & 2\,991 $\pm$ 5 & 730 $\pm$ 48 & 726 $\pm$ 24 & $1.7 \times 10^{-6}$ \\
+Cajas & 3\,554 $\pm$ 30 & 683 $\pm$ 3 & 691 $\pm$ 3 & 201 $\pm$ 2 & 204 $\pm$ 1 & $1.7 \times 10^{-6}$ \\
+ConeMatrixStuffing & 2\,484 $\pm$ 20 & 2\,145 $\pm$ 15 & 3\,499 $\pm$ 12 & 634 $\pm$ 4 & 1\,913 $\pm$ 11 & $1.7 \times 10^{-6}$ \\
+SmallMatrixStuffing & 1\,664 $\pm$ 14 & 1\,818 $\pm$ 8 & 2\,490 $\pm$ 12 & 500 $\pm$ 6 & 1\,347 $\pm$ 6 & $1.7 \times 10^{-6}$ \\
+TvInpainting & 920 $\pm$ 3 & 908 $\pm$ 8 & 814 $\pm$ 2 & 244 $\pm$ 1 & 239 $\pm$ 1 & $1.7 \times 10^{-6}$ \\
+ParamSmallMatrixStuffing & 63.5 $\pm$ 0.5 & 128 $\pm$ 0.5 & 113 $\pm$ 1 & 32.9 $\pm$ 0.2 & 40.3 $\pm$ 0.2 & $1.7 \times 10^{-6}$ \\
+ParamConeMatrixStuffing & 42.8 $\pm$ 0.3 & 72.1 $\pm$ 0.4 & 89.0 $\pm$ 0.5 & 22.5 $\pm$ 0.1 & 27.3 $\pm$ 0.1 & $1.7 \times 10^{-6}$ \\
+SemidefiniteProgramming & 1\,169 $\pm$ 6 & 633 $\pm$ 2 & 996 $\pm$ 8 & 396 $\pm$ 3 & 396 $\pm$ 5 & $1.7 \times 10^{-6}$ \\
+CVaR & 7\,205 $\pm$ 17 & 6\,505 $\pm$ 20 & 6\,499 $\pm$ 33 & 4\,273 $\pm$ 55 & 2\,742 $\pm$ 77 & $1.7 \times 10^{-6}$ \\
+Murray & 1\,235 $\pm$ 10 & 1\,225 $\pm$ 7 & 1\,221 $\pm$ 7 & 1\,164 $\pm$ 2 & 1\,177 $\pm$ 7 & $1.7 \times 10^{-6}$ \\
+UnconstrainedQP & 1\,951 $\pm$ 5 & 1\,983 $\pm$ 8 & 2\,434 $\pm$ 11 & 15.9 $\pm$ 0.1 & 22.1 $\pm$ 0.2 & $1.7 \times 10^{-6}$ \\
+SDPSegfault1132 & 7\,979 $\pm$ 23 & 1\,510 $\pm$ 38 & 8\,929 $\pm$ 84 & 1\,903 $\pm$ 14 & 3\,294 $\pm$ 8 & $1.7 \times 10^{-6}$ \\
+OptimalAdvertising & 2\,577 $\pm$ 10 & 596 $\pm$ 7 & 535 $\pm$ 2 & 889 $\pm$ 7 & 837 $\pm$ 9 & $1.7 \times 10^{-6}$ \\
+QuantumHilbertMatrix & 1\,060 $\pm$ 2 & 804 $\pm$ 6 & 789 $\pm$ 9 & 492 $\pm$ 3 & 507 $\pm$ 5 & $1.7 \times 10^{-6}$ \\
+ConvexPlasticity & 78.8 $\pm$ 1.1 & 74.6 $\pm$ 0.8 & 71.8 $\pm$ 1.2 & 499 $\pm$ 7 & 98.4 $\pm$ 2.0 & $1.7 \times 10^{-6}$ \\
 \end{longtable}}
 \end{landscape}
+
+{\small
+\begin{longtable}{l rrr}
+\caption[First canonicalization with the rewrite]{First canonicalization of the five problems
+on which the rewrite of \S\ref{sec:bench-setup} applies, in milliseconds, with the rewrite applied
+to the problem before each \texttt{CVXPY} backend.}\label{tab:app-ra}\\
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+SlowPruning & 1\,781 $\pm$ 8 & 2\,174 $\pm$ 5 & 2\,158 $\pm$ 9 \\
+UnconstrainedQP & 13.2 $\pm$ 0.1 & 21.6 $\pm$ 0.1 & 25.0 $\pm$ 0.2 \\
+SDPSegfault1132 & 8\,036 $\pm$ 11 & 6\,781 $\pm$ 28 & 7\,816 $\pm$ 96 \\
+OptimalAdvertising & 2\,574 $\pm$ 8 & 594 $\pm$ 6 & 537 $\pm$ 6 \\
+QuantumHilbertMatrix & 267 $\pm$ 1 & 343 $\pm$ 2 & 448 $\pm$ 9 \\
+\end{longtable}}
 
 \begin{landscape}
 \setlength\LTcapwidth{\linewidth}
@@ -261,8 +306,9 @@ ConvexPlasticity & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \
 \setlength{\tabcolsep}{4pt}
 \begin{longtable}{l rrr rrr}
 \caption[Re-solve, all variants]{Re-solve time in milliseconds on the seven \ac{DPP}
-problems: the cached tensor of \texttt{CVXPY}, and \texttt{diffengine} with and without its
-dense representations and its split.}
+problems: the cached tensor of \texttt{CVXPY}, a full canonicalization on the
+\texttt{ignore\_dpp} path, both with the fastest backend, and \texttt{diffengine} with and
+without its dense representations and its split.}
 \label{tab:app-warm}\\
 \toprule
 & \multicolumn{2}{c}{\texttt{CVXPY}} & \multicolumn{4}{c}{\texttt{diffengine}} \\
@@ -276,13 +322,13 @@ Benchmark & tensor & recompile & cached & no dense blocks & no split & neither \
 \endhead
 \bottomrule
 \endfoot
-ParamSmallMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-ParamConeMatrixStuffing & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-SimpleFullyParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-ParametrizedQP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-SimpleScalarParametrizedLP & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-SVMWithL1Regularization & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
-FactorCovarianceModel & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} & \tbd{XX $\pm$ XX} \\
+ParamSmallMatrixStuffing & 1.84 $\pm$ 0.01 & 57.7 $\pm$ 0.3 & 0.480 $\pm$ 0.008 & 0.476 $\pm$ 0.034 & 4.07 $\pm$ 0.04 & 4.20 $\pm$ 0.04 \\
+ParamConeMatrixStuffing & 0.960 $\pm$ 0.006 & 38.3 $\pm$ 1.7 & 0.305 $\pm$ 0.004 & 0.300 $\pm$ 0.004 & 2.68 $\pm$ 0.02 & 2.67 $\pm$ 0.02 \\
+SimpleFullyParametrizedLP & 46.8 $\pm$ 0.1 & 520 $\pm$ 2 & 52.7 $\pm$ 0.2 & 52.7 $\pm$ 0.2 & 84.3 $\pm$ 0.6 & 84.1 $\pm$ 0.5 \\
+ParametrizedQP & 306 $\pm$ 12 & 2\,866 $\pm$ 22 & 425 $\pm$ 8 & 418 $\pm$ 6 & 561 $\pm$ 14 & 568 $\pm$ 20 \\
+SimpleScalarParametrizedLP & 62.9 $\pm$ 0.6 & 1\,078 $\pm$ 2 & 104 $\pm$ 1 & 104 $\pm$ 1 & 167 $\pm$ 1 & 167 $\pm$ 1 \\
+FactorCovarianceModel & 20.6 $\pm$ 0.1 & 1\,138 $\pm$ 2 & 80.6 $\pm$ 0.1 & 87.1 $\pm$ 0.1 & 129 $\pm$ 0.3 & 315 $\pm$ 1 \\
+SVMWithL1Regularization & 38.3 $\pm$ 0.1 & 2\,569 $\pm$ 5 & 153 $\pm$ 1 & 163 $\pm$ 0.3 & 272 $\pm$ 1 & 609 $\pm$ 6 \\
 \end{longtable}}
 \end{landscape}
 
@@ -302,38 +348,81 @@ no dense blocks \\
 \endhead
 \bottomrule
 \endfoot
-UnconstrainedQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-LeastSquares & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-Yitzhaki & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-HuberRegression & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SimpleQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-FactorCovarianceModel & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SimpleLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SVMWithL1Regularization & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SimpleScalarParametrizedLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SimpleFullyParametrizedLP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-ParametrizedQP & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-TvInpainting & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-Cajas & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SlowPruning & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SmallMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-QuantumHilbertMatrix & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-ConeMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-ParamSmallMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-ParamConeMatrixStuffing & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SemidefiniteProgramming & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-Murray & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-CVaR & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-OptimalAdvertising & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-SDPSegfault1132 & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
-ConvexPlasticity & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} & \tbd{XX} \\
+SVMWithL1Regularization & 1\,976 & 2\,042 & 2\,904 & 2\,034 & 2\,417 \\
+FactorCovarianceModel & 1\,129 & 1\,047 & 1\,334 & 760 & 999 \\
+Yitzhaki & 449 & 437 & 504 & 476 & 572 \\
+SimpleQP & 2\,194 & 2\,355 & 3\,236 & 1\,655 & 2\,204 \\
+HuberRegression & 2\,223 & 2\,246 & 3\,121 & 1\,413 & 1\,834 \\
+LeastSquares & 2\,140 & 2\,327 & 3\,021 & 1\,459 & 1\,894 \\
+SimpleLP & 5\,352 & 4\,961 & 5\,027 & 4\,792 & 5\,057 \\
+SimpleScalarParametrizedLP & 1\,088 & 1\,024 & 1\,068 & 1\,009 & 1\,009 \\
+SimpleFullyParametrizedLP & 517 & 494 & 526 & 492 & 492 \\
+SlowPruning & 1\,352 & 1\,425 & 1\,828 & 1\,797 & 1\,120 \\
+ParametrizedQP & 2\,035 & 2\,174 & 2\,998 & 1\,775 & 1\,776 \\
+Cajas & 1\,193 & 298 & 320 & 341 & 342 \\
+ConeMatrixStuffing & 2\,010 & 964 & 3\,730 & 479 & 1\,623 \\
+SmallMatrixStuffing & 1\,190 & 634 & 2\,405 & 322 & 1\,117 \\
+TvInpainting & 705 & 858 & 994 & 1\,048 & 1\,048 \\
+ParamSmallMatrixStuffing & 17.2 & 13.0 & 21.9 & 10.6 & 10.6 \\
+ParamConeMatrixStuffing & 9.7 & 8.3 & 12.3 & 5.9 & 6.2 \\
+SemidefiniteProgramming & 1\,317 & 350 & 640 & 1\,138 & 1\,138 \\
+CVaR & 4\,022 & 2\,804 & 3\,587 & 6\,283 & 2\,211 \\
+Murray & 2\,849 & 220 & 305 & 308 & 306 \\
+UnconstrainedQP & 1\,427 & 1\,058 & 2\,105 & 52.9 & 41.4 \\
+SDPSegfault1132 & 7\,537 & 3\,460 & 12\,983 & 9\,254 & 11\,186 \\
+OptimalAdvertising & 173 & 181 & 197 & 6\,066 & 945 \\
+QuantumHilbertMatrix & 222 & 218 & 288 & 910 & 910 \\
+ConvexPlasticity & 82.5 & 82.4 & 82.5 & 1\,330 & 25.6 \\
+\end{longtable}}
+
+{\small
+\begin{longtable}{l rrr}
+\caption[Sensitivity to size, all problems]{Ratio of the canonicalization time of
+\texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five replicates,
+with every problem of the suite scaled by $s$. ``cap'' and ``unv.'' are as in
+Table~\ref{tab:sensitivity-size}.}\label{tab:app-scaled}\\
+\toprule
+Benchmark & $s = 1/2$ & $s = 1$ & $s = 2$ \\
+\midrule
+\endfirsthead
+\toprule
+Benchmark & $s = 1/2$ & $s = 1$ & $s = 2$ \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+SVMWithL1Regularization     & 0.14 & 0.14 & 0.15 \\
+FactorCovarianceModel       & 0.15 & 0.14 & 0.18 \\
+Yitzhaki                    & 0.15 & 0.14 & 0.14 \\
+SimpleQP                    & 0.15 & 0.15 & 0.16 \\
+HuberRegression             & 0.18 & 0.17 & 0.17 \\
+LeastSquares                & 0.15 & 0.17 & 0.17 \\
+SimpleLP                    & 0.19 & 0.18 & 0.17 \\
+SimpleScalarParametrizedLP  & 0.21 & 0.20 & 0.20 \\
+SimpleFullyParametrizedLP   & 0.22 & 0.21 & 0.20 \\
+SlowPruning                 & 0.21 & 0.22 & 0.21 \\
+ParametrizedQP              & 0.23 & 0.24 & 0.23 \\
+Cajas                       & 0.29 & 0.29 & 0.27 \\
+ConeMatrixStuffing          & 0.31 & 0.30 & 0.29 \\
+SmallMatrixStuffing         & 0.29 & 0.30 & 0.27 \\
+TvInpainting                & 0.31 & 0.30 & 0.30 \\
+ParamSmallMatrixStuffing    & 0.52 & 0.52 & 0.51 \\
+ParamConeMatrixStuffing     & 0.51 & 0.53 & 0.53 \\
+SemidefiniteProgramming     & 0.61 & 0.63 & 0.63 \\
+CVaR                        & 0.55 & 0.66 & cap \\
+Murray                      & 1.14 & 0.95 & 1.01 \\
+UnconstrainedQP             & 0.02 & 0.008 & 0.005 \\
+SDPSegfault1132             & 1.29 & 1.27 & cap \\
+OptimalAdvertising          & 1.09 & 1.67 & unv. \\
+QuantumHilbertMatrix        & 1.17 & 0.63 & cap \\
+ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
 \end{longtable}}
 
 % ------------------------------------------------------------------------------------------
 \Annexe{TWO SLOWER PROBLEMS}\label{app:cases}
 
-This appendix describes the two problems of \S\ref{sec:bench-phases} on which the dense
-representations of \texttt{diffengine} work against it.
+This appendix describes the two problems of \S\ref{sec:bench-phases} on which dense
+constant data slows \texttt{diffengine} down.
 
 \section{SDPSegfault1132}
 
@@ -368,28 +457,31 @@ this in advance, so every backend builds the three dense intermediates.
 the entries that sum to zero, so the result of the sum has $1.01$ million entries. The
 permuted dense blocks of \texttt{diffengine} have a fixed pattern, so the sum keeps the
 $49.5$ million entries, of which $48.5$ million are zero, until the assembly removes them.
-% CHECK on the final build: the fork's assembly phase drops the zeros (keep = vals != 0).
-% The 2026-08-22 profile (development build) had them dropped only in the cone formatting.
-Table~\ref{tab:sdpsegfault-phases} compares where the time goes in the two backends.
-On one dense intermediate alone, \texttt{diffengine} is faster, \tbd{$4.1$} seconds against
-\tbd{$15.7$}. Its loss is in carrying the cancelled entries through the sum. Removing exact
+Table~\ref{tab:sdpsegfault-phases} shows where the time of \texttt{diffengine} goes. The
+symbolic and numeric passes, which carry the cancelled entries, take $1.82$ of its
+$1.90$ seconds, against $1.51$ seconds for the whole canonicalization of \texttt{SCIPY}. The
+dense blocks themselves are not the cause. Without them, \texttt{diffengine} takes
+$3.29$ seconds, because its sparse sum keeps the cancelled entries as well. Removing exact
 zeros as soon as a sum produces them would fix this, at the cost of a sparsity pattern that
 depends on the values.
 
 \begin{table}[htbp]
 \centering
-\caption[Phases of SDPSegfault1132]{Canonicalization time of SDPSegfault1132 by phase,
-in seconds.}
+\caption[Phases of SDPSegfault1132]{Canonicalization time of \texttt{diffengine} on
+SDPSegfault1132 by phase, in seconds, mean over the replicates.}
 \label{tab:sdpsegfault-phases}
 {\small
-\begin{tabular}{l r @{\hspace{3em}} l r}
+\begin{tabular}{l r}
 \toprule
-\multicolumn{2}{c}{\texttt{diffengine}} & \multicolumn{2}{c}{\texttt{SCIPY}} \\
-\cmidrule(r){1-2}\cmidrule(l){3-4}
-symbolic pass & \tbd{5.6} & products with $\mmat{V}$ & \tbd{3.4} \\
-numeric pass  & \tbd{7.2} & Kronecker products      & \tbd{3.0} \\
-assembly      & \tbd{4.0} & additions               & \tbd{2.2} \\
-formatting    & \tbd{5.5} & rest                    & \tbd{0.3} \\
+Phase & Time (s) \\
+\midrule
+front end and conversion & 0.005 \\
+symbolic pass            & 0.881 \\
+numeric pass             & 0.942 \\
+assembly                 & 0.069 \\
+formatting               & 0.006 \\
+\midrule
+total                    & 1.903 \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -402,13 +494,18 @@ objective contains the term
 D = H * np.eye(N)            # diagonal content, dense array
 ... + 0.5 * cp.quad_form(p - p_old, D)
 \end{lstlisting}
-The matrix $\mmat{D}$ is diagonal, but it is given as a dense array. The converter of the
-quadratic form chose its representation from the type of the array rather than from its
-content, so $\mmat{D}$ became a dense $3000 \times 3000$ block of the Hessian. The matrix
-$\mmat{P}$ then stored $9.05$ million entries, where its true pattern has about $33$
-thousand. The fix applies the same density test as the converter of the matrix product. A
-constant with fewer than $5\,\%$ nonzeros takes the sparse representation. With the fix,
-the time of \texttt{diffengine} on this problem fell from \tbd{$2.03$} to \tbd{$0.85$}
-seconds. The three \texttt{CVXPY} backends take the same \tbd{$0.35$} seconds, which suggests
-that this time is spent in the front end they share. The time \texttt{diffengine} spends
-above it is \tbd{spent in XX, according to the phases of Table~\ref{tab:phases}}.
+The matrix $\mmat{D}$ is diagonal, but it is given as a dense array. On a parameter-free
+problem, the converter of the quadratic form applies the same density test as the converter
+of the matrix product, and a constant with fewer than $5\,\%$ nonzeros takes the sparse
+representation. ConvexPlasticity has three parameters, and its quadratic form takes the
+route that keeps them symbolic, on which the test is not applied. $\mmat{D}$ therefore
+becomes a dense $3000 \times 3000$ block of the Hessian, and the matrix $\mmat{P}$ stores
+$9.05$ million entries, where its true pattern has about $33$ thousand.
+% CHECK: CHANGES.md (NO_DENSE row) says constant P in the symbolic quad_form uses CSR only
+% under DIFFENGINE_NO_DENSE=1; confirm that this is the route ConvexPlasticity takes.
+\texttt{diffengine} takes $0.50$ seconds, of which the symbolic pass and the assembly take
+$85\,\%$, and its peak memory grows by $1.3$~\si{\giga\byte}. The three \texttt{CVXPY}
+backends take $0.072$ to $0.079$ seconds and grow by $82$~\si{\mega\byte}. With the dense
+representations off, $\mmat{D}$ is stored in the sparse format, and \texttt{diffengine}
+takes $0.098$ seconds and grows by $26$~\si{\mega\byte}. Applying the density test on the
+symbolic route as well would close most of the gap.
