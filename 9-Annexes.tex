@@ -20,8 +20,8 @@
 \Annexe{BENCHMARK DETAILS}\label{app:bench}
 
 This appendix describes the benchmark problems and gives the measurements of
-Chapter~\ref{sec:Theme2} that the chapter does not show. Times are the mean $\pm$ standard
-deviation of the runs, except in \S\ref{sec:bench-sensitivity}.
+Chapter~\ref{sec:Theme2} that the chapter does not show. Unless a caption says otherwise,
+times are the mean $\pm$ standard deviation of the runs.
 
 \section{Problems}\label{app:problems}
 
@@ -36,7 +36,8 @@ the reductions. The column ``param.\ size'' is the total number of entries of th
 of the problem, and the last column says whether the problem is \ac{DPP}. A dash denotes a
 problem without a quadratic objective or without parameters.
 
-% Dimensions checked against the `dims' field of the final runs (results/thesis-pr3524).
+% Dimensions checked against the `dims' field of the final runs (results/thesis and
+% results/thesis-pr3524 give the same dimensions).
 % param. size: sum of p.size over prob.parameters(), from the harness's fresh_problem().
 % ConvexPlasticity: CVXPY 1.9.2's DPP targets refuse it as not DPP in the final runs.
 {\small
@@ -124,7 +125,8 @@ Table~\ref{tab:app-memory} gives the peak memory behind Figure~\ref{fig:profiles
 {\small
 \begin{longtable}{l rrrrr}
 \caption[Peak memory, all backends]{Growth of the peak resident memory during the first
-canonicalization, in megabytes.}\label{tab:app-memory}\\
+canonicalization, in megabytes. The last column is \texttt{diffengine} without the dense
+blocks (\S\ref{sec:bench-ablation}).}\label{tab:app-memory}\\
 \toprule
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
 no dense blocks \\
@@ -196,7 +198,7 @@ Median, all $25$     & ---  & 4 & 8 & 18 & 14 & 11 & 12 \\
 - \mvec{y} \bigr\rVert_2, \qquad \mmat{E}(\mvec{z}) = \mmat{I}_{14} \otimes \diag(\mvec{z}),
 \EEQ
 over $\mvec{z} \in \complex^{18}$, where $\mmat{F}$ is the $252 \times 252$ discrete Fourier
-transform matrix and $\mvec{x}$ and $\mvec{y}$ are constant vectors. Evaluated from the left,
+transform matrix, $\mmat{F}^{\mathsf{H}}$ its conjugate transpose, and $\mvec{x}$ and $\mvec{y}$ are constant vectors. Evaluated from the left,
 the product $(\mmat{F}^{\mathsf{H}} \mmat{E}) \mmat{F}$ has a dense Jacobian of
 $63\,504 \times 36$ entries, which the numeric pass fills one entry at a time. Evaluated from
 $\mvec{x}$, as pull request \#3524 does, every intermediate is a vector, and the
@@ -204,20 +206,20 @@ canonicalization takes $16$ milliseconds.
 
 \paragraph{OptimalAdvertising.} The problem is
 \BEQ
-\mbox{maximize} \quad \sum_{i=1}^{250} \min\bigl(r_i \mvec{p}_i^T \mvec{d}_i,\; b_i\bigr)
-\quad \mbox{subject to} \quad \mmat{D} \ge 0, \quad \mmat{D}^T \ones \le \mvec{t}, \quad
+\mbox{maximize} \quad \sum_{i=1}^{250} \min\bigl(r_i \mvec{p}_i^\top \mvec{d}_i,\; b_i\bigr)
+\quad \mbox{subject to} \quad \mmat{D} \ge \zeros, \quad \mmat{D}^\top \ones \le \mvec{t}, \quad
 \mmat{D} \ones \ge \mvec{c},
 \EEQ
-over $\mmat{D} \in \reals^{250 \times 1000}$ with rows $\mvec{d}_i^T$. Each minimum term
+over $\mmat{D} \in \reals^{250 \times 1000}$ with rows $\mvec{d}_i^\top$. Each minimum term
 depends on one row of $\mmat{D}$, but its Jacobian spans all $250\,000$ variables, and the
 symbolic pass visits every column of it. Its cost grows with the number of terms times the
 number of variables, which is why the ratio grows with the size of the problem
 (\S\ref{sec:bench-sensitivity}).
 
-\paragraph{SDPSegfault1132.} With $\mmat{K} = \mmat{V} \mmat{G} \mmat{V}^T$, the problem is
+\paragraph{SDPSegfault1132.} With $\mmat{K} = \mmat{V} \mmat{G} \mmat{V}^\top$, the problem is
 \BEQ
-\mbox{maximize} \quad \Tr \mmat{G} - \bigl\lVert \ones \diag(\mmat{K})^T + \diag(\mmat{K})
-\ones^T - 2 \mmat{K} - \mmat{D} \bigr\rVert_F
+\mbox{maximize} \quad \Tr \mmat{G} - \bigl\lVert \ones \diag(\mmat{K})^\top + \diag(\mmat{K})
+\ones^\top - 2 \mmat{K} - \mmat{D} \bigr\rVert_F
 \EEQ
 over $\mmat{G} \in \symm^{99}_+$, with constant $\mmat{V} \in \reals^{100 \times 99}$ and
 $\mmat{D} \in \reals^{100 \times 100}$. Three dense blocks of $49.5$ million entries cancel
@@ -227,15 +229,15 @@ through both passes.
 \paragraph{ConvexPlasticity.} The problem is
 \BEQ
 \begin{array}{ll}
-\mbox{minimize} & \tfrac{1}{2} \mvec{e}^T \mmat{S} \mvec{e} + \tfrac{1}{2}
-(\mvec{p} - \mvec{p}_0)^T (h \mmat{I}) (\mvec{p} - \mvec{p}_0) \\
-\mbox{subject to} & \sqrt{3/2}\, \lVert \mmat{Q} \mvec{\sigma}_j \rVert_2 \le \sigma_0 + h p_j,
+\mbox{minimize} & \tfrac{1}{2} \mvec{e}^\top \mmat{S} \mvec{e} + \tfrac{1}{2}
+(\mvec{p} - \mvec{p}_0)^\top (h \mmat{I}) (\mvec{p} - \mvec{p}_0) \\
+\mbox{subject to} & \sqrt{3/2}\, \lVert \mmat{Q} \gvec{\sigma}_j \rVert_2 \le \sigma_0 + h p_j,
 \quad j = 1, \ldots, 3000,
 \end{array}
 \EEQ
-over the stresses $\mvec{\sigma}_j \in \reals^4$ and $\mvec{p} \ge 0$, where
-$\mvec{e} = \mathrm{vec}(\mvec{\sigma} - \mvec{\sigma}_{\mathrm{el}})$, $\mmat{S}$ is block
-diagonal and $\mmat{Q}$ extracts the deviatoric part. The diagonal $h \mmat{I}$ is given as a
+over the stresses $\gvec{\sigma}_j \in \reals^4$ and $\mvec{p} \ge \zeros$, where
+$\mvec{e}$ stacks the differences $\gvec{\sigma}_j - \gvec{\sigma}_{\mathrm{el},j}$,
+$\mmat{S}$ is block diagonal and $\mmat{Q}$ extracts the deviatoric part. The diagonal $h \mmat{I}$ is given as a
 dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$.
 
 \FloatBarrier
@@ -294,7 +296,7 @@ and the parameter-free variant makes them constants.
 
 \begin{table}[htbp]
 \centering
-\caption[Re-solve time on problems that are not \ac{DPP}]{Re-solve time in milliseconds of
+\caption[Re-solve time on problems that are not DPP]{Re-solve time in milliseconds of
 two problem families in three variants, mean over the runs. For \texttt{CVXPY}, the
 re-solve applies the tensor on the \ac{DPP} variant and repeats the whole canonicalization
 on the others, with the fastest of the three backends. For \texttt{diffengine}, the cached
@@ -350,7 +352,8 @@ $25$ problems, and it uses $0.85$ times the peak memory in geometric mean
 (Table~\ref{tab:app-memory}). A dense block stores every entry, including the zeros of a
 constant that is sparse in fact, such as the diagonal of ConvexPlasticity, whose peak memory
 falls from $1\,330$ to $25.6$ megabytes without the dense blocks. Without them,
-\texttt{diffengine} is faster on $9$ problems, among them UnconstrainedQP by a factor of $47$,
+\texttt{diffengine} is significantly faster on $7$ problems, among them UnconstrainedQP by a
+factor of $47$,
 ConvexPlasticity by a factor of $5.1$ and CVaR by a factor of $1.6$.
 
 {\small
@@ -406,7 +409,8 @@ UnconstrainedQP & 22\,928 $\pm$ 12 & 489 $\pm$ 2 & 0.02$^{*}$ \\
 The problems of the suite have fixed sizes. To see how the comparison depends on the
 characteristics of the problem, we vary them on the suite problems themselves. Each problem
 fixes its sizes as literals in its source, and a factor $s$ multiplies these literals before
-the problem is built, which multiplies the number of nonzeros of its data by about $s$. Nine
+the problem is built, which multiplies the number of nonzeros of its data by about $s$ on most
+problems. Nine
 problems and the parameter-free \texttt{lasso} family of \S\ref{app:nondpp},
 with $n = 1000$ at $s = 1$, are measured at $s \in \{1/4, 1/2, 1, 2, 4\}$
 (Table~\ref{tab:sensitivity-size}), and all $25$ problems at $s \in \{1/2, 1, 2\}$. On the
@@ -424,9 +428,10 @@ OptimalAdvertising.
 
 On all $25$ problems (Table~\ref{tab:sensitivity-size-all}), the ratio stays within $0.04$ of
 its value at $s = 1$ on $18$ of the $21$ problems on which \texttt{diffengine} is faster. The
-exceptions are CVaR and QuantumHilbertMatrix, which reach the memory limit at $s = 2$, and
-Murray, whose ratio stays close to $1$. The four slower problems stay slower at every size they
-complete, and the gap widens with the size on UnconstrainedQP and ConvexPlasticity.
+exceptions are Murray and QuantumHilbertMatrix, which are slower at $s = 1/2$, and CVaR, which
+with QuantumHilbertMatrix exceeds the memory limit at $s = 2$. The four slower problems stay
+slower at every size they complete, and the gap widens with the size on UnconstrainedQP,
+OptimalAdvertising and ConvexPlasticity.
 
 Table~\ref{tab:sensitivity-density} reports the ratio as the density falls. On all five
 problems, \texttt{diffengine}'s advantage shrinks, from a ratio of $0.14$ to $0.17$ on dense
@@ -444,8 +449,9 @@ the ratio is lower than at $\rho = 0.05$ on three of the five problems.
 \caption[Sensitivity to size, five sizes]{Ratio of the canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend, medians of five runs, as the size
 of nine problems of the suite and of the \texttt{lasso} family is scaled by $s$. The column
-$s = 1$ repeats Table~\ref{tab:oneshot-compile}, and ``cap'' denotes a \texttt{diffengine} run
-that exceeded the $20$~\si{\giga\byte} memory limit.}
+$s = 1$ repeats Table~\ref{tab:oneshot-compile} for the suite problems, and ``cap'' denotes a
+\texttt{diffengine} run
+that exceeded the \SI{20}{\giga\byte} memory limit.}
 \label{tab:sensitivity-size}
 {\small
 \begin{tabular}{l rrrrr}
