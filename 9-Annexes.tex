@@ -26,11 +26,12 @@ Table~\ref{tab:oneshot-compile}. The dimensions are those of the problem data th
 \texttt{diffengine} returns for \texttt{Clarabel}: the matrix
 $\mmat{A} \in \reals^{m \times n}$ of the constraints and the matrix $\mmat{P}$ of the
 objective, both counted after canonicalization, so $n$ includes the auxiliary variables of
-the reductions. The column ``params'' counts the parameter objects of the problem, not their
-entries, and the last column says whether the problem is \ac{DPP}. A dash denotes a problem
-without a quadratic objective or without parameters.
+the reductions. The column ``param.\ size'' is the total number of entries of the parameters
+of the problem, and the last column says whether the problem is \ac{DPP}. A dash denotes a
+problem without a quadratic objective or without parameters.
 
 % Dimensions checked against the `dims' field of the final runs (results/thesis-pr3524).
+% param. size: sum of p.size over prob.parameters(), from the harness's fresh_problem().
 % ConvexPlasticity: CVXPY 1.9.2's DPP targets refuse it as not DPP in the final runs.
 {\small
 \begin{longtable}{l >{\raggedright\arraybackslash}p{9.6cm}}
@@ -79,7 +80,7 @@ benchmark problems.}\label{tab:instances}
 {\small
 \begin{tabular}{l rrrr rc}
 \toprule
-Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & params & \ac{DPP} \\
+Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & nnz$(\mmat{P})$ & param.\ size & \ac{DPP} \\
 \midrule
 SVMWithL1Regularization & 51\,k & 26\,k & 12.6\,M & --- & 1 & yes \\
 FactorCovarianceModel & 75.3\,k & 75.2\,k & 6.45\,M & 87.5\,k & 2 & yes \\
@@ -89,15 +90,15 @@ HuberRegression & 13.5\,k & 16.5\,k & 13.5\,M & 4\,500 & --- & --- \\
 LeastSquares & 7\,000 & 9\,000 & 14\,M & 7\,000 & --- & --- \\
 SimpleLP & 20\,M & 10\,M & 20\,M & --- & --- & --- \\
 SimpleScalarParametrizedLP & 4\,M & 2\,M & 4\,M & --- & 1 & yes \\
-SimpleFullyParametrizedLP & 2\,M & 1\,M & 2\,M & --- & 1 & yes \\
+SimpleFullyParametrizedLP & 2\,M & 1\,M & 2\,M & --- & 1\,M & yes \\
 SlowPruning & 400\,k & 402\,k & 8.4\,M & 400\,k & --- & --- \\
-ParametrizedQP & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 2 & yes \\
+ParametrizedQP & 10.8\,k & 8\,400 & 14.4\,M & 6\,000 & 14.4\,M & yes \\
 Cajas & 641\,k & 2\,450 & 1.96\,M & --- & --- & --- \\
 ConeMatrixStuffing & 5\,000 & 5\,000 & 5\,000 & --- & --- & --- \\
 SmallMatrixStuffing & 4\,000 & 4\,000 & 4\,000 & --- & --- & --- \\
 TvInpainting & 2.61\,M & 1.05\,M & 3.63\,M & --- & --- & --- \\
-ParamSmallMatrixStuffing & 300 & 300 & 300 & --- & 3 & yes \\
-ParamConeMatrixStuffing & 200 & 200 & 200 & --- & 3 & yes \\
+ParamSmallMatrixStuffing & 300 & 300 & 300 & --- & 90.5\,k & yes \\
+ParamConeMatrixStuffing & 200 & 200 & 200 & --- & 40.3\,k & yes \\
 SemidefiniteProgramming & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & --- \\
 CVaR & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
 Murray & 490\,k & 245\,k & 1.5\,M & --- & --- & --- \\
@@ -105,7 +106,7 @@ UnconstrainedQP & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
 SDPSegfault1132 & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
 OptimalAdvertising & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
 QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
-ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 3 & no \\
+ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 27\,k & no \\
 \bottomrule
 \end{tabular}}
 \end{table}
