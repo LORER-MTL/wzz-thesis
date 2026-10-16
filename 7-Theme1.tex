@@ -62,10 +62,11 @@ objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-
 remaining classes are used by the \ac{NLP} interface of
 \texttt{CVXPY} \cite{cederberg2025disciplined}.
 In this thesis, the engine evaluates the affine atoms and the quadratic form at the origin,
-once per problem and again after each parameter update, and the results are the problem
-data. What is specific to this use is the interface to \texttt{CVXPY} of
-\S\ref{sec:theme1-api}: the \texttt{diffengine} backend and its re-solve path for parametric
-problems. The benchmarks of Chapter~\ref{sec:Theme2} are also specific to it.
+once per problem and again after each parameter update, and the results are the problem data
+matrices $\mmat{A}$ and $\mmat{P}$ and vectors $\mvec{b}$ and $\mvec{c}$. What is specific to
+this thesis is the interface to \texttt{CVXPY} of \S\ref{sec:theme1-api}, namely the
+\texttt{diffengine} backend and its re-solve path for parametric problems, and the benchmarks
+of Chapter~\ref{sec:Theme2}.
 \begin{table}[tb]
 \caption{The atom classes and how each computes its Jacobian.}
 \label{tab:atom-classes}
