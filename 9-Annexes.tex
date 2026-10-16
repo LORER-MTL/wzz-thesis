@@ -114,9 +114,8 @@ ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 27\,k & no \\
 \section{Additional problem families}\label{app:extra-problems}
 
 The experiments of Appendix~\ref{app:nondpp} and \S\ref{sec:bench-sensitivity} use two
-problem families beyond the suite, and rescaled versions of the suite problems. Each family
-is generated from a size and a random seed, with standard normal data unless stated
-otherwise.
+problem families beyond the suite. Each family is generated from a size and a random seed,
+with standard normal data unless stated otherwise.
 
 The \texttt{lasso} family minimizes
 \BEQ\label{eq:lasso-family}
@@ -130,18 +129,6 @@ The \texttt{factor\_cov} family is FactorCovarianceModel with $n$ assets and
 $\max(\lfloor n/100 \rfloor, 2)$ factors. Its risk aversion $\gamma$ is a parameter in the
 \ac{DPP} variant, the product $\gamma\delta$ of two parameters in the non-\ac{DPP} variant,
 and a constant in the parameter-free variant.
-
-The sensitivity experiment rescales nine problems of the suite: HuberRegression,
-FactorCovarianceModel, OptimalAdvertising, SVMWithL1Regularization, LeastSquares, SimpleQP,
-Yitzhaki, CVaR and SemidefiniteProgramming. Each problem fixes its sizes as literals in its
-source, and the rescaled version multiplies these literals by a factor
-$s \in \{1/4, 1/2, 2, 4\}$ before the problem is built, so that its data has about $s$ times
-as many nonzeros. The parameter-free \texttt{lasso} family is measured at
-$n \in \{250, 500, 1000, 2000, 4000\}$. The density experiment multiplies the data matrix of
-four problems, LeastSquares, HuberRegression, SimpleQP and
-SVMWithL1Regularization, and the matrix $\mmat{A}$ of \texttt{lasso} with $n = 1000$,
-entrywise by a random $0/1$ mask with a fraction $\rho$ of ones, drawn from its own
-generator so that the other data is unchanged. The masked matrix stays a dense array.
 
 % ------------------------------------------------------------------------------------------
 \Annexe{COMPLETE RESULTS}\label{app:results}
@@ -333,14 +320,16 @@ ConvexPlasticity & 499 $\pm$ 7 & 98.4 $\pm$ 2.0 & 0.20$^{*}$ \\
 \label{sec:bench-sensitivity}
 
 The problems of the suite have fixed sizes. To see how the comparison depends on the
-characteristics of the problem, we vary them on the suite problems themselves, as
-Appendix~\ref{app:extra-problems} describes. Each problem is rescaled by a factor $s$ on its
-dimensions, which multiplies the number of nonzeros of its data by about $s$. Nine
-problems and the parameter-free \texttt{lasso} family are measured at
-$s \in \{1/4, 1/2, 1, 2, 4\}$, and all $25$ problems at $s \in \{1/2, 1, 2\}$. On five
-problems with a dense data matrix, a fraction $1 - \rho$ of the entries of the matrix is set to zero, with
-$\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$. Every point is the median of five runs, reported
-without a significance test.
+characteristics of the problem, we vary them on the suite problems themselves. Each problem
+fixes its sizes as literals in its source, and a factor $s$ multiplies these literals before
+the problem is built, which multiplies the number of nonzeros of its data by about $s$. Nine
+problems and the parameter-free \texttt{lasso} family of Appendix~\ref{app:extra-problems},
+with $n = 1000$ at $s = 1$, are measured at $s \in \{1/4, 1/2, 1, 2, 4\}$
+(Table~\ref{tab:sensitivity-size}), and all $25$ problems at $s \in \{1/2, 1, 2\}$. On the
+five problems of Table~\ref{tab:sensitivity-density}, the data matrix is multiplied entrywise by
+a random $0/1$ mask with a fraction $\rho \in \{0.01, 0.05, 0.2, 0.5, 1\}$ of ones, drawn from
+its own generator so that the other data is unchanged. Every point is the median of five
+runs, reported without a significance test.
 
 Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the best
 \texttt{CVXPY} backend on the ten families measured at five sizes. On seven of them, the ratio
