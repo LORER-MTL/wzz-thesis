@@ -20,7 +20,7 @@ canonicalization. These comparisons allow us to assess whether
 We use the $25$ problems of \texttt{CVXPY}'s public benchmark suite
 \cite{cvxpybenchmarks}. The suite includes problems from portfolio selection, regression
 and classification, image inpainting, and many more applications in convex optimization.
-Appendix~\ref{app:instances} describes each problem and gives its dimensions.
+Appendix~\ref{app:bench} describes each problem and gives its dimensions.
 On parametric problems, canonicalization follows either
 the \ac{DPP} path or the \texttt{ignore\_dpp} path, both described in
 \S\ref{sec:ms-parameters}. We conduct numerical experiments on both. \S\ref{sec:bench-oneshot}
@@ -102,7 +102,7 @@ with $t_{p,s}$ replaced by the growth of the process's peak resident memory duri
 canonicalization. \texttt{diffengine} has the lowest peak memory on
 $13$ of the $25$ problems and \texttt{SCIPY} on $8$. In geometric mean, \texttt{diffengine}
 uses $0.87$ times the memory of \texttt{CPP}, $0.83$ times that of \texttt{COO}, and $1.22$
-times that of \texttt{SCIPY}. Appendix~\ref{app:results} gives the peak memory of every backend on
+times that of \texttt{SCIPY}. Table~\ref{tab:app-memory} gives the peak memory of every backend on
 every problem.
 
 \begin{table}[tb]
@@ -184,7 +184,7 @@ conversion to the engine copies the shared product into each term, so the symbol
 the sparsity of $1048$ products instead of $145$.
 
 Two further experiments on the first canonicalization are reported in
-Appendix~\ref{app:results}. Without
+Appendix~\ref{app:bench}. Without
 the dense blocks, \texttt{diffengine} is $1.27$ times slower in geometric mean
 (\S\ref{sec:bench-ablation}), and still $1.95$ times faster than the best \texttt{CVXPY}
 backend. The symbolic and numeric split plays no part here, because a first
@@ -228,7 +228,7 @@ memory limit or the time limit. Bold denotes the fastest first canonicalization 
 faster re-solve. The tensor column is the fastest of the three \texttt{CVXPY} backends. The
 ratio is the median re-solve time of \texttt{diffengine} over that of the tensor, marked
 with~$^{*}$ when the difference is significant (Mann--Whitney, Holm-adjusted $p < 0.05$).
-Appendix~\ref{app:results} gives the standard deviations.}
+Table~\ref{tab:app-warm} gives the standard deviations.}
 \label{tab:param-tensor}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -268,7 +268,7 @@ The tensor of \texttt{CVXPY} exists only for \ac{DPP} problems, while the numeri
 needs only a fixed expression tree and fixed sparsity patterns. On two problem families
 written in a non-\ac{DPP} form, where \texttt{CVXPY} canonicalizes the problem again at
 every solve, \texttt{diffengine} re-solves $12$ and $13$ times faster than \texttt{CVXPY}
-(Appendix~\ref{app:nondpp}).
+(\S\ref{app:nondpp}).
 
 \FloatBarrier
 
@@ -280,7 +280,7 @@ The benchmark experiments in this chapter lead us to make the following three ob
 \item Caching canonicalization does not necessarily require the \ac{DPP} ruleset. In
 Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a factor of
 four of the cached tensor on every \ac{DPP} problem. In
-Appendix~\ref{app:nondpp}, it re-solves problems that are not \ac{DPP}, on which
+\S\ref{app:nondpp}, it re-solves problems that are not \ac{DPP}, on which
 \texttt{CVXPY} has to canonicalize again, $12$ to $13$ times faster.
 \item The tensor approach carries a large upfront cost that is not always justified. In
 Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
