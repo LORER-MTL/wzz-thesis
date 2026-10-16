@@ -71,12 +71,12 @@ ParamSmallMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $300$, wit
 ParamConeMatrixStuffing & The same parametric \ac{LP} at size $200$. \\
 SemidefiniteProgramming & Standard-form \ac{SDP} with a $200 \times 200$ variable and $120$ dense equality constraints. \\
 CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. \\
+QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. \\
 Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix of pairwise differences. \\
-UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. \\
 SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. \\
 OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. \\
-QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. \\
 ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. \\
+UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. \\
 \end{longtable}}
 
 \begin{table}[htbp]
@@ -107,50 +107,19 @@ ParamSmallMatrixStuffing & 300 & 300 & 300 & --- & 90.5\,k & yes \\
 ParamConeMatrixStuffing & 200 & 200 & 200 & --- & 40.3\,k & yes \\
 SemidefiniteProgramming & 20.2\,k & 20.1\,k & 2.43\,M & --- & --- & --- \\
 CVaR & 264\,k & 132\,k & 25.7\,M & --- & --- & --- \\
+QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
 Murray & 490\,k & 245\,k & 1.5\,M & --- & --- & --- \\
-UnconstrainedQP & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
 SDPSegfault1132 & 15\,k & 4\,951 & 1.01\,M & --- & --- & --- \\
 OptimalAdvertising & 252\,k & 250\,k & 1\,M & --- & --- & --- \\
-QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 4\,096 & --- & --- \\
 ConvexPlasticity & 36\,k & 33\,k & 72\,k & 9.05\,M & 27\,k & no \\
+UnconstrainedQP & 1\,009 & 289 & 18.6\,k & --- & --- & --- \\
 \bottomrule
 \end{tabular}}
 \end{table}
 
 \section{First canonicalization}\label{app:oneshot}
 
-On five problems, the rewrite described in Chapter~\ref{sec:Theme2} changes the problem that
-the \texttt{CVXPY} backends receive. Table~\ref{tab:app-ra} gives their times with and
-without it, and Table~\ref{tab:oneshot-compile} reports the faster of the two.
 Table~\ref{tab:app-memory} gives the peak memory behind Figure~\ref{fig:profiles}b.
-
-\begin{table}[htbp]
-\centering
-\caption[First canonicalization with and without the rewrite]{First canonicalization of
-\texttt{CVXPY}'s three backends on the \texttt{ignore\_dpp} path, in milliseconds, on the five
-problems on which the rewrite applies, without and with the rewrite.}\label{tab:app-ra}
-{\small
-\begin{tabular}{l l rrr}
-\toprule
-Benchmark & Rewrite & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} \\
-\midrule
-SlowPruning          & without & 1\,795 $\pm$ 13 & 2\,179 $\pm$ 4 & 2\,147 $\pm$ 7 \\
-                     & with    & 1\,781 $\pm$ 8 & 2\,174 $\pm$ 5 & 2\,158 $\pm$ 9 \\
-\addlinespace
-UnconstrainedQP      & without & 1\,951 $\pm$ 5 & 1\,983 $\pm$ 8 & 2\,434 $\pm$ 11 \\
-                     & with    & 13.2 $\pm$ 0.1 & 21.6 $\pm$ 0.1 & 25.0 $\pm$ 0.2 \\
-\addlinespace
-SDPSegfault1132      & without & 7\,979 $\pm$ 23 & 1\,510 $\pm$ 38 & 8\,929 $\pm$ 84 \\
-                     & with    & 8\,036 $\pm$ 11 & 6\,781 $\pm$ 28 & 7\,816 $\pm$ 96 \\
-\addlinespace
-OptimalAdvertising   & without & 2\,577 $\pm$ 10 & 596 $\pm$ 7 & 535 $\pm$ 2 \\
-                     & with    & 2\,574 $\pm$ 8 & 594 $\pm$ 6 & 537 $\pm$ 6 \\
-\addlinespace
-QuantumHilbertMatrix & without & 1\,060 $\pm$ 2 & 804 $\pm$ 6 & 789 $\pm$ 9 \\
-                     & with    & 267 $\pm$ 1 & 343 $\pm$ 2 & 448 $\pm$ 9 \\
-\bottomrule
-\end{tabular}}
-\end{table}
 
 {\small
 \begin{longtable}{l rrrrr}
@@ -187,13 +156,90 @@ ParamSmallMatrixStuffing & 17.2 & 13.0 & 21.9 & 10.6 & 10.6 \\
 ParamConeMatrixStuffing & 9.7 & 8.3 & 12.3 & 5.9 & 6.2 \\
 SemidefiniteProgramming & 1\,317 & 350 & 640 & 1\,138 & 1\,138 \\
 CVaR & 4\,022 & 2\,804 & 3\,587 & 6\,283 & 2\,211 \\
+QuantumHilbertMatrix & 222 & 218 & 288 & 1\,195 & 1\,195 \\
 Murray & 2\,849 & 220 & 305 & 308 & 306 \\
-UnconstrainedQP & 1\,427 & 1\,058 & 2\,105 & 52.9 & 41.4 \\
-SDPSegfault1132 & 7\,537 & 3\,460 & 12\,983 & 9\,254 & 11\,186 \\
+SDPSegfault1132 & 7\,537 & 3\,460 & 12\,983 & 10\,413 & 12\,885 \\
 OptimalAdvertising & 173 & 181 & 197 & 6\,066 & 945 \\
-QuantumHilbertMatrix & 222 & 218 & 288 & 910 & 910 \\
 ConvexPlasticity & 82.5 & 82.4 & 82.5 & 1\,330 & 25.6 \\
+UnconstrainedQP & 1\,427 & 1\,058 & 2\,105 & 1\,754 & 644 \\
 \end{longtable}}
+
+\FloatBarrier
+
+\section{The four slower problems}\label{app:slower}
+
+Table~\ref{tab:app-phases} splits the first canonicalization of \texttt{diffengine} on the four
+problems of Table~\ref{tab:oneshot-compile} on which it is slower into its phases.
+
+\begin{table}[htbp]
+\centering
+\caption[Phases on the four slower problems]{Phases of the first canonicalization of
+\texttt{diffengine} on the four slower problems, in percent of its time, and the median share
+over the $25$ problems.}\label{tab:app-phases}
+{\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l r rrrrrr}
+\toprule
+Benchmark & Time (s) & Front end & Convert & Symbolic & Numeric & Assemble & Format \\
+\midrule
+UnconstrainedQP      & 22.93 & 0 & 0 & 2 & 98 & 0 & 0 \\
+OptimalAdvertising   & 0.89 & 4 & 1 & 90 & 3 & 1 & 1 \\
+SDPSegfault1132      & 2.02 & 0 & 0 & 48 & 48 & 3 & 0 \\
+ConvexPlasticity     & 0.50 & 6 & 3 & 47 & 6 & 38 & 0 \\
+\midrule
+Median, all $25$     & ---  & 4 & 8 & 18 & 14 & 11 & 12 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{UnconstrainedQP.} The problem is
+\BEQ
+\mbox{minimize} \quad \bigl\lVert \mmat{F}^{\mathsf{H}} \mmat{E}(\mvec{z}) \mmat{F} \mvec{x}
+- \mvec{y} \bigr\rVert_2, \qquad \mmat{E}(\mvec{z}) = \mmat{I}_{14} \otimes \diag(\mvec{z}),
+\EEQ
+over $\mvec{z} \in \complex^{18}$, where $\mmat{F}$ is the $252 \times 252$ discrete Fourier
+transform matrix and $\mvec{x}$ and $\mvec{y}$ are constant vectors. The product is evaluated
+from the left, and $(\mmat{F}^{\mathsf{H}} \mmat{E}) \mmat{F}$ has a dense Jacobian of
+$63\,504 \times 36$ entries, which the numeric pass fills one entry at a time with sparse dot
+products. Evaluated from $\mvec{x}$, as \texttt{CVXPY} pull request \#3524 does, every
+intermediate is a vector, and \texttt{diffengine} canonicalizes the problem in $16$
+milliseconds.
+
+\paragraph{OptimalAdvertising.} The problem is
+\BEQ
+\mbox{maximize} \quad \sum_{i=1}^{250} \min\bigl(r_i \mvec{p}_i^T \mvec{d}_i,\; b_i\bigr)
+\quad \mbox{subject to} \quad \mmat{D} \ge 0, \quad \mmat{D}^T \ones \le \mvec{t}, \quad
+\mmat{D} \ones \ge \mvec{c},
+\EEQ
+over $\mmat{D} \in \reals^{250 \times 1000}$ with rows $\mvec{d}_i^T$. Each minimum term
+depends on one row of $\mmat{D}$, but its Jacobian spans all $250\,000$ variables, and the
+symbolic pass visits every column of it. Its cost therefore grows with the number of terms
+times the number of variables, the overhead of the global layout, which is also why the ratio on
+this problem grows with its size (\S\ref{sec:bench-sensitivity}).
+
+\paragraph{SDPSegfault1132.} With $\mmat{K} = \mmat{V} \mmat{G} \mmat{V}^T$, the problem is
+\BEQ
+\mbox{maximize} \quad \Tr \mmat{G} - \bigl\lVert \ones \diag(\mmat{K})^T + \diag(\mmat{K})
+\ones^T - 2 \mmat{K} - \mmat{D} \bigr\rVert_F
+\EEQ
+over $\mmat{G} \in \symm^{99}_+$, with constant $\mmat{V} \in \reals^{100 \times 99}$ and
+$\mmat{D} \in \reals^{100 \times 100}$. The three terms of the sum give dense blocks of $49.5$
+million entries that cancel to $1.01$ million nonzeros, and \texttt{diffengine} carries the
+cancelled entries through its symbolic and numeric passes.
+
+\paragraph{ConvexPlasticity.} The problem is
+\BEQ
+\begin{array}{ll}
+\mbox{minimize} & \tfrac{1}{2} \mvec{e}^T \mmat{S} \mvec{e} + \tfrac{1}{2}
+(\mvec{p} - \mvec{p}_0)^T (h \mmat{I}) (\mvec{p} - \mvec{p}_0) \\
+\mbox{subject to} & \sqrt{3/2}\, \lVert \mmat{Q} \mvec{\sigma}_j \rVert_2 \le \sigma_0 + h p_j,
+\quad j = 1, \ldots, 3000,
+\end{array}
+\EEQ
+over the stresses $\mvec{\sigma}_j \in \reals^4$ and $\mvec{p} \ge 0$, where
+$\mvec{e} = \mathrm{vec}(\mvec{\sigma} - \mvec{\sigma}_{\mathrm{el}})$, $\mmat{S}$ is block
+diagonal and $\mmat{Q}$ extracts the deviatoric part. The diagonal $h \mmat{I}$ is given as a
+dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$.
 
 \FloatBarrier
 
@@ -302,12 +348,12 @@ Table~\ref{tab:app-warm} the second. Their geometric means are given in
 \S\ref{sec:bench-oneshot} and \S\ref{sec:bench-param}.
 
 Without the dense blocks, the first canonicalization differs significantly on $23$ of the
-$25$ problems, and it uses $0.87$ times the peak memory in geometric mean
+$25$ problems, and it uses $0.85$ times the peak memory in geometric mean
 (Table~\ref{tab:app-memory}). A dense block stores every entry, including the zeros of a
 constant that is sparse in fact, such as the diagonal of ConvexPlasticity, whose peak memory
 falls from $1\,330$ to $25.6$ megabytes without the dense blocks. Without them,
-\texttt{diffengine} is faster on $8$ problems, among them ConvexPlasticity by a factor of
-$5.1$ and CVaR by a factor of $1.6$.
+\texttt{diffengine} is faster on $9$ problems, among them UnconstrainedQP by a factor of $47$,
+ConvexPlasticity by a factor of $5.1$ and CVaR by a factor of $1.6$.
 
 {\small
 \begin{longtable}{l rr l}
@@ -334,7 +380,7 @@ LeastSquares & 416 $\pm$ 2 & 898 $\pm$ 4 & 2.16$^{*}$ \\
 SimpleLP & 1\,098 $\pm$ 7 & 1\,497 $\pm$ 10 & 1.36$^{*}$ \\
 SimpleScalarParametrizedLP & 220 $\pm$ 1 & 214 $\pm$ 1 & 0.97$^{*}$ \\
 SimpleFullyParametrizedLP & 111 $\pm$ 0.2 & 109 $\pm$ 0.3 & 0.99$^{*}$ \\
-SlowPruning & 393 $\pm$ 1 & 416 $\pm$ 1 & 1.06$^{*}$ \\
+SlowPruning & 392 $\pm$ 0.5 & 406 $\pm$ 3 & 1.03$^{*}$ \\
 ParametrizedQP & 730 $\pm$ 48 & 726 $\pm$ 24 & 0.99 \\
 Cajas & 201 $\pm$ 2 & 204 $\pm$ 1 & 1.02$^{*}$ \\
 ConeMatrixStuffing & 634 $\pm$ 4 & 1\,913 $\pm$ 11 & 3.01$^{*}$ \\
@@ -344,14 +390,14 @@ ParamSmallMatrixStuffing & 32.9 $\pm$ 0.2 & 40.3 $\pm$ 0.2 & 1.23$^{*}$ \\
 ParamConeMatrixStuffing & 22.5 $\pm$ 0.1 & 27.3 $\pm$ 0.1 & 1.21$^{*}$ \\
 SemidefiniteProgramming & 396 $\pm$ 3 & 396 $\pm$ 5 & 1.00 \\
 CVaR & 4\,273 $\pm$ 55 & 2\,742 $\pm$ 77 & 0.65$^{*}$ \\
+QuantumHilbertMatrix & 643 $\pm$ 3 & 658 $\pm$ 3 & 1.02$^{*}$ \\
 Murray & 1\,164 $\pm$ 2 & 1\,177 $\pm$ 7 & 1.01$^{*}$ \\
-UnconstrainedQP & 15.9 $\pm$ 0.1 & 22.1 $\pm$ 0.2 & 1.40$^{*}$ \\
-SDPSegfault1132 & 1\,903 $\pm$ 14 & 3\,294 $\pm$ 8 & 1.73$^{*}$ \\
-OptimalAdvertising & 889 $\pm$ 7 & 837 $\pm$ 9 & 0.94$^{*}$ \\
-QuantumHilbertMatrix & 492 $\pm$ 3 & 507 $\pm$ 5 & 1.03$^{*}$ \\
+SDPSegfault1132 & 2\,024 $\pm$ 17 & 3\,541 $\pm$ 42 & 1.75$^{*}$ \\
+OptimalAdvertising & 890 $\pm$ 7 & 837 $\pm$ 2 & 0.94$^{*}$ \\
 ConvexPlasticity & 499 $\pm$ 7 & 98.4 $\pm$ 2.0 & 0.20$^{*}$ \\
+UnconstrainedQP & 22\,928 $\pm$ 12 & 489 $\pm$ 2 & 0.02$^{*}$ \\
 \midrule
-\textbf{Geometric mean} & & & \textbf{1.27} \\
+\textbf{Geometric mean} & & & \textbf{1.07} \\
 \end{longtable}}
 
 \FloatBarrier
@@ -375,15 +421,17 @@ Table~\ref{tab:sensitivity-size} reports the ratio of \texttt{diffengine} to the
 \texttt{CVXPY} backend on the ten families measured at five sizes. On seven of them, the ratio
 stays between $0.13$ and $0.22$ over a factor of $16$ in size, and on CVaR and
 SemidefiniteProgramming between $0.55$ and $0.67$. OptimalAdvertising is the exception: its
-ratio grows from $0.78$ to $3.10$ between $s = 1/4$ and $s = 2$. At the larger sizes,
+ratio grows from $0.81$ to $3.40$ between $s = 1/4$ and $s = 2$. At the larger sizes,
 \texttt{diffengine} exceeds the memory limit on CVaR and OptimalAdvertising.
 
 Table~\ref{tab:sensitivity-size-all} gives the three sizes measured on all $25$ problems. The
-ratio changes by at most $0.04$ between $s = 1/2$ and $s = 2$ on $18$ of the $20$ problems on
+ratio changes by at most $0.04$ between $s = 1/2$ and $s = 2$ on $18$ of the $21$ problems on
 which \texttt{diffengine} is the fastest at $s = 1$. CVaR goes from $0.55$ at $s = 1/2$ to the
+memory limit at $s = 2$, QuantumHilbertMatrix is slower at $s = 1/2$, at $1.46$, and reaches the
 memory limit at $s = 2$, and Murray, at $0.95$ for $s = 1$, is slower at the other two sizes, at
-$1.14$ and $1.01$. On the five problems on which \texttt{diffengine} is slower, it stays slower
-at every size it completes, and on ConvexPlasticity the ratio grows from $5.29$ to $8.68$.
+$1.14$ and $1.01$. On the four problems on which \texttt{diffengine} is slower, it stays slower
+at every size it completes, and the ratio grows with the size on UnconstrainedQP, from $7.59$
+to $16.86$, and on ConvexPlasticity, from $5.29$ to $8.68$.
 
 Table~\ref{tab:sensitivity-density} reports the ratio as the density falls. On all five
 problems, \texttt{diffengine}'s advantage shrinks, from a ratio of $0.14$ to $0.17$ on dense
@@ -417,7 +465,7 @@ HuberRegression             & 0.15 & 0.18 & 0.17 & 0.17 & 0.17 \\
 LeastSquares                & 0.15 & 0.15 & 0.17 & 0.17 & 0.18 \\
 SemidefiniteProgramming     & 0.58 & 0.61 & 0.63 & 0.63 & 0.67 \\
 CVaR                        & 0.57 & 0.55 & 0.66 & cap & cap \\
-OptimalAdvertising          & 0.78 & 1.09 & 1.67 & 3.10 & cap \\
+OptimalAdvertising          & 0.81 & 1.15 & 1.66 & 3.40 & cap \\
 \texttt{lasso}              & 0.21 & 0.15 & 0.14 & 0.15 & 0.15 \\
 \bottomrule
 \end{tabular}}
@@ -444,7 +492,7 @@ LeastSquares                & 0.15 & 0.17 & 0.17 \\
 SimpleLP                    & 0.19 & 0.18 & 0.17 \\
 SimpleScalarParametrizedLP  & 0.21 & 0.20 & 0.20 \\
 SimpleFullyParametrizedLP   & 0.22 & 0.21 & 0.20 \\
-SlowPruning                 & 0.21 & 0.22 & 0.21 \\
+SlowPruning                 & 0.23 & 0.22 & 0.22 \\
 ParametrizedQP              & 0.23 & 0.24 & 0.23 \\
 Cajas                       & 0.29 & 0.29 & 0.27 \\
 ConeMatrixStuffing          & 0.31 & 0.30 & 0.29 \\
@@ -454,12 +502,12 @@ ParamSmallMatrixStuffing    & 0.52 & 0.52 & 0.51 \\
 ParamConeMatrixStuffing     & 0.51 & 0.53 & 0.53 \\
 SemidefiniteProgramming     & 0.61 & 0.63 & 0.63 \\
 CVaR                        & 0.55 & 0.66 & cap \\
+QuantumHilbertMatrix        & 1.46 & 0.82 & cap \\
 Murray                      & 1.14 & 0.95 & 1.01 \\
-UnconstrainedQP             & 1.05 & 1.20 & 1.08 \\
-SDPSegfault1132             & 1.29 & 1.27 & cap \\
-OptimalAdvertising          & 1.09 & 1.67 & 3.10 \\
-QuantumHilbertMatrix        & 1.17 & 1.85 & cap \\
+SDPSegfault1132             & 1.51 & 1.35 & cap \\
+OptimalAdvertising          & 1.15 & 1.66 & 3.40 \\
 ConvexPlasticity            & 5.29 & 6.94 & 8.68 \\
+UnconstrainedQP             & 7.59 & 11.76 & 16.86 \\
 \bottomrule
 \end{tabular}}
 \end{table}
