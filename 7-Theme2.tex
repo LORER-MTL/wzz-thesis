@@ -42,9 +42,8 @@ for parameter-free problems; the parametric re-solve path of \S\ref{sec:bench-pa
 yet integrated.
 The author also contributed to the \texttt{SCIPY} and \texttt{COO} backends that
 \texttt{diffengine} is compared against.
-All four backends are timed without \texttt{CVXPY} pull request \#3524, which reassociates a
-chain of matrix products that ends in a constant so that it is evaluated from the constant,
-and which applies to every backend.
+No backend uses the reassociation of matrix products of \texttt{CVXPY} pull request \#3524,
+which applies to all of them (Appendix~\ref{app:slower}).
 Each measurement times one call to \texttt{get\_problem\_data} with
 \texttt{Clarabel}~\cite{clarabel} as the target solver, under a time limit of 30
 minutes and a memory limit of \SI{20}{\giga\byte}. The method canonicalizes the
@@ -172,22 +171,16 @@ the global layout of \S\ref{sec:Limitations} makes the symbolic pass visit every
 per term (OptimalAdvertising). Appendix~\ref{app:slower} gives their formulations, the time of
 each phase and the mechanism.
 
-Two further experiments on the first canonicalization are reported in
-Appendix~\ref{app:bench}. Without
-the dense blocks, \texttt{diffengine} is $1.07$ times slower in geometric mean, a difference
-that is not significant over the suite (\S\ref{sec:bench-ablation}), and $2.17$ times faster
-than the best \texttt{CVXPY} backend. The dense blocks make it about twice as fast on the
-problems with dense data, and much slower on UnconstrainedQP and ConvexPlasticity, so over
-the suite they are not a net gain. The symbolic and numeric split plays no part here, because a first
-canonicalization runs each pass once, so most of the speedup comes from the rest of the
-implementation. As nine suite problems and the \texttt{lasso} family are
-rescaled over a factor of $16$ in size, its ratio to the best \texttt{CVXPY} backend stays
-between $0.13$ and $0.22$ on seven of the ten. At half and twice their size, the problems of
-the suite on which it is faster stay faster, apart from Murray, CVaR and
-QuantumHilbertMatrix. Its advantage
-shrinks as the density of the data falls to $5\,\%$, where it is slower on three of the five
-problems, and partly returns below $5\,\%$, where the data is stored in the sparse format
-(\S\ref{sec:bench-sensitivity}).
+Appendix~\ref{app:bench} reports two further experiments on the first canonicalization.
+Without the dense blocks, \texttt{diffengine} is $1.07$ times slower in geometric mean, a
+difference that is not significant (\S\ref{sec:bench-ablation}). The dense blocks halve the
+time on the problems with dense data but cost much more on UnconstrainedQP and
+ConvexPlasticity. Without them, \texttt{diffengine} is still $2.17$ times faster than the best
+\texttt{CVXPY} backend, so most of the speedup comes from the rest of the implementation; the
+split plays no part, since a first canonicalization runs each pass once. At half and twice
+their size, the problems on which \texttt{diffengine} is faster stay faster, apart from
+Murray, CVaR and QuantumHilbertMatrix, and its advantage shrinks as the density of the data
+falls (\S\ref{sec:bench-sensitivity}).
 
 \FloatBarrier
 
