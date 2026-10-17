@@ -15,15 +15,17 @@ widely used modelling language, most of the compilation time is spent converting
 expression trees into the sparse constraint and objective matrices. The trees state the
 objective and constraints as functions of the variables and parameters. Because the constraint
 matrix is the Jacobian of these functions and the objective matrix is a Hessian, the conversion
-can be viewed as a sparse differentiation problem. None of the current implementations takes
-this perspective. For
+can be viewed as a sparse differentiation problem. None of \texttt{CVXPY}'s current
+implementations takes this perspective. For
 parametric problems, \texttt{CVXPY} caches a linear map from the parameters to the data, which
 is expensive to build. For every other problem, the
 compilation is repeated in full at every solve.
 We present \texttt{SparseDiffEngine}, a lightweight open-source C library
-that computes the Jacobian and the Hessian directly from the expression structure. The computation
-is divided into two phases, which is an idea we borrow from the interfaces of nonlinear
-programming solvers.
+that computes the Jacobian and the Hessian directly from the expression structure. It keeps the
+dense blocks of the problem data in two matrix classes and processes them with BLAS. The
+computation
+is divided into two phases, an idea that goes back to sparse direct factorization and that
+the interfaces of nonlinear programming solvers also use.
 A symbolic pass runs once per problem and determines the sparsity patterns of the
 matrices. A numeric pass fills new values into the fixed patterns at every solve. Re-solving a
 parametrized problem therefore costs only one numeric pass. Using \texttt{SparseDiffEngine}, we
@@ -32,7 +34,9 @@ alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and i
 restriction on how the parameters enter the problem. We compare this new approach with
 \texttt{CVXPY}'s three current implementations on a public benchmark suite of $25$ problems. The
 first compilation is the fastest on $21$ of the $25$ problems, with a geometric-mean speedup of
-$2.8\times$ over the best current implementation. Re-solves of parametrized problems run at times
-comparable to those of \texttt{CVXPY}'s existing caching.
+$2.3\times$ over the best current implementation. On the seven parametrized problems of the suite that
+\texttt{CVXPY} can cache,
+re-solves run within a factor of four of \texttt{CVXPY}'s existing caching, without building
+its cache.
 
 \end{otherlanguage}

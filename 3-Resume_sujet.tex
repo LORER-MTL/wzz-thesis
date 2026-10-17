@@ -13,14 +13,16 @@ symboliques. Les arbres expriment l'objectif et les contraintes en termes de fon
 variables et des paramètres du problème. Les matrices creuses correspondent à la jacobienne de
 ces fonctions et à la hessienne de
 l'objectif. Leur construction revient donc à un calcul de dérivées creuses. Aucune des
-implémentations actuelles n'adopte ce point de vue. Pour les problèmes paramétriques,
+implémentations actuelles de \texttt{CVXPY} n'adopte ce point de vue. Pour les problèmes
+paramétriques,
 \texttt{CVXPY} met en cache une application linéaire des paramètres vers les données, coûteuse à
 construire. Pour tout autre problème, la
 compilation est répétée en entier à chaque résolution. Nous présentons
 \texttt{SparseDiffEngine}, une bibliothèque logicielle C \emph{open source} qui forme la jacobienne et la
-hessienne directement à partir de la structure des expressions. Le calcul est divisé en deux
-phases, une idée que nous empruntons aux interfaces des solveurs d'optimisation non
-linéaire.
+hessienne directement à partir de la structure des expressions. Elle conserve les blocs denses
+des données dans deux classes de matrices et les traite avec BLAS. Le calcul est divisé en deux
+phases, une idée qui remonte à la factorisation directe des matrices creuses et que les
+interfaces des solveurs d'optimisation non linéaire utilisent aussi.
 La phase symbolique s'exécute une seule fois par problème et détermine les structures
 creuses des matrices. La phase numérique remplit ensuite les valeurs dans ces structures fixes à
 chaque résolution. Pour un problème paramétrique, seule la phase numérique est répétée d'une
@@ -30,5 +32,7 @@ en cache déjà offerte par \texttt{CVXPY} et ne limite pas la manière dont les
 apparaissent dans le problème. Nous comparons cette nouvelle approche aux trois implémentations
 actuelles de \texttt{CVXPY} sur une suite publique de $25$ problèmes de référence. La première
 compilation est la plus rapide sur $21$ des $25$ problèmes, avec une accélération d'un facteur
-$2{,}8$ en moyenne géométrique par rapport à la meilleure des trois. Résoudre de nouveau un
-problème paramétrique prend un temps comparable à celui de la mise en cache de \texttt{CVXPY}.
+$2{,}3$ en moyenne géométrique par rapport à la meilleure des trois. Sur les sept problèmes
+paramétriques de la suite que \texttt{CVXPY} peut mettre en cache, une nouvelle résolution
+prend au plus quatre fois le temps de la mise en cache de
+\texttt{CVXPY}, sans avoir à construire celle-ci.

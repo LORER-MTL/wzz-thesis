@@ -14,7 +14,8 @@ computation by graph colouring.
 \texttt{AMPL} and \texttt{JuMP} take the coefficients as the user declares them, but both
 scalarize the model. A dense block in the problem data becomes a list of scalar
 coefficients. \texttt{CVXPY}'s backends, on the other hand, convert everything to sparse
-matrices. No existing modelling language keeps dense blocks as they are. To address this, we
+matrices. No modelling language that forms the problem matrix keeps dense blocks as they are.
+To address this, we
 built \texttt{SparseDiffEngine}, a sparse differentiation library that operates on
 vectorized expressions without scalarizing them, requires no sparsity detection or graph
 colouring, and mixes sparse and dense formats throughout the computation. In addition to
@@ -93,12 +94,16 @@ without breaking backwards compatibility. The next task is the removal of
 would mean that \texttt{CVXPY} no longer needs to compile and ship C++ binaries, which
 would simplify the build process of the library. As a replacement, \texttt{diffengine} can
 become the new default backend, with \texttt{COO} as an alternative candidate for \ac{DPP}
-problems. A further improvement concerns parameter updates. The numeric pass currently
-re-evaluates every node, including the constant parts of the trees that no updated
-parameter reaches. Marking, in the symbolic pass, the subtrees that depend on each
-parameter would let the numeric pass skip the others. This would address the two problems of
-Table~\ref{tab:param-tensor} on which the tensor re-solves faster, SVMWithL1Regularization
-and FactorCovarianceModel, where the parameters are a few scalars.
+problems. A further improvement concerns parameter updates. On the problems where the tensor
+re-solves faster, most of a re-solve goes to converting the engine's output to the solver's
+format (\S\ref{sec:bench-param}), although the sparsity patterns do not change between
+re-solves. Computing this conversion once, in the symbolic pass, would let a re-solve write
+the new values directly into the final matrices. Another improvement concerns dense constants.
+The backend keeps a constant factor of a matrix product as a dense block when at least
+$5\,\%$ of its entries are nonzero, and the constant matrix of a quadratic objective whenever
+it is given as a dense array. A density test set from the cost of the kernels, and applied to
+the quadratic objective as well, would reduce the slowdowns of ConvexPlasticity and of the density experiment
+(\S\ref{sec:bench-oneshot} and \S\ref{sec:bench-sensitivity}).
 
 The final direction would be to extend the permuted dense matrix classes of
 Chapter~\ref{sec:Theme1} to the rest of the

@@ -4,22 +4,24 @@ This chapter presents \texttt{SparseDiffEngine}, our C library for assembling th
 constraint and objective matrices of a canonicalized problem. The engine computes the same
 derivatives as \texttt{CVXPY}'s canonicalization backends. Both apply the
 chain rule of matrix calculus to trees of vectorized expressions. Our contributions lie in the
-implementation. Our main contribution exploits the fact that the data of most optimization
+implementation. The first exploits the fact that the data of most optimization
 problems is not only sparse but also structured, with dense blocks and diagonal patterns.
-We introduce two new matrix classes for this purpose,
+We introduce two matrix classes for this purpose,
 \texttt{permuted-dense} and \texttt{stacked-permuted-dense}, which let us use
 dense storage and BLAS subroutines.
 In addition, we split the computation into a symbolic pass, which computes and
 caches the structure of every intermediate matrix, and a numeric pass, which fills in values.
 This separation is particularly useful for compiling problems involving parameters, where
 the structure is fixed but the numerical values can change. The two-phase approach is
-standard in sparse direct factorization and in the interfaces of \ac{NLP} solvers.
+standard in sparse direct factorization~\cite{davis2006direct} and in the interfaces of \ac{NLP}
+solvers~\cite{wachter2006ipopt}.
 Neither the two matrix classes nor the two-phase approach exists in \texttt{CVXPY}'s backends.
 By bringing both to canonicalization, we address the research gap we identified
 in \S\ref{sec:research-gap}.
 
-Other important design decisions differ from \texttt{CVXPY}'s backends for
-simplicity rather than performance. Every node carries one Jacobian taken with respect to
+Other important design decisions differ from \texttt{CVXPY}'s backends. We made them for
+simplicity, but together with the implementation in C, they account for most of the speedup
+measured in \S\ref{sec:bench-oneshot}. Every node carries one Jacobian taken with respect to
 all of the variables of the problem, rather than a dictionary of local Jacobians keyed by
 variable. As a consequence, the chain rule is a single matrix product, and the
 constraint matrix is built by stacking the Jacobians of the constraints.
@@ -59,6 +61,12 @@ The rest of the chapter describes the affine atoms. The quadratic form contribut
 objective matrix~$\mmat{P}$ through the Hessian, described in \S\ref{sec:theme1-api}. The
 remaining classes are used by the \ac{NLP} interface of
 \texttt{CVXPY} \cite{cederberg2025disciplined}.
+In this thesis, the engine evaluates the affine atoms and the quadratic form at the origin,
+once per problem and again after each parameter update, and the results are the problem data
+matrices $\mmat{A}$ and $\mmat{P}$ and vectors $\mvec{b}$ and $\mvec{c}$. What is specific to
+this thesis is the interface to \texttt{CVXPY} of \S\ref{sec:theme1-api}, namely the
+\texttt{diffengine} backend and its re-solve path for parametric problems, and the benchmarks
+of Chapter~\ref{sec:Theme2}.
 \begin{table}[tb]
 \caption{The atom classes and how each computes its Jacobian.}
 \label{tab:atom-classes}
@@ -130,6 +138,10 @@ Keeping dense blocks inside a sparse matrix is not a new idea. Finite-element co
 assemble dense element matrices into a sparse global matrix, and nonlinear least-squares
 libraries such as \texttt{Ceres}~\cite{agarwal2023ceres} and \texttt{g2o}~\cite{kummerle2011g2o}
 store the block-sparse Jacobians of bundle adjustment as dense blocks.
+In those codes, the position of each block follows from the structure of the problem, one
+element or one residual at a time. In our representations, the symbolic pass derives it from
+the expression tree. A permuted dense matrix holds one dense block on any subset of rows and
+columns, and a stacked permuted dense matrix holds several, each on its own set of rows.
 
 \subsection{Sparse matrix}\label{sec:theme1-generic-sparse}
 
@@ -768,7 +780,9 @@ The numeric pass copies the values of each tree into a fixed slice of the global
 array. The Jacobian of an affine tree does not depend on the variable values. Its entries
 are determined by shapes and index sets, or by problem data, and change only when a
 parameter is updated. The numeric pass therefore skips an affine tree after the first
-evaluation, until the next parameter update. The Hessian follows the same split. An affine tree
+evaluation, until the next parameter update. After an update, it re-evaluates only the
+subtrees that contain a parameter, and keeps the cached values of the others. The Hessian
+follows the same split. An affine tree
 contributes nothing to it, so for a canonicalized problem only the objective is evaluated.
 The Hessian is symmetric, and only its lower triangular entries are passed to the solver.
 
@@ -948,7 +962,7 @@ P.vals = problem.hessian_values()
 %  2026-08-22 to match §2.4 and §4.3; rewritten around the contributions from William's
 %  draft 2026-08-23)
 This chapter presents our approach to canonicalizing
-optimization problems faster. Our main contribution is two new matrix classes that take
+optimization problems faster. We introduce two matrix classes that take
 advantage of the dense blocks in problem data. Along with these data structures, we
 present the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
 kernels are new but fairly straightforward, as each reduces to simple index manipulations
