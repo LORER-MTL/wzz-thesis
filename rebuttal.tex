@@ -28,10 +28,55 @@ Supervisor: Antoine Lesage-Landry\\[0.3em]
 \noindent To Sébastien Le Digabel (president), Antoine Lesage-Landry (supervisor) and Antoine
 Legrain (member of the jury).
 
+\section*{Message au jury}
+
+Bonjour chers membres du jury,
+
+Je voulais tout d'abord vous remercier pour vos commentaires sur ma thèse. Après avoir reçu de
+fortes objections sur la qualité des résultats, j'ai pris le temps de les rendre plus complets,
+et j'ai aussi découvert quelques erreurs dans les affirmations que j'avais faites sur les
+contributions.
+
+Premièrement, il y a maintenant quatre problèmes qui sont plus lents. J'ai ajouté une section
+dans la thèse pour les décrire (annexe A.2.1). Trois des quatre problèmes peuvent être beaucoup
+plus rapides. Deux d'entre eux le deviennent avec des changements dans le «~frontend~» (par
+frontend, je fais référence à la manipulation des arbres d'expression avant le calcul des
+dérivées ; voir les pull requests \href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} et
+\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570}). Par exemple, pouvoir détecter que
+\texttt{D @ ones} (où \texttt{D} est une matrice quelconque) équivaut à
+\texttt{D.sum(axis=1)}, la somme sur les colonnes, est un grand avantage. Le troisième,
+ConvexPlasticity, le devient avec un test de densité
+(\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571}). Ces changements ne règlent pas tout :
+une partie du ralentissement vient du moteur lui-même, en particulier de la mémoire de la
+disposition globale (question 5).
+
+Deuxièmement, j'ai utilisé un ordinateur portable plus récent (MacBook M2 de 2022, avec
+Apple Accelerate) pour cette série de résultats. Pour la première canonicalisation, je pense que les
+ratios et les temps sont assez similaires. Mais pour les temps de re-résolution paramétrique, la
+situation a changé : maintenant, seulement deux des problèmes sont plus rapides. J'ai modifié les
+affirmations de ma conclusion et de la discussion des résultats pour dire seulement qu'il y a
+des bénéfices, mais qu'il ne remplace pas encore le tenseur pour les re-résolutions.
+
+Troisièmement, le problème UnconstrainedQP n'était pas réellement 100 fois plus rapide. C'était
+dû à un changement de frontend
+(\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}) que j'avais appliqué sur la branche
+du backend diffengine, mais pas sur celles des autres. En l'appliquant à tous, cet
+avantage disparaît. J'avoue que c'est une grave erreur de ma
+part, et je l'ai corrigée. Je n'avais pas fait attention aux changements et aux versions du code
+que j'exécutais pour mes résultats, et surtout, j'avais oublié que ce changement pouvait aussi
+s'appliquer aux autres méthodes. J'ai fait de mon mieux pour faire preuve de diligence
+raisonnable, afin que les résultats, cette fois-ci, n'aient pas de problème semblable.
+
+À part ces trois points, qui sont les changements les plus sérieux et les plus importants, j'ai
+aussi fait les études d'ablation et exécuté plus d'instances de benchmark, avec des mesures de
+signification statistique, ce qui répond à tous vos commentaires.
+
+Le reste de ce document a été rédigé par Claude à partir de beaucoup de mes indications, surtout
+pour les réponses à vos questions.
+
 \section{Summary of corrections}
 
-I thank the members of the jury for their careful reading of the thesis and for their
-questions at the defence. I have made all the modifications required by the jury and by
+I have made all the modifications required by the jury and by
 Antoine Legrain's examiner report, as well as all the minor corrections of Sébastien Le Digabel
 and of the appendix of the report. The minor corrections are not listed here. All changes since
 the version sent to the jury are marked in \texttt{Document-diff.pdf}, with added text in blue
@@ -75,7 +120,7 @@ J1d: sensitivity to size and sparsity
 J1e, (iii): non-DPP problems
   & Re-solves of two families in DPP, non-DPP and parameter-free variants, and of
     ConvexPlasticity, the suite's one non-DPP parametric problem.
-  & §4.2, p.~57; App.~A.3.1, pp.~76--77 \\
+  & §4.2, p.~56; App.~A.3.1, pp.~76--77 \\
 J2, (i): related literature and DNLP
   & Matrix-free modelling, CVXcanon, CVXGEN, Convex.jl 0.16, Pyomo's persistent interfaces,
     block-sparse antecedents (finite elements, Ceres, g2o), and sparse factorization as the
