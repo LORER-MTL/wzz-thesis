@@ -170,7 +170,9 @@ away from its constant (UnconstrainedQP), dense blocks that cancel in a sum
 (SDPSegfault1132), a diagonal given as a dense array (ConvexPlasticity), and the global layout
 of \S\ref{sec:Limitations}, which makes the symbolic pass visit every variable once per term
 (OptimalAdvertising). \S\ref{app:slower} gives their formulations, the time of each phase and
-the mechanism.
+the mechanism. It also describes the pull requests to \texttt{CVXPY} that address
+UnconstrainedQP, ConvexPlasticity and OptimalAdvertising, which the measurements of this
+chapter do not include.
 
 Appendix~\ref{app:bench} reports two further experiments on the first canonicalization.
 Without the dense blocks, \texttt{diffengine} is $1.07$ times slower in geometric mean, which
@@ -248,9 +250,6 @@ $66$ to $94\,\%$. On SVMWithL1Regularization and FactorCovarianceModel, the two 
 with the largest ratios, the parameters are a few scalars, the numeric pass takes $3$ and
 $4\,\%$ of the re-solve, and nearly all of the time goes to rebuilding $\mmat{A}$ in the
 compressed sparse column format and in the cone order.
-Without the split, that is, with the conversion and the symbolic pass repeated at every
-parameter update, the re-solves are $2.56$ times slower in geometric mean
-(\S\ref{sec:bench-ablation}).
 
 The tensor of \texttt{CVXPY} exists only for \ac{DPP} problems, while the numeric pass
 needs only a fixed expression tree and fixed sparsity patterns. On two problem families
