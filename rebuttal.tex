@@ -170,6 +170,14 @@ them. This is the cost of the global layout again, paid once per dense block rat
 per node. Storing these maps sparsely, or sharing one workspace across the blocks, should
 remove most of it.
 
+In OptimalAdvertising, both constraints are sums written as products with a vector of ones. A
+small change to the CVXPY converter, being submitted as a pull request, lowers such products to
+the engine's sum, which builds no dense blocks. On OptimalAdvertising it reduces the peak memory
+from 6.1~GB to 1.4~GB and the canonicalization time from 1.3~s to 0.43~s. These are single runs,
+outside the measurements of Chapter~4, which are unchanged. The remaining overhead is the
+per-node cost above, and a weighted sum $\mathbf{D}\mathbf{w}$ with a general dense
+$\mathbf{w}$ still needs the fix in the engine.
+
 \question{6}{What part of SparseDiffEngine pre-existed the thesis or was developed for DNLP, and
 what part is specific to this work?}
 SparseDiffEngine is joint work with Daniel Cederberg and serves both uses. DNLP differentiates
