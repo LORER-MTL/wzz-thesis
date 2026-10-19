@@ -161,14 +161,14 @@ of its 250 minimum terms has a Jacobian over all 250\,000 variables, and the sym
 visits every column (App.~A.2.1). Without dense blocks, its peak memory is 945~MB, against
 about 180~MB for the CVXPY backends; that difference is the per-node cost.
 
-With dense blocks it reaches 6~GB, and a second measurement locates the difference: it comes
-from the aggregate constraints $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ and $\mathbf{D} \mathbf{1} \ge
-\mathbf{c}$, not from the layout. Canonicalized alone, $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ takes
-4~GB with dense blocks and 112~MB without. Its Jacobian has one nonzero per variable, but its
-memory grows with the number of rows times the number of variables, as if each row's dense
-block spanned all 250\,000 columns instead of the 250 it uses. The constant $\mathbf{1}$ is dense, but
-the operator $\mathbf{1}^\top \otimes I$ that it defines is not, so a density test on the constant
-would not catch this case.
+With dense blocks it reaches 6~GB, and most of the difference comes from the aggregate
+constraints $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ and $\mathbf{D} \mathbf{1} \ge \mathbf{c}$.
+Canonicalized alone, $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ takes 4~GB with dense blocks and
+112~MB without. Its Jacobian is stored as 1000 dense blocks of 250 entries, but each block also
+keeps an inverse map of its columns with one integer per variable of the problem, 250\,000 of
+them. This is the cost of the global layout again, paid once per dense block rather than once
+per node. Storing these maps sparsely, or sharing one workspace across the blocks, should
+remove most of it.
 
 \question{6}{What part of SparseDiffEngine pre-existed the thesis or was developed for DNLP, and
 what part is specific to this work?}
