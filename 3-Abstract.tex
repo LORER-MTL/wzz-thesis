@@ -27,8 +27,8 @@ computation
 is divided into two phases, an idea that goes back to sparse direct factorization and that
 the interfaces of nonlinear programming solvers also use.
 A symbolic pass runs once per problem and determines the sparsity patterns of the
-matrices. A numeric pass fills new values into the fixed patterns at every solve. Re-solving a
-parametrized problem therefore costs only one numeric pass. Using \texttt{SparseDiffEngine}, we
+matrices. A numeric pass fills new values into the fixed patterns at every solve. A re-solve of a
+parametrized problem therefore skips the symbolic pass. Using \texttt{SparseDiffEngine}, we
 implement a new way to form the numerical data in \texttt{CVXPY}. This two-phase approach is an
 alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and it places no
 restriction on how the parameters enter the problem. We compare this new approach with

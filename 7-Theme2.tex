@@ -177,11 +177,12 @@ chapter do not include.
 Appendix~\ref{app:bench} reports two further experiments on the first canonicalization.
 Without the dense blocks, \texttt{diffengine} is $1.07$ times slower in geometric mean, which
 is not significant over the suite: a Wilcoxon signed-rank test~\cite{wilcoxon1945} on the
-log-ratios gives $p = 0.07$ (\S\ref{sec:bench-ablation}). The dense blocks make it $1.4$ to
-$3.0$ times faster on ten problems, but $47$ and $5.1$ times slower on UnconstrainedQP and
-ConvexPlasticity. Without them, \texttt{diffengine} is still $2.17$ times faster than the best
-\texttt{CVXPY} backend, so most of the speedup comes from the rest of the implementation; the
-split plays no part, since a first canonicalization runs each pass once. At half and twice
+log-ratios gives $p = 0.07$ (\S\ref{sec:bench-ablation}). Against the best \texttt{CVXPY}
+backend, the dense blocks take \texttt{diffengine} from about $3$ to about $7$ times faster on six
+problems with dense data, and from $4$ times faster to $11.8$ times slower on UnconstrainedQP
+(Table~\ref{tab:app-nodense}). Over the suite, \texttt{diffengine} is $2.17$ times faster than
+the best \texttt{CVXPY} backend without them and $2.33$ times with them. The split is not ablated
+here, since a first canonicalization runs each pass once. At half and twice
 their size, the problems on which \texttt{diffengine} is faster stay faster, apart from Murray
 and QuantumHilbertMatrix, and its advantage shrinks as the density of the data falls
 (\S\ref{sec:bench-sensitivity}). At twice their size, \texttt{diffengine} exceeds the memory
@@ -290,8 +291,9 @@ Our first two observations challenge this tradition and suggest that \ac{DPP} sh
 used more carefully, for problems that are re-solved enough times or for applications
 built on downstream packages that depend on the tensor, for example
 \texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}.
-With our approach, a similar speedup can be obtained through the symbolic and numeric split
-without enforcing any rules about how parameters appear in the problem formulation.
+With our approach, a parametric problem is re-solved without building the tensor and without
+any rules about how its parameters appear, at re-solve times within a factor of four of the
+tensor on the \ac{DPP} problems of the suite.
 
 In addition, the second and third observations suggest that \texttt{diffengine} can
 replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}.

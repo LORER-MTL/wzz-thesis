@@ -359,48 +359,54 @@ factor of $47$,
 ConvexPlasticity by a factor of $5.1$ and CVaR by a factor of $1.6$.
 
 {\small
-\begin{longtable}{l rr l}
+\begin{longtable}{l rr l rr}
 \caption[First canonicalization without the dense blocks]{First canonicalization of
 \texttt{diffengine} with and without the dense blocks, in milliseconds. The ratio is the median
 time without the dense blocks over that with them, marked with~$^{*}$ when the difference is
-significant (Mann--Whitney, Holm-adjusted $p < 0.05$).}\label{tab:app-nodense}\\
+significant (Mann--Whitney, Holm-adjusted $p < 0.05$). The last two columns are the ratio of
+\texttt{diffengine} to the best \texttt{CVXPY} backend of Table~\ref{tab:oneshot-compile}, with
+and without the dense blocks.}\label{tab:app-nodense}\\
 \toprule
-Benchmark & \texttt{diffengine} & no dense blocks & Ratio \\
+& & & & \multicolumn{2}{c}{to best \texttt{CVXPY}} \\
+\cmidrule(lr){5-6}
+Benchmark & \texttt{diffengine} & no dense blocks & Ratio & with & without \\
 \midrule
 \endfirsthead
 \toprule
-Benchmark & \texttt{diffengine} & no dense blocks & Ratio \\
+& & & & \multicolumn{2}{c}{to best \texttt{CVXPY}} \\
+\cmidrule(lr){5-6}
+Benchmark & \texttt{diffengine} & no dense blocks & Ratio & with & without \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
-SVMWithL1Regularization & 363 $\pm$ 4 & 746 $\pm$ 3 & 2.06$^{*}$ \\
-FactorCovarianceModel & 165 $\pm$ 1 & 347 $\pm$ 2 & 2.10$^{*}$ \\
-Yitzhaki & 133 $\pm$ 0.5 & 253 $\pm$ 1 & 1.90$^{*}$ \\
-SimpleQP & 433 $\pm$ 3 & 912 $\pm$ 4 & 2.11$^{*}$ \\
-HuberRegression & 475 $\pm$ 2 & 1\,005 $\pm$ 7 & 2.11$^{*}$ \\
-LeastSquares & 416 $\pm$ 2 & 898 $\pm$ 4 & 2.16$^{*}$ \\
-SimpleLP & 1\,098 $\pm$ 7 & 1\,497 $\pm$ 10 & 1.36$^{*}$ \\
-SimpleScalarParametrizedLP & 220 $\pm$ 1 & 214 $\pm$ 1 & 0.97$^{*}$ \\
-SimpleFullyParametrizedLP & 111 $\pm$ 0.2 & 109 $\pm$ 0.3 & 0.99$^{*}$ \\
-SlowPruning & 392 $\pm$ 0.5 & 406 $\pm$ 3 & 1.03$^{*}$ \\
-ParametrizedQP & 730 $\pm$ 48 & 726 $\pm$ 24 & 0.99 \\
-Cajas & 201 $\pm$ 2 & 204 $\pm$ 1 & 1.02$^{*}$ \\
-ConeMatrixStuffing & 634 $\pm$ 4 & 1\,913 $\pm$ 11 & 3.01$^{*}$ \\
-SmallMatrixStuffing & 500 $\pm$ 6 & 1\,347 $\pm$ 6 & 2.70$^{*}$ \\
-TvInpainting & 244 $\pm$ 1 & 239 $\pm$ 1 & 0.98$^{*}$ \\
-ParamSmallMatrixStuffing & 32.9 $\pm$ 0.2 & 40.3 $\pm$ 0.2 & 1.23$^{*}$ \\
-ParamConeMatrixStuffing & 22.5 $\pm$ 0.1 & 27.3 $\pm$ 0.1 & 1.21$^{*}$ \\
-SemidefiniteProgramming & 396 $\pm$ 3 & 396 $\pm$ 5 & 1.00 \\
-CVaR & 4\,273 $\pm$ 55 & 2\,742 $\pm$ 77 & 0.65$^{*}$ \\
-QuantumHilbertMatrix & 643 $\pm$ 3 & 658 $\pm$ 3 & 1.02$^{*}$ \\
-Murray & 1\,164 $\pm$ 2 & 1\,177 $\pm$ 7 & 1.01$^{*}$ \\
-SDPSegfault1132 & 2\,024 $\pm$ 17 & 3\,541 $\pm$ 42 & 1.75$^{*}$ \\
-OptimalAdvertising & 890 $\pm$ 7 & 837 $\pm$ 2 & 0.94$^{*}$ \\
-ConvexPlasticity & 499 $\pm$ 7 & 98.4 $\pm$ 2.0 & 0.20$^{*}$ \\
-UnconstrainedQP & 22\,928 $\pm$ 12 & 489 $\pm$ 2 & 0.02$^{*}$ \\
+SVMWithL1Regularization & 363 $\pm$ 4 & 746 $\pm$ 3 & 2.06$^{*}$ & 0.14 & 0.28 \\
+FactorCovarianceModel & 165 $\pm$ 1 & 347 $\pm$ 2 & 2.10$^{*}$ & 0.14 & 0.30 \\
+Yitzhaki & 133 $\pm$ 0.5 & 253 $\pm$ 1 & 1.90$^{*}$ & 0.14 & 0.27 \\
+SimpleQP & 433 $\pm$ 3 & 912 $\pm$ 4 & 2.11$^{*}$ & 0.15 & 0.32 \\
+HuberRegression & 475 $\pm$ 2 & 1\,005 $\pm$ 7 & 2.11$^{*}$ & 0.17 & 0.37 \\
+LeastSquares & 416 $\pm$ 2 & 898 $\pm$ 4 & 2.16$^{*}$ & 0.17 & 0.37 \\
+SimpleLP & 1\,098 $\pm$ 7 & 1\,497 $\pm$ 10 & 1.36$^{*}$ & 0.18 & 0.25 \\
+SimpleScalarParametrizedLP & 220 $\pm$ 1 & 214 $\pm$ 1 & 0.97$^{*}$ & 0.20 & 0.20 \\
+SimpleFullyParametrizedLP & 111 $\pm$ 0.2 & 109 $\pm$ 0.3 & 0.99$^{*}$ & 0.21 & 0.21 \\
+SlowPruning & 392 $\pm$ 0.5 & 406 $\pm$ 3 & 1.03$^{*}$ & 0.22 & 0.23 \\
+ParametrizedQP & 730 $\pm$ 48 & 726 $\pm$ 24 & 0.99 & 0.24 & 0.24 \\
+Cajas & 201 $\pm$ 2 & 204 $\pm$ 1 & 1.02$^{*}$ & 0.29 & 0.30 \\
+ConeMatrixStuffing & 634 $\pm$ 4 & 1\,913 $\pm$ 11 & 3.01$^{*}$ & 0.30 & 0.89 \\
+SmallMatrixStuffing & 500 $\pm$ 6 & 1\,347 $\pm$ 6 & 2.70$^{*}$ & 0.30 & 0.81 \\
+TvInpainting & 244 $\pm$ 1 & 239 $\pm$ 1 & 0.98$^{*}$ & 0.30 & 0.29 \\
+ParamSmallMatrixStuffing & 32.9 $\pm$ 0.2 & 40.3 $\pm$ 0.2 & 1.23$^{*}$ & 0.52 & 0.64 \\
+ParamConeMatrixStuffing & 22.5 $\pm$ 0.1 & 27.3 $\pm$ 0.1 & 1.21$^{*}$ & 0.53 & 0.64 \\
+SemidefiniteProgramming & 396 $\pm$ 3 & 396 $\pm$ 5 & 1.00 & 0.63 & 0.63 \\
+CVaR & 4\,273 $\pm$ 55 & 2\,742 $\pm$ 77 & 0.65$^{*}$ & 0.66 & 0.42 \\
+QuantumHilbertMatrix & 643 $\pm$ 3 & 658 $\pm$ 3 & 1.02$^{*}$ & 0.82 & 0.84 \\
+Murray & 1\,164 $\pm$ 2 & 1\,177 $\pm$ 7 & 1.01$^{*}$ & 0.95 & 0.96 \\
+SDPSegfault1132 & 2\,024 $\pm$ 17 & 3\,541 $\pm$ 42 & 1.75$^{*}$ & 1.35 & 2.36 \\
+OptimalAdvertising & 890 $\pm$ 7 & 837 $\pm$ 2 & 0.94$^{*}$ & 1.66 & 1.57 \\
+ConvexPlasticity & 499 $\pm$ 7 & 98.4 $\pm$ 2.0 & 0.20$^{*}$ & 6.94 & 1.36 \\
+UnconstrainedQP & 22\,928 $\pm$ 12 & 489 $\pm$ 2 & 0.02$^{*}$ & 11.76 & 0.25 \\
 \midrule
-\textbf{Geometric mean} & & & \textbf{1.07} \\
+\textbf{Geometric mean} & & & \textbf{1.07} & \textbf{0.43} & \textbf{0.46} \\
 \end{longtable}}
 
 \FloatBarrier

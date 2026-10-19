@@ -82,6 +82,10 @@ presentation: presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 
+rebuttal: rebuttal.tex
+	${PDFLATEX} -interaction=nonstopmode rebuttal.tex
+	${PDFLATEX} -interaction=nonstopmode rebuttal.tex
+
 # Changes since the version sent to the jury (21b013b), for the final-deposit review.
 # The old revision is exported and built first so both sides have a .bbl for --flatten
 # to inline; otherwise the bibliography shows up as deleted. Needs a built Document.bbl.
@@ -100,6 +104,9 @@ diff: $(SRC:%.tex=%.pdf)
 
 diff_clean:
 	@rm -rf $(SRC:%.tex=%)-diff*.{tex,aux,bbl,blg,log,out,lof,lot,loa,toc,pdf} .diff-*
+
+rebuttal_clean:
+	@rm -f rebuttal.{aux,log,out,pdf}
 
 presentation_clean:
 	@rm -f presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}
@@ -135,4 +142,4 @@ help:
 	@echo "  make images     Génération de toutes les images"
 	@echo
 
-.PHONY	: diff diff_clean show clean all_clean pdf archive final draft help images presentation presentation_clean
+.PHONY	: diff diff_clean show clean all_clean pdf archive final draft help images presentation presentation_clean rebuttal rebuttal_clean

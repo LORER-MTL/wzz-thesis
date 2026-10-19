@@ -98,10 +98,11 @@ problems. A further improvement concerns parameter updates. On the problems wher
 re-solves faster, most of a re-solve goes to converting the engine's output to the solver's
 format (\S\ref{sec:bench-param}), although the sparsity patterns do not change between
 re-solves. Computing this conversion once, in the symbolic pass, would let a re-solve write
-the new values directly into the final matrices. Another improvement concerns dense constants.
-The backend keeps a constant as a dense block when at least $5\,\%$ of its entries are
-nonzero. A threshold set from the cost of the kernels would reduce the slowdowns of the
-density experiment (\S\ref{sec:bench-sensitivity}).
+the new values directly into the final matrices. The re-solve of the tensor rebuilds its
+matrices in the same way, so the same change would speed up both. Another improvement concerns
+dense constants. The backend keeps a constant as a dense block when at least $5\,\%$ of its
+entries are nonzero. A threshold set from the cost of the kernels would reduce the slowdowns of
+the density experiment (\S\ref{sec:bench-sensitivity}).
 
 The final direction would be to extend the permuted dense matrix classes of
 Chapter~\ref{sec:Theme1} to the rest of the
