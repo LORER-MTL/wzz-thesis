@@ -105,12 +105,14 @@ J3: declaration of AI use
 \paragraph{A change of baseline.}
 The version sent to the jury reported a $2.8\times$ geometric-mean speedup. Two things changed
 since. All experiments were rerun on an Apple M2 with current versions. And that comparison gave
-\texttt{diffengine} CVXPY PR~\#3524, which reassociates chains of matrix products ending in a
-constant, while the other backends were timed on stock CVXPY. PR~\#3524 benefits every backend,
-so all four are now timed without it. \texttt{diffengine} is the fastest of the four
+\texttt{diffengine} CVXPY PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}, which reassociates
+chains of matrix products ending in a constant, while the other backends were timed on stock
+CVXPY. PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} benefits every backend, so all four are now
+timed without it. \texttt{diffengine} is the fastest of the four
 on 21 of the 25 problems, significantly on all 21, with a geometric-mean ratio of $0.43$ to
 the best CVXPY backend, about $2.3\times$. UnconstrainedQP is now $11.8\times$ slower
-(§4.1 explains why, and gives the 16~ms it takes with PR~\#3524).
+(§4.1 explains why, and gives the 16~ms it takes with
+PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}).
 
 \section{Replies to the defence questions}
 
@@ -228,11 +230,13 @@ See Q3 above (App.~A.3.1, Table A.6).
 App.~A.2.1 and Table A.4 give the phase shares and the mechanism for each.
 \begin{itemize}[nosep]
   \item UnconstrainedQP (98\,\% numeric pass): a chain of matrix products is evaluated away
-        from its constant and fills a dense Jacobian; CVXPY PR~\#3524 removes it (16~ms).
-  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5; PR~\#3570
-        removes the dense blocks of its aggregate constraints (App.~A.2.1).
+        from its constant and fills a dense Jacobian; CVXPY
+        PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} removes it (16~ms).
+  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5;
+        PR~\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570} removes the dense blocks of its aggregate
+        constraints (App.~A.2.1).
   \item ConvexPlasticity: a diagonal given as a dense array becomes a dense block, which
-        PR~\#3571 stores sparse (App.~A.2.1).
+        PR~\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} stores sparse (App.~A.2.1).
   \item SDPSegfault1132: three dense blocks of 49.5 million entries cancel in a sum with 1.01
         million nonzeros, and \texttt{diffengine} carries the cancelled entries through both
         passes. The cancellation depends on the values of the data, so it cannot be seen before
