@@ -13,8 +13,6 @@
 \setlength{\parskip}{0.5em}
 \setlength{\parindent}{0pt}
 
-% Points William still has to confirm before the letter is sent.
-\newcommand{\confirm}[1]{\textcolor{red}{\textbf{[To confirm: #1]}}}
 \newcommand{\question}[2]{\par\medskip\textbf{Q#1.} \emph{#2}\par}
 
 \begin{document}
@@ -105,10 +103,11 @@ J3: declaration of AI use
 \end{longtable}}
 
 \paragraph{A change of baseline.}
-The version sent to the jury reported a $2.8\times$ geometric-mean speedup. That comparison
-gave \texttt{diffengine} CVXPY PR~\#3524, which reassociates chains of matrix products ending
-in a constant, while the other backends were timed on stock CVXPY. PR~\#3524 benefits every
-backend, so all four are now timed without it. \texttt{diffengine} is the fastest of the four
+The version sent to the jury reported a $2.8\times$ geometric-mean speedup. Two things changed
+since. All experiments were rerun on an Apple M2 with current versions. And that comparison gave
+\texttt{diffengine} CVXPY PR~\#3524, which reassociates chains of matrix products ending in a
+constant, while the other backends were timed on stock CVXPY. PR~\#3524 benefits every backend,
+so all four are now timed without it. \texttt{diffengine} is the fastest of the four
 on 21 of the 25 problems, significantly on all 21, with a geometric-mean ratio of $0.43$ to
 the best CVXPY backend, about $2.3\times$. UnconstrainedQP is now $11.8\times$ slower
 (§4.1 explains why, and gives the 16~ms it takes with PR~\#3524).
@@ -158,8 +157,8 @@ $n$, whatever variables its own subtree contains. Their memory is therefore
 $O(\text{nodes} \times n)$ integers, and with many variables and many nodes the local layout is
 better; this is now stated in the Limitations (§5.1). OptimalAdvertising shows it in time: each
 of its 250 minimum terms has a Jacobian over all 250\,000 variables, and the symbolic pass
-visits every column (App.~A.2.1). Without dense blocks, its peak memory is 945~MB, against
-about 180~MB for the CVXPY backends; that difference is the per-node cost.
+visits every column (App.~A.2.1). Without dense blocks, its peak memory is 945~MB, against 173
+to 197~MB for the CVXPY backends; that difference is the per-node cost.
 
 With dense blocks it reaches 6~GB, and most of the difference comes from the aggregate
 constraints $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ and $\mathbf{D} \mathbf{1} \ge \mathbf{c}$.
@@ -174,8 +173,8 @@ In OptimalAdvertising, both constraints are sums written as products with a vect
 small change to the CVXPY converter, submitted as pull request
 \href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570}, lowers such products to
 the engine's sum, which builds no dense blocks. On OptimalAdvertising it reduces the peak memory
-from 6.1~GB to 1.4~GB and the canonicalization time from 1.3~s to 0.43~s. These are single runs,
-outside the measurements of Chapter~4, which are unchanged. The remaining overhead is the
+from 6.1~GB to 1.4~GB and the canonicalization time from 1.3~s to 0.43~s. These are single runs
+on CVXPY master, outside the measurements of Chapter~4, which are unchanged. The remaining overhead is the
 per-node cost above, and a weighted sum $\mathbf{D}\mathbf{w}$ with a general dense
 $\mathbf{w}$ still needs the fix in the engine.
 
@@ -197,9 +196,10 @@ nothing beyond the package.
 \section{Summary of the new results}
 
 \paragraph{Methodology.}
-Every measurement is repeated 20 times, each run in a fresh process, on an Apple M2 (24~GB,
-macOS 26.5.1) with Accelerate, single-threaded. Each comparison is tested with a two-sided
-Mann--Whitney test, Holm-adjusted over the problems (Ch.~4 intro).
+Every timed comparison is repeated 20 times, each run in a fresh process, on an Apple M2
+(24~GB, macOS 26.5.1) with Accelerate, single-threaded, and tested with a two-sided
+Mann--Whitney test, Holm-adjusted over the problems (Ch.~4 intro). The sensitivity points of
+App.~A.5 are medians of five runs, reported without a test.
 
 \paragraph{First canonicalization.}
 \texttt{diffengine} is the fastest backend on 21 of the 25 problems, with a geometric-mean
@@ -213,8 +213,8 @@ Without dense blocks, the first canonicalization is $1.07\times$ slower in geome
 (confidence interval $0.71$--$1.47$, $p = 0.07$), and peak memory is $0.85\times$: a dense block
 stores every entry, including the zeros of a constant that is sparse in fact. Without the
 split, that is, repeating the conversion and the symbolic pass at every update, re-solves are
-$2.56\times$ slower in geometric mean. Most of that cost is the Python-to-C conversion
-(App.~A.4, Table A.7).
+$2.56\times$ slower in geometric mean; on the two small problems, most of that cost is the
+Python-to-C conversion rather than the symbolic pass (App.~A.4, Table A.7).
 
 \paragraph{Non-DPP problems.}
 See Q3 above (App.~A.3.1, Table A.6).
@@ -224,27 +224,33 @@ App.~A.2.1 and Table A.4 give the phase shares and the mechanism for each.
 \begin{itemize}[nosep]
   \item UnconstrainedQP (98\,\% numeric pass): a chain of matrix products is evaluated away
         from its constant and fills a dense Jacobian; CVXPY PR~\#3524 removes it (16~ms).
-  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5.
-  \item SDPSegfault1132 and ConvexPlasticity: dense constant data stored as dense blocks.
+  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5, where
+        PR~\#3570 is also discussed.
+  \item ConvexPlasticity: a diagonal given as a dense array becomes a dense block; see
+        PR~\#3571 below.
+  \item SDPSegfault1132: three dense blocks of 49.5 million entries cancel in a sum with 1.01
+        million nonzeros, and \texttt{diffengine} carries the cancelled entries through both
+        passes. The cancellation depends on the values of the data, so it cannot be seen before
+        the blocks are built.
 \end{itemize}
 
 \paragraph{Sensitivity to size and density.}
 On seven of the ten families measured at five sizes, the ratio stays between $0.13$ and $0.22$
 over a factor of 16 in size. On all 25 problems at three sizes, it stays within $0.04$ of its
 value at the nominal size on 18 of the 21 problems where \texttt{diffengine} is faster. The four
-slower problems stay slower at every size. As the density falls, the advantage shrinks, from a
+slower problems stay slower at every size they complete. As the density falls, the advantage shrinks, from a
 ratio of $0.14$--$0.17$ on dense data to $0.40$--$2.56$ at 1\,\% density, and above 20\,\%
 density \texttt{diffengine} is faster on every problem (App.~A.5, Tables A.8--A.10).
 
 \paragraph{What the results imply.}
 The dense blocks help when the data is dense and hurt when a constant that is sparse in fact is
-stored dense. The backend already stores a constant factor sparse below 5\,\% nonzeros, but the
-quadratic objective had no such test. Pull request
+stored dense. The backend already stores a constant factor of a matrix product sparse below
+5\,\% nonzeros, but the quadratic objective had no such test. Pull request
 \href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} applies it there. On ConvexPlasticity,
 whose diagonal is given as a dense array, it makes canonicalization 3 times faster (196 against
 579~ms, medians of 10 runs on CVXPY master, outside the measurements of Chapter~4) with the same
-problem data. The rest of its slowdown, like the memory of OptimalAdvertising (Q5), comes from
-the inverse column maps of the dense blocks in the engine. Setting the threshold from the cost
+problem data. Most of the rest of its slowdown, like the memory of OptimalAdvertising (Q5),
+comes from the inverse column maps of the dense blocks in the engine. Setting the threshold from the cost
 of the kernels, for the slowdowns at low density, remains future work (§5.2).
 
 \end{document}
