@@ -61,8 +61,8 @@ J1a: statistical significance
     tables.
   & Ch.~4 intro and §4.1, p.~52; Tables 4.1, 4.2, A.6, A.7 \\
 J1b, (ii): ablation
-  & Two contrasts: no dense blocks on the first canonicalization (25 problems, with memory)
-    and no symbolic/numeric split on the re-solves (7 DPP problems).
+  & No dense blocks on the first canonicalization (25 problems, with memory). The split is
+    measured by the first canonicalization and re-solve times of Table 4.2 (see Summary).
   & §4.1, p.~56; App.~A.4, p.~77 \\
 J1c: more instances
   & Each run draws new parameter values from its own seed; the problems are also scaled in size
@@ -173,8 +173,9 @@ In OptimalAdvertising, both constraints are sums written as products with a vect
 small change to the CVXPY converter, submitted as pull request
 \href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570}, lowers such products to
 the engine's sum, which builds no dense blocks. On OptimalAdvertising it reduces the peak memory
-from 6.1~GB to 1.4~GB and the canonicalization time from 1.3~s to 0.43~s. These are single runs
-on CVXPY master, outside the measurements of Chapter~4, which are unchanged. The remaining overhead is the
+from 6.1~GB to 1.4~GB and the canonicalization time from 1.10~s to 0.46~s (App.~A.2.1). These
+are medians of three runs on CVXPY master, outside the measurements of Chapter~4, which are
+unchanged. The remaining overhead is the
 per-node cost above, and a weighted sum $\mathbf{D}\mathbf{w}$ with a general dense
 $\mathbf{w}$ still needs the fix in the engine.
 
@@ -211,10 +212,12 @@ $p$-value is $1.7 \times 10^{-6}$, the smallest attainable with 20 runs (§4.1, 
 \paragraph{Ablation.}
 Without dense blocks, the first canonicalization is $1.07\times$ slower in geometric mean
 (confidence interval $0.71$--$1.47$, $p = 0.07$), and peak memory is $0.85\times$: a dense block
-stores every entry, including the zeros of a constant that is sparse in fact. Without the
-split, that is, repeating the conversion and the symbolic pass at every update, re-solves are
-$2.56\times$ slower in geometric mean; on the two small problems, most of that cost is the
-Python-to-C conversion rather than the symbolic pass (App.~A.4, Table A.7).
+stores every entry, including the zeros of a constant that is sparse in fact (App.~A.4,
+Table A.7). The split needs no separate switch. Without it, a re-solve repeats the conversion
+and the symbolic pass of the first canonicalization, so it cannot be faster, and Table 4.2
+already gives the first canonicalization and the re-solve of every DPP problem. The
+parameter-to-data tensor is a different mechanism, which can only be compared with the split on
+re-solves, as Table 4.2 does.
 
 \paragraph{Non-DPP problems.}
 See Q3 above (App.~A.3.1, Table A.6).
@@ -224,10 +227,10 @@ App.~A.2.1 and Table A.4 give the phase shares and the mechanism for each.
 \begin{itemize}[nosep]
   \item UnconstrainedQP (98\,\% numeric pass): a chain of matrix products is evaluated away
         from its constant and fills a dense Jacobian; CVXPY PR~\#3524 removes it (16~ms).
-  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5, where
-        PR~\#3570 is also discussed.
-  \item ConvexPlasticity: a diagonal given as a dense array becomes a dense block; see
-        PR~\#3571 below.
+  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5; PR~\#3570
+        removes the dense blocks of its aggregate constraints (App.~A.2.1).
+  \item ConvexPlasticity: a diagonal given as a dense array becomes a dense block, which
+        PR~\#3571 stores sparse (App.~A.2.1).
   \item SDPSegfault1132: three dense blocks of 49.5 million entries cancel in a sum with 1.01
         million nonzeros, and \texttt{diffengine} carries the cancelled entries through both
         passes. The cancellation depends on the values of the data, so it cannot be seen before
@@ -247,9 +250,9 @@ The dense blocks help when the data is dense and hurt when a constant that is sp
 stored dense. The backend already stores a constant factor of a matrix product sparse below
 5\,\% nonzeros, but the quadratic objective had no such test. Pull request
 \href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} applies it there. On ConvexPlasticity,
-whose diagonal is given as a dense array, it makes canonicalization 3 times faster (196 against
-579~ms, medians of 10 runs on CVXPY master, outside the measurements of Chapter~4) with the same
-problem data. Most of the rest of its slowdown, like the memory of OptimalAdvertising (Q5),
+whose diagonal is given as a dense array, it makes canonicalization 3 times faster (194 against
+566~ms, medians of 10 runs on CVXPY master, outside the measurements of Chapter~4) with the same
+problem data, as App.~A.2.1 now notes. Most of the rest of its slowdown, like the memory of OptimalAdvertising (Q5),
 comes from the inverse column maps of the dense blocks in the engine. Setting the threshold from the cost
 of the kernels, for the slowdowns at low density, remains future work (§5.2).
 
