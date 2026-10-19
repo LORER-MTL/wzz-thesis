@@ -124,14 +124,16 @@ and its dense block. §2.2 now makes this comparison.
 
 \question{2}{If the permuted dense representations are disabled, what fraction of the speedup
 remains?}
-Most of it. Without the dense blocks, \texttt{diffengine} is $1.07\times$ slower in geometric
-mean, which is not significant over the suite (Wilcoxon signed-rank, $p = 0.07$), and it is
-still $2.17\times$ faster than the best CVXPY backend. The split plays no part in a first
-canonicalization, since each pass runs once. Most of the speedup therefore comes from the rest
-of the implementation: C, one Jacobian per node over all the variables, no materialized views
-and no tensor. The dense blocks make the engine $1.4$ to $3.0\times$ faster on ten problems
-with dense data, but $47$ and $5.1\times$ slower on UnconstrainedQP and ConvexPlasticity, so
-over the suite they are not a net gain (§4.1, App.~A.4).
+Without the dense blocks, \texttt{diffengine} is $2.17\times$ faster than the best CVXPY
+backend in geometric mean, against $2.33\times$ with them. The difference between the two,
+$1.07\times$, is not significant over the suite (Wilcoxon signed-rank, $p = 0.07$). Per problem
+the effect is large in both directions. On six problems with dense data, the dense blocks take
+the engine from about $3$ to about $7\times$ faster than CVXPY. On UnconstrainedQP they take it
+from $4\times$ faster to $11.8\times$ slower, and on ConvexPlasticity from $1.4$ to $6.9\times$
+slower (§4.1, App.~A.4, Table A.7, which now gives both ratios to CVXPY). The split plays no
+part in a first canonicalization, since each pass runs once. We do not attribute the remaining
+speedup to one component: the engine is one design, and only the dense blocks and the split
+have switches that can be turned off.
 
 \question{3}{How does re-solving behave on a non-DPP parametric problem?}
 On the two families with a product of two parameters (\texttt{lasso} and

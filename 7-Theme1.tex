@@ -20,8 +20,7 @@ By bringing both to canonicalization, we address the research gap we identified
 in \S\ref{sec:research-gap}.
 
 Other important design decisions differ from \texttt{CVXPY}'s backends. We made them for
-simplicity, but together with the implementation in C, they account for most of the speedup
-measured in \S\ref{sec:bench-oneshot}. Every node carries one Jacobian taken with respect to
+simplicity. Every node carries one Jacobian taken with respect to
 all of the variables of the problem, rather than a dictionary of local Jacobians keyed by
 variable. As a consequence, the chain rule is a single matrix product, and the
 constraint matrix is built by stacking the Jacobians of the constraints.
@@ -962,7 +961,7 @@ P.vals = problem.hessian_values()
 %  2026-08-22 to match §2.4 and §4.3; rewritten around the contributions from William's
 %  draft 2026-08-23)
 This chapter presents our approach to canonicalizing
-optimization problems faster. We introduce two matrix classes that take
+optimization problems. We introduce two matrix classes that take
 advantage of the dense blocks in problem data. Along with these data structures, we
 present the kernels of Table~\ref{tab:kernel-operations} that operate on them. The
 kernels are new but fairly straightforward, as each reduces to simple index manipulations
