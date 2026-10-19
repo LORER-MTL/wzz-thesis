@@ -169,9 +169,12 @@ to obtain the problem data. Specific to the thesis are the \texttt{diffengine} b
 re-solve path and the benchmarks of Chapter~4 (§1.5, §3.1).
 
 \question{7}{What is the strategy for BLAS and binary distribution of sparsediffpy?}
-sparsediffpy is a compiled C extension, so wheels are still built per platform. It links
-against the platform BLAS: Accelerate on macOS, and OpenBLAS on Linux through CMake's FindBLAS.
-Unlike cvxcore, it needs no C++ toolchain and no Eigen. \confirm{the wheel strategy}
+cvxcore is a C++ extension, built with a copy of Eigen, that lives inside the CVXPY repository,
+so CVXPY has to compile and ship it. sparsediffpy is a separate package: CVXPY only declares it
+as a dependency and calls it, and the CVXPY side of the backend is much simpler. sparsediffpy is
+still compiled, in C, and its own wheels are built for Linux, macOS and Windows and published on
+PyPI. They link Accelerate on macOS and bundle OpenBLAS on Linux and Windows, so users install
+nothing beyond the package.
 
 \section{Summary of the new results}
 
