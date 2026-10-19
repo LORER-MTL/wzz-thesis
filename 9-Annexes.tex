@@ -169,7 +169,10 @@ UnconstrainedQP & 1\,427 & 1\,058 & 2\,105 & 1\,754 & 644 \\
 \subsection{The four slower problems}\label{app:slower}
 
 Table~\ref{tab:app-phases} gives the share of each phase of the first canonicalization of
-\texttt{diffengine} on the four problems on which it is slower.
+\texttt{diffengine} on the four problems on which it is slower. Three of the four are
+addressed by pull requests to \texttt{CVXPY}, described below. Their times are medians of
+three to ten runs on the current \texttt{CVXPY} master, outside the measurements of
+Chapter~\ref{sec:Theme2}, which are unchanged.
 
 \begin{table}[htbp]
 \centering
@@ -201,8 +204,9 @@ over $\mvec{z} \in \complex^{18}$, where $\mmat{F}$ is the $252 \times 252$ disc
 transform matrix, $\mmat{F}^{\mathsf{H}}$ its conjugate transpose, and $\mvec{x}$ and $\mvec{y}$ are constant vectors. Evaluated from the left,
 the product $(\mmat{F}^{\mathsf{H}} \mmat{E}) \mmat{F}$ has a dense Jacobian of
 $63\,504 \times 36$ entries, which the numeric pass fills one entry at a time. Evaluated from
-$\mvec{x}$, as pull request \#3524 does, every intermediate is a vector, and the
-canonicalization takes $16$ milliseconds.
+$\mvec{x}$, as pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} does, every intermediate is a vector,
+and the canonicalization takes $16$ milliseconds.
 
 \paragraph{OptimalAdvertising.} The problem is
 \BEQ
@@ -214,7 +218,11 @@ over $\mmat{D} \in \reals^{250 \times 1000}$ with rows $\mvec{d}_i^\top$. Each m
 depends on one row of $\mmat{D}$, but its Jacobian spans all $250\,000$ variables, and the
 symbolic pass visits every column of it. Its cost grows with the number of terms times the
 number of variables, which is why the ratio grows with the size of the problem
-(\S\ref{sec:bench-sensitivity}).
+(\S\ref{sec:bench-sensitivity}). The two aggregate constraints are written as products with a
+vector of ones, which become dense blocks. Pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570} lowers them to sums, which
+reduces the canonicalization from $1.10$ to $0.46$ seconds and the peak memory from $6.1$ to
+$1.4$ gigabytes.
 
 \paragraph{SDPSegfault1132.} With $\mmat{K} = \mmat{V} \mmat{G} \mmat{V}^\top$, the problem is
 \BEQ
@@ -238,46 +246,45 @@ through both passes.
 over the stresses $\gvec{\sigma}_j \in \reals^4$ and $\mvec{p} \ge \zeros$, where
 $\mvec{e}$ stacks the differences $\gvec{\sigma}_j - \gvec{\sigma}_{\mathrm{el},j}$,
 $\mmat{S}$ is block diagonal and $\mmat{Q}$ extracts the deviatoric part. The diagonal $h \mmat{I}$ is given as a
-dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$.
+dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$. Pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571}
+stores $\mmat{P}$ sparse below $5\,\%$ nonzeros, as is already done for a constant factor of a
+matrix product, which reduces the canonicalization from $566$ to $194$ milliseconds.
 
 \FloatBarrier
 
 \section{Re-solves}\label{app:resolve}
 
 Table~\ref{tab:app-warm} gives the re-solve times of Table~\ref{tab:param-tensor} with their
-standard deviations, together with a full canonicalization by \texttt{CVXPY} and the re-solve
-of \texttt{diffengine} without its split.
+standard deviations, together with a full canonicalization by \texttt{CVXPY}.
 
 {\footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{longtable}{l rr rr l}
+\begin{longtable}{l rr r}
 \caption[Re-solve, all variants]{Re-solve time in milliseconds on the seven \ac{DPP}
 problems: the cached tensor of \texttt{CVXPY}, a full canonicalization on the
-\texttt{ignore\_dpp} path, both with the fastest backend, and \texttt{diffengine} with and
-without its split. The ratio is the median time without the split over that with it; all
-seven differences are significant (Mann--Whitney, Holm-adjusted $p < 0.05$).}
+\texttt{ignore\_dpp} path, both with the fastest backend, and the cached re-solve of
+\texttt{diffengine}.}
 \label{tab:app-warm}\\
 \toprule
-& \multicolumn{2}{c}{\texttt{CVXPY}} & \multicolumn{3}{c}{\texttt{diffengine}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-6}
-Benchmark & tensor & recompile & cached & no split & Ratio \\
+& \multicolumn{2}{c}{\texttt{CVXPY}} & \texttt{diffengine} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-4}
+Benchmark & tensor & recompile & cached \\
 \midrule
 \endfirsthead
 \toprule
-Benchmark & tensor & recompile & cached & no split & Ratio \\
+Benchmark & tensor & recompile & cached \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
-ParamSmallMatrixStuffing & 1.84 $\pm$ 0.01 & 57.7 $\pm$ 0.3 & 0.480 $\pm$ 0.008 & 4.07 $\pm$ 0.04 & 8.48 \\
-ParamConeMatrixStuffing & 0.960 $\pm$ 0.006 & 38.3 $\pm$ 1.7 & 0.305 $\pm$ 0.004 & 2.68 $\pm$ 0.02 & 8.79 \\
-SimpleFullyParametrizedLP & 46.8 $\pm$ 0.1 & 520 $\pm$ 2 & 52.7 $\pm$ 0.2 & 84.3 $\pm$ 0.6 & 1.60 \\
-ParametrizedQP & 306 $\pm$ 12 & 2\,866 $\pm$ 22 & 425 $\pm$ 8 & 561 $\pm$ 14 & 1.33 \\
-SimpleScalarParametrizedLP & 62.9 $\pm$ 0.6 & 1\,078 $\pm$ 2 & 104 $\pm$ 1 & 167 $\pm$ 1 & 1.60 \\
-FactorCovarianceModel & 20.6 $\pm$ 0.1 & 1\,138 $\pm$ 2 & 80.6 $\pm$ 0.1 & 129 $\pm$ 0.3 & 1.60 \\
-SVMWithL1Regularization & 38.3 $\pm$ 0.1 & 2\,569 $\pm$ 5 & 153 $\pm$ 1 & 272 $\pm$ 1 & 1.78 \\
-\midrule
-\textbf{Geometric mean} & & & & & \textbf{2.56} \\
+ParamSmallMatrixStuffing & 1.84 $\pm$ 0.01 & 57.7 $\pm$ 0.3 & 0.480 $\pm$ 0.008 \\
+ParamConeMatrixStuffing & 0.960 $\pm$ 0.006 & 38.3 $\pm$ 1.7 & 0.305 $\pm$ 0.004 \\
+SimpleFullyParametrizedLP & 46.8 $\pm$ 0.1 & 520 $\pm$ 2 & 52.7 $\pm$ 0.2 \\
+ParametrizedQP & 306 $\pm$ 12 & 2\,866 $\pm$ 22 & 425 $\pm$ 8 \\
+SimpleScalarParametrizedLP & 62.9 $\pm$ 0.6 & 1\,078 $\pm$ 2 & 104 $\pm$ 1 \\
+FactorCovarianceModel & 20.6 $\pm$ 0.1 & 1\,138 $\pm$ 2 & 80.6 $\pm$ 0.1 \\
+SVMWithL1Regularization & 38.3 $\pm$ 0.1 & 2\,569 $\pm$ 5 & 153 $\pm$ 1 \\
 \end{longtable}}
 
 \subsection{Problems that are not DPP}\label{app:nondpp}
@@ -339,13 +346,11 @@ milliseconds, $18$ times faster than \texttt{CVXPY}.
 \section{Ablation}
 \label{sec:bench-ablation}
 
-The branch of \texttt{CVXPY} used in Chapter~\ref{sec:Theme2} has two switches that turn parts
-of \texttt{diffengine} off. The first stores every constant matrix in the sparse format, so
-that no dense block is built from constant data. The second discards the engine's problem at
-every parameter update and repeats the conversion and the symbolic pass, which removes the
-split. Table~\ref{tab:app-nodense} reports the first switch, and the last column of
-Table~\ref{tab:app-warm} the second. Their geometric means are given in
-\S\ref{sec:bench-oneshot} and \S\ref{sec:bench-param}.
+The branch of \texttt{CVXPY} used in Chapter~\ref{sec:Theme2} has a switch that stores every
+constant matrix in the sparse format, so that no dense block is built from constant data.
+Table~\ref{tab:app-nodense} reports it, and \S\ref{sec:bench-oneshot} gives its geometric
+mean. The split needs no such switch: without it, a re-solve repeats the passes of the first
+canonicalization, and Table~\ref{tab:param-tensor} gives both times.
 
 Without the dense blocks, the first canonicalization differs significantly on $23$ of the
 $25$ problems, and it uses $0.85$ times the peak memory in geometric mean

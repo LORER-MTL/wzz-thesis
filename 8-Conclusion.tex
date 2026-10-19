@@ -99,12 +99,10 @@ re-solves faster, most of a re-solve goes to converting the engine's output to t
 format (\S\ref{sec:bench-param}), although the sparsity patterns do not change between
 re-solves. Computing this conversion once, in the symbolic pass, would let a re-solve write
 the new values directly into the final matrices. The re-solve of the tensor rebuilds its
-matrices in the same way, so the same change would speed up both. Another improvement concerns dense constants.
-The backend keeps a constant factor of a matrix product as a dense block when at least
-$5\,\%$ of its entries are nonzero, and the constant matrix of a quadratic objective whenever
-it is given as a dense array. A density test set from the cost of the kernels, and applied to
-the quadratic objective as well, would reduce the slowdowns of ConvexPlasticity and of the density experiment
-(\S\ref{sec:bench-oneshot} and \S\ref{sec:bench-sensitivity}).
+matrices in the same way, so the same change would speed up both. Another improvement concerns
+dense constants. The backend keeps a constant as a dense block when at least $5\,\%$ of its
+entries are nonzero. A threshold set from the cost of the kernels would reduce the slowdowns of
+the density experiment (\S\ref{sec:bench-sensitivity}).
 
 The final direction would be to extend the permuted dense matrix classes of
 Chapter~\ref{sec:Theme1} to the rest of the
