@@ -204,8 +204,9 @@ over $\mvec{z} \in \complex^{18}$, where $\mmat{F}$ is the $252 \times 252$ disc
 transform matrix, $\mmat{F}^{\mathsf{H}}$ its conjugate transpose, and $\mvec{x}$ and $\mvec{y}$ are constant vectors. Evaluated from the left,
 the product $(\mmat{F}^{\mathsf{H}} \mmat{E}) \mmat{F}$ has a dense Jacobian of
 $63\,504 \times 36$ entries, which the numeric pass fills one entry at a time. Evaluated from
-$\mvec{x}$, as pull request \#3524 does, every intermediate is a vector, and the
-canonicalization takes $16$ milliseconds.
+$\mvec{x}$, as pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} does, every intermediate is a vector,
+and the canonicalization takes $16$ milliseconds.
 
 \paragraph{OptimalAdvertising.} The problem is
 \BEQ
@@ -218,7 +219,8 @@ depends on one row of $\mmat{D}$, but its Jacobian spans all $250\,000$ variable
 symbolic pass visits every column of it. Its cost grows with the number of terms times the
 number of variables, which is why the ratio grows with the size of the problem
 (\S\ref{sec:bench-sensitivity}). The two aggregate constraints are written as products with a
-vector of ones, which become dense blocks. Pull request \#3570 lowers them to sums, which
+vector of ones, which become dense blocks. Pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570} lowers them to sums, which
 reduces the canonicalization from $1.10$ to $0.46$ seconds and the peak memory from $6.1$ to
 $1.4$ gigabytes.
 
@@ -244,7 +246,8 @@ through both passes.
 over the stresses $\gvec{\sigma}_j \in \reals^4$ and $\mvec{p} \ge \zeros$, where
 $\mvec{e}$ stacks the differences $\gvec{\sigma}_j - \gvec{\sigma}_{\mathrm{el},j}$,
 $\mmat{S}$ is block diagonal and $\mmat{Q}$ extracts the deviatoric part. The diagonal $h \mmat{I}$ is given as a
-dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$. Pull request \#3571
+dense array and becomes a dense $3000 \times 3000$ block of $\mmat{P}$. Pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571}
 stores $\mmat{P}$ sparse below $5\,\%$ nonzeros, as is already done for a constant factor of a
 matrix product, which reduces the canonicalization from $566$ to $194$ milliseconds.
 
