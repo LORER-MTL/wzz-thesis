@@ -153,13 +153,22 @@ order, which is now the future-work item (§5.2).
 
 \question{5}{When does the global layout become a handicap relative to CVXPY's local layout, in
 particular for memory?}
-The global layout costs $O(\text{nodes} \times n)$ integers, so with many variables and deep
-trees the local layout is better; this is now stated in the Limitations (§5.1).
-OptimalAdvertising shows it in time: each of its 250 minimum terms has a Jacobian over all
-250\,000 variables, and the symbolic pass visits every column (App.~A.2.1). Its peak memory
-(6~GB, against 945~MB without dense blocks) likely comes from per-node caches and work arrays
-sized by the number of variables. \confirm{the OptimalAdvertising memory cause; the profile was
-of time, not memory}
+In the global layout, each node also keeps work arrays sized by the total number of variables
+$n$, whatever variables its own subtree contains. Their memory is therefore
+$O(\text{nodes} \times n)$ integers, and with many variables and many nodes the local layout is
+better; this is now stated in the Limitations (§5.1). OptimalAdvertising shows it in time: each
+of its 250 minimum terms has a Jacobian over all 250\,000 variables, and the symbolic pass
+visits every column (App.~A.2.1). Without dense blocks, its peak memory is 945~MB, against
+about 180~MB for the CVXPY backends; that difference is the per-node cost.
+
+With dense blocks it reaches 6~GB, and a second measurement locates the difference: it comes
+from the aggregate constraints $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ and $\mathbf{D} \mathbf{1} \ge
+\mathbf{c}$, not from the layout. Canonicalized alone, $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ takes
+4~GB with dense blocks and 112~MB without. Its Jacobian has one nonzero per variable, but its
+memory grows with the number of rows times the number of variables, as if each row's dense
+block spanned all 250\,000 columns instead of the 250 it uses. The constant $\mathbf{1}$ is dense, but
+the operator $\mathbf{1}^\top \otimes I$ that it defines is not, so a density test on the constant
+would not catch this case.
 
 \question{6}{What part of SparseDiffEngine pre-existed the thesis or was developed for DNLP, and
 what part is specific to this work?}
