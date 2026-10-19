@@ -239,8 +239,12 @@ density \texttt{diffengine} is faster on every problem (App.~A.5, Tables A.8--A.
 \paragraph{What the results imply.}
 The dense blocks help when the data is dense and hurt when a constant that is sparse in fact is
 stored dense. The backend already stores a constant factor sparse below 5\,\% nonzeros, but the
-quadratic objective has no such test. Setting the threshold from the cost of the kernels and
-applying it to the quadratic objective would remove the ConvexPlasticity and low-density
-slowdowns; this is now listed as future work (§5.2).
+quadratic objective had no such test. Pull request
+\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} applies it there. On ConvexPlasticity,
+whose diagonal is given as a dense array, it makes canonicalization 3 times faster (196 against
+579~ms, medians of 10 runs on CVXPY master, outside the measurements of Chapter~4) with the same
+problem data. The rest of its slowdown, like the memory of OptimalAdvertising (Q5), comes from
+the inverse column maps of the dense blocks in the engine. Setting the threshold from the cost
+of the kernels, for the slowdowns at low density, remains future work (§5.2).
 
 \end{document}
