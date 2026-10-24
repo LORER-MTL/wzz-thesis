@@ -318,13 +318,11 @@ that each node depends on.
 
 \question{6}{What part of \texttt{SparseDiffEngine} pre-existed the thesis or was developed for
 DNLP, and what part is specific to this work?}
-% TODO(William): confirm the wording on Daniel's role and on co-authorship.
 Daniel Cederberg leads \texttt{SparseDiffEngine}. He started it as the differentiation engine
 of the \texttt{DNLP} extension of \texttt{CVXPY}~\cite{cederberg2025disciplined}, which
 differentiates nonlinear atoms at every iterate of the solver, and I co-developed it with him.
 Daniel is from outside our research group, and the version sent to the committee should have
-said so clearly; it now does. His contribution to the engine is significant enough that he
-would be a co-author of a paper on this work. This thesis uses the engine for a different
+said so clearly; it now does. This thesis uses the engine for a different
 purpose, canonicalization: it evaluates the affine atoms and the quadratic form at the origin to
 obtain the problem data. What is specific to the thesis is the interface to \texttt{CVXPY},
 namely the \texttt{diffengine} backend and its re-solve path for parametric problems, and the
