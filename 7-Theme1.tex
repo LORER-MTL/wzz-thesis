@@ -755,6 +755,10 @@ We collect the objective and constraint trees in one
 \texttt{problem} object, defined in \texttt{problem.c}. We also wrote
 \texttt{sparsediffpy}, a Python extension module that exposes the atom constructors and
 the functions that build and evaluate the \texttt{problem} object.
+Unlike \texttt{cvxcore}, which is compiled inside the \texttt{CVXPY} repository,
+\texttt{sparsediffpy} is a separate package on which \texttt{CVXPY} only depends. Its
+compiled wheels for Linux, macOS and Windows link Apple's \texttt{Accelerate} on macOS and a
+bundled copy of \texttt{OpenBLAS} on the other two, so users need no \ac{BLAS} of their own.
 We keep everything specific to \texttt{CVXPY} in a converter and a canonicalization
 backend named \texttt{diffengine}. The lower-case name distinguishes the backend from
 \texttt{SparseDiffEngine}. The converter builds the C trees of the canonicalized
