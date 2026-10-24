@@ -3,88 +3,115 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\usepackage[french,english]{babel}
 \usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,bm}
 \usepackage{array,booktabs,longtable}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{siunitx}
+\usepackage[most]{tcolorbox}
+% Section, table and page numbers of the thesis come from Document.aux, so they always
+% match the final version. Build the thesis first (make), then this file.
+\usepackage{xr-hyper}
 \usepackage[hidelinks]{hyperref}
+\externaldocument[T-]{Document}
 
+\graphicspath{{./images/}}
 \setlength{\parskip}{0.5em}
 \setlength{\parindent}{0pt}
 
-\newcommand{\question}[2]{\par\medskip\textbf{Q#1.} \emph{#2}\par}
+% The thesis notation (defs.tex) and its acronyms, spelled out here.
+\input{defs.tex}
+\newcommand{\ac}[1]{#1}
+
+% A thesis reference: \tref{label} gives "§4.2, p. 61" from the thesis.
+\newcommand{\tsec}[1]{\S\ref{T-#1}}
+\newcommand{\tpage}[1]{p.~\pageref{T-#1}}
+\newcommand{\tref}[1]{\tsec{#1}, \tpage{#1}}
+
+% A committee question, our response, and the new text of the thesis, quoted.
+\newcommand{\question}[2]{\par\bigskip\textbf{Q#1.} \emph{#2}\par}
+\newtcolorbox{thesisquote}[1]{breakable, enhanced, colback=NavyBlue!4, colframe=NavyBlue!60,
+  boxrule=0.4pt, arc=1pt, left=6pt, right=6pt, top=4pt, bottom=4pt, fontupper=\small,
+  title={\small Changes in the thesis, #1}, coltitle=black, colbacktitle=NavyBlue!12}
 
 \begin{document}
 
 \begin{center}
-{\Large\bfseries Response to the jury}\\[0.5em]
+{\Large\bfseries Response to the committee}\\[0.5em]
 \emph{A Lightweight Canonicalization Engine in C for Disciplined Convex Programming}\\[0.3em]
-William Zijie Zhang (2362162), M.Sc.A., Electrical Engineering, Polytechnique Montréal\\
+William Zijie Zhang (2362162), Master's thesis, Electrical Engineering, Polytechnique
+Montréal\\
 Supervisor: Antoine Lesage-Landry\\[0.3em]
 \today
 \end{center}
 
-\noindent To Sébastien Le Digabel (president), Antoine Lesage-Landry (supervisor) and Antoine
-Legrain (member of the jury).
+\noindent To Sébastien Le Digabel (chair), Antoine Legrain (second member) and Antoine
+Lesage-Landry (supervisor).
 
+\begin{otherlanguage}{french}
 \section*{Message au jury}
 
 Bonjour chers membres du jury,
 
-Je voulais tout d'abord vous remercier pour vos commentaires sur ma thèse. Après avoir reçu de
-fortes objections sur la qualité des résultats, j'ai pris le temps de les rendre plus complets,
-et j'ai aussi découvert quelques erreurs dans les affirmations que j'avais faites sur les
-contributions.
+Je voulais tout d'abord vous remercier pour vos commentaires sur mon mémoire. Comme vous m'avez
+demandé de clarifier et d'approfondir plusieurs points des résultats, j'ai pris le temps de les
+rendre plus complets, et j'ai aussi découvert quelques erreurs dans les affirmations que j'avais
+faites sur les contributions.
 
-Premièrement, il y a maintenant quatre problèmes qui sont plus lents. J'ai ajouté une section
-dans la thèse pour les décrire (annexe A.2.1). Trois des quatre problèmes peuvent être beaucoup
+Premièrement, il y a maintenant quatre problèmes qui sont plus lents. J'ai ajouté une section du
+mémoire pour les décrire (\tsec{sec:bench-slower}). Trois des quatre problèmes peuvent devenir
 plus rapides. Deux d'entre eux le deviennent avec des changements dans le «~frontend~» (par
 frontend, je fais référence à la manipulation des arbres d'expression avant le calcul des
-dérivées ; voir les pull requests \href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} et
-\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570}). Par exemple, pouvoir détecter que
-\texttt{D @ ones} (où \texttt{D} est une matrice quelconque) équivaut à
-\texttt{D.sum(axis=1)}, la somme sur les colonnes, est un grand avantage. Le troisième,
-ConvexPlasticity, le devient avec un test de densité
-(\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571}). Ces changements ne règlent pas tout :
-une partie du ralentissement vient du moteur lui-même, en particulier de la mémoire de la
-disposition globale (question 5).
+dérivées). Par exemple, pouvoir détecter que \texttt{D @ ones} (où \texttt{D} est une matrice
+quelconque) équivaut à \texttt{D.sum(axis=1)}, la somme sur les colonnes, est un grand avantage.
+Le troisième, ConvexPlasticity, le devient avec un test de densité. Ces changements ne règlent
+pas tout : une partie du ralentissement vient du moteur lui-même, en particulier de la mémoire
+de la disposition globale (Q5).
 
-Deuxièmement, j'ai utilisé un ordinateur portable plus récent (MacBook M2 de 2022, avec
-Apple Accelerate) pour cette série de résultats. Pour la première canonicalisation, je pense que les
-ratios et les temps sont assez similaires. Mais pour les temps de re-résolution paramétrique, la
-situation a changé : maintenant, seulement deux des problèmes sont plus rapides. J'ai modifié les
+Deuxièmement, j'ai refait toutes les mesures sur un ordinateur plus récent (MacBook M2 de 2022,
+avec Apple \texttt{Accelerate}), plutôt que sur l'ordinateur Intel de 2018 de la version
+soumise, pour que les résultats soient reproductibles sur du matériel actuel, comme celui de la
+plupart des utilisateurs de \texttt{CVXPY}. Pour la première canonicalisation, les ratios et les
+temps sont semblables. Pour les re-résolutions paramétriques, en revanche, \texttt{diffengine}
+n'est plus plus rapide que sur deux des sept problèmes. Les nouvelles mesures par phase
+expliquent où va le temps : la passe numérique ne prend que $3$ à $20\,\%$ d'une re-résolution,
+et le reste sert à convertir les matrices au format CSC et dans l'ordre des cônes du solveur,
+alors que le tenseur de \texttt{CVXPY} produit directement ce format. J'ai donc modifié les
 affirmations de ma conclusion et de la discussion des résultats pour dire seulement qu'il y a
-des bénéfices, mais qu'il ne remplace pas encore le tenseur pour les re-résolutions.
+des bénéfices, mais que la séparation ne remplace pas encore le tenseur pour les re-résolutions.
+% TODO(William): the version sent to the jury had faster re-solves on more problems. Confirm
+% whether the change comes from the machine, from the engine/CVXPY versions, or both.
 
 Troisièmement, le problème UnconstrainedQP n'était pas réellement 100 fois plus rapide. C'était
-dû à un changement de frontend
-(\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}) que j'avais appliqué sur la branche
-du backend diffengine, mais pas sur celles des autres. En l'appliquant à tous, cet
-avantage disparaît. J'avoue que c'est une grave erreur de ma
-part, et je l'ai corrigée. Je n'avais pas fait attention aux changements et aux versions du code
-que j'exécutais pour mes résultats, et surtout, j'avais oublié que ce changement pouvait aussi
-s'appliquer aux autres méthodes. J'ai fait de mon mieux pour faire preuve de diligence
-raisonnable, afin que les résultats, cette fois-ci, n'aient pas de problème semblable.
+dû à un changement de frontend que j'avais appliqué sur la branche du backend
+\texttt{diffengine}, mais pas sur celles des autres. En l'appliquant à tous, cet avantage
+disparaît. Ceci a été rectifié : aucun backend n'utilise maintenant ce changement.
 
-À part ces trois points, qui sont les changements les plus sérieux et les plus importants, j'ai
-aussi fait les études d'ablation et exécuté plus d'instances de benchmark, avec des mesures de
-signification statistique, ce qui répond à tous vos commentaires.
+À part ces trois points, qui sont les changements majeurs, j'ai aussi fait les études
+d'ablation et exécuté plus d'instances de benchmark, avec des mesures de signification
+statistique, ce qui répond à tous vos commentaires.
 
-Le reste de ce document a été rédigé par Claude à partir de beaucoup de mes indications, surtout
-pour les réponses à vos questions.
+J'ai rédigé moi-même les réponses à vos questions. Claude, l'outil d'IA déclaré dans le
+mémoire, les a ensuite reformulées et mises en forme en anglais ; les chiffres viennent
+directement des scripts de mesure.
+\end{otherlanguage}
 
 \section{Summary of corrections}
 
-I have made all the modifications required by the jury and by
-Antoine Legrain's examiner report, as well as all the minor corrections of Sébastien Le Digabel
-and of the appendix of the report. The minor corrections are not listed here. All changes since
-the version sent to the jury are marked in \texttt{Document-diff.pdf}, with added text in blue
-and deleted text in red. Section and page numbers below refer to the final version.
+I have made all the modifications required by the committee and by Antoine Legrain's
+examiner report, as well as the minor corrections that Sébastien Le Digabel annotated and those
+listed in the appendix of Antoine Legrain's report. The minor corrections are not listed here.
+All changes since the version sent to the committee are marked in \texttt{Document-diff.pdf},
+with added text in blue and deleted text in red. Section, table and page numbers below refer to
+the final version.
 
-Table~\ref{tab:required} lists the required modifications. ``J'' refers to the jury's
+Table~\ref{tab:required} lists the required modifications. ``J'' refers to the committee's
 requirements after the defence, and (i)--(vii) to the items of the synthesis of the examiner
-report.
+report. Each item is answered in detail, with the new results, in
+Sections~\ref{sec:replies} and~\ref{sec:results}.
 
 {\small
 \begin{longtable}{>{\raggedright}p{0.17\textwidth} >{\raggedright}p{0.50\textwidth}
@@ -101,210 +128,278 @@ Request & Change & Where \\
 \bottomrule
 \endfoot
 J1a: statistical significance
-  & Every timed comparison of 20 runs is tested with a two-sided Mann--Whitney test,
-    Holm-adjusted over the problems of the comparison. Significant ratios are starred in the
-    tables.
-  & Ch.~4 intro and §4.1, p.~52; Tables 4.1, 4.2, A.6, A.7 \\
+  & Every timed comparison is made in $30$ runs and tested per problem with a two-sided
+    Mann--Whitney $U$ test~\cite{mann1947}, Holm-adjusted~\cite{holm1979} over the problems,
+    and over the suite with a Wilcoxon signed-rank test~\cite{wilcoxon1945} and a bootstrap
+    confidence interval. Significant ratios are starred in the tables and filled in the
+    figures (Section~\ref{sec:results}).
+  & Ch.~4 introduction, \tpage{sec:Theme2}; \tsec{sec:bench-oneshot} \\
 J1b, (ii): ablation
-  & No dense blocks on the first canonicalization (25 problems, with memory). The split is
-    measured by the first canonicalization and re-solve times of Table 4.2 (see Summary).
-  & §4.1, p.~56; App.~A.4, p.~77 \\
+  & The dense blocks are turned off on all $25$ problems, for time and memory, and on the
+    re-solves together with the split (Section~\ref{sec:res-ablation}).
+  & \tref{sec:bench-ablation} \\
 J1c: more instances
-  & Each run draws new parameter values from its own seed; the problems are also scaled in size
-    and in density (J1d).
-  & Ch.~4 intro, p.~52; App.~A.1, A.5 \\
+  & Each run draws new parameter values from its own seed, and every problem is also scaled
+    in size and density (J1d).
+  & Ch.~4 introduction; \tsec{sec:bench-sensitivity} \\
 J1d: sensitivity to size and sparsity
-  & All 25 problems at three sizes, ten families at five sizes, five problems at five
-    densities.
-  & §4.1, p.~56; App.~A.5, pp.~79--81 \\
+  & All $25$ problems at five sizes, $s \in \{1/4, 1/2, 1, 2, 4\}$, and eight problems at seven
+    densities, with and without the dense blocks (Section~\ref{sec:res-sensitivity}).
+  & \tref{sec:bench-sensitivity} \\
 J1e, (iii): non-DPP problems
   & Re-solves of two families in DPP, non-DPP and parameter-free variants, and of
-    ConvexPlasticity, the suite's one non-DPP parametric problem.
-  & §4.2, p.~56; App.~A.3.1, pp.~76--77 \\
+    ConvexPlasticity, the suite's one non-DPP parametric problem (Q3).
+  & \tref{sec:bench-nondpp} \\
 J2, (i): related literature and DNLP
-  & Matrix-free modelling, CVXcanon, CVXGEN, Convex.jl 0.16, Pyomo's persistent interfaces,
-    block-sparse antecedents (finite elements, Ceres, g2o), and sparse factorization as the
-    origin of the symbolic/numeric split. §3.1 separates the thesis's own contribution from
-    the DNLP work.
-  & §2.1.3, §2.2, §2.3.1, §2.3.2, §3.1, §3.2 \\
+  & Matrix-free modelling, \texttt{CVXcanon}, \texttt{CVXGEN}, \texttt{Convex.jl}~0.16,
+    \texttt{Pyomo}'s persistent interfaces, block-sparse antecedents (finite elements,
+    \texttt{Ceres}, \texttt{g2o}), and sparse factorization as the origin of the
+    symbolic/numeric split. The thesis now states who leads \texttt{SparseDiffEngine} and what
+    is specific to this work (Q6).
+  & \S\ref{T-sec:computing-derivatives}, \tsec{sec:contributions},
+    \tsec{sec:theme1-atom-classes} \\
 J3: declaration of AI use
   & New front-matter page.
-  & p.~vii \\
+  & Front matter \\
 (iv): repeated measurements
-  & 20 runs, each in a fresh process; tables give mean $\pm$ standard deviation.
-  & Ch.~4 intro, p.~52; Table 4.1, App.~A \\
+  & $30$ runs, each in a fresh process; tables give mean $\pm$ standard deviation.
+  & Ch.~4 introduction; Table~\ref{T-tab:oneshot-compile} \\
 (v): dimensions of the instances
-  & $m$, $n$, $\mathrm{nnz}(A)$, $\mathrm{nnz}(P)$, parameter size and DPP status of every
-    problem.
-  & App.~A, Tables A.1--A.2 \\
+  & $m$, $n$, $\mathrm{nnz}(\mmat{A})$, $\mathrm{nnz}(\mmat{P})$, parameter size and DPP
+    status of every problem.
+  & Appendix~\ref{T-app:bench}, Tables~\ref{T-tab:instances-desc} and~\ref{T-tab:instances} \\
 (vi): time by phase
-  & §4.1 names the four slower problems and their two causes; App.~A.2.1 gives the
-    formulation, the share of each phase and the mechanism for each.
-  & §4.1, p.~55; App.~A.2.1, Table A.4 \\
+  & The share of each phase on the four slower problems, their formulations and the
+    mechanism for each (Section~\ref{sec:res-slower}).
+  & \tref{sec:bench-slower} \\
 (vii): correctness check
-  & The data are checked against the CPP backend to a relative tolerance of $10^{-9}$, at the
-    first canonicalization and after a parameter update.
-  & Ch.~4 intro, p.~52 \\
+  & The problem data are checked against the \texttt{CPP} backend to a relative tolerance of
+    $10^{-9}$, at the first canonicalization and after a parameter update.
+  & Ch.~4 introduction \\
 \end{longtable}}
 
 \paragraph{A change of baseline.}
-The version sent to the jury reported a $2.8\times$ geometric-mean speedup. Two things changed
-since. All experiments were rerun on an Apple M2 with current versions. And that comparison gave
-\texttt{diffengine} CVXPY PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}, which reassociates
-chains of matrix products ending in a constant, while the other backends were timed on stock
-CVXPY. PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} benefits every backend, so all four are now
-timed without it. \texttt{diffengine} is the fastest of the four
-on 21 of the 25 problems, significantly on all 21, with a geometric-mean ratio of $0.43$ to
-the best CVXPY backend, about $2.3\times$. UnconstrainedQP is now $11.8\times$ slower
-(§4.1 explains why, and gives the 16~ms it takes with
-PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524}).
+The version sent to the committee reported a $2.8\times$ geometric-mean speedup of
+\texttt{diffengine} over the best \texttt{CVXPY} backend. Two things have changed since. First,
+all experiments were rerun on an Apple M2 with the current versions of \texttt{CVXPY} and
+\texttt{SparseDiffEngine}. Second, the earlier comparison was not fair: \texttt{diffengine} was
+timed with \texttt{CVXPY} pull request \#3524, which reassociates chains of matrix products that
+end in a constant, while the other backends were timed without it. That pull request speeds up
+every backend, so now none of them uses it.
+% N30: update the numbers below from results/thesis-n30/facts.json.
+With this baseline, \texttt{diffengine} is the fastest of the four backends on $21$ of the $25$
+problems, significantly on all $21$, with a geometric-mean ratio of $0.43$ to the best
+\texttt{CVXPY} backend, about $2.3\times$ faster. UnconstrainedQP is now $11.8\times$ slower;
+Section~\ref{sec:res-slower} explains why.
 
-\section{Replies to the defence questions}
+\section{Replies to the defence questions}\label{sec:replies}
 
 \question{1}{Why materialize dense blocks rather than leave them as operators, as in the
-matrix-free approach of Diamond and Boyd? When is each approach preferable?}
-The conic solvers that CVXPY calls by default factorize a matrix built from $A$ and $P$, so they
-need $A$ and $P$ explicitly. Matrix-free modelling pays off for very large problems built on
-fast transforms and solved by first-order methods. A permuted dense block lies between the two:
-it is a materialized matrix, but it keeps the structure of the operator, namely its selectors
-and its dense block. §2.2 now makes this comparison.
+matrix-free approach of Diamond and Boyd~\cite{diamond2016matrixfree}? When is each approach
+preferable?}
+Because the solvers that \texttt{CVXPY} calls need the matrices. Its default solvers are
+\texttt{Clarabel}, an interior-point method, and \texttt{OSQP} and \texttt{SCS}, which are
+first-order methods; commercial solvers such as \texttt{MOSEK} and \texttt{Gurobi} are
+interior-point or simplex methods. All of them factorize a matrix built from $\mmat{A}$ and
+$\mmat{P}$: an interior-point method factorizes a KKT system at every iteration, and
+\texttt{OSQP} and \texttt{SCS}, in their default direct mode, factorize their KKT matrix once and
+reuse the factorization across iterations. So every one of them needs $\mmat{A}$ and $\mmat{P}$ explicitly,
+whatever its algorithm. Matrix-free modelling pays off for very large problems built from fast
+transforms, solved by first-order methods that only need products with $\mmat{A}$ and
+$\mmat{A}^\top$, such as the indirect mode of \texttt{SCS}. A permuted dense block lies between
+the two: it is a materialized matrix, but it keeps the structure of the operator, namely its
+row and column selectors and its dense block.
+
+\begin{thesisquote}{\tref{sec:computing-derivatives}}
+In convex optimization, Diamond and Boyd take the matrix-free view. Instead of forming
+$\mmat{A}$, they represent the problem as a graph of linear operators, available only through
+their forward and adjoint products, which suits first-order solvers. The solvers that
+\texttt{CVXPY} calls by default instead factorize a matrix built from $\mmat{A}$ and $\mmat{P}$.
+The matrix-free approach pays off on very large problems built from fast transforms, such as
+convolutions and Fourier transforms, and it needs solvers that accept operators instead of
+matrices. The permuted dense matrices of \S3.2 sit between the two: they form the matrix that
+the solver factorizes, but keep the structure of the operator, its row and column selectors and
+its dense block.
+\end{thesisquote}
 
 \question{2}{If the permuted dense representations are disabled, what fraction of the speedup
 remains?}
-Without the dense blocks, \texttt{diffengine} is $2.17\times$ faster than the best CVXPY
-backend in geometric mean, against $2.33\times$ with them. The difference between the two,
-$1.07\times$, is not significant over the suite (Wilcoxon signed-rank, $p = 0.07$). Per problem
-the effect is large in both directions. On six problems with dense data, the dense blocks take
-the engine from about $3$ to about $7\times$ faster than CVXPY. On UnconstrainedQP they take it
-from $4\times$ faster to $11.8\times$ slower, and on ConvexPlasticity from $1.4$ to $6.9\times$
-slower (§4.1, App.~A.4, Table A.7, which now gives both ratios to CVXPY). The split plays no
-part in a first canonicalization, since each pass runs once. We do not attribute the remaining
-speedup to one component: the engine is one design, and only the dense blocks and the split
-have switches that can be turned off.
+% N30: update the numbers and insert Figure B (the ablation) here.
+Most of it. Without the dense blocks, \texttt{diffengine} is $2.17\times$ faster than the best
+\texttt{CVXPY} backend in geometric mean, against $2.33\times$ with them. The difference between
+the two, $1.07\times$, is not significant over the suite (Wilcoxon signed-rank, $p = 0.07$).
+Per problem, the effect is large in both directions, as Figure~\ref{fig:ablation} shows. On six
+problems with dense data, the dense blocks take the engine from about $3$ to about $7\times$
+faster than \texttt{CVXPY}. On UnconstrainedQP they take it from $4\times$ faster to $11.8\times$
+slower, and on ConvexPlasticity from $1.4$ to $6.9\times$ slower, because both build a dense
+block from data that is sparse in fact.
+
+The split between the symbolic and the numeric pass plays no part in a first
+canonicalization, because each pass runs once. It is ablated on the re-solves instead
+(Section~\ref{sec:res-ablation}). The dense blocks are the only part of the engine that can be
+turned off on a first canonicalization while keeping everything else the same. The other
+differences from \texttt{CVXPY}'s backends, namely the implementation in C, one Jacobian per
+node and the global layout, are built into every atom and cannot be switched off one at a time.
+We therefore do not attribute the remaining $2.17\times$ to any one of them.
 
 \question{3}{How does re-solving behave on a non-DPP parametric problem?}
-On the two families with a product of two parameters (\texttt{lasso} and
-\texttt{factor\_cov}), the cached re-solve is $12$ to $13\times$ faster than CVXPY, which has
-to recompile. ConvexPlasticity, the suite's only natural non-DPP parametric problem, re-solves
-in 204~ms against 42~ms for CVXPY. The split is not the cause: 88\,\% of that re-solve
-assembles the dense $3000 \times 3000$ block of $P$, built from a diagonal given as a dense
-array. Without dense blocks, the same cached re-solve takes 2.3~ms, $18\times$ faster than
-CVXPY. The split therefore carries over to a real non-DPP problem; what fails there is the
-dense storage of a constant that is sparse in fact (§4.2, App.~A.3.1).
+% N30: update the numbers.
+On the two families written with a product of two parameters, which \ac{DPP} forbids, the cached
+re-solve of \texttt{diffengine} is $12\times$ faster than \texttt{CVXPY} on \texttt{lasso} and
+$13\times$ on \texttt{factor\_cov}, in both cases over all $30$ runs (Table~\ref{tab:res-nondpp}
+gives the means), because \texttt{CVXPY}
+has to canonicalize the problem again at every solve.
+ConvexPlasticity, the suite's only natural non-DPP parametric problem, is the exception: it
+re-solves in $204$~ms against $42$~ms for \texttt{CVXPY}. The split is not the cause: $88\,\%$ of
+that re-solve assembles the dense $3000 \times 3000$ block of $\mmat{P}$, built from a diagonal
+given as a dense array. Without the dense blocks, the same cached re-solve takes $2.3$~ms,
+$18\times$ faster than \texttt{CVXPY}. The split therefore carries over to a real non-DPP
+problem; what fails there is the dense storage of a constant that is sparse in fact.
+
+The non-DPP experiment is new in the thesis. The thesis also no longer claims that the split
+replaces the tensor: the discussion now says that the split re-solves within a small factor of
+the tensor without requiring \ac{DPP}, and much faster than \texttt{CVXPY} when the problem is
+not \ac{DPP}.
+% N30: quote the final text of sec:bench-nondpp and of the discussion here.
 
 \question{4}{Why not re-evaluate only the subtrees that depend on the updated parameters?}
-This is now implemented in the measured engine (SparseDiffEngine \#125): after a parameter
-update, the numeric pass re-evaluates only the subtrees that contain a parameter (§3.4.1).
-With it, the numeric pass takes 3 to 20\,\% of a re-solve on the five problems where the
-tensor is faster. The rest is the conversion to compressed sparse columns and to the cone
-order, which is now the future-work item (§5.2).
+The engine now does this: after a parameter update, the numeric pass re-evaluates only the
+subtrees that contain a parameter, and keeps the cached values of the others. All re-solve
+times in the thesis use it. With it, the numeric pass takes $3$ to $20\,\%$ of a re-solve on the
+five problems where the tensor is faster. The rest is the conversion of the output to
+compressed sparse columns in the cone order of the solver, which is now the first item of
+future work.
 
-\question{5}{When does the global layout become a handicap relative to CVXPY's local layout, in
-particular for memory?}
-In the global layout, each node also keeps work arrays sized by the total number of variables
-$n$, whatever variables its own subtree contains. Their memory is therefore
-$O(\text{nodes} \times n)$ integers, and with many variables and many nodes the local layout is
-better; this is now stated in the Limitations (§5.1). OptimalAdvertising shows it in time: each
-of its 250 minimum terms has a Jacobian over all 250\,000 variables, and the symbolic pass
-visits every column (App.~A.2.1). Without dense blocks, its peak memory is 945~MB, against 173
-to 197~MB for the CVXPY backends; that difference is the per-node cost.
+\begin{thesisquote}{\tref{sec:theme1-problem-interface}}
+The numeric pass therefore skips an affine tree after the first evaluation, until the next
+parameter update. After an update, it re-evaluates only the subtrees that contain a parameter,
+and keeps the cached values of the others.
+\end{thesisquote}
 
-With dense blocks it reaches 6~GB, and most of the difference comes from the aggregate
-constraints $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ and $\mathbf{D} \mathbf{1} \ge \mathbf{c}$.
-Canonicalized alone, $\mathbf{D}^\top \mathbf{1} \le \mathbf{t}$ takes 4~GB with dense blocks and
-112~MB without. Its Jacobian is stored as 1000 dense blocks of 250 entries, but each block also
-keeps an inverse map of its columns with one integer per variable of the problem, 250\,000 of
-them. This is the cost of the global layout again, paid once per dense block rather than once
-per node. Storing these maps sparsely, or sharing one workspace across the blocks, should
-remove most of it.
+\question{5}{When does the global layout become a handicap relative to \texttt{CVXPY}'s local
+layout, in particular for memory?}
+When the problem has many variables and many nodes. In the global layout, each node keeps,
+besides its Jacobian, integer work arrays of length $n$, the total number of variables, whatever
+variables its own subtree contains. Their memory is therefore $O(\text{nodes} \times n)$
+integers. In \texttt{CVXPY}'s local layout, each node stores blocks only for the variables it
+depends on, so the same overhead is proportional to the sum, over the nodes, of the number of
+variables each one depends on. The two coincide when every node depends on every variable, and
+the local layout wins when most nodes depend on a few variables out of many.
 
-In OptimalAdvertising, both constraints are sums written as products with a vector of ones. A
-small change to the CVXPY converter, submitted as pull request
-\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570}, lowers such products to
-the engine's sum, which builds no dense blocks. On OptimalAdvertising it reduces the peak memory
-from 6.1~GB to 1.4~GB and the canonicalization time from 1.10~s to 0.46~s (App.~A.2.1). These
-are medians of three runs on CVXPY master, outside the measurements of Chapter~4, which are
-unchanged. The remaining overhead is the
-per-node cost above, and a weighted sum $\mathbf{D}\mathbf{w}$ with a general dense
-$\mathbf{w}$ still needs the fix in the engine.
+OptimalAdvertising shows it. Each of its $250$ minimum terms depends on one row of a
+$250 \times 1000$ variable, but has a Jacobian over all $250\,000$ variables, and the symbolic
+pass visits every column. Without the dense blocks, its peak memory is $945$~MB, against $173$ to
+$197$~MB for the \texttt{CVXPY} backends; that difference is the per-node cost. With the dense
+blocks it reaches $6.1$~GB, and most of the difference comes from the aggregate constraints
+$\mmat{D}^\top \ones \le \mvec{t}$ and $\mmat{D} \ones \ge \mvec{c}$. Canonicalized alone,
+$\mmat{D}^\top \ones \le \mvec{t}$ takes $4$~GB with the dense blocks and $112$~MB without. Its
+Jacobian is stored as $1000$ dense blocks of $250$ entries, but each block also keeps an inverse
+map of its columns with one integer per variable of the problem, $250\,000$ of them. This is
+the cost of the global layout again, paid once per dense block rather than once per node.
+Storing these maps sparsely, or sharing one workspace across the blocks, should remove most of
+it.
 
-\question{6}{What part of SparseDiffEngine pre-existed the thesis or was developed for DNLP, and
-what part is specific to this work?}
-SparseDiffEngine is joint work with Daniel Cederberg and serves both uses. DNLP differentiates
-nonlinear atoms at every iterate; this thesis evaluates the affine atoms and the quadratic form
-to obtain the problem data. Specific to the thesis are the \texttt{diffengine} backend, its
-re-solve path and the benchmarks of Chapter~4 (§1.5, §3.1).
+Both aggregate constraints are sums written as products with a vector of ones. The converter
+from \texttt{CVXPY} to the engine can recognize a product $\mmat{D}\ones$ or
+$\mmat{D}^\top\ones$ and build the engine's sum atom instead, which builds no dense block. With
+this rewrite, OptimalAdvertising canonicalizes in $0.46$~s instead of $1.10$~s, with a peak
+memory of $1.4$~GB instead of $6.1$~GB. A weighted sum $\mmat{D}\mvec{w}$ with a general dense
+$\mvec{w}$ still needs the fix in the engine.
+% N30: rerun the OptimalAdvertising rewrite in the harness at 30 runs (now 3 runs).
 
-\question{7}{What is the strategy for BLAS and binary distribution of sparsediffpy?}
-cvxcore is a C++ extension, built with a copy of Eigen, that lives inside the CVXPY repository,
-so CVXPY has to compile and ship it. sparsediffpy is a separate package: CVXPY only declares it
-as a dependency and calls it, and the CVXPY side of the backend is much simpler. sparsediffpy is
-still compiled, in C, and its own wheels are built for Linux, macOS and Windows and published on
-PyPI. They link Accelerate on macOS and bundle OpenBLAS on Linux and Windows, so users install
-nothing beyond the package.
+\begin{thesisquote}{\tref{sec:Limitations}}
+Another part of the memory cost comes from the global layout. Every node of the expression trees
+holds a Jacobian over all $n$ variables, together with integer work arrays of length~$n$. The
+values stored remain proportional to the nonzeros, but this overhead grows with the number of
+nodes times the number of variables. On problems with very many variables and deep trees, it
+can exceed the memory of \texttt{CVXPY}'s local layout, whose blocks span only the variables
+that each node depends on.
+\end{thesisquote}
 
-\section{Summary of the new results}
+\question{6}{What part of \texttt{SparseDiffEngine} pre-existed the thesis or was developed for
+DNLP, and what part is specific to this work?}
+% TODO(William): confirm the wording on Daniel's role and on co-authorship.
+Daniel Cederberg leads \texttt{SparseDiffEngine}. He started it as the differentiation engine
+of the \texttt{DNLP} extension of \texttt{CVXPY}~\cite{cederberg2025disciplined}, which
+differentiates nonlinear atoms at every iterate of the solver, and I co-developed it with him.
+Daniel is from outside our research group, and the version sent to the committee should have
+said so clearly; it now does. His contribution to the engine is significant enough that he
+would be a co-author of a paper on this work. This thesis uses the engine for a different
+purpose, canonicalization: it evaluates the affine atoms and the quadratic form at the origin to
+obtain the problem data. What is specific to the thesis is the interface to \texttt{CVXPY},
+namely the \texttt{diffengine} backend and its re-solve path for parametric problems, and the
+benchmarks of Chapter~4.
+
+\begin{thesisquote}{\tref{sec:contributions}}
+\texttt{SparseDiffEngine} is led by Daniel Cederberg, a collaborator from outside our research
+group, and the author co-developed it with him. It is the differentiation engine of the
+\texttt{DNLP} extension of \texttt{CVXPY}, where it differentiates nonlinear atoms such as
+\texttt{exp}, \texttt{log} and \texttt{entr} at every iterate of the solver. This thesis builds
+on the observation that canonicalization is a special case of the same computation: once a
+problem is canonicalized, only affine atoms and quadratic forms remain, and their derivatives
+are the problem data.
+\end{thesisquote}
+\begin{thesisquote}{\tref{sec:theme1-atom-classes}}
+What is specific to this thesis is the interface to \texttt{CVXPY} of \S3.3, namely the
+\texttt{diffengine} backend and its re-solve path for parametric problems, and the benchmarks of
+Chapter~4.
+\end{thesisquote}
+
+\question{7}{What is the strategy for \ac{BLAS} and binary distribution of
+\texttt{sparsediffpy}?}
+\texttt{cvxcore} is a C++ extension, built with a copy of \texttt{Eigen}, that lives inside the
+\texttt{CVXPY} repository, so \texttt{CVXPY} has to compile and ship it.
+\texttt{sparsediffpy} is a separate package: \texttt{CVXPY} only declares it as a dependency and
+calls it, which keeps the \texttt{CVXPY} side of the backend much simpler. \texttt{sparsediffpy}
+is still compiled, in C, and its own wheels are built for Linux, macOS and Windows and published
+on \texttt{PyPI}. They link Apple's \texttt{Accelerate} on macOS and bundle \texttt{OpenBLAS} on
+Linux and Windows, so users install nothing beyond the package. The thesis did not say this; it
+now does, in the section that introduces \texttt{sparsediffpy}.
+
+\begin{thesisquote}{\tref{sec:theme1-api}}
+Unlike \texttt{cvxcore}, which is compiled inside the \texttt{CVXPY} repository,
+\texttt{sparsediffpy} is a separate package on which \texttt{CVXPY} only depends. Its compiled
+wheels for Linux, macOS and Windows link Apple's \texttt{Accelerate} on macOS and a bundled copy
+of \texttt{OpenBLAS} on the other two, so users need no \ac{BLAS} of their own.
+\end{thesisquote}
+
+\section{The new results}\label{sec:results}
+% N30: this whole section is rewritten from results/thesis-n30 once the sweep finishes, with
+% Figures A-D and the excerpt tables embedded, and the final thesis text quoted.
 
 \paragraph{Methodology.}
-Every timed comparison is repeated 20 times, each run in a fresh process, on an Apple M2
-(24~GB, macOS 26.5.1) with Accelerate, single-threaded, and tested with a two-sided
-Mann--Whitney test, Holm-adjusted over the problems (Ch.~4 intro). The sensitivity points of
-App.~A.5 are medians of five runs, reported without a test.
+Every timed comparison is made in $30$ runs, each in a fresh process, on an Apple M2 (24~GB,
+macOS 26.5.1) with Apple's \texttt{Accelerate}, single-threaded. On each problem, the runs of
+\texttt{diffengine} and those of the other backend are compared with a two-sided Mann--Whitney
+$U$ test~\cite{mann1947}, Holm-adjusted~\cite{holm1979} over the problems of the comparison. Over
+the suite, we test the geometric mean of the ratios with a Wilcoxon signed-rank
+test~\cite{wilcoxon1945} on the log-ratios and give its bootstrap $95\,\%$ confidence interval.
 
-\paragraph{First canonicalization.}
-\texttt{diffengine} is the fastest backend on 21 of the 25 problems, with a geometric-mean
-ratio of $0.43$ to the best CVXPY backend. Over the suite, that ratio has a bootstrap 95\,\%
-confidence interval of $0.28$--$0.70$, and a Wilcoxon signed-rank test on the log-ratios gives
-$p = 0.003$. On every problem the runs of the two backends do not overlap, so every adjusted
-$p$-value is $1.7 \times 10^{-6}$, the smallest attainable with 20 runs (§4.1, Table 4.1).
+The usual rule of at least $30$ observations comes from the normal approximation of a sample
+mean. The Mann--Whitney test is a rank test and assumes no normality, so it is valid at $20$
+runs as well; with $20$ runs per side, its smallest Holm-adjusted $p$-value over $25$ problems
+is already $1.7 \times 10^{-6}$. We nevertheless reran every comparison at $30$ runs, so that
+the tables also give stable means and standard deviations.
 
-\paragraph{Ablation.}
-Without dense blocks, the first canonicalization is $1.07\times$ slower in geometric mean
-(confidence interval $0.71$--$1.47$, $p = 0.07$), and peak memory is $0.85\times$: a dense block
-stores every entry, including the zeros of a constant that is sparse in fact (App.~A.4,
-Table A.7). The split needs no separate switch. Without it, a re-solve repeats the conversion
-and the symbolic pass of the first canonicalization, so it cannot be faster, and Table 4.2
-already gives the first canonicalization and the re-solve of every DPP problem. The
-parameter-to-data tensor is a different mechanism, which can only be compared with the split on
-re-solves, as Table 4.2 does.
+\subsection{First canonicalization}\label{sec:res-oneshot}
+\subsection{Ablation}\label{sec:res-ablation}
+\begin{figure}[htbp]
+\centering
+% \includegraphics[width=\textwidth]{ablation_thesis}
+\caption{Ratio of \texttt{diffengine} to the best \texttt{CVXPY} backend on each problem, with
+and without the dense blocks.}\label{fig:ablation}
+\end{figure}
+\subsection{Sensitivity to size and density}\label{sec:res-sensitivity}
+\subsection{The four slower problems}\label{sec:res-slower}
+\subsection{Re-solves and non-DPP problems}\label{sec:res-nondpp}
+\begin{table}[htbp]
+\centering
+\caption{Re-solve time on problems that are not DPP.}\label{tab:res-nondpp}
+\end{table}
 
-\paragraph{Non-DPP problems.}
-See Q3 above (App.~A.3.1, Table A.6).
+\section{Discussion}\label{sec:discussion}
 
-\paragraph{The four slower problems.}
-App.~A.2.1 and Table A.4 give the phase shares and the mechanism for each.
-\begin{itemize}[nosep]
-  \item UnconstrainedQP (98\,\% numeric pass): a chain of matrix products is evaluated away
-        from its constant and fills a dense Jacobian; CVXPY
-        PR~\href{https://github.com/cvxpy/cvxpy/pull/3524}{\#3524} removes it (16~ms).
-  \item OptimalAdvertising (90\,\% symbolic pass): the global layout, as in Q5;
-        PR~\href{https://github.com/cvxpy/cvxpy/pull/3570}{\#3570} removes the dense blocks of its aggregate
-        constraints (App.~A.2.1).
-  \item ConvexPlasticity: a diagonal given as a dense array becomes a dense block, which
-        PR~\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} stores sparse (App.~A.2.1).
-  \item SDPSegfault1132: three dense blocks of 49.5 million entries cancel in a sum with 1.01
-        million nonzeros, and \texttt{diffengine} carries the cancelled entries through both
-        passes. The cancellation depends on the values of the data, so it cannot be seen before
-        the blocks are built.
-\end{itemize}
-
-\paragraph{Sensitivity to size and density.}
-On seven of the ten families measured at five sizes, the ratio stays between $0.13$ and $0.22$
-over a factor of 16 in size. On all 25 problems at three sizes, it stays within $0.04$ of its
-value at the nominal size on 18 of the 21 problems where \texttt{diffengine} is faster. The four
-slower problems stay slower at every size they complete. As the density falls, the advantage shrinks, from a
-ratio of $0.14$--$0.17$ on dense data to $0.40$--$2.56$ at 1\,\% density, and above 20\,\%
-density \texttt{diffengine} is faster on every problem (App.~A.5, Tables A.8--A.10).
-
-\paragraph{What the results imply.}
-The dense blocks help when the data is dense and hurt when a constant that is sparse in fact is
-stored dense. The backend already stores a constant factor of a matrix product sparse below
-5\,\% nonzeros, but the quadratic objective had no such test. Pull request
-\href{https://github.com/cvxpy/cvxpy/pull/3571}{\#3571} applies it there. On ConvexPlasticity,
-whose diagonal is given as a dense array, it makes canonicalization 3 times faster (194 against
-566~ms, medians of 10 runs on CVXPY master, outside the measurements of Chapter~4) with the same
-problem data, as App.~A.2.1 now notes. Most of the rest of its slowdown, like the memory of OptimalAdvertising (Q5),
-comes from the inverse column maps of the dense blocks in the engine. Setting the threshold from the cost
-of the kernels, for the slowdowns at low density, remains future work (§5.2).
+\bibliographystyle{IEEEtran}
+\bibliography{Document}
 
 \end{document}

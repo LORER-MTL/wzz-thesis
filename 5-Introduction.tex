@@ -910,7 +910,7 @@ multiplying it through the sparse loop is far slower than the equivalent BLAS ca
 A sparse BLAS standard was specified by the BLAS Technical Forum \cite{duff2002sparse}, but
 implementations are few and far less widely adopted than the dense BLAS.
 
-\section{Contributions}
+\section{Contributions}\label{sec:contributions}
 % Moved to the end of the chapter per the advisor's annotation
 % ("derniere sub-section de l'intro").
 In this Master's thesis, we make the following contributions:
@@ -928,7 +928,8 @@ In this Master's thesis, we make the following contributions:
   \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
   backends.
 \end{enumerate}
-\texttt{SparseDiffEngine} is joint work with Daniel Cederberg, and it is also the
+\texttt{SparseDiffEngine} is led by Daniel Cederberg, a collaborator from outside our research
+group, and the author co-developed it with him. It is the
 differentiation engine of the \texttt{DNLP} extension of \texttt{CVXPY}
 \cite{cederberg2025disciplined}, where it differentiates nonlinear atoms such as
 \texttt{exp}, \texttt{log} and \texttt{entr} at every iterate of the solver. This thesis
