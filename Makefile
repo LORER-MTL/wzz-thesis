@@ -98,6 +98,8 @@ diff: $(SRC:%.tex=%.pdf)
 	-cd $(DIFFOLD) && $(MAKE) -s > /dev/null 2>&1
 	latexdiff --flatten --config="PICTUREENV=(?:picture|DIFnomarkup|tikzpicture|tabular|longtable)[\w\d*@]*" \
 	  $(DIFFOLD)/$(SRC) $(SRC) > $(SRC:%.tex=%)-diff.tex
+	# Additions in plain blue, without the wavy underline.
+	perl -pi -e 's/\\color\{blue\}\\uwave\{#1\}/\\color{blue}#1/' $(SRC:%.tex=%)-diff.tex
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
 	@rm -rf $(DIFFOLD)
