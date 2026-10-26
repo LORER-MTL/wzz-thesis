@@ -670,8 +670,8 @@ Family & Variant & \texttt{CVXPY} & cached & rebuild & Ratio \\
 \end{table}
 
 On the non-\ac{DPP} variants, \texttt{CVXPY} canonicalizes the problem again at every solve,
-while \texttt{diffengine} runs the same numeric pass as on the \ac{DPP} variant and is $13$
-to $14$ times faster. On the \ac{DPP} variants, the tensor is $3.6$ and $2.9$ times faster.
+while \texttt{diffengine} keeps its symbolic pass and reruns only the numeric pass, so it
+re-solves as fast as on the \ac{DPP} variant, $13$ to $14$ times faster than \texttt{CVXPY}. On the \ac{DPP} variants, the tensor is $3.6$ and $2.9$ times faster.
 ConvexPlasticity, the only parametric problem of the suite that is not \ac{DPP}, is the
 exception: \texttt{diffengine} re-solves it in $207$ milliseconds against $42$ for
 \texttt{CVXPY}, because $88\,\%$ of the re-solve assembles the dense $3000 \times 3000$ block
