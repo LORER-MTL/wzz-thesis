@@ -82,9 +82,12 @@ presentation: presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 	${PDFLATEX} -interaction=nonstopmode presentation.tex
 
-rebuttal: rebuttal.tex
-	${PDFLATEX} -interaction=nonstopmode rebuttal.tex
-	${PDFLATEX} -interaction=nonstopmode rebuttal.tex
+# The rebuttal and the examiner reports live in feedback/; the rebuttal reads ../Document.aux.
+rebuttal: feedback/rebuttal.tex
+	cd feedback && ${PDFLATEX} -interaction=nonstopmode rebuttal.tex
+	cd feedback && bibtex rebuttal
+	cd feedback && ${PDFLATEX} -interaction=nonstopmode rebuttal.tex
+	cd feedback && ${PDFLATEX} -interaction=nonstopmode rebuttal.tex
 
 # Changes since the version sent to the jury (21b013b), for the final-deposit review.
 # The old revision is exported and built first so both sides have a .bbl for --flatten
@@ -102,13 +105,14 @@ diff: $(SRC:%.tex=%.pdf)
 	perl -pi -e 's/\\color\{blue\}\\uwave\{#1\}/\\color{blue}#1/' $(SRC:%.tex=%)-diff.tex
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
+	cp $(SRC:%.tex=%)-diff.pdf feedback/
 	@rm -rf $(DIFFOLD)
 
 diff_clean:
 	@rm -rf $(SRC:%.tex=%)-diff*.{tex,aux,bbl,blg,log,out,lof,lot,loa,toc,pdf} .diff-*
 
 rebuttal_clean:
-	@rm -f rebuttal.{aux,log,out,pdf}
+	@rm -f feedback/rebuttal.{aux,log,out,pdf}
 
 presentation_clean:
 	@rm -f presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}

@@ -13,18 +13,18 @@
 \usepackage[section]{placeins}
 \usepackage{siunitx}
 \usepackage[most]{tcolorbox}
-% Section, table and page numbers of the thesis come from Document.aux, so they always
+% Section, table and page numbers of the thesis come from ../Document.aux, so they always
 % match the final version. Build the thesis first (make), then this file.
 \usepackage{xr-hyper}
 \usepackage[hidelinks]{hyperref}
-\externaldocument[T-]{Document}
+\externaldocument[T-]{../Document}
 
-\graphicspath{{./images/}}
+\graphicspath{{../images/}}
 \setlength{\parskip}{0.5em}
 \setlength{\parindent}{0pt}
 
 % The thesis notation (defs.tex) and its acronyms, spelled out here.
-\input{defs.tex}
+\input{../defs.tex}
 \newcommand{\ac}[1]{#1}
 
 % A thesis reference: \tref{label} gives "§4.2, p. 61" from the thesis.
@@ -780,6 +780,6 @@ memory cost of the global layout and the conversion cost of the re-solves as lim
 the fixes that remain to be made.
 
 \bibliographystyle{IEEEtran}
-\bibliography{Document}
+\bibliography{../Document}
 
 \end{document}
