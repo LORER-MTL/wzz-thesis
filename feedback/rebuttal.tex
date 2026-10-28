@@ -490,7 +490,7 @@ $\mmat{D}^\top \ones \le \mvec{t}$ and $\mmat{D} \ones \ge \mvec{c}$ also keeps 
 variable of the problem: the same cost, paid per block rather than per node. Rewriting these
 products with a vector of ones as sums avoids the dense blocks: OptimalAdvertising then
 canonicalizes in $0.33$~s instead of $0.91$~s, faster than the $0.53$~s of \texttt{CVXPY}, with
-$1.4$~GB instead of $6.1$~GB. Storing the per-block maps sparsely is future work; we have not measured it.
+$1.4$~GB instead of $6.1$~GB.
 
 
 \question{6}{What part of \texttt{SparseDiffEngine} pre-existed the thesis or was developed for
