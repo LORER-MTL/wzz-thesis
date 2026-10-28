@@ -102,43 +102,35 @@ statistique, ce qui répond à tous vos commentaires.
 
 \paragraph{Main findings.} The new measurements answer the committee's questions as follows.
 \begin{itemize}
-\item The dense blocks help only on problems with dense data, by a factor of $1.2$ to $3$. They
-  slow down by $1.4$ to $46$ times the three problems that build a dense block from data that is
-  mostly zeros, and change little on the other ten.
-\item The dense blocks therefore do not explain the speedup. Without them, \texttt{diffengine}
-  is still $2.15$ times faster than the best \texttt{CVXPY} backend, against $2.29$ times with
-  them ($p = 0.07$). The rest comes from the engine as a whole, its implementation in C, the
-  Jacobian it computes at each node and the global layout, which are built into every atom and
-  cannot be separated by our switches.
-\item The re-solve speed comes from the symbolic and numeric split. Without it, a re-solve
-  repeats the first canonicalization and is $2.9$ times slower, significantly on all seven
-  \ac{DPP} problems.
-\item From a quarter to four times the original size, the ratio stays within $0.15$ of its value
-  on $21$ of the $25$ problems at every size where \texttt{diffengine} finishes. It runs out of
-  memory at five sizes where \texttt{CVXPY} finishes, three of them because of the dense blocks.
-\item The dense blocks pay off only when about half or more of the entries are nonzero: at a
-  density of $0.5$ the variants with and without them are about equal, and below it the sparse
-  format is faster.
+\item The dense blocks help only on problems with dense data. They slow down the three problems
+  that build a dense block from data that is mostly zeros, and change little on the others.
+\item The dense blocks therefore do not explain the speedup, which remains almost the same
+  without them. It comes from the engine as a whole, whose parts are built into every atom and
+  cannot be turned off separately.
+\item The re-solve speed comes from the symbolic and numeric split: without it, a re-solve
+  repeats the first canonicalization.
+\item The speedup holds across sizes, except on three of the slower problems. Where
+  \texttt{diffengine} runs out of memory and \texttt{CVXPY} does not, the dense blocks are
+  usually the cause.
+\item The dense blocks pay off only when about half or more of the entries are nonzero.
 \item Each of the four slower problems has an identified cause, in how its data reaches the
-  engine. For three of them, a change made before the engine closes or narrows the gap:
-  OptimalAdvertising becomes faster than \texttt{CVXPY}, UnconstrainedQP takes $16$~ms against
-  $13$~ms, and ConvexPlasticity becomes $2.5$ times faster but stays slower. SDPSegfault1132 has
-  no such fix yet.
+  engine, and three of them improve with a change made before the engine.
 \end{itemize}
 
 
 I have made all the modifications required by the committee and by Prof.~Antoine Legrain's
 examiner report, as well as the minor corrections that Prof.~Sébastien Le Digabel annotated and
 those listed in the appendix of Prof.~Legrain's report. Prof.~Le Digabel's corrections are not
-listed here; those of Prof.~Legrain are in Table~\ref{tab:minor}. I wrote first drafts of
-these answers myself and used Claude, the AI tool declared in the thesis, to help with the
-results and the writing.
+listed here; those of Prof.~Legrain are in Table~\ref{tab:minor}.
 All changes since the version sent to the committee are marked in \texttt{Document-diff.pdf},
 with added text in blue and deleted text in red. Section, table and page numbers below refer to
 the final version.
 The code of the benchmarks of Chapter~\ref{T-sec:Theme2} of the thesis and of
 Section~\ref{sec:results} below is in
 the repository \url{https://github.com/SparseDifferentiation/canonicalization-benchmarks}.
+
+I wrote first drafts of these answers myself and used Claude, the AI tool declared in the
+thesis, to help with the results and the writing.
 
 Table~\ref{tab:required} lists the required modifications. ``J'' refers to the committee's
 requirements after the defence, and (i)--(vii) to the items of the synthesis of the examiner
