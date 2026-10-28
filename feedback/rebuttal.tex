@@ -80,7 +80,7 @@ avec Apple \texttt{Accelerate}), plutôt que sur l'ordinateur Intel de 2018 de l
 soumise, pour que les résultats soient reproductibles sur du matériel actuel, comme celui de la
 plupart des utilisateurs de \texttt{CVXPY}. Pour la première canonicalisation, \texttt{diffengine} reste le
 plus rapide sur $21$ des $25$ problèmes, mais l'accélération moyenne passe de $2{,}8$ à
-$2{,}3$ fois, surtout à cause d'UnconstrainedQP (troisième point). Pour les re-résolutions paramétriques, en revanche, \texttt{diffengine}
+$2{,}3$ fois, en partie à cause d'UnconstrainedQP (troisième point). Pour les re-résolutions paramétriques, en revanche, \texttt{diffengine}
 n'est plus rapide que sur trois des sept problèmes, contre cinq dans la version soumise ; sur
 les quatre autres, la plus grande partie d'une re-résolution est du post-traitement, après
 \texttt{SparseDiffEngine}. J'ai donc modifié ma conclusion et la discussion des résultats pour
@@ -144,7 +144,7 @@ J1b, (ii): ablation
     re-solves (Q2).
   & \tref{sec:bench-ablation}; Tables~\ref{tab:sup-nodense} and~\ref{tab:sup-memory} \\
 J1c: more instances
-  & New parameter values for each run, and every problem scaled in size and density.
+  & New parameter values for each run, every problem scaled in size, and eight in density.
   & Ch.~4 introduction; \tsec{sec:bench-sensitivity}; Appendix~\ref{T-app:sweeps} \\
 J1d: sensitivity to size and sparsity
   & All $25$ problems at five sizes and eight at seven densities, with and without the dense
@@ -367,10 +367,10 @@ On the two families written with a product of two parameters, which \ac{DPP} for
 \texttt{CVXPY} has to canonicalize the problem again at every solve, while \texttt{diffengine}
 keeps its symbolic pass and reruns only the numeric pass. It re-solves as fast as on the
 \ac{DPP} variant, $13$ to $14\times$ faster than \texttt{CVXPY} on \texttt{lasso} and
-\texttt{factor\_cov}, significantly on both (Table~\ref{tab:res-nondpp}). ConvexPlasticity, the suite's only natural non-DPP parametric problem, has a parameter in a
-non-affine position: its parameters lie inside the argument of a quadratic form, which
-\texttt{CVXPY} requires to be parameter-free for a solver that accepts a quadratic objective. It
-is the exception: it re-solves in $207$~ms
+\texttt{factor\_cov}, significantly on both (Table~\ref{tab:res-nondpp}). ConvexPlasticity, the suite's only natural non-DPP parametric problem, breaks \ac{DPP} for the
+second reason: its parameters lie inside the argument of a quadratic form, which \texttt{CVXPY}
+requires to be parameter-free for a solver that accepts a quadratic objective. It is the
+exception: it re-solves in $207$~ms
 against $42$~ms for \texttt{CVXPY}, because $88\,\%$ of the re-solve assembles a dense $3000
 \times 3000$ block of $\mmat{P}$ built from a diagonal. Without the dense blocks, it re-solves
 in $2.0$~ms, $21\times$ faster than \texttt{CVXPY}. The thesis no longer claims that the split
@@ -424,8 +424,8 @@ The engine now does this: after a parameter update, the numeric pass re-evaluate
 subtrees that contain a parameter, and keeps the cached values of the others. All re-solve
 times in the thesis use it.
 
-The prediction that this would make \texttt{diffengine} at least as fast as the tensor in every
-case does not hold. On the seven \ac{DPP} problems (Table~\ref{tab:res-param}), \texttt{diffengine} has the fastest
+The prediction of the examiner report, that this would make \texttt{diffengine} at least as fast as the tensor in every
+case, does not hold. On the seven \ac{DPP} problems (Table~\ref{tab:res-param}), \texttt{diffengine} has the fastest
 first canonicalization on all seven, $2.5$ to $6.6\times$ faster than the fastest tensor build.
 The cached tensor re-solves faster on four of them, by $1.10$ to $3.60\times$, and recovers its
 slower first canonicalization only after $18$ to $124$ re-solves. On those four, the numeric
