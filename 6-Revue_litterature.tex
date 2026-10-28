@@ -384,17 +384,28 @@ between solves. Under additional rules on how the parameters enter the expressio
 The rules classify each parameter as affine and forbid products of two parametrized
 expressions, so that the dependence can be represented by the maps of~\eqref{eq:param-maps}.
 To keep track of the parameter dependence, \texttt{CVXPY} adds a third dimension to the
-problem data, indexed by the parameter entries. Every coefficient matrix throughout the
-bottom-up pass becomes a tensor. At the root nodes we thus get the cached parameter maps
+problem data, indexed by the entries of the extended parameter vector
+$\gvec{\tilde\theta} = (\gvec{\theta}, 1) \in \reals^{p+1}$, whose last entry carries the
+terms that do not depend on $\gvec{\theta}$. Every coefficient matrix throughout the bottom-up
+pass becomes a three-dimensional array. At the root, the constraint data is given by the
+parameter-to-data tensor $\mathcal{T} \in \reals^{m \times (n+1) \times (p+1)}$, defined by
+\BEQ\label{eq:param-tensor}
+[\mmat{A}(\gvec{\theta})\ \mvec{b}(\gvec{\theta})]_{ij}
+= \sum_{k=1}^{p+1} \mathcal{T}_{ijk}\,\tilde{\theta}_k .
+\EEQ
+\texttt{CVXPY} stores the tensor flattened, as a sparse matrix $\mmat{R}$, together with a
+matrix $\mmat{Q}$ for the objective vector. At the root nodes we thus get the cached parameter
+maps
 \BEQ\label{eq:param-maps}
 \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta},
 \qquad
 \vect([\mmat{A}\ \mvec{b}]) = \mmat{R}\,\gvec{\tilde\theta},
-\qquad
-\gvec{\tilde\theta} = \begin{bmatrix} \gvec{\theta} \\ 1 \end{bmatrix},
 \EEQ
 where $\mmat{Q} \in \reals^{n \times (p+1)}$ and
-$\mmat{R} \in \reals^{m(n+1) \times (p+1)}$. The objective map $\mmat{Q}$ is shown in
+$\mmat{R} \in \reals^{m(n+1) \times (p+1)}$. In the rest of this thesis, the
+parameter-to-data tensor, or simply the tensor, refers to these two maps together. Only their
+nonzeros are stored, one for each pair of a data entry and a parameter entry it depends on.
+The objective map $\mmat{Q}$ is shown in
 Figure~\ref{fig:param-map-dpp} for~\eqref{eq:example}. After a parameter change, a
 re-solve costs one sparse matrix-vector product per map.
 

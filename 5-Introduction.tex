@@ -90,16 +90,17 @@ expression trees are converted to numerical problem data.
 This step is often called matrix stuffing or the backend of canonicalization
 \cite{zhang2026cvxpy}.
 In \texttt{CVXPY}, the first solve of a problem family forms and caches a
-parameter tensor that maps the parameter vector to the problem data.
+parameter-to-data tensor that maps the parameter vector to the problem data.
 On subsequent solves, new problem data can be obtained with a single matrix-vector product
 \cite{agrawal2019dpp}.
 
-For large-scale problems, forming the parameter tensor can be prohibitively expensive, so
+For large-scale problems, forming the parameter-to-data tensor can be prohibitively expensive, so
 \texttt{CVXPY} lets users opt out of it entirely.
 Users must thus choose between paying a large upfront cost on the first solve and repeating
 the full canonicalization, with nothing reused, at every solve.
 We review \texttt{CVXPY} and the frontend of canonicalization in \S\ref{sec:intro-canon},
-as well as the parameter tensor and matrix stuffing in \S\ref{sec:matrix-stuffing}.
+as well as matrix stuffing in \S\ref{sec:matrix-stuffing} and the parameter-to-data tensor
+in \S\ref{sec:ms-parameters}.
 
 % \paragraph{Matrix stuffing as a derivative.}  (heading removed per advisor; kept for reference)
 The constraint matrix~$\mmat{A}$ is the Jacobian of the stacked constraint expressions and
@@ -151,7 +152,7 @@ values \cite{davis2006direct}, and to Gustavson's sparse product \cite{gustavson
 Our use of the two-phase approach is inspired more directly by the interfaces of \ac{NLP}
 solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
-The symbolic phase is much cheaper to form and cache than the parameter tensor, and the
+The symbolic phase is much cheaper to form and cache than the parameter-to-data tensor, and the
 numeric phase itself is often similar in cost to applying the matrix-vector product, although
 converting its output to the format of the solver can cost more (\S\ref{sec:bench-param}).
 The problem data is also assembled entirely in memory rather than through a separate model
@@ -923,12 +924,12 @@ In this Master's thesis, we make the following contributions:
   numeric pass, an idea we borrow from sparse direct factorization and from the interfaces
   of \ac{NLP} solvers.
   \item We implement a canonicalization backend for \texttt{CVXPY} built on
-  \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the parameter tensor
-  while still caching computations for subsequent solves.
+  \texttt{SparseDiffEngine}. This backend avoids the large upfront cost of the
+  parameter-to-data tensor while still caching computations for subsequent solves.
   \item We benchmark \texttt{SparseDiffEngine} against \texttt{CVXPY}'s existing canonicalization
   backends.
 \end{enumerate}
-Daniel Cederberg is the lead developer of \texttt{SparseDiffEngine}. It was first built as the
+\texttt{SparseDiffEngine} is joint work with Daniel Cederberg. It was first built as the
 differentiation engine of the \texttt{DNLP} extension of \texttt{CVXPY}
 \cite{cederberg2025disciplined}, where it differentiates nonlinear atoms such as
 \texttt{exp}, \texttt{log}, and \texttt{entr} at every iterate of the solver. This thesis
