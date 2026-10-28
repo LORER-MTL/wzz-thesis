@@ -98,16 +98,41 @@ d'ablation et exécuté plus d'instances de benchmark, avec des mesures de signi
 statistique, ce qui répond à tous vos commentaires.
 \end{otherlanguage}
 
-I wrote first drafts of the answers to your questions myself. I then used Claude, the AI tool
-declared in the thesis, to help produce the results from the benchmark scripts and to improve
-the writing of the answers. Every number comes directly from those scripts.
-
 \section{Summary of corrections}
+
+\paragraph{Main findings.} The new measurements answer the committee's questions as follows.
+\begin{itemize}
+\item The dense blocks help only on problems with dense data, by a factor of $1.2$ to $3$. They
+  slow down by $1.4$ to $46$ times the three problems that build a dense block from data that is
+  mostly zeros, and change little on the other ten.
+\item The dense blocks therefore do not explain the speedup. Without them, \texttt{diffengine}
+  is still $2.15$ times faster than the best \texttt{CVXPY} backend, against $2.29$ times with
+  them ($p = 0.07$). The rest comes from the engine as a whole, its implementation in C, the
+  Jacobian it computes at each node and the global layout, which are built into every atom and
+  cannot be separated by our switches.
+\item The re-solve speed comes from the symbolic and numeric split. Without it, a re-solve
+  repeats the first canonicalization and is $2.9$ times slower, significantly on all seven
+  \ac{DPP} problems.
+\item From a quarter to four times the original size, the ratio stays within $0.15$ of its value
+  on $21$ of the $25$ problems at every size where \texttt{diffengine} finishes. It runs out of
+  memory at five sizes where \texttt{CVXPY} finishes, three of them because of the dense blocks.
+\item The dense blocks pay off only when about half or more of the entries are nonzero: at a
+  density of $0.5$ the variants with and without them are about equal, and below it the sparse
+  format is faster.
+\item Each of the four slower problems has an identified cause, in how its data reaches the
+  engine. For three of them, a change made before the engine closes or narrows the gap:
+  OptimalAdvertising becomes faster than \texttt{CVXPY}, UnconstrainedQP takes $16$~ms against
+  $13$~ms, and ConvexPlasticity becomes $2.5$ times faster but stays slower. SDPSegfault1132 has
+  no such fix yet.
+\end{itemize}
+
 
 I have made all the modifications required by the committee and by Prof.~Antoine Legrain's
 examiner report, as well as the minor corrections that Prof.~Sébastien Le Digabel annotated and
 those listed in the appendix of Prof.~Legrain's report. Prof.~Le Digabel's corrections are not
-listed here; those of Prof.~Legrain are in Table~\ref{tab:minor}.
+listed here; those of Prof.~Legrain are in Table~\ref{tab:minor}. I wrote first drafts of
+these answers myself and used Claude, the AI tool declared in the thesis, to help with the
+results and the writing.
 All changes since the version sent to the committee are marked in \texttt{Document-diff.pdf},
 with added text in blue and deleted text in red. Section, table and page numbers below refer to
 the final version.
@@ -643,7 +668,8 @@ ratio columns shows where the dense blocks matter. On the problems with dense da
 SVMWithL1Regularization to LeastSquares and on the two MatrixStuffing problems, the ratio is two
 to three times higher without them. On CVaR, ConvexPlasticity and UnconstrainedQP it is lower.
 On most of the other problems the two columns agree, because turning the dense blocks off
-changes little of their work.
+changes little of their work. \emph{\texttt{diffengine} is significantly faster than the best
+\texttt{CVXPY} backend on $21$ of the $25$ problems, and $2.3$ times faster in geometric mean.}
 
 \subsection{Dense blocks (J1b, (ii), Q2)}
 
@@ -718,6 +744,9 @@ faster. The data is the scenario matrix of CVaR, a dense array with one nonzero 
 diagonal of ConvexPlasticity, given as a dense array; and the chain of products of
 UnconstrainedQP, whose dense Jacobian comes from a sparse factor (\S\ref{sec:res-slower}).
 
+\emph{The dense blocks speed up the problems with dense data, slow down the three that build
+them from mostly zeros, and change little on the rest.}
+
 \subsection{Peak memory (J1b, (ii), Q5)}
 
 {\small
@@ -771,6 +800,8 @@ $33\,\%$ from SVMWithL1Regularization to LeastSquares, and by a factor of about 
 MatrixStuffing problems. In geometric mean, \texttt{diffengine} uses $0.83$ times its memory with the dense
 blocks. On OptimalAdvertising, \texttt{diffengine} still uses five times the memory of
 \texttt{CVXPY} without the dense blocks, which is the cost of the global layout (Q5).
+\emph{Without the dense blocks, \texttt{diffengine} uses $0.83$ times the memory in geometric
+mean, but the global layout keeps it five times above \texttt{CVXPY} on OptimalAdvertising.}
 
 \subsection{The four slower problems ((vi), Q5)}\label{sec:res-slower}
 
@@ -790,6 +821,8 @@ problems, in percent of its time, and the median share over the $25$ problems.}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{l r rrrrrr}
 \toprule
+& & \multicolumn{6}{c}{share of the time (\%)} \\
+\cmidrule(lr){3-8}
 Benchmark & Time (s) & Front end & Convert & Symbolic & Numeric & Assemble & Format \\
 \midrule
 UnconstrainedQP      & 22.94 & 0 & 0 & 2 & 98 & 0 & 0 \\
@@ -834,6 +867,9 @@ constant factor of a matrix product, which reduces the canonicalization from $50
 milliseconds and the peak memory from $1.33$ to $0.59$ gigabytes. The problem remains $2.9$
 times slower than on the fastest \texttt{CVXPY} backend, and most of the remaining time is in
 the symbolic pass.
+
+\emph{On each slower problem, one or two phases take almost all of the time, and three of the four
+improve with a change made before the data reaches the engine.}
 
 \subsection{Size and density (J1c, J1d)}
 
@@ -921,7 +957,8 @@ SemidefiniteProgramming     &  0.64 &  0.68 &  1.02 &  1.28 &  1.46 &  1.61 &  1
 \end{table}
 
 As each problem is scaled from $s = 1/4$ to $s = 4$ (Table~\ref{tab:new-size}), the ratio stays
-within $0.15$ of its value at the original size on $21$ of the $25$ problems, so the speedup of
+within $0.15$ of its value at the original size on $21$ of the $25$ problems, at every size where
+\texttt{diffengine} finishes, so the speedup of
 Table~\ref{tab:new-oneshot} does not come from the particular sizes of the suite. On three of the
 others, slower problems whose cost grows faster than their data, the ratio grows for the reasons
 of \S\ref{sec:res-slower}: on OptimalAdvertising the number of terms and the number of variables
@@ -929,14 +966,24 @@ grow together, on ConvexPlasticity the dense block of $\mmat{P}$ grows with the 
 number of points, and on UnconstrainedQP the dense Jacobian of the chain grows with the size of
 the Fourier matrix.
 
+\texttt{diffengine} exceeds the \SI{20}{\giga\byte} memory limit at five sizes where a
+\texttt{CVXPY} backend finishes. Without the dense blocks, three of them finish, at ratios of
+$0.31$ (CVaR, $s = 2$), $1.57$ (ConvexPlasticity, $s = 4$) and $3.18$ (OptimalAdvertising,
+$s = 4$). The other two exceed the limit with and without the dense blocks: SDPSegfault1132
+already needs $10$ to $13$~GB at its original size (Table~\ref{tab:sup-memory}), and at
+$s = 4$ on Murray, \texttt{CPP} exceeds it as well. At the four sizes marked ``all cap'', every
+backend exceeds it. \emph{The ratio does not depend on the sizes of the suite, except on three of
+the slower problems, and the dense blocks cause three of the five sizes at which only
+\texttt{diffengine} runs out of memory.}
+
 As the density of the data falls (Table~\ref{tab:new-density}), the ratio with the dense blocks
 rises until about $\rho = 0.05$ on the problems that use them, because a dense block keeps
 storing and multiplying every entry while the \texttt{CVXPY} backends do less work. Below
 $\rho = 0.05$, \texttt{diffengine} stores the constant in the sparse format, and the ratio drops
 to about that without the dense blocks. Without them, the ratio rises slowly as the density
 falls. The two variants are about equal at $\rho = 0.5$, and the variant without them is faster
-from $\rho = 0.2$ to $0.05$. This is the
-evidence behind Q2: the dense blocks pay off only when most entries are nonzero.
+from $\rho = 0.2$ to $0.05$. \emph{The dense blocks pay off only when about half or more of
+the entries are nonzero.}
 
 \subsection{Re-solve against a full canonicalization (Q4)}
 
@@ -971,7 +1018,8 @@ Table~\ref{tab:sup-warm} compares both caches with what \texttt{CVXPY} does with
 canonicalizing again. A re-solve from the cached tensor is $10$ to $67$ times faster than a full
 canonicalization, and a re-solve of \texttt{diffengine} $8$ to $142$ times faster. Either cache
 removes most of the cost of a re-solve, and the gap between the two, at most $3.6$ times
-(Table~\ref{tab:res-param}), is small next to it.
+(Table~\ref{tab:res-param}), is small next to it. \emph{Either cache makes a re-solve $8$ to
+$142$ times cheaper than canonicalizing again, so having a cache matters more than which one.}
 
 \subsection{The benchmark problems ((v))}
 
