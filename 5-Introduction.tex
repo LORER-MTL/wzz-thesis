@@ -152,8 +152,9 @@ values \cite{davis2006direct}, and to Gustavson's sparse product \cite{gustavson
 Our use of the two-phase approach is inspired more directly by the interfaces of \ac{NLP}
 solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
-The symbolic phase is cheaper to build than the parameter-to-data tensor on every \ac{DPP}
-problem of the suite, although converting the output of the numeric phase to the format of the
+The first canonicalization, the symbolic phase and one numeric phase, is faster than building
+the parameter-to-data tensor on the seven parametric problems of the suite that \texttt{CVXPY}
+can cache, although converting the output of the numeric phase to the format of the
 solver can cost more than a product with the tensor (\S\ref{sec:bench-param}).
 The problem data is also assembled entirely in memory rather than through a separate model
 file.

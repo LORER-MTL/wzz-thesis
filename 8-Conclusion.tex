@@ -14,15 +14,16 @@ computation by graph colouring.
 \texttt{AMPL} and \texttt{JuMP} take the coefficients as the user declares them, but both
 scalarize the model. A dense block in the problem data becomes a list of scalar
 coefficients. \texttt{CVXPY}'s backends, on the other hand, convert everything to sparse
-matrices. No modelling language that forms the problem matrix keeps dense blocks as they are.
+matrices. None of the modelling languages of Chapter~\ref{sec:RevLitt} that form the problem matrix keeps
+dense blocks as they are.
 To address this, we
 built \texttt{SparseDiffEngine}, a sparse differentiation library that operates on
 vectorized expressions without scalarizing them, requires no sparsity detection or graph
 colouring, and mixes sparse and dense formats throughout the computation. In addition to
 using \ac{BLAS} operations and dense storage on dense blocks, we implement a two-phase approach
 which caches many computations during the symbolic pass. For parametric problems, the
-numeric pass reuses these computations, with no restrictions on how the parameters enter
-the problem.
+numeric pass reuses these computations, without the \ac{DPP} rules, as long as the expression
+tree stays fixed.
 
 We also propose \texttt{diffengine}, a new canonicalization backend for \texttt{CVXPY} with a
 simple interface to \texttt{sparsediffpy}, the Python bindings of

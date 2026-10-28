@@ -977,7 +977,7 @@ product~\cite{gustavson1978two}. Like the sparse \ac{AD} of \texttt{CasADi}
 in \S\ref{sec:casadi}, the symbolic pass caches sparsity patterns, but we pair each pattern
 with index maps instead of a graph colouring, and our numeric pass writes the coefficient
 values directly in place rather than through compressed sweeps.
-The cached structure also covers every problem, not only the problems that conform to the
+The cached structure also applies to problems that do not conform to the
 \ac{DPP} ruleset.
 
 Finally, the choice to implement the engine in C with custom matrix classes forced us to

@@ -113,8 +113,8 @@ statistique, ce qui répond à tous vos commentaires.
   \texttt{diffengine} runs out of memory and \texttt{CVXPY} does not, the dense blocks are
   usually the cause.
 \item The dense blocks pay off only when about half or more of the entries are nonzero.
-\item Each of the four slower problems has an identified cause, in how its data reaches the
-  engine, and three of them improve with a change made before the engine.
+\item Each of the four slower problems has an identified cause, and three of them improve with a
+  change made before the engine.
 \end{itemize}
 
 
@@ -331,7 +331,8 @@ its dense block.
 
 \question{2}{If the permuted dense representations are disabled, what fraction of the speedup
 remains?}
-The speedup of \texttt{diffengine} does not depend on the dense blocks. The $2.8\times$ of the
+Over the suite, the speedup of \texttt{diffengine} changes little without the dense blocks. The
+$2.8\times$ of the
 submitted version is now $2.29\times$, in part because UnconstrainedQP no longer benefits from a
 rewrite that the other backends did not get (see the message to the committee). A switch of our
 \texttt{CVXPY} branch stores every constant matrix in the sparse format. With sparse matrices
@@ -799,9 +800,8 @@ mean, but the global layout keeps it five times above \texttt{CVXPY} on OptimalA
 
 \subsection{The four slower problems ((vi), Q5)}\label{sec:res-slower}
 
-On the four problems on which \texttt{diffengine} is slower, the cause lies in how their data
-reaches the engine. Table~\ref{tab:sup-phases} gives the share of each phase of its first
-canonicalization. On a typical problem, the time is spread over the phases; on each of the four,
+Table~\ref{tab:sup-phases} gives the share of each phase of the first canonicalization of
+\texttt{diffengine} on the four problems on which it is slower. On a typical problem, the time is spread over the phases; on each of the four,
 one or two phases take almost all of it, and the paragraphs below say why. Three of the four are
 addressed by changes to \texttt{CVXPY}, which the measurements of the thesis do not include;
 each fix is measured alone.

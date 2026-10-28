@@ -14,8 +14,7 @@ If the split matches the tensor's re-solve
 times at a lower upfront cost, building the tensor becomes harder to justify.
 Second, the \texttt{CVXPY} developers have deprecated \texttt{cvxcore} and plan
 to remove it from the library~\cite{zhang2026cvxpy}. It nevertheless remains the default
-backend, in part because neither Python backend has shown a decisive speedup on the first
-canonicalization. These comparisons allow us to assess whether
+backend. These comparisons allow us to assess whether
 \texttt{diffengine} could be a suitable replacement.
 
 We use the $25$ problems of \texttt{CVXPY}'s public benchmark suite
@@ -76,7 +75,7 @@ significantly from $1$ ($p = 0.003$). On $15$ problems \texttt{diffengine} is mo
 than twice as fast as the best \texttt{CVXPY} backend. It is significantly slower on the other
 four.
 
-On these four problems, the cause lies in how the data reaches the engine. On UnconstrainedQP,
+On each of these four problems, one or two phases take most of the time. On UnconstrainedQP,
 a chain of matrix products is evaluated away from its constant, and the numeric pass,
 $98\,\%$ of the time, fills a dense Jacobian. On OptimalAdvertising, the global layout of
 Figure~\ref{fig:local-vs-global} makes the symbolic pass, $89\,\%$ of the time, visit every
@@ -161,7 +160,7 @@ $12$ of the $25$ problems and \texttt{SCIPY} on $8$. In geometric mean, \texttt{
 uses $1.04$ times the memory of \texttt{CPP}, $0.98$ times that of \texttt{COO}, and $1.45$
 times that of \texttt{SCIPY}.
 
-The speedup of \texttt{diffengine} does not depend on the dense
+Over the suite, the speedup of \texttt{diffengine} changes little without the dense
 blocks.\label{sec:bench-ablation} A switch of our \texttt{CVXPY} branch stores every constant
 matrix in the sparse format, and the last column of Table~\ref{tab:oneshot-compile} gives the
 ratio with this switch on. With sparse matrices alone, \texttt{diffengine} is still $2.15$ times
@@ -284,8 +283,8 @@ canonicalization, and even within the grammar the tensor can be prohibitive to b
 problems. Our first two observations suggest that \ac{DPP} is best kept for problems that are
 re-solved many times and for packages that depend on the tensor, such as
 \texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}.
-With our approach, a parametric problem is re-solved without the tensor and without rules on
-how its parameters appear, within a factor of four of the tensor on the \ac{DPP} problems of
+With our approach, a parametric problem is re-solved without the tensor and without the \ac{DPP}
+rules, within a factor of four of the tensor on the \ac{DPP} problems of
 the suite.
 
 The second and third observations suggest that \texttt{diffengine} is a candidate to
