@@ -44,7 +44,7 @@ minutes and a memory limit of \SI{20}{\giga\byte}. The method canonicalizes the
 problem and returns the resulting problem data without calling the solver. We exclude the
 solver because the choice of backend affects only canonicalization.
 Before any timing, we check that \texttt{diffengine} returns the same problem data as
-\texttt{CPP}, at the first canonicalization and after a parameter update.\footnote{Except for
+\texttt{CPP}, to within $10^{-9}$ of the largest entry, at the first canonicalization and after a parameter update.\footnote{Except for
 one NaN entry that comes from the data of OptimalAdvertising itself.}
 The benchmark scripts and all recorded timings are available at
 \begin{center}
@@ -165,9 +165,9 @@ blocks.\label{sec:bench-ablation} A switch of our \texttt{CVXPY} branch stores e
 matrix in the sparse format, and the last column of Table~\ref{tab:oneshot-compile} gives the
 ratio with this switch on. With sparse matrices alone, \texttt{diffengine} is still $2.15$ times
 faster than the best \texttt{CVXPY} backend over the suite, close to the $2.29$ times with the
-dense blocks ($p = 0.07$). Most of the speedup thus comes from the rest of the engine:
-its implementation in C, the Jacobian it computes at each node and the global layout of
-Figure~\ref{fig:local-vs-global}, which are built into every atom and cannot be turned off
+dense blocks ($p = 0.07$). The rest of the speedup comes from the engine as a whole: its
+implementation in C, the Jacobian it computes at each node and the global layout of
+Figure~\ref{fig:local-vs-global} are built into every atom and cannot be turned off
 separately. Per problem, the dense blocks gain up to a factor of
 $3$ on problems with dense data, and lose up to a factor of $46$ on CVaR, ConvexPlasticity and
 UnconstrainedQP, which build a dense block from data that is mostly zeros. Without them,
@@ -175,8 +175,9 @@ UnconstrainedQP, which build a dense block from data that is mostly zeros. Witho
 
 We also scaled\label{sec:bench-sensitivity} every problem in size by factors from $1/4$ to $4$,
 and masked the data of eight problems down to a density of $1\,\%$. The ratio stays close to
-its value at the original size on most problems, and the dense blocks pay off only when most
-entries of the data are nonzero (Appendix~\ref{app:sweeps}).
+its value at the original size on most problems, at every size where \texttt{diffengine}
+finishes, and the dense blocks pay off only when about half or more of the entries of the data
+are nonzero (Appendix~\ref{app:sweeps}).
 
 \begin{figure}[htbp]
 \centering
@@ -264,11 +265,12 @@ Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a 
 four of the cached tensor on every \ac{DPP} problem. In
 \S\ref{sec:bench-nondpp}, it re-solves problems that are not \ac{DPP}, on which
 \texttt{CVXPY} has to canonicalize again, $13$ to $14$ times faster.
-\item The tensor approach carries a large upfront cost that is not always justified. In
+\item The tensor approach carries a large upfront cost, which pays off only after many
+re-solves. In
 Table~\ref{tab:param-tensor}, the split's first canonicalization is faster than building
 the tensor on every problem. The tensor re-solves faster on four of the seven problems, but
 it makes up for its slower first canonicalization only after $18$ to $124$ re-solves.
-\item \texttt{cvxcore} can be replaced. \texttt{diffengine} canonicalizes faster than
+\item \texttt{diffengine} is a candidate to replace \texttt{cvxcore}. \texttt{diffengine} canonicalizes faster than
 \texttt{cvxcore} on $23$ of the $25$ problems, as reported in
 Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}. On the parametric problems of
 Table~\ref{tab:param-tensor}, \texttt{COO} builds the parameter-to-data tensor faster than
@@ -285,8 +287,8 @@ With our approach, a parametric problem is re-solved without the tensor and with
 how its parameters appear, within a factor of four of the tensor on the \ac{DPP} problems of
 the suite.
 
-The second and third observations suggest that \texttt{diffengine} can replace
-\texttt{cvxcore} as the default backend of \texttt{CVXPY}, a change that will require work
+The second and third observations suggest that \texttt{diffengine} is a candidate to
+replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}, a change that will require work
 with its maintainers (\S\ref{sec:FutureResearch}). \texttt{diffengine} also has downsides: its
 peak memory is higher on several problems, its re-solves need the cached program to stay in
 memory, and the suite covers only a subset of optimization problems. We return to these

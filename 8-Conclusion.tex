@@ -28,9 +28,8 @@ We also propose \texttt{diffengine}, a new canonicalization backend for \texttt{
 simple interface to \texttt{sparsediffpy}, the Python bindings of
 \texttt{SparseDiffEngine}. We compare
 \texttt{diffengine} with \texttt{CVXPY}'s three existing backends in numerical
-experiments and obtain promising results. They allow us to conclude that
-\texttt{diffengine} can replace \texttt{cvxcore} as the default backend of \texttt{CVXPY}
-in certain circumstances. Overall, the work in this thesis is based on a combination of
+experiments and find that \texttt{diffengine} is a candidate to replace \texttt{cvxcore} as
+the default backend of \texttt{CVXPY} on the \texttt{ignore\_dpp} path. Overall, the work in this thesis is based on a combination of
 fundamental subjects in matrix computations, computing derivatives, and modelling languages
 for optimization.
 
@@ -55,9 +54,8 @@ The difficulty in creating such a suite is that every modelling language has its
 and conventions, so the problems would have to be written once per language.
 
 The results of Chapter~\ref{sec:Theme2} also show that the peak memory of
-\texttt{diffengine} is higher on several problems of the suite. Part of the cost is the
-cached problem itself. The numeric pass evaluates the expression trees at every parameter
-change, so the \texttt{problem} object must stay in memory for the lifetime of the problem
+\texttt{diffengine} is higher on several problems of the suite. In addition, the
+numeric pass evaluates the expression trees at every parameter change, so the \texttt{problem} object must stay in memory for the lifetime of the problem
 family. The parameter-to-data tensor does not have this constraint. Once the tensor is
 built, a re-solve needs only its product with the current parameter values, and the
 formulation can be set aside. This decoupling brings similar benefits as \texttt{AMPL}'s
@@ -95,11 +93,11 @@ become the new default backend, with \texttt{COO} as an alternative candidate fo
 problems. A further improvement concerns parameter updates. On the problems where the tensor
 re-solves faster, most of a re-solve goes to converting the engine's output to the solver's
 format (\S\ref{sec:bench-param}), although the sparsity patterns do not change between
-re-solves. Computing this conversion once, in the symbolic pass, would let a re-solve write
+re-solves. Computing this conversion once, in the symbolic pass, could let a re-solve write
 the new values directly into the final matrices. The re-solve of the tensor rebuilds its
-matrices in the same way, so the same change would speed up both. Another improvement concerns
+matrices in the same way, so the same change could speed up both. Another improvement concerns
 dense constants. The backend keeps a constant as a dense block when at least $5\,\%$ of its
-entries are nonzero. A threshold set from the cost of the kernels would reduce the slowdowns of
+entries are nonzero. A threshold set from the cost of the kernels could reduce the slowdowns of
 the density experiment (\S\ref{sec:bench-sensitivity}).
 
 The final direction would be to extend the permuted dense matrix classes of
