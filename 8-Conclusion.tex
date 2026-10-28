@@ -19,7 +19,7 @@ To address this, we
 built \texttt{SparseDiffEngine}, a sparse differentiation library that operates on
 vectorized expressions without scalarizing them, requires no sparsity detection or graph
 colouring, and mixes sparse and dense formats throughout the computation. In addition to
-using BLAS operations and dense storage on dense blocks, we implement a two-phase approach
+using \ac{BLAS} operations and dense storage on dense blocks, we implement a two-phase approach
 which caches many computations during the symbolic pass. For parametric problems, the
 numeric pass reuses these computations, with no restrictions on how the parameters enter
 the problem.

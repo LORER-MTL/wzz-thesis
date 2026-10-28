@@ -506,8 +506,7 @@ For a quadratic objective, \texttt{CVXPY} replaces the affine argument of each q
 atom by a new variable, adding the corresponding equality constraint. The objective becomes
 a sum of quadratic forms with constant matrices. A second matrix stuffing pass then
 assembles these matrices into the diagonal blocks of the matrix $\mmat{P}$
-of~\eqref{e:quad-conic-form}
-~\cite{cvxpy2026source}.
+of~\eqref{e:quad-conic-form}~\cite{cvxpy2026source}.
 
 % \paragraph{Implementation details.}  (heading removed per advisor style; kept for reference)
 All three backends share two limitations. Firstly, they delegate their matrix operations to a
@@ -873,7 +872,7 @@ be exported as self-contained C code and compiled ahead of time for embedded app
 
 % \paragraph{Jacobian assembly.}  (heading removed per advisor style; kept for reference)
 \texttt{CasADi} computes its derivatives by the detection, colouring, and batched sweeps of
-this section, and caches the pattern, the colouring, and the compiled derivative function
+this section, and caches the pattern, the colouring, and the derivative function
 across evaluations. Listing~\ref{lst:casadi-conic} rebuilds the conic-form trees of
 Figure~\ref{fig:conic-form-tree}, obtained after canonicalization, as \texttt{MX}
 expressions. Differentiating them recovers the problem data that matrix stuffing assembles
@@ -944,8 +943,8 @@ A driver is built on one of two libraries. The \ac{ASL} is the original, a C lib
 parses the \texttt{.nl} format and evaluates the expressions it holds~\cite{gay1997hooking}.
 \texttt{MP} is the newer
 one, which \texttt{AMPL} supplies for solvers that need no derivatives~\cite{mpdocs}. This division
-between a translator that writes an instance and a driver that reads it still defines how most
-solvers receive nonlinear problems.
+between a translator that writes an instance and a driver that reads it still defines how many
+nonlinear solvers receive their problems.
 
 The \texttt{.nl} file is an instance format rather than a model format. Sets and indexing are
 resolved by the translator, and what remains is one flat record per objective and constraint.
@@ -993,9 +992,9 @@ b            # variable bounds: x[1] >= 0, x[2] >= 0
 2 0
 \end{lstlisting}
 The whole objective is written as one expression graph, and the value of $\mu$ is folded into
-it as the constant \texttt{n0.1}, so a parameter change requires a new file. For a linear or
-quadratic program, no graph remains and the file contains the complete problem data as
-coefficient lists.
+it as the constant \texttt{n0.1}, so a parameter change requires a new file. For a linear
+program, no graph remains and the file contains the complete problem data as coefficient lists;
+the quadratic terms of a quadratic program are still written as graphs.
 \texttt{Pyomo}, which also writes~\texttt{.nl} files, avoids a new file per parameter change
 for solvers with an in-memory interface: its persistent solver interfaces keep the model
 inside the solver and update the changed parameters and constraints in
@@ -1005,7 +1004,7 @@ Inside the driver, the bounds and the linear coefficient lists are read directly
 at a cost linear in the number of nonzeros, and only the nonlinear parts are rebuilt as
 expression graphs. What happens to those graphs depends on the library. \texttt{MP} matches
 the second-order and exponential cones of \S\ref{sec:bg-canonicalization} in the rebuilt
-graphs. A conic solver such as \texttt{Gurobi} or
+graphs. A solver with native cones such as
 \texttt{MOSEK} then receives cone constraints rather than the square roots the model states.
 ASL instead differentiates the graphs by reverse-mode AD~\cite{gay1991automatic},
 with sparse Hessians assembled from partial separability~\cite{gay1996more}.
@@ -1142,7 +1141,7 @@ coefficients.}
   & scalar
   & term lists stored by macros
   & term lists, modified in place
-  & \texttt{copy\_to} into the solver \\
+  & \texttt{copy\_to} into the solver, or incremental updates \\
 \arrayrulecolor{black!30}\specialrule{0.3pt}{1.5pt}{1.5pt}\arrayrulecolor{black}
 \texttt{CasADi}
   & scalar (\texttt{SX}) or matrix (\texttt{MX})
