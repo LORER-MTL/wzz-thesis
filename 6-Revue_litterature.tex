@@ -393,12 +393,8 @@ parameter-to-data tensor $\mathcal{T} \in \reals^{m \times (n+1) \times (p+1)}$,
 [\mmat{A}(\gvec{\theta})\ \mvec{b}(\gvec{\theta})]_{ij}
 = \sum_{k=1}^{p+1} \mathcal{T}_{ijk}\,\tilde{\theta}_k .
 \EEQ
-The first two indices of $\mathcal{T}$ locate an entry of $[\mmat{A}\ \mvec{b}]$ and the third
-a parameter entry, so that $\mathcal{T}_{ijk}$ is the coefficient of $\tilde{\theta}_k$ in that
-entry. \texttt{CVXPY} stores the tensor as a sparse matrix $\mmat{R}$ by flattening the first
-two indices with~\eqref{eq:vec}, so that column $k$ of $\mmat{R}$ is the vectorized slice
-$\vect(\mathcal{T}_{::k})$. The objective vector $\mvec{c}$ has a single index, and its
-tensor is already a matrix $\mmat{Q}$. At the root nodes we thus get the cached parameter
+\texttt{CVXPY} stores the tensor flattened, as a sparse matrix $\mmat{R}$, together with a
+matrix $\mmat{Q}$ for the objective vector. At the root nodes we thus get the cached parameter
 maps
 \BEQ\label{eq:param-maps}
 \mvec{c} = \mmat{Q}\,\gvec{\tilde\theta},
