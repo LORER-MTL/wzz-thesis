@@ -9,7 +9,7 @@
 	\chapter*{DÉCLARATION SUR L'UTILISATION DE L'IA}\thispagestyle{headings}
 	\addcontentsline{toc}{compteur}{DÉCLARATION SUR L'UTILISATION DE L'IA}
 }
-This page describes how I used AI tools in the work presented in this thesis on improving the
+This page describes how I used artificial intelligence (AI) tools in the work presented in this thesis on improving the
 canonicalization time of \texttt{CVXPY}.
 
 As mentioned in the acknowledgements, I used AI tools, in particular Claude Code from
@@ -20,7 +20,7 @@ to another, so each is described in its own section below.
 
 By coding, I mean the open-source code contributions that have been, or will be, added to the
 \texttt{CVXPY} and \texttt{SparseDiffEngine} repositories. I consider this code more important
-than the experiment code described below, since it can affect many users.
+than the experiment code described below, because it can affect many users.
 
 For coding, I first started with a plan of what I wanted to add and iterated with Claude Code
 until I was satisfied. Claude Code then implemented the change, wrote new tests and verified
@@ -31,10 +31,10 @@ Although Claude Code was used at almost every stage, from making a plan to writi
 sometimes even acting as a reviewer, the process still depended heavily on my own ideas and
 vision for the software.
 
-In my experience, this is more or less standard practice in software engineering today. I have
-thought a lot about AI usage in open source, and it may be unfortunate that it has gone this
-way, but it is at least the practice that the two main packages I contribute to have recently
-adopted.
+This is the practice that \texttt{CVXPY} and \texttt{SparseDiffEngine}, the two main packages
+I contribute to, have recently adopted for their contributors. I have thought a lot
+about AI usage in open source, and it may be unfortunate that it has gone this way, but every
+change still goes through the same review by the maintainers as any other contribution.
 
 \section*{Experiments}
 
@@ -42,9 +42,10 @@ In contrast to coding, by experiments I mean more ``throw-away'' code written to
 improvements I had in mind. Experiments sometimes became more serious, and then fell into the
 category of coding.
 
-For experiments, I was much less strict about code quality than in the section above. What I
-verified thoroughly is that the experiments ran the right versions of the software and measured
-the right thing. Beyond that, I left a lot of leeway to Claude Code, which could produce messy
+For experiments, I was much less strict about code quality than for the code contributions
+described above. What I verified thoroughly is that the experiments ran the right versions of the
+software and tested what they were meant to test, for example that every backend received the
+same problem and that the timer covered only canonicalization. Beyond that, I left a lot of leeway to Claude Code, which could produce messy
 and duplicated code.
 
 \section*{Research}
@@ -60,7 +61,7 @@ tremendously helpful in showing me where to look.
 
 To polish the story of the contribution, I used AI tools as a conversational companion that
 could check the validity of some ideas and make them more concrete. I also benefited greatly
-from discussions with Daniel Cederberg, the other developer of \texttt{SparseDiffEngine}, and
+from discussions with Daniel Cederberg, who leads the development of \texttt{SparseDiffEngine}, and
 with Oscar Dowson, the main developer of \texttt{JuMP}, which is covered in the literature
 review. My advisor, Prof.\ Antoine Lesage-Landry, gave me feedback on asking the right questions
 and discussing the right topics.
@@ -102,4 +103,7 @@ edited or generated.
 Other uses worth mentioning are the figures, and the formatting and editing of the thesis
 document, all in \LaTeX. I delegated these tasks almost completely to AI tools, which were
 surprisingly good at them. I verified that the resulting PDF matches what I expected or
-wanted, but looked much less at the \texttt{.tex} source itself, especially for the figures.
+wanted, and looked less at the \texttt{.tex} source of the figures. For the text, I read the
+\texttt{.tex} source and made the final small edits myself. The corrections of my advisor were
+applied one by one, either by hand or through Claude Code, and I checked each of them in the
+rebuilt PDF and in the difference with the previous version.

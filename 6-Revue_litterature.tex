@@ -526,8 +526,8 @@ computational graph~\cite{baydin2017ADsurvey, blondel2024elements}. In those
 settings, AD refers to the evaluation of matrix-vector products with the Jacobian or the
 Hessian, and the explicit matrix is never formed. Factorizations, direct linear solves, and
 many optimization solvers instead require the explicit matrix~\cite{hill2025sparser}.
-In convex optimization, Diamond and Boyd take the matrix-free
-view~\cite{diamond2016matrixfree}. Instead of forming~$\mmat{A}$, they represent the problem
+In convex optimization, Diamond and Boyd~\cite{diamond2016matrixfree} take the matrix-free
+view. Instead of forming~$\mmat{A}$, they represent the problem
 as a graph of linear operators, available only through their forward and adjoint products,
 which suits first-order solvers. The solvers that \texttt{CVXPY} calls by default instead
 factorize a matrix built from~$\mmat{A}$ and~$\mmat{P}$. The matrix-free approach pays off on
@@ -553,9 +553,9 @@ Reverse mode starts from a seed $\mvec{w}$ at the outputs and propagates adjoint
 Figures~\ref{fig:forward-sweep} and~\ref{fig:reverse-sweep}. For the Hessian, the analogous
 Hessian-vector product $\mmat{H}\mvec{v}$ comes from one forward sweep over one reverse sweep.
 
-\colorlet{sweepCol}{blue!55!black}
-\colorlet{adjCol}{red!55!black}
-\colorlet{accCol}{green!45!black}
+\colorlet{sweepCol}{blue!85!black}
+\colorlet{adjCol}{red!85!black}
+\colorlet{accCol}{green!60!black}
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[>={Stealth}, thick,
@@ -985,7 +985,7 @@ The whole objective is written as one expression graph, and the value of $\mu$ i
 it as the constant \texttt{n0.1}, so a parameter change requires a new file. For a linear or
 quadratic program, no graph remains and the file contains the complete problem data as
 coefficient lists.
-\texttt{Pyomo}, which also writes \texttt{.nl} files, avoids a new file per parameter change
+\texttt{Pyomo}, which also writes~\texttt{.nl} files, avoids a new file per parameter change
 for solvers with an in-memory interface: its persistent solver interfaces keep the model
 inside the solver and update the changed parameters and constraints in
 place~\cite{pyomopersistent}.

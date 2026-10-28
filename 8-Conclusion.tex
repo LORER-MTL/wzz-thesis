@@ -87,7 +87,11 @@ the functions of \texttt{sparsediffpy} instead of with \texttt{CVXPY} expression
 
 The second direction is closer to development than research. It covers the remaining work
 on the \texttt{diffengine} backend within
-\texttt{CVXPY}. The immediate goal is to make \texttt{diffengine} the default backend on the
+\texttt{CVXPY}. The backend was merged into \texttt{CVXPY} on September 9, 2026, as an opt-in
+backend for parameter-free problems, and its parametric re-solve path of \S\ref{sec:bench-param}
+is under review. The author has also contributed to the \texttt{SCIPY} and \texttt{COO}
+backends, so this work builds on experience with every backend that it could replace. The
+immediate goal is to make \texttt{diffengine} the default backend on the
 \texttt{ignore\_dpp} path. One challenge is that existing reductions must change behaviour
 without breaking backwards compatibility. The next task is the removal of
 \texttt{cvxcore}, which the \texttt{CVXPY} developers have already deprecated. The removal

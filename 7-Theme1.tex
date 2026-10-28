@@ -134,7 +134,7 @@ default. The other two are created by matrix multiplication and the quadratic fo
 operations whose data is dense. Each implements the same operations, so an atom picks one
 when it allocates its Jacobian during the symbolic pass.
 Keeping dense blocks inside a sparse matrix is not a new idea. Finite-element codes
-assemble dense element matrices into a sparse global matrix, and nonlinear least-squares
+assemble dense element matrices into a sparse global matrix~\cite{hughes2000fem}, and nonlinear least-squares
 libraries such as \texttt{Ceres}~\cite{agarwal2023ceres} and \texttt{g2o}~\cite{kummerle2011g2o}
 store the block-sparse Jacobians of bundle adjustment as dense blocks.
 In those codes, the position of each block follows from the structure of the problem, one
@@ -755,6 +755,10 @@ We collect the objective and constraint trees in one
 \texttt{problem} object, defined in \texttt{problem.c}. We also wrote
 \texttt{sparsediffpy}, a Python extension module that exposes the atom constructors and
 the functions that build and evaluate the \texttt{problem} object.
+Unlike \texttt{cvxcore}, which is compiled inside the \texttt{CVXPY} repository,
+\texttt{sparsediffpy} is a separate package on which \texttt{CVXPY} only depends. Its
+compiled wheels for Linux, macOS and Windows link Apple's \texttt{Accelerate} on macOS and a
+bundled copy of \texttt{OpenBLAS} on the other two, so users need no \ac{BLAS} of their own.
 We keep everything specific to \texttt{CVXPY} in a converter and a canonicalization
 backend named \texttt{diffengine}. The lower-case name distinguishes the backend from
 \texttt{SparseDiffEngine}. The converter builds the C trees of the canonicalized
