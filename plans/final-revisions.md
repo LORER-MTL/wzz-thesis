@@ -16,6 +16,25 @@ Status values: `todo`, `done`, `needs William` (a decision or the wording is his
 The **Where** column gives the section and the page in the final PDF (`Document.pdf` built from
 `final-results-lean`, 14 Oct 2026). Rebuild and recheck the pages after any further edit.
 
+## Update 2026-10-28: concise thesis, depth in the rebuttal
+
+The rows below predate this pass, so their **Where** cells are stale. The thesis now keeps each
+required item in its smallest form, and the full results are in `feedback/rebuttal.tex` §4,
+"Supplementary results":
+- **J1a, AL-iv:** a one-paragraph statistics setup in the Ch. 4 intro, plus ± and stars in
+  Tables 4.1 and 4.2.
+- **J1b, AL-ii:** a "no dense" ratio column in Table 4.1 and one paragraph in §4.1. The
+  per-problem ablation and the peak-memory tables are in the supplement.
+- **J1c, J1d:** one paragraph in §4.1 (the size and density sweeps). The density figure is in the
+  supplement, and the size figure is dropped.
+- **J1e, AL-iii:** the non-DPP paragraph in §4.2.
+- **AL-v:** Table A.2 now has m, n, nnz(A), density, nnz(P), param. size and DPP.
+- **AL-vi:** one sentence per slower problem with its dominant phase, in §4.1. The phase table
+  and the per-problem fixes are in the supplement (old App. B).
+- **Q7:** the BLAS/wheels paragraph is cut from Ch. 3 and answered in the rebuttal only.
+- **Re-solve vs. recompile table:** in the supplement only.
+- **PR numbers:** none are named in the thesis anymore.
+
 ## Required (jury and Legrain)
 
 | ID | Request | Response | Where | Status |
@@ -70,7 +89,7 @@ The **Where** column gives the section and the page in the final PDF (`Document.
 | AL-m12 | Ref [17] CVX: old version | Note « canonical reference; current release 2.2 » (checked cvxr.com) | References, p. 63 | done |
 | AL-m13 | Complexity analysis of the representations (memory, product cost) | Draft D7 (PR #3): storage and symbolic/numeric operation counts against CSR + Gustavson | §3.3.1, p. 45 | done |
 | AL-m14 | Future work: re-evaluate only the parameter-dependent subtrees | Implemented in the measured engine (SparseDiffEngine #125): after a parameter update, the numeric pass re-evaluates only the subtrees that contain a parameter. One sentence in §3.4.1. With it, the numeric pass is 3–20 % of a re-solve on the five problems where the tensor is faster; the rest is the conversion to CSC and the cone order, which is now the future-work item | §3.4.1, p. 47; Conclusion §Future, p. 61 | done |
-| AL-m15 | Defence Q5: memory of the global layout with many variables | Limitation: global layout costs O(nodes × n) integers (expr.c:54); local layout better for many variables + deep trees | Conclusion §Limitations, p. 60 | done |
+| AL-m15 | Defence Q5: memory of the global layout with many variables | Answered in the rebuttal only (Q5): global layout costs O(nodes × n) integers (expr.c:54); local layout better for many variables + deep trees. The Conclusion paragraph was cut on 2026-10-28 | Rebuttal Q5 | done |
 
 ## Replies to Legrain that do not change the thesis
 
@@ -80,7 +99,7 @@ Points raised by a second, adversarial reading. We answer them here rather than 
 |---|---|
 | Why the speedup (ii) | §4.1 and Table A.7 report the ablation against CVXPY without interpreting it. Over the suite, the engine is 2.17× faster than the best CVXPY backend without dense blocks and 2.33× with them; the difference between the two is 1.07× and not significant (Wilcoxon p = 0.07). Per problem the effect is large in both directions. On six problems with dense data, the dense blocks take the engine from about 3× to about 7× faster than CVXPY. On UnconstrainedQP they take it from 4× faster to 11.8× slower, and on ConvexPlasticity from 1.4× to 6.9× slower. The split plays no part in a first canonicalization. We do not attribute the remaining speedup to one component: the engine is one design, and only the dense blocks and the split have switches that can be turned off. |
 | Suite-level significance (J1a) | Over the 25 problems, the geometric mean 0.43 of Table 4.1 has a bootstrap 95 % CI of 0.28–0.70, and a Wilcoxon signed-rank test on the log-ratios gives p = 0.003. The ablation's 1.07× has a CI of 0.71–1.47 (p = 0.07), so it is not significant over the suite. |
-| Why the dense blocks raise peak memory (0.85× without them) | The first sentence is now in App. A.4. A dense block stores every entry, including the zeros of a constant that is sparse in fact, e.g. the diagonal of ConvexPlasticity. On OptimalAdvertising (6 GB against 945 MB without dense blocks) the likely cause is per-node caches and work arrays sized by n_vars (250 000 variables), the global-layout overhead stated in the Limitations. **To confirm (William).** The AL-vi profile confirms the global layout as the cause of the time, not of the memory: it was not a memory profile. |
+| Why the dense blocks raise peak memory (0.85× without them) | The first sentence is now in App. A.4. A dense block stores every entry, including the zeros of a constant that is sparse in fact, e.g. the diagonal of ConvexPlasticity. On OptimalAdvertising (6 GB against 945 MB without dense blocks) the likely cause is per-node caches and work arrays sized by n_vars (250 000 variables), the global-layout overhead explained in rebuttal Q5. **To confirm (William).** The AL-vi profile confirms the global layout as the cause of the time, not of the memory: it was not a memory profile. |
 | Split ablation | Cut from the thesis. Without the split a re-solve repeats the conversion and the symbolic pass, so it cannot be faster; Table 4.2's first canonicalization and re-solve columns already measure what the split saves, and the tensor can only be compared on re-solves. (The cut measurement was 2.56× in geometric mean, mostly the Python-to-C conversion on the two small problems.) |
 | A real non-DPP problem | Now stated in App. A.3.1. ConvexPlasticity is the suite's only non-DPP parametric problem. diffengine re-solves it in 204 ms, against 42 ms for CVXPY recompiling, because 88 % of the re-solve assembles the dense 3000 × 3000 Hessian block built from a diagonal given as a dense array. Without dense blocks it re-solves in 2.3 ms, 18× faster than CVXPY. The fix is a density test before keeping a constant dense (below). |
 | Non-DPP gain rests on constructed families | The 12–13× of §4.2 and the Discussion comes from `lasso` and `factor_cov`, whose non-DPP variants write one parameter as a product of two; ConvexPlasticity, the suite's only natural non-DPP problem, re-solves about 5× slower than CVXPY (204 ms against 42). The slowdown is not in the split: 88 % of that re-solve assembles the dense 3000 × 3000 block of P, built from a diagonal given as a dense array, and the numeric pass itself is a small share. Without dense blocks the same cached re-solve takes 2.3 ms, 18× faster than CVXPY, in line with the constructed families. So the split carries over to a real non-DPP problem; what fails there is the dense storage of a constant that is sparse in fact, the same cause as its first-canonicalization slowdown (App. A.2.1), and the density test of §5.2 is the fix. Thesis text unchanged: App. A.3.1 already states the 88 % and the 2.3 ms. |
