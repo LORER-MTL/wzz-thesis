@@ -297,7 +297,8 @@ by~$\mvec{r}$ and~$\mvec{c}$.}
 \end{figure}
 
 The dense block is stored in row-major order and the index vectors as two integer arrays, so
-the storage does not depend on the global dimensions~$m$ and~$n$. Structural atoms, which only
+the block and its indices do not depend on the global dimensions~$m$ and~$n$, although the
+symbolic pass also keeps a work array of length~$n$ for each block. Structural atoms, which only
 rearrange entries, turn a permuted dense matrix into another permuted dense matrix by
 manipulating the row and column indices alone. The transpose of a permuted dense matrix
 swaps the two index vectors and transposes the dense block.
@@ -898,8 +899,8 @@ The Hessian is symmetric, and only its lower triangular entries are passed to th
 \caption{The Jacobians of three constraint trees stack into the global constraint
 Jacobian. The row pointer array~\texttt{p} concatenates the pointers of the trees,
 shifted by the nonzeros of the blocks before them. The numeric pass copies the values of
-each tree into its slice of the value array~\texttt{x}. The second tree is affine, so the
-copy is skipped after the first evaluation.}
+each tree into its slice of the value array~\texttt{x}. The second tree contains no parameter, so
+its copy is skipped after the first evaluation.}
 \label{fig:jacobian-stacking}
 \end{figure}
 

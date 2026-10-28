@@ -52,7 +52,8 @@ The benchmark scripts and all recorded timings are available at
 \end{center}
 
 \paragraph{Statistics.}
-Each measurement is made in $30$ runs, each in a fresh process, and on a parametric problem
+Each measurement is made in $30$ runs, each in a fresh process ($10$ for the three points of
+Appendix~\ref{app:sweeps} that take over $30$~s), and on a parametric problem
 each run uses new parameter values. The tables report the mean and the standard deviation of
 the runs, and the ratios are ratios of medians. On each problem, the runs of
 \texttt{diffengine} and of the other backend are compared with a two-sided Mann--Whitney $U$
@@ -92,7 +93,7 @@ Bold denotes the fastest of the four backends on each problem. The ratio is the 
 of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends, marked
 with~$^{*}$ when significant.
 The last column is the same ratio with the dense blocks turned off
-(\S\ref{sec:bench-ablation}), a difference that is significant on every problem. The final row
+(\S\ref{sec:bench-ablation}); this ratio is also significant on every problem. The final row
 is the geometric mean of the ratios.}
 \label{tab:oneshot-compile}
 {\footnotesize
