@@ -492,7 +492,7 @@ library that the matrix is stored in (we write \texttt{SCIPY} for the backend an
 % (default-selection sentence reinstated 2026-08-12: ch. 4 cut its Backend substitution
 %  paragraph and now references this passage.)
 When no backend is requested, \texttt{CVXPY} uses \texttt{cvxcore}, and substitutes
-\texttt{COO} for a DPP problem with at least $1000$ parameter entries in total.
+\texttt{COO} for a DPP problem with at least $1{,}000$ parameter entries in total.
 When canonicalization remains too slow, \texttt{CVXPYgen} can compile a DPP problem ahead of
 time~\cite{schaller2022cvxpygen}. It generates C code specific to the problem family, with
 the entries of the cached maps~\eqref{eq:param-maps} written into the source as constants,

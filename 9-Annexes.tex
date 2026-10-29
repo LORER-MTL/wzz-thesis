@@ -49,30 +49,30 @@ Benchmark & Description \\
 \endhead
 \bottomrule
 \endfoot
-SVMWithL1Regularization & Hinge-loss classifier with an $\ell_1$ penalty, $25\,000$ samples and $500$ features. The penalty weight is a parameter. \\
-FactorCovarianceModel & Factor-model portfolio selection with $25\,000$ assets and $250$ factors. The risk aversion and the leverage limit are parameters. \\
-Yitzhaki & Gini mean-difference portfolio \ac{LP} over a dense matrix of all $44\,850$ pairwise return differences of $50$ assets. \\
-SimpleQP & \ac{QP} with a dense $1600 \times 1600$ quadratic form, $8000$ inequality and $20$ equality constraints. \\
-HuberRegression & Huber regression with $3000$ features and $4500$ samples, $12\,\%$ of the labels flipped. \\
+SVMWithL1Regularization & Hinge-loss classifier with an $\ell_1$ penalty, $25{,}000$ samples and $500$ features. The penalty weight is a parameter. \\
+FactorCovarianceModel & Factor-model portfolio selection with $25{,}000$ assets and $250$ factors. The risk aversion and the leverage limit are parameters. \\
+Yitzhaki & Gini mean-difference portfolio \ac{LP} over a dense matrix of all $44{,}850$ pairwise return differences of $50$ assets. \\
+SimpleQP & \ac{QP} with a dense $1{,}600 \times 1{,}600$ quadratic form, $8{,}000$ inequality and $20$ equality constraints. \\
+HuberRegression & Huber regression with $3{,}000$ features and $4{,}500$ samples, $12\,\%$ of the labels flipped. \\
 LeastSquares & Dense least squares, $\lVert \mmat{A}\mvec{x} - \mvec{b} \rVert_2^2$ with $\mmat{A} \in \reals^{7000 \times 2000}$. \\
 SimpleLP & Box-constrained \ac{LP} with $10^7$ variables and a linear objective. \\
 SimpleScalarParametrizedLP & Box-constrained \ac{LP} with $2 \times 10^6$ variables whose cost vector is scaled by a scalar parameter. \\
 SimpleFullyParametrizedLP & Box-constrained \ac{LP} with $10^6$ variables whose cost vector is a parameter. \\
 SlowPruning & Matrix least squares with a $100 \times 20$ variable and dense data, from \texttt{CVXPY} issue 1668. \\
-ParametrizedQP & Box-constrained least squares whose $6000 \times 2400$ matrix and right-hand side are parameters. \\
+ParametrizedQP & Box-constrained least squares whose $6{,}000 \times 2{,}400$ matrix and right-hand side are parameters. \\
 Cajas & Gini portfolio \ac{LP} in ordered-weighted-average form, with $800$ vector constraints added one by one. \\
-ConeMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $5000$. \\
-SmallMatrixStuffing & \ac{LP} with $4000$ variables and $4000$ scalar constraints, each a separate constraint object. \\
+ConeMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $5{,}000$. \\
+SmallMatrixStuffing & \ac{LP} with $4{,}000$ variables and $4{,}000$ scalar constraints, each a separate constraint object. \\
 TvInpainting & Total-variation inpainting of a $512 \times 512$ colour image, with about $30\,\%$ of the pixels known. \\
 ParamSmallMatrixStuffing & The \ac{LP} of SmallMatrixStuffing at size $300$, with its matrix, constraint coefficients and right-hand side as parameters. \\
 ParamConeMatrixStuffing & The same parametric \ac{LP} at size $200$. \\
 SemidefiniteProgramming & Standard-form \ac{SDP} with a $200 \times 200$ variable and $120$ dense equality constraints. \\
-CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131\,072$ scenarios and $768$ variables. \\
+CVaR & Conditional value-at-risk \ac{LP} over a dense matrix of $131{,}072$ scenarios and $768$ variables. \\
 QuantumHilbertMatrix & \ac{SDP} with partial traces and partial transposes of a $64 \times 64$ positive semidefinite variable, with sparse constants. \\
-Murray & The Yitzhaki \ac{LP} written with a dense $244\,650 \times 700$ matrix of pairwise differences. \\
+Murray & The Yitzhaki \ac{LP} written with a dense $244{,}650 \times 700$ matrix of pairwise differences. \\
 SDPSegfault1132 & Fits a distance matrix through a $99 \times 99$ positive semidefinite Gram matrix and dense constants, from \texttt{CVXPY} issue 1132. \\
-OptimalAdvertising & Allocation of $250$ advertisers over $1000$ time slots, with one minimum term per advertiser. \\
-ConvexPlasticity & One step of a convex plasticity model at $3000$ points, with a von Mises yield criterion and three parameters. \\
+OptimalAdvertising & Allocation of $250$ advertisers over $1{,}000$ time slots, with one minimum term per advertiser. \\
+ConvexPlasticity & One step of a convex plasticity model at $3{,}000$ points, with a von Mises yield criterion and three parameters. \\
 UnconstrainedQP & Fits a complex signal through a $252 \times 252$ discrete Fourier transform matrix and a Kronecker product with a diagonal of the variable, from \texttt{CVXPY} issue 2205. Despite its name, a second-order cone problem. \\
 \end{longtable}}
 
@@ -89,28 +89,28 @@ Benchmark & $m$ & $n$ & nnz$(\mmat{A})$ & density (\%) & nnz$(\mmat{P})$ & param
 SVMWithL1Regularization & 51\,k & 26\,k & 12.6\,M & 0.95 & --- & 1 & yes \\
 FactorCovarianceModel & 75.3\,k & 75.2\,k & 6.45\,M & 0.11 & 87.5\,k & 2 & yes \\
 Yitzhaki & 89.8\,k & 44.9\,k & 4.57\,M & 0.11 & --- & --- & --- \\
-SimpleQP & 8\,020 & 1\,600 & 12.8\,M & 99.8 & 2.56\,M & --- & --- \\
-HuberRegression & 13.5\,k & 16.5\,k & 13.5\,M & 6.1 & 4\,500 & --- & --- \\
-LeastSquares & 7\,000 & 9\,000 & 14\,M & 22.2 & 7\,000 & --- & --- \\
+SimpleQP & 8{,}020 & 1{,}600 & 12.8\,M & 99.8 & 2.56\,M & --- & --- \\
+HuberRegression & 13.5\,k & 16.5\,k & 13.5\,M & 6.1 & 4{,}500 & --- & --- \\
+LeastSquares & 7{,}000 & 9{,}000 & 14\,M & 22.2 & 7{,}000 & --- & --- \\
 SimpleLP & 20\,M & 10\,M & 20\,M & \num{1.0e-5} & --- & --- & --- \\
 SimpleScalarParametrizedLP & 4\,M & 2\,M & 4\,M & \num{5.0e-5} & --- & 1 & yes \\
 SimpleFullyParametrizedLP & 2\,M & 1\,M & 2\,M & \num{1.0e-4} & --- & 1\,M & yes \\
 SlowPruning & 400\,k & 402\,k & 8.4\,M & \num{5.2e-3} & 400\,k & --- & --- \\
-ParametrizedQP & 10.8\,k & 8\,400 & 14.4\,M & 15.9 & 6\,000 & 14.4\,M & yes \\
-Cajas & 641\,k & 2\,450 & 1.96\,M & 0.12 & --- & --- & --- \\
-ConeMatrixStuffing & 5\,000 & 5\,000 & 5\,000 & 0.020 & --- & --- & --- \\
-SmallMatrixStuffing & 4\,000 & 4\,000 & 4\,000 & 0.025 & --- & --- & --- \\
+ParametrizedQP & 10.8\,k & 8{,}400 & 14.4\,M & 15.9 & 6{,}000 & 14.4\,M & yes \\
+Cajas & 641\,k & 2{,}450 & 1.96\,M & 0.12 & --- & --- & --- \\
+ConeMatrixStuffing & 5{,}000 & 5{,}000 & 5{,}000 & 0.020 & --- & --- & --- \\
+SmallMatrixStuffing & 4{,}000 & 4{,}000 & 4{,}000 & 0.025 & --- & --- & --- \\
 TvInpainting & 2.61\,M & 1.05\,M & 3.63\,M & \num{1.3e-4} & --- & --- & --- \\
 ParamSmallMatrixStuffing & 300 & 300 & 300 & 0.33 & --- & 90.5\,k & yes \\
 ParamConeMatrixStuffing & 200 & 200 & 200 & 0.50 & --- & 40.3\,k & yes \\
 SemidefiniteProgramming & 20.2\,k & 20.1\,k & 2.43\,M & 0.60 & --- & --- & --- \\
 CVaR & 264\,k & 132\,k & 25.7\,M & 0.074 & --- & --- & --- \\
-QuantumHilbertMatrix & 6\,176 & 6\,176 & 81.1\,k & 0.21 & 4\,096 & --- & --- \\
+QuantumHilbertMatrix & 6{,}176 & 6{,}176 & 81.1\,k & 0.21 & 4{,}096 & --- & --- \\
 Murray & 490\,k & 245\,k & 1.5\,M & \num{1.2e-3} & --- & --- & --- \\
-SDPSegfault1132 & 15\,k & 4\,951 & 1.01\,M & 1.4 & --- & --- & --- \\
+SDPSegfault1132 & 15\,k & 4{,}951 & 1.01\,M & 1.4 & --- & --- & --- \\
 OptimalAdvertising & 252\,k & 250\,k & 1\,M & \num{1.6e-3} & --- & --- & --- \\
 ConvexPlasticity & 36\,k & 33\,k & 72\,k & \num{6.1e-3} & 9.05\,M & 27\,k & no \\
-UnconstrainedQP & 1\,009 & 289 & 18.6\,k & 6.4 & --- & --- & --- \\
+UnconstrainedQP & 1{,}009 & 289 & 18.6\,k & 6.4 & --- & --- & --- \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -122,10 +122,57 @@ UnconstrainedQP & 1\,009 & 289 & 18.6\,k & 6.4 & --- & --- & --- \\
 
 % Ratios from results/thesis-n30/grid_facts.json in canonicalization-benchmarks
 % (thesis_figures_n30.py); the s = 1 column matches Table 4.1.
-This appendix details the sweeps of \S\ref{sec:bench-sensitivity}. Every problem, and the
-\texttt{lasso} of \S\ref{sec:bench-nondpp} without parameters, is scaled by a factor $s$ of its
-size literals, which multiplies the nonzeros of its data by about $s$. Points whose first run
-exceeds $30$~seconds are made in $10$ runs, the others in $30$. Table~\ref{tab:app-size} gives
+This appendix details the sweeps of \S\ref{sec:bench-sensitivity}. Points whose first run
+exceeds $30$~seconds are made in $10$ runs, the others in $30$.
+
+For the density, the data matrix of eight problems is multiplied entrywise by a random $0/1$
+mask with a fraction $\rho$ of ones, and kept as a dense array, as in a user's code.
+Table~\ref{tab:app-density} gives the ratio with and without the dense blocks. With them, the
+ratio is lower on dense data but rises faster as $\rho$ falls, because a dense block stores
+every entry, zeros included. The two cross at about $\rho = 0.5$, except on
+SemidefiniteProgramming, where the dense blocks make no difference. Without them,
+\texttt{diffengine} stays faster down to $\rho = 0.01$ on six of the eight problems.
+
+\begin{table}[htbp]
+\centering
+\caption[Sensitivity to density]{Ratio of the median canonicalization time of
+\texttt{diffengine} to that of the best \texttt{CVXPY} backend as the density $\rho$ of the data
+matrix falls, with and without the dense blocks. Below $\rho = 0.05$, \texttt{diffengine}
+stores a constant factor in the sparse format. Every difference is significant.}
+\label{tab:app-density}
+{\footnotesize
+\begin{tabular}{l rrrrrrr}
+\toprule
+& \multicolumn{7}{c}{density $\rho$} \\
+\cmidrule(lr){2-8}
+Benchmark & $1$ & $0.5$ & $0.2$ & $0.1$ & $0.05$ & $0.02$ & $0.01$ \\
+\midrule
+\multicolumn{8}{l}{\emph{with dense blocks}} \\
+SVMWithL1Regularization     &  0.15 &  0.33 &  0.64 &  0.98 &  1.47 &  0.63 &  0.72 \\
+FactorCovarianceModel       &  0.15 &  0.33 &  0.57 &  0.77 &  1.01 &  0.60 &  0.65 \\
+Yitzhaki                    &  0.15 &  0.29 &  0.53 &  0.75 &  0.99 &  0.67 &  0.73 \\
+SimpleQP                    &  0.16 &  0.30 &  0.47 &  0.56 &  0.63 &  0.40 &  0.41 \\
+HuberRegression             &  0.18 &  0.34 &  0.67 &  1.03 &  1.78 &  1.74 &  2.54 \\
+LeastSquares                &  0.18 &  0.34 &  0.61 &  0.83 &  1.20 &  0.67 &  0.81 \\
+SemidefiniteProgramming     &  0.64 &  0.67 &  1.02 &  1.28 &  1.46 &  1.60 &  1.66 \\
+\texttt{lasso}              &  0.15 &  0.33 &  0.59 &  0.84 &  0.58 &  0.75 &  0.86 \\
+\midrule
+\multicolumn{8}{l}{\emph{without dense blocks}} \\
+SVMWithL1Regularization     &  0.28 &  0.32 &  0.36 &  0.41 &  0.48 &  0.62 &  0.71 \\
+FactorCovarianceModel       &  0.32 &  0.35 &  0.39 &  0.44 &  0.52 &  0.61 &  0.66 \\
+Yitzhaki                    &  0.28 &  0.30 &  0.36 &  0.46 &  0.56 &  0.66 &  0.71 \\
+SimpleQP                    &  0.32 &  0.34 &  0.39 &  0.44 &  0.47 &  0.51 &  0.52 \\
+HuberRegression             &  0.37 &  0.36 &  0.46 &  0.62 &  0.96 &  1.72 &  2.52 \\
+LeastSquares                &  0.38 &  0.36 &  0.40 &  0.43 &  0.53 &  0.66 &  0.79 \\
+SemidefiniteProgramming     &  0.64 &  0.68 &  1.02 &  1.28 &  1.46 &  1.61 &  1.67 \\
+\texttt{lasso}              &  0.31 &  0.34 &  0.37 &  0.45 &  0.54 &  0.69 &  0.79 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+For the size, every problem, and the \texttt{lasso} of \S\ref{sec:bench-nondpp} without
+parameters, is scaled by a factor $s$ of its size literals, which multiplies the nonzeros of its
+data by about $s$. Table~\ref{tab:app-size} gives
 the ratio of \texttt{diffengine} to the best \texttt{CVXPY} backend. From $s = 1/4$ to
 $s = 4$, it stays within $0.15$ of its value at $s = 1$ on $21$ of the $25$ problems, at every
 size where \texttt{diffengine} finishes. On three of the four slower problems, the gap widens
@@ -175,51 +222,6 @@ OptimalAdvertising          &    0.80 &    1.11 &    1.68 &    3.01 &     cap \\
 ConvexPlasticity            &    3.32 &    5.40 &    7.31 &    8.82 &     cap \\
 UnconstrainedQP             &    5.73 &    7.59 &   11.73 &   16.78 &   22.64 \\
 \texttt{lasso}              &    0.16 &    0.15 &    0.15 &    0.14 &    0.15 \\
-\bottomrule
-\end{tabular}}
-\end{table}
-
-For the density, the data matrix of eight problems is multiplied entrywise by a random $0/1$
-mask with a fraction $\rho$ of ones, and kept as a dense array, as in a user's code.
-Table~\ref{tab:app-density} gives the ratio with and without the dense blocks. With them, the
-ratio is lower on dense data but rises faster as $\rho$ falls, because a dense block stores
-every entry, zeros included. The two cross at about $\rho = 0.5$, except on
-SemidefiniteProgramming, where the dense blocks make no difference. Without them,
-\texttt{diffengine} stays faster down to $\rho = 0.01$ on six of the eight problems.
-
-\begin{table}[htbp]
-\centering
-\caption[Sensitivity to density]{Ratio of the median canonicalization time of
-\texttt{diffengine} to that of the best \texttt{CVXPY} backend as the density $\rho$ of the data
-matrix falls, with and without the dense blocks. Below $\rho = 0.05$, \texttt{diffengine}
-stores a constant factor in the sparse format. Every difference is significant.}
-\label{tab:app-density}
-{\footnotesize
-\begin{tabular}{l rrrrrrr}
-\toprule
-& \multicolumn{7}{c}{density $\rho$} \\
-\cmidrule(lr){2-8}
-Benchmark & $1$ & $0.5$ & $0.2$ & $0.1$ & $0.05$ & $0.02$ & $0.01$ \\
-\midrule
-\multicolumn{8}{l}{\emph{with dense blocks}} \\
-SVMWithL1Regularization     &  0.15 &  0.33 &  0.64 &  0.98 &  1.47 &  0.63 &  0.72 \\
-FactorCovarianceModel       &  0.15 &  0.33 &  0.57 &  0.77 &  1.01 &  0.60 &  0.65 \\
-Yitzhaki                    &  0.15 &  0.29 &  0.53 &  0.75 &  0.99 &  0.67 &  0.73 \\
-SimpleQP                    &  0.16 &  0.30 &  0.47 &  0.56 &  0.63 &  0.40 &  0.41 \\
-HuberRegression             &  0.18 &  0.34 &  0.67 &  1.03 &  1.78 &  1.74 &  2.54 \\
-LeastSquares                &  0.18 &  0.34 &  0.61 &  0.83 &  1.20 &  0.67 &  0.81 \\
-SemidefiniteProgramming     &  0.64 &  0.67 &  1.02 &  1.28 &  1.46 &  1.60 &  1.66 \\
-\texttt{lasso}              &  0.15 &  0.33 &  0.59 &  0.84 &  0.58 &  0.75 &  0.86 \\
-\midrule
-\multicolumn{8}{l}{\emph{without dense blocks}} \\
-SVMWithL1Regularization     &  0.28 &  0.32 &  0.36 &  0.41 &  0.48 &  0.62 &  0.71 \\
-FactorCovarianceModel       &  0.32 &  0.35 &  0.39 &  0.44 &  0.52 &  0.61 &  0.66 \\
-Yitzhaki                    &  0.28 &  0.30 &  0.36 &  0.46 &  0.56 &  0.66 &  0.71 \\
-SimpleQP                    &  0.32 &  0.34 &  0.39 &  0.44 &  0.47 &  0.51 &  0.52 \\
-HuberRegression             &  0.37 &  0.36 &  0.46 &  0.62 &  0.96 &  1.72 &  2.52 \\
-LeastSquares                &  0.38 &  0.36 &  0.40 &  0.43 &  0.53 &  0.66 &  0.79 \\
-SemidefiniteProgramming     &  0.64 &  0.68 &  1.02 &  1.28 &  1.46 &  1.61 &  1.67 \\
-\texttt{lasso}              &  0.31 &  0.34 &  0.37 &  0.45 &  0.54 &  0.69 &  0.79 \\
 \bottomrule
 \end{tabular}}
 \end{table}

@@ -105,31 +105,31 @@ is the geometric mean of the ratios.}
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} &
 \texttt{diffengine} & dense & no dense \\
 \midrule
-SVMWithL1Regularization     & 2\,786 $\pm$ 8 & 2\,634 $\pm$ 8 & 2\,742 $\pm$ 15 & \textbf{387 $\pm$ 1} & 0.15$^{*}$ & 0.28 \\
-FactorCovarianceModel       & 1\,223 $\pm$ 5 & 1\,164 $\pm$ 3 & 1\,150 $\pm$ 4 & \textbf{177 $\pm$ 3} & 0.15$^{*}$ & 0.32 \\
-Yitzhaki                    & 938 $\pm$ 1 & 982 $\pm$ 2 & 1\,006 $\pm$ 3 & \textbf{145 $\pm$ 1} & 0.15$^{*}$ & 0.28 \\
-SimpleQP                    & 2\,891 $\pm$ 5 & 2\,944 $\pm$ 6 & 2\,929 $\pm$ 6 & \textbf{453 $\pm$ 1} & 0.16$^{*}$ & 0.32 \\
-HuberRegression             & 2\,770 $\pm$ 6 & 2\,850 $\pm$ 7 & 2\,796 $\pm$ 7 & \textbf{495 $\pm$ 8} & 0.18$^{*}$ & 0.37 \\
-LeastSquares                & 2\,410 $\pm$ 9 & 2\,912 $\pm$ 7 & 2\,939 $\pm$ 5 & \textbf{435 $\pm$ 2} & 0.18$^{*}$ & 0.38 \\
-SimpleLP                    & 6\,898 $\pm$ 38 & 6\,303 $\pm$ 17 & 5\,962 $\pm$ 14 & \textbf{1\,121 $\pm$ 3} & 0.19$^{*}$ & 0.25 \\
-SimpleScalarParametrizedLP  & 1\,260 $\pm$ 3 & 1\,151 $\pm$ 2 & 1\,087 $\pm$ 3 & \textbf{230 $\pm$ 1} & 0.21$^{*}$ & 0.21 \\
+SVMWithL1Regularization     & 2{,}786 $\pm$ 8 & 2{,}634 $\pm$ 8 & 2{,}742 $\pm$ 15 & \textbf{387 $\pm$ 1} & 0.15$^{*}$ & 0.28 \\
+FactorCovarianceModel       & 1{,}223 $\pm$ 5 & 1{,}164 $\pm$ 3 & 1{,}150 $\pm$ 4 & \textbf{177 $\pm$ 3} & 0.15$^{*}$ & 0.32 \\
+Yitzhaki                    & 938 $\pm$ 1 & 982 $\pm$ 2 & 1{,}006 $\pm$ 3 & \textbf{145 $\pm$ 1} & 0.15$^{*}$ & 0.28 \\
+SimpleQP                    & 2{,}891 $\pm$ 5 & 2{,}944 $\pm$ 6 & 2{,}929 $\pm$ 6 & \textbf{453 $\pm$ 1} & 0.16$^{*}$ & 0.32 \\
+HuberRegression             & 2{,}770 $\pm$ 6 & 2{,}850 $\pm$ 7 & 2{,}796 $\pm$ 7 & \textbf{495 $\pm$ 8} & 0.18$^{*}$ & 0.37 \\
+LeastSquares                & 2{,}410 $\pm$ 9 & 2{,}912 $\pm$ 7 & 2{,}939 $\pm$ 5 & \textbf{435 $\pm$ 2} & 0.18$^{*}$ & 0.38 \\
+SimpleLP                    & 6{,}898 $\pm$ 38 & 6{,}303 $\pm$ 17 & 5{,}962 $\pm$ 14 & \textbf{1{,}121 $\pm$ 3} & 0.19$^{*}$ & 0.25 \\
+SimpleScalarParametrizedLP  & 1{,}260 $\pm$ 3 & 1{,}151 $\pm$ 2 & 1{,}087 $\pm$ 3 & \textbf{230 $\pm$ 1} & 0.21$^{*}$ & 0.21 \\
 SimpleFullyParametrizedLP   & 611 $\pm$ 1 & 555 $\pm$ 1 & 523 $\pm$ 1 & \textbf{115 $\pm$ 0.5} & 0.22$^{*}$ & 0.22 \\
-SlowPruning                 & 1\,792 $\pm$ 4 & 2\,185 $\pm$ 4 & 2\,147 $\pm$ 4 & \textbf{408 $\pm$ 1} & 0.23$^{*}$ & 0.23 \\
-ParametrizedQP              & 2\,974 $\pm$ 29 & 3\,030 $\pm$ 7 & 2\,990 $\pm$ 10 & \textbf{755 $\pm$ 46} & 0.25$^{*}$ & 0.25 \\
-Cajas                       & 3\,885 $\pm$ 12 & 689 $\pm$ 5 & 693 $\pm$ 5 & \textbf{205 $\pm$ 1} & 0.30$^{*}$ & 0.30 \\
-ConeMatrixStuffing          & 2\,517 $\pm$ 10 & 2\,152 $\pm$ 8 & 3\,537 $\pm$ 8 & \textbf{642 $\pm$ 4} & 0.30$^{*}$ & 0.90 \\
-SmallMatrixStuffing         & 1\,683 $\pm$ 13 & 1\,822 $\pm$ 8 & 2\,508 $\pm$ 7 & \textbf{502 $\pm$ 2} & 0.30$^{*}$ & 0.81 \\
+SlowPruning                 & 1{,}792 $\pm$ 4 & 2{,}185 $\pm$ 4 & 2{,}147 $\pm$ 4 & \textbf{408 $\pm$ 1} & 0.23$^{*}$ & 0.23 \\
+ParametrizedQP              & 2{,}974 $\pm$ 29 & 3{,}030 $\pm$ 7 & 2{,}990 $\pm$ 10 & \textbf{755 $\pm$ 46} & 0.25$^{*}$ & 0.25 \\
+Cajas                       & 3{,}885 $\pm$ 12 & 689 $\pm$ 5 & 693 $\pm$ 5 & \textbf{205 $\pm$ 1} & 0.30$^{*}$ & 0.30 \\
+ConeMatrixStuffing          & 2{,}517 $\pm$ 10 & 2{,}152 $\pm$ 8 & 3{,}537 $\pm$ 8 & \textbf{642 $\pm$ 4} & 0.30$^{*}$ & 0.90 \\
+SmallMatrixStuffing         & 1{,}683 $\pm$ 13 & 1{,}822 $\pm$ 8 & 2{,}508 $\pm$ 7 & \textbf{502 $\pm$ 2} & 0.30$^{*}$ & 0.81 \\
 TvInpainting                & 919 $\pm$ 1 & 913 $\pm$ 2 & 815 $\pm$ 2 & \textbf{257 $\pm$ 1} & 0.32$^{*}$ & 0.31 \\
 ParamSmallMatrixStuffing    & 63.3 $\pm$ 0.2 & 127 $\pm$ 1 & 113 $\pm$ 1 & \textbf{32.7 $\pm$ 0.1} & 0.52$^{*}$ & 0.64 \\
 ParamConeMatrixStuffing     & 42.8 $\pm$ 0.2 & 71.9 $\pm$ 0.3 & 88.7 $\pm$ 0.4 & \textbf{22.4 $\pm$ 0.4} & 0.52$^{*}$ & 0.64 \\
-CVaR                        & 7\,196 $\pm$ 15 & 6\,503 $\pm$ 20 & 6\,512 $\pm$ 23 & \textbf{3\,421 $\pm$ 9} & 0.53$^{*}$ & 0.37 \\
-SemidefiniteProgramming     & 1\,161 $\pm$ 3 & 632 $\pm$ 2 & 997 $\pm$ 4 & \textbf{405 $\pm$ 3} & 0.64$^{*}$ & 0.64 \\
-QuantumHilbertMatrix        & 1\,062 $\pm$ 2 & 805 $\pm$ 4 & 788 $\pm$ 2 & \textbf{653 $\pm$ 3} & 0.83$^{*}$ & 0.85 \\
-Murray                      & 1\,276 $\pm$ 18 & 1\,229 $\pm$ 7 & 1\,224 $\pm$ 7 & \textbf{1\,181 $\pm$ 1} & 0.96$^{*}$ & 0.96 \\
-SDPSegfault1132             & 8\,000 $\pm$ 11 & \textbf{1\,663 $\pm$ 148} & 7\,298 $\pm$ 110 & 2\,147 $\pm$ 6 & 1.32$^{*}$ & 2.12 \\
-OptimalAdvertising          & 2\,573 $\pm$ 3 & 598 $\pm$ 8 & \textbf{534 $\pm$ 1} & 901 $\pm$ 4 & 1.68$^{*}$ & 1.56 \\
+CVaR                        & 7{,}196 $\pm$ 15 & 6{,}503 $\pm$ 20 & 6{,}512 $\pm$ 23 & \textbf{3{,}421 $\pm$ 9} & 0.53$^{*}$ & 0.37 \\
+SemidefiniteProgramming     & 1{,}161 $\pm$ 3 & 632 $\pm$ 2 & 997 $\pm$ 4 & \textbf{405 $\pm$ 3} & 0.64$^{*}$ & 0.64 \\
+QuantumHilbertMatrix        & 1{,}062 $\pm$ 2 & 805 $\pm$ 4 & 788 $\pm$ 2 & \textbf{653 $\pm$ 3} & 0.83$^{*}$ & 0.85 \\
+Murray                      & 1{,}276 $\pm$ 18 & 1{,}229 $\pm$ 7 & 1{,}224 $\pm$ 7 & \textbf{1{,}181 $\pm$ 1} & 0.96$^{*}$ & 0.96 \\
+SDPSegfault1132             & 8{,}000 $\pm$ 11 & \textbf{1{,}663 $\pm$ 148} & 7{,}298 $\pm$ 110 & 2{,}147 $\pm$ 6 & 1.32$^{*}$ & 2.12 \\
+OptimalAdvertising          & 2{,}573 $\pm$ 3 & 598 $\pm$ 8 & \textbf{534 $\pm$ 1} & 901 $\pm$ 4 & 1.68$^{*}$ & 1.56 \\
 ConvexPlasticity            & 78.2 $\pm$ 0.7 & 72.0 $\pm$ 0.7 & \textbf{69.8 $\pm$ 1.2} & 507 $\pm$ 1 & 7.31$^{*}$ & 1.39 \\
-UnconstrainedQP             & \textbf{1\,955 $\pm$ 3} & 1\,980 $\pm$ 5 & 2\,439 $\pm$ 2 & 22\,937 $\pm$ 21 & 11.73$^{*}$ & 0.26 \\
+UnconstrainedQP             & \textbf{1{,}955 $\pm$ 3} & 1{,}980 $\pm$ 5 & 2{,}439 $\pm$ 2 & 22{,}937 $\pm$ 21 & 11.73$^{*}$ & 0.26 \\
 \midrule
 \textbf{Geometric mean}     &       &       &       &       & \textbf{0.44} & \textbf{0.46} \\
 \bottomrule
