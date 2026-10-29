@@ -6,7 +6,7 @@ At first, this meant encoding each coefficient of the problem matrices by
 hand~\cite{fourer1978modern}.
 Matrix generators were introduced in the late 1960s to automate this task: they compute the
 coefficients through explicit loops and write them out in solver-readable formats like
-MPS~\cite{marceau1971matrix, ibm1976mpsx}.
+\ac{MPS}~\cite{marceau1971matrix, ibm1976mpsx}.
 Matrix generators were able to remove most of the manual labour, but a gap still remained.
 Modellers naturally think in terms of sets, indices, and algebraic expressions,
 while procedural code constructs the coefficient matrices entry by entry.
@@ -24,7 +24,7 @@ gained popularity. These domain-specific languages include \texttt{Pyomo}
 \texttt{JuMP} \cite{dunning2017jump} in Julia, \texttt{CasADi} \cite{andersson2019} in C++, and
 \texttt{YALMIP} \cite{lofberg2004yalmip} in MATLAB.
 Other domain-specific modelling languages specialized for convex optimization \cite{boyd2004convex}
-are built on disciplined convex programming (DCP), a set of composition rules under which the
+are built on \ac{DCP}, a set of composition rules under which the
 convexity of a problem can be verified automatically
 \cite{grant2004disciplined, grant2006disciplined}.
 These DCP-based languages include \texttt{CVX} \cite{cvx} in MATLAB, \texttt{CVXR} \cite{Fu_2020} in
@@ -111,7 +111,7 @@ are the partial derivatives of that constraint with respect to the entries of $\
 Classical methods build these matrices column by column with multiple passes of \ac{AD},
 using graph colouring to group columns that can be recovered in a single
 pass \cite{curtis1974estimation, gebremedhin2005color}.
-These methods treat the expression as a blackbox: the sparsity pattern must first be
+These methods treat the expression as a black box: the sparsity pattern must first be
 detected and the columns grouped before a single entry of the matrix is obtained.
 We review the basics of computing derivatives in \S\ref{sec:bg-derivatives} and present
 sparse AD and graph colouring methods in \S\ref{sec:computing-derivatives}.
@@ -120,7 +120,7 @@ sparse AD and graph colouring methods in \S\ref{sec:computing-derivatives}.
 A modelling language, by contrast, knows which variables enter each constraint.
 \texttt{AMPL} (A Mathematical Programming Language) is split into two components: its commercial
 translator writes the structure of the model to a \texttt{.nl} file
-\cite{gay2005writing}, and the open source AMPL Solver Library (ASL) evaluates constraints
+\cite{gay2005writing}, and the open source AMPL Solver Library (ASL)\acused{ASL} evaluates constraints
 and their derivatives from this file inside the solver process \cite{gay1997hooking}.
 \texttt{Pyomo} also interfaces to solvers through \texttt{.nl} files,
 among other formats.
@@ -152,9 +152,10 @@ values \cite{davis2006direct}, and to Gustavson's sparse product \cite{gustavson
 Our use of the two-phase approach is inspired more directly by the interfaces of \ac{NLP}
 solvers such as \texttt{IPOPT} \cite{wachter2006ipopt, cederberg2025disciplined}.
 
-The symbolic phase is much cheaper to form and cache than the parameter-to-data tensor, and the
-numeric phase itself is often similar in cost to applying the matrix-vector product, although
-converting its output to the format of the solver can cost more (\S\ref{sec:bench-param}).
+The first canonicalization, the symbolic phase and one numeric phase, is faster than building
+the parameter-to-data tensor on the seven parametric problems of the suite that \texttt{CVXPY}
+can cache, although converting the output of the numeric phase to the format of the
+solver can cost more than a product with the tensor (\S\ref{sec:bench-param}).
 The problem data is also assembled entirely in memory rather than through a separate model
 file.
 Finally, we exploit structure within the sparsity patterns themselves, which often contain dense
@@ -593,7 +594,7 @@ However, a naive implementation of symbolic differentiation can quickly form exp
 large symbolic expressions, which is impractical and inefficient for many problems
 \cite{griewank2008evaluating}.
 When intermediate expressions are stored as common subexpressions, and
-the expression is represented with a directed acyclic graph (DAG) instead of a tree,
+the expression is represented with a \ac{DAG} instead of a tree,
 symbolic differentiation performs the same set of operations as reverse mode
 differentiation \cite{Laue2019OnTE}.
 
@@ -736,7 +737,7 @@ row-major and in column-major order.}
 \end{figure}
 
 % \paragraph{The BLAS.}  (heading removed per advisor; kept for reference)
-Dense linear algebra is standardized by the Basic Linear Algebra Subprograms (BLAS), an
+Dense linear algebra is standardized by the Basic Linear Algebra Subprograms (BLAS)\acused{BLAS}, an
 interface of vector and matrix kernels \cite{lawson1979blas, dongarra1990level3}.
 The BLAS is a specification rather than an implementation.
 Implementations such as \texttt{OpenBLAS}, Intel \texttt{MKL}, and Apple \texttt{Accelerate}
@@ -940,8 +941,7 @@ work specific to this thesis.
 
 All code contributions are open source and available at
 \begin{center}
-\url{https://github.com/SparseDifferentiation/SparseDiffEngine} \\
-\url{https://github.com/SparseDifferentiation/Jacobian-accumulation}
+\url{https://github.com/SparseDifferentiation}
 \end{center}
 
 The rest of this thesis is organized as follows.

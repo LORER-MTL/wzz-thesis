@@ -21,6 +21,7 @@ parametric problems, \texttt{CVXPY} caches a linear map from the parameters to t
 is expensive to build. For every other problem, the
 compilation is repeated in full at every solve.
 We present \texttt{SparseDiffEngine}, a lightweight open-source C library
+developed jointly with Daniel Cederberg
 that computes the Jacobian and the Hessian directly from the expression structure. It keeps the
 dense blocks of the problem data in two matrix classes and processes them with BLAS. The
 computation
@@ -28,13 +29,13 @@ is divided into two phases, an idea that goes back to sparse direct factorizatio
 the interfaces of nonlinear programming solvers also use.
 A symbolic pass runs once per problem and determines the sparsity patterns of the
 matrices. A numeric pass fills new values into the fixed patterns at every solve. A re-solve of a
-parametrized problem therefore skips the symbolic pass. Using \texttt{SparseDiffEngine}, we
+parametric problem therefore skips the symbolic pass. Using \texttt{SparseDiffEngine}, we
 implement a new way to form the numerical data in \texttt{CVXPY}. This two-phase approach is an
-alternative to \texttt{CVXPY}'s existing caching of parametrized problems, and it places no
-restriction on how the parameters enter the problem. We compare this new approach with
+alternative to \texttt{CVXPY}'s existing caching of parametric problems, and it does not
+require the rules of disciplined parametrized programming (DPP). We compare this new approach with
 \texttt{CVXPY}'s three current implementations on a public benchmark suite of $25$ problems. The
 first compilation is the fastest on $21$ of the $25$ problems, with a geometric-mean speedup of
-$2.3\times$ over the best current implementation. On the seven parametrized problems of the suite that
+$2.3\times$ over the best current implementation. On the seven parametric problems of the suite that
 \texttt{CVXPY} can cache,
 re-solves run within a factor of four of \texttt{CVXPY}'s existing caching, without building
 its cache.
