@@ -124,9 +124,8 @@ statistique, ce qui répond à tous vos commentaires.
 \item The dense blocks therefore do not explain the speedup, which remains almost the same
   without them. It comes from the engine as a whole, whose parts are built into every atom and
   cannot be turned off separately.
-\item The re-solve speed comes from the symbolic and numeric split, not from the dense blocks:
-  without the split, a re-solve repeats the conversion and the symbolic pass and is $2.9$ times
-  slower, while without the dense blocks it is $1.01$ times slower in geometric mean.
+\item The re-solve speed comes from the symbolic and numeric split: without it, a re-solve
+  repeats the conversion and the symbolic pass and is $2.9$ times slower.
 \item The speedup holds across sizes, except on three of the slower problems. Where
   \texttt{diffengine} runs out of memory and \texttt{CVXPY} does not, the dense blocks are
   usually the cause.
