@@ -95,18 +95,27 @@ rebuttal: feedback/rebuttal.tex
 # Tables are diffed as whole blocks: markup inside a rewritten tabular breaks pdflatex.
 DIFFREV = 21b013b
 DIFFOLD = .diff-$(DIFFREV)
+DIFFNEW = .diff-new
+# \BEQ and \EEQ are expanded on both sides so that latexdiff sees equation environments.
+# With --math-markup=whole, a changed equation shows as the old one in red, then the new one
+# in blue, instead of losing deleted matrices and leaving stray red symbols.
+DIFFEQ = perl -pi -e 's/\\BEQ\b/\\begin{equation}/g; s/\\EEQ\b/\\end{equation}/g'
 diff: $(SRC:%.tex=%.pdf)
-	@rm -rf $(DIFFOLD); mkdir $(DIFFOLD)
+	@rm -rf $(DIFFOLD) $(DIFFNEW); mkdir $(DIFFOLD) $(DIFFNEW)
 	git archive $(DIFFREV) | tar -x -C $(DIFFOLD)
 	-cd $(DIFFOLD) && $(MAKE) -s > /dev/null 2>&1
-	latexdiff --flatten --config="PICTUREENV=(?:picture|DIFnomarkup|tikzpicture|tabular|longtable)[\w\d*@]*" \
-	  $(DIFFOLD)/$(SRC) $(SRC) > $(SRC:%.tex=%)-diff.tex
+	cp *.tex $(SRC:%.tex=%).bbl $(DIFFNEW)/
+	rm -f $(DIFFNEW)/$(SRC:%.tex=%)-diff.tex
+	cd $(DIFFOLD) && $(DIFFEQ) $$(ls *.tex | grep -v '^defs.tex$$')
+	cd $(DIFFNEW) && $(DIFFEQ) $$(ls *.tex | grep -v '^defs.tex$$')
+	latexdiff --flatten --math-markup=whole --config="PICTUREENV=(?:picture|DIFnomarkup|tikzpicture|tabular|longtable)[\w\d*@]*" \
+	  $(DIFFOLD)/$(SRC) $(DIFFNEW)/$(SRC) > $(SRC:%.tex=%)-diff.tex
 	# Additions in plain blue, without the wavy underline.
-	perl -pi -e 's/\\color\{blue\}\\uwave\{#1\}/\\color{blue}#1/' $(SRC:%.tex=%)-diff.tex
+	perl -pi -e 's/\\color\{blue\}\\uwave\{#1\}/\\color{blue}#1/; s/\\color\{blue\}\\uwave\]/\\color{blue}]/' $(SRC:%.tex=%)-diff.tex
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
 	-$(PDFLATEX) -interaction=nonstopmode $(SRC:%.tex=%)-diff.tex > /dev/null
 	cp $(SRC:%.tex=%)-diff.pdf feedback/
-	@rm -rf $(DIFFOLD)
+	@rm -rf $(DIFFOLD) $(DIFFNEW)
 
 diff_clean:
 	@rm -rf $(SRC:%.tex=%)-diff*.{tex,aux,bbl,blg,log,out,lof,lot,loa,toc,pdf} .diff-*

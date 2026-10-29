@@ -14,8 +14,8 @@ computation by graph colouring.
 \texttt{AMPL} and \texttt{JuMP} take the coefficients as the user declares them, but both
 scalarize the model. A dense block in the problem data becomes a list of scalar
 coefficients. \texttt{CVXPY}'s backends, on the other hand, convert everything to sparse
-matrices. None of the modelling languages of Chapter~\ref{sec:RevLitt} that form the problem matrix keeps
-dense blocks as they are.
+matrices. None of the modelling languages of Chapter~\ref{sec:RevLitt} keeps dense blocks as
+they are.
 To address this, we
 built \texttt{SparseDiffEngine}, a sparse differentiation library that operates on
 vectorized expressions without scalarizing them, requires no sparsity detection or graph

@@ -126,12 +126,12 @@ This appendix details the sweeps of \S\ref{sec:bench-sensitivity}. Points whose 
 exceeds $30$~seconds are made in $10$ runs, the others in $30$.
 
 For the density, the data matrix of eight problems is multiplied entrywise by a random $0/1$
-mask with a fraction $\rho$ of ones, and kept as a dense array, as in a user's code.
-Table~\ref{tab:app-density} gives the ratio with and without the dense blocks. With them, the
-ratio is lower on dense data but rises faster as $\rho$ falls, because a dense block stores
-every entry, zeros included. The two cross at about $\rho = 0.5$, except on
-SemidefiniteProgramming, where the dense blocks make no difference. Without them,
-\texttt{diffengine} stays faster down to $\rho = 0.01$ on six of the eight problems.
+mask with a fraction $\rho$ of ones, and kept as the dense NumPy array the problem already
+uses, rather than converted to a sparse matrix.
+Table~\ref{tab:app-density} gives the ratio with and without the dense blocks. The dense
+blocks help when about half or more of the data is nonzero, and slow \texttt{diffengine} down
+below that, because a dense block stores every entry, zeros included. Without them, \texttt{diffengine} stays
+faster at every density on six of the eight problems.
 
 \begin{table}[htbp]
 \centering
@@ -174,9 +174,7 @@ For the size, every problem, and the \texttt{lasso} of \S\ref{sec:bench-nondpp} 
 parameters, is scaled by a factor $s$ of its size literals, which multiplies the nonzeros of its
 data by about $s$. Table~\ref{tab:app-size} gives
 the ratio of \texttt{diffengine} to the best \texttt{CVXPY} backend. From $s = 1/4$ to
-$s = 4$, it stays within $0.15$ of its value at $s = 1$ on $21$ of the $25$ problems, at every
-size where \texttt{diffengine} finishes. On three of the four slower problems, the gap widens
-with the size, for the reasons given in \S\ref{sec:bench-oneshot}. \texttt{diffengine} exceeds
+$s = 4$, the ratio stays close to its value at $s = 1$ on $21$ of the $25$ problems. \texttt{diffengine} exceeds
 the memory limit at five sizes where a \texttt{CVXPY} backend finishes. Without the dense
 blocks, three of them finish, on CVaR, ConvexPlasticity and OptimalAdvertising.
 

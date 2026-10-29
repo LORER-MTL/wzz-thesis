@@ -35,6 +35,42 @@ required item in its smallest form, and the full results are in `feedback/rebutt
 - **Re-solve vs. recompile table:** in the supplement only.
 - **PR numbers:** none are named in the thesis anymore.
 
+## Update 2026-10-29: final checks
+
+- Runs per measurement are now 30 (10 above 30 s), not 20; the rows below still say 20.
+- Every passage the rebuttal quotes in a `thesisquote` box matches the current `.tex`.
+- **Q7 confirmed:** sparsediffpy 0.8.0 is on PyPI with wheels for Linux (x86_64, aarch64), macOS
+  and Windows; the engine links Accelerate on macOS (`SparseDiffEngine/CMakeLists.txt:79`), and
+  OpenBLAS is bundled by auditwheel on Linux and delvewheel on Windows.
+- **OptimalAdvertising memory confirmed in code:** each permuted dense block allocates
+  `col_inv` with one int per problem variable (`src/utils/permuted_dense.c:393`), besides the
+  per-node `csc_work` (`src/expr.c:54`), as rebuttal Q5 says.
+- SLD14: the setup sentence saying no backend uses the reassociation change (CVXPY #3524) is
+  cut, since a reader cannot tell what it refers to. The measurements are unchanged (no backend
+  has #3524); §4.1 explains UnconstrainedQP's slowdown on its own, and the rebuttal's message
+  to the jury tells the story.
+- J1a: no stars in Tables 4.1 and 4.2, since every ratio is significant; the Statistics
+  paragraph and the captions say so once, as Appendix B already did. The bootstrap interval is
+  cut (thesis and rebuttal, including the CI column of the ablation summary); the Wilcoxon
+  test alone gives the suite-level significance.
+- J1b, (ii): the per-problem dense-block table is now Table 4.2 in §4.1, grouped help / little
+  effect / hurt (ParametrizedQP is its one non-significant ratio). Table 4.1 lost its no-dense
+  column, and §4.1 no longer gives the suite-wide 2.15× vs 2.29× or says what causes the
+  speedup; the parametric table is now 4.3. Rebuttal Q2 keeps the direct answer (2.15× vs
+  2.29×, p = 0.07) and drops the causal sentences, as do the Main findings bullets. Five
+  tables are now rebuttal-only.
+- §4.3 Discussion: two observations instead of three; the cvxcore point is one closing
+  paragraph, limited to the `ignore_dpp` path.
+- Smaller cuts: the 10-run exception is stated in Appendix B only; Appendix B's density and
+  size paragraphs are shorter, with no "user's code" claim and no "reasons given in §4.1";
+  "that form the problem matrix" (Conclusion); §1.5 links the SparseDifferentiation
+  organization instead of Jacobian-accumulation; SLD15's clause in §4.2 is shorter.
+- `make diff` expands `\BEQ`/`\EEQ` and uses `--math-markup=whole`, so a changed equation shows
+  as old in red, then new in blue.
+- Why the rebuttal-only tables stay out: `plans/antoine-results-scope.md` (message to
+  Antoine). The thesis already links the benchmarks repository (`7-Theme2.tex:49-52`), but the
+  30-run results are not pushed there yet.
+
 ## Required (jury and Legrain)
 
 | ID | Request | Response | Where | Status |
