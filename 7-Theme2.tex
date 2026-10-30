@@ -70,14 +70,12 @@ than twice as fast as the best \texttt{CVXPY} backend. It is significantly slowe
 four.
 
 On each of these four problems, one or two phases take most of the time
-(Table~\ref{tab:phases}). On UnconstrainedQP,
-a chain of matrix products is evaluated away from its constant, and the numeric pass,
-$98\,\%$ of the time, fills a dense Jacobian. On OptimalAdvertising, the global layout of
-Figure~\ref{fig:local-vs-global} makes the symbolic pass, $89\,\%$ of the time, visit every
-variable once per minimum term. On SDPSegfault1132, dense blocks that cancel in a sum are carried through the
-symbolic and numeric passes, $49$ and $47\,\%$ of the time. On ConvexPlasticity, a diagonal
-given as a dense array becomes a dense block of $\mmat{P}$, which the symbolic pass and the
-assembly take $47$ and $38\,\%$ of the time to process.
+(Table~\ref{tab:phases}). On UnconstrainedQP, a chain of matrix products is evaluated away from
+its constant, and the numeric pass fills a dense Jacobian. On OptimalAdvertising, the global
+layout of Figure~\ref{fig:local-vs-global} makes the symbolic pass visit every variable once per
+minimum term. On SDPSegfault1132, dense blocks that cancel in a sum are carried through the
+symbolic and numeric passes. On ConvexPlasticity, a diagonal given as a dense array becomes a
+dense block of $\mmat{P}$, which the symbolic pass and the assembly process.
 
 \begin{table}[tb]
 \centering
@@ -226,8 +224,8 @@ without the dense blocks, using a switch of our \texttt{CVXPY} branch that store
 matrix in the sparse format. The dense blocks make \texttt{diffengine} $1.2$ to $3$ times faster
 on twelve problems and change its time by at most $7\,\%$ on ten. On CVaR, ConvexPlasticity
 and UnconstrainedQP, which build a dense block from data that is mostly zeros, they make it
-$1.4$ to $46$ times slower. Over the suite, their effect on the time is not significant
-(geometric mean $1.06$). Without them, \texttt{diffengine} takes $0.46$ times the time of the best
+$1.4$ to $46$ times slower. Over the $25$ problems, turning the dense blocks off makes
+\texttt{diffengine} $1.06$ times slower in geometric mean, which is not significant. Without them, \texttt{diffengine} takes $0.46$ times the time of the best
 \texttt{CVXPY} backend and $0.83$ times its own peak memory, in geometric mean, and the memory
 falls most on CVaR, OptimalAdvertising, ConvexPlasticity and UnconstrainedQP
 (Table~\ref{tab:memory}).
