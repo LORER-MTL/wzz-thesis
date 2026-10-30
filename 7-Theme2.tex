@@ -82,8 +82,7 @@ dense block of $\mmat{P}$, which the symbolic pass and the assembly process.
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
 time in milliseconds on all $25$ problems, mean $\pm$ standard deviation over the runs.
 Bold denotes the fastest of the four backends on each problem. The ratio is the median time
-of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends. Every ratio
-is significant. The final row
+of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends. The final row
 is the geometric mean of the per-problem ratios.}
 \label{tab:oneshot-compile}
 {\footnotesize
@@ -249,8 +248,7 @@ falls most on CVaR, OptimalAdvertising, ConvexPlasticity and UnconstrainedQP
 \caption[Effect of the dense blocks]{\texttt{ignore\_dpp} canonicalization time of
 \texttt{diffengine} in milliseconds with and without the dense blocks, mean $\pm$ standard
 deviation over the runs, grouped by the effect of the dense blocks. The ratio is the median
-time without the dense blocks over that with them. Every ratio is significant except that of
-ParametrizedQP.}
+time without the dense blocks over that with them. The ratio of ParametrizedQP is not significant.}
 \label{tab:nodense}
 {\footnotesize
 \begin{tabular}{l rr r}
@@ -316,7 +314,7 @@ faster at every density on six of the eight problems.
 \caption[Sensitivity to density]{Ratio of the median canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend as the density $\rho$ of the data
 matrix decreases, with and without the dense blocks. Below $\rho = 0.05$, \texttt{diffengine}
-stores a constant factor in the sparse format. Every difference is significant.}
+stores a constant factor in the sparse format.}
 \label{tab:density}
 {\footnotesize
 \begin{tabular}{l rrrrrrr}
@@ -362,8 +360,7 @@ blocks, three of them finish, on CVaR, ConvexPlasticity and OptimalAdvertising.
 to that of the best \texttt{CVXPY} backend as the size of each problem is scaled by $s$, in the
 order of Table~\ref{tab:oneshot-compile}. ``cap'' denotes a size at which \texttt{diffengine}
 exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend finished, ``all
-cap'' one at which every backend exceeded it, and a dash a size the problem does not have.
-Every difference is significant.}
+cap'' one at which every backend exceeded it, and a dash a size the problem does not have.}
 \label{tab:size}
 {\footnotesize
 \begin{tabular}{l rrrrr}
@@ -431,8 +428,7 @@ parametric problems, mean over the runs, with the standard deviation of the re-s
 memory limit or the time limit. Bold denotes the fastest first canonicalization and the
 faster re-solve. The tensor column is the fastest of the three \texttt{CVXPY} backends, which agree within
 $5\,\%$. The
-ratio is the median re-solve time of \texttt{diffengine} over that of the tensor. Every
-ratio is significant.}
+ratio is the median re-solve time of \texttt{diffengine} over that of the tensor.}
 \label{tab:param-tensor}
 {\footnotesize
 \setlength{\tabcolsep}{3pt}
