@@ -298,7 +298,8 @@ UnconstrainedQP & 22{,}937 $\pm$ 21 & 500 $\pm$ 2 & 0.02 \\
 
 % Ratios from results/thesis-n30/grid_facts.json in canonicalization-benchmarks
 % (thesis_figures_n30.py); the s = 1 column matches Table 4.1.
-We also scaled every problem in size by factors from $1/4$ to $4$, and masked the data of eight
+This section repeats the first canonicalization of \S\ref{sec:bench-oneshot} at other sizes and
+densities. We scale every problem in size by factors from $1/4$ to $4$, and mask the data of eight
 problems down to a density of $1\,\%$. To bound the total run time, points whose first run exceeds
 $30$~seconds are made in $10$ runs, the others in $30$.
 
@@ -489,7 +490,7 @@ it makes up for its slower first canonicalization only after $18$ to $124$ re-so
 
 \texttt{CVXPY} has relied on \ac{DPP} to make re-solving a parametric problem cheap. A problem
 outside the \ac{DPP} grammar must be reformulated, or every re-solve costs as much as the first
-canonicalization, and even within the grammar the tensor can be prohibitive to build on large
+canonicalization. Even within the grammar, the tensor can be prohibitive to build on large
 problems. These two observations suggest that \ac{DPP} is best kept for problems that are
 re-solved many times and for packages that depend on the tensor, such as
 \texttt{CVXPYgen}~\cite{schaller2022cvxpygen} and \texttt{CVXPYlayers}~\cite{agrawal2019dpp}.
