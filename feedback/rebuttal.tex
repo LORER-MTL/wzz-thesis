@@ -434,11 +434,13 @@ The thesis states the results of Table~\ref{tab:res-nondpp} in \tsec{sec:bench-n
 the table:
 
 \begin{thesisquote}{\tref{sec:bench-nondpp}}
-The numeric pass needs a fixed expression tree, not the \ac{DPP} rules. We write the
-Lasso problem and FactorCovarianceModel with one parameter as the product of two, which
-\ac{DPP} forbids. \texttt{CVXPY} then canonicalizes again at every solve, while
-\texttt{diffengine} reruns only its numeric pass, $13$ to $14$ times faster. The exception is
-ConvexPlasticity, where the re-solve is spent assembling a dense block of $\mmat{P}$.
+The numeric pass needs a fixed expression tree, not the \ac{DPP} rules. We replace one
+parameter of the Lasso problem and of FactorCovarianceModel by the product of two parameters,
+which \ac{DPP} forbids. \texttt{CVXPY} then canonicalizes again at every solve, while
+\texttt{diffengine} reruns only its numeric pass and re-solves $13$ to $14$ times faster.
+ConvexPlasticity, the only problem of the suite that is not \ac{DPP}, is the exception:
+\texttt{diffengine} re-solves it about five times slower than \texttt{CVXPY}, because most of the
+re-solve assembles a dense block of $\mmat{P}$.
 \end{thesisquote}
 \begin{thesisquote}{\tref{sec:bench-summary}}
 Caching canonicalization does not necessarily require the \ac{DPP} ruleset. [\ldots] the
