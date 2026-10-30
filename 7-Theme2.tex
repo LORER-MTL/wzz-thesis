@@ -61,8 +61,8 @@ Every ratio in the tables of this chapter is significant unless its caption says
 \section{First canonicalization}
 \label{sec:bench-oneshot}
 
-We first time one call to \texttt{get\_problem\_data} on the \texttt{ignore\_dpp} path, for all
-$25$ problems and the four backends. Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
+We first compare the four backends on all $25$ problems, on the \texttt{ignore\_dpp} path.
+Table~\ref{tab:oneshot-compile} summarizes the results. \texttt{diffengine} is the
 fastest of the four backends on $21$ of the $25$ problems, and the difference is
 significant on all $21$. The geometric mean of its ratio to the best \texttt{CVXPY}
 backend is $0.44$, and it differs significantly from $1$ ($p = 0.003$). On $15$ problems \texttt{diffengine} is more
@@ -470,7 +470,7 @@ re-solve assembles a dense block of $\mmat{P}$.
 \section{Discussion}
 \label{sec:bench-summary}
 
-The benchmark experiments in this chapter lead us to make the following two observations:
+We draw two observations from these experiments:
 \begin{itemize}
 \item Caching canonicalization does not necessarily require the \ac{DPP} ruleset. In
 Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a factor of
@@ -496,9 +496,8 @@ the $25$ problems (Table~\ref{tab:oneshot-compile} and Figure~\ref{fig:profiles}
 parametric problems its first canonicalization is faster than building the tensor on every
 problem (Table~\ref{tab:param-tensor}). It is therefore a candidate to replace \texttt{cvxcore}
 as the default backend of \texttt{CVXPY} on the \texttt{ignore\_dpp} path, a change that will
-require work with its maintainers (\S\ref{sec:FutureResearch}). On the \ac{DPP} path,
-\texttt{COO} builds the tensor faster than \texttt{cvxcore} on six of the seven parametric
-problems. \texttt{diffengine} also has downsides: its
+require work with its maintainers (\S\ref{sec:FutureResearch}).
+\texttt{diffengine} also has downsides: its
 peak memory is higher on several problems, and its re-solves need the cached program to stay in
 memory. We return to these
 limitations in \S\ref{sec:Limitations}.
