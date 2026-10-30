@@ -227,9 +227,10 @@ matrix in the sparse format. The dense blocks make \texttt{diffengine} $1.2$ to 
 on twelve problems and change its time by at most $7\,\%$ on ten. On CVaR, ConvexPlasticity
 and UnconstrainedQP, which build a dense block from data that is mostly zeros, they make it
 $1.4$ to $46$ times slower. Over the suite, their effect on the time is not significant
-(Table~\ref{tab:ablation}). Without them, \texttt{diffengine} also uses $0.83$ times the peak
-memory in geometric mean, and the memory falls most on CVaR, OptimalAdvertising,
-ConvexPlasticity and UnconstrainedQP (Table~\ref{tab:memory}).
+(geometric mean $1.06$). Without them, \texttt{diffengine} takes $0.46$ times the time of the best
+\texttt{CVXPY} backend and $0.83$ times its own peak memory, in geometric mean, and the memory
+falls most on CVaR, OptimalAdvertising, ConvexPlasticity and UnconstrainedQP
+(Table~\ref{tab:memory}).
 
 \begin{table}[tb]
 \centering
@@ -456,33 +457,7 @@ and SimpleFullyParametrizedLP. On the four, the numeric pass takes only $4$ to $
 re-solve. The rest is post-processing after the engine, which assembles the matrices and
 converts them to the solver's format, and which the tensor avoids by producing that format
 directly. Without the split, that is, with the symbolic pass rerun at every re-solve, a re-solve
-is $2.9$ times slower in geometric mean, significantly on all seven problems
-(Table~\ref{tab:ablation}).
-
-\begin{table}[tb]
-\centering
-\caption[Ablations]{Ablations: geometric mean of the ratio of each variant to its reference, the
-Wilcoxon $p$-value over the problems, and the number of problems with a significant difference.
-The two that are not significant, ParametrizedQP on the first canonicalization and
-SimpleScalarParametrizedLP on the re-solve, have no dense constant data.}
-\label{tab:ablation}
-{\footnotesize
-\begin{tabular}{l l r l l}
-\toprule
-Variant & Reference & Ratio & $p$ & Significant \\
-\midrule
-\multicolumn{5}{l}{\textit{First canonicalization, $25$ problems}} \\
-no dense blocks        & \texttt{diffengine}  & 1.06 & 0.067 & 24/$25$ \\
-\texttt{diffengine}    & best \texttt{CVXPY}  & 0.44 & 0.003 & 25/$25$ \\
-no dense blocks        & best \texttt{CVXPY}  & 0.46 & $3.2 \times 10^{-5}$ & 25/$25$ \\
-\addlinespace
-\multicolumn{5}{l}{\textit{Re-solve, $7$ \ac{DPP} problems}} \\
-no dense blocks        & \texttt{diffengine}  & 1.01 & 0.938 & 6/$7$ \\
-no split               & \texttt{diffengine}  & 2.86 & 0.016 & 7/$7$ \\
-neither                & \texttt{diffengine}  & 3.68 & 0.016 & 7/$7$ \\
-\bottomrule
-\end{tabular}}
-\end{table}
+is $2.9$ times slower in geometric mean, significantly on all seven problems.
 
 \label{sec:bench-nondpp}%
 The numeric pass needs a fixed expression tree, not the \ac{DPP} rules. We write the
