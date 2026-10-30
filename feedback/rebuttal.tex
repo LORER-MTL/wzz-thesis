@@ -445,7 +445,7 @@ re-solve assembles a dense block of $\mmat{P}$.
 \begin{thesisquote}{\tref{sec:bench-summary}}
 Caching canonicalization does not necessarily require the \ac{DPP} ruleset. [\ldots] the
 symbolic and numeric split re-solves within a factor of four of the cached tensor on every
-\ac{DPP} problem. [\ldots] it re-solves problems that are not \ac{DPP}, on which
+\ac{DPP} problem. [\ldots] it re-solves the two problems we wrote outside \ac{DPP}, on which
 \texttt{CVXPY} has to canonicalize again, $13$ to $14$ times faster.
 \end{thesisquote}
 
@@ -931,7 +931,7 @@ the entries are nonzero.
 \caption{Table~\ref{T-tab:size} of the thesis (\tpage{tab:size}): ratio of the median canonicalization time of \texttt{diffengine}
 to that of the best \texttt{CVXPY} backend as the size of each problem is scaled by $s$, in the
 order of Table~\ref{T-tab:oneshot-compile}. ``cap'' denotes a size at which \texttt{diffengine}
-exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend finished, ``all
+exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend canonicalized the problem, ``all
 cap'' one at which every backend exceeded it, and a dash a size the problem does not have.}
 \label{tab:new-size}
 {\footnotesize
@@ -972,8 +972,8 @@ Lasso                       &    0.16 &    0.15 &    0.15 &    0.14 &    0.15 \\
 \end{table}
 
 As each problem is scaled from $s = 1/4$ to $s = 4$ (Table~\ref{tab:new-size}), the ratio stays
-within $0.15$ of its value at the original size on $21$ of the $25$ problems, at every size where
-\texttt{diffengine} finishes, so the speedup of
+within $0.15$ of its value at the original size on $21$ of the $25$ problems, at every size that
+\texttt{diffengine} canonicalizes, so the speedup of
 Table~\ref{tab:new-oneshot} does not come from the particular sizes of the suite. On three of the
 others, slower problems whose cost grows faster than their data, the ratio grows for the reasons
 of \S\ref{sec:res-slower}: on OptimalAdvertising the number of terms and the number of variables
@@ -981,8 +981,9 @@ grow together, on ConvexPlasticity the dense block of $\mmat{P}$ grows with the 
 number of points, and on UnconstrainedQP the dense Jacobian of the chain grows with the size of
 the Fourier matrix.
 
-\texttt{diffengine} exceeds the \SI{20}{\giga\byte} memory limit at five sizes where a
-\texttt{CVXPY} backend finishes. Without the dense blocks, three of them finish, at ratios of
+\texttt{diffengine} exceeds the \SI{20}{\giga\byte} memory limit at five sizes that a
+\texttt{CVXPY} backend canonicalizes. Without the dense blocks, \texttt{diffengine} canonicalizes
+three of them, at ratios of
 $0.31$ (CVaR, $s = 2$), $1.57$ (ConvexPlasticity, $s = 4$) and $3.18$ (OptimalAdvertising,
 $s = 4$). The other two exceed the limit with and without the dense blocks: SDPSegfault1132
 already needs $10$ to $13$~GB at its original size (Table~\ref{tab:sup-memory}), and at

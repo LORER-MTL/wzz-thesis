@@ -238,10 +238,10 @@ matrix in the sparse format. The dense blocks make \texttt{diffengine} $1.2$ to 
 on twelve problems and change its time by at most $7\,\%$ on ten. On CVaR, ConvexPlasticity
 and UnconstrainedQP, which build a dense block from data that is mostly zeros, they make it
 $1.4$ to $46$ times slower. Over the $25$ problems, turning the dense blocks off makes
-\texttt{diffengine} $1.06$ times slower in geometric mean, which is not significant. Without them, \texttt{diffengine} takes $0.46$ times the time of the best
-\texttt{CVXPY} backend and $0.83$ times its own peak memory, in geometric mean, and the memory
-falls most on CVaR, OptimalAdvertising, ConvexPlasticity and UnconstrainedQP
-(Table~\ref{tab:memory}).
+\texttt{diffengine} $1.06$ times slower in geometric mean, which is not significant. Without them,
+\texttt{diffengine} takes $0.46$ times the time of the best \texttt{CVXPY} backend in geometric
+mean, and $0.83$ times the peak memory it uses with them. The memory falls most on CVaR,
+OptimalAdvertising, ConvexPlasticity and UnconstrainedQP (Table~\ref{tab:memory}).
 
 \begin{table}[htbp]
 \centering
@@ -303,8 +303,7 @@ $30$~seconds are made in $10$ runs, the others in $30$.
 
 For the density, the data matrix of the eight problems of Table~\ref{tab:density} is multiplied entrywise by a random $0/1$
 mask with a fraction $\rho$ of ones, and kept as the dense NumPy array the problem already
-uses, rather than converted to a sparse matrix.
-The table gives the ratio with and without the dense blocks. The dense
+uses, rather than converted to a sparse matrix. The dense
 blocks help when about half or more of the data is nonzero, and slow \texttt{diffengine} down
 below that, because a dense block stores every entry, zeros included. Without them, \texttt{diffengine} stays
 faster at every density on six of the eight problems.
@@ -346,20 +345,19 @@ Lasso                       &  0.31 &  0.34 &  0.37 &  0.45 &  0.54 &  0.69 &  0
 \end{tabular}}
 \end{table}
 
-For the size, every problem, and the Lasso problem of \S\ref{sec:bench-nondpp}
-without parameters, is scaled by a factor~$s$ of its size literals, which multiplies the nonzeros of its
-data by about $s$. Table~\ref{tab:size} gives
-the ratio of \texttt{diffengine} to the best \texttt{CVXPY} backend. From $s = 1/4$ to
-$s = 4$, the ratio stays close to its value at $s = 1$ on $21$ of the $25$ problems. \texttt{diffengine} exceeds
-the memory limit at five sizes where a \texttt{CVXPY} backend finishes. Without the dense
-blocks, three of them finish, on CVaR, ConvexPlasticity and OptimalAdvertising.
+For the size, scaling a problem by a factor~$s$ multiplies the nonzeros of its data by
+about~$s$. We also scale the Lasso problem of \S\ref{sec:bench-nondpp}, without its parameters.
+From $s = 1/4$ to $s = 4$ (Table~\ref{tab:size}), the ratio stays close to its value at $s = 1$
+on $21$ of the $25$ problems. \texttt{diffengine} exceeds the memory limit at five sizes that a
+\texttt{CVXPY} backend canonicalizes. Without the dense blocks, it canonicalizes three of them,
+on CVaR, ConvexPlasticity and OptimalAdvertising.
 
 \begin{table}[htbp]
 \centering
 \caption[Sensitivity to size]{Ratio of the median canonicalization time of \texttt{diffengine}
 to that of the best \texttt{CVXPY} backend as the size of each problem is scaled by $s$, in the
 order of Table~\ref{tab:oneshot-compile}. ``cap'' denotes a size at which \texttt{diffengine}
-exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend finished, ``all
+exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend canonicalized the problem, ``all
 cap'' one at which every backend exceeded it, and a dash a size the problem does not have.}
 \label{tab:size}
 {\footnotesize
@@ -477,7 +475,7 @@ The benchmark experiments in this chapter lead us to make the following two obse
 \item Caching canonicalization does not necessarily require the \ac{DPP} ruleset. In
 Table~\ref{tab:param-tensor}, the symbolic and numeric split re-solves within a factor of
 four of the cached tensor on every \ac{DPP} problem. In
-\S\ref{sec:bench-nondpp}, it re-solves problems that are not \ac{DPP}, on which
+\S\ref{sec:bench-nondpp}, it re-solves the two problems we wrote outside \ac{DPP}, on which
 \texttt{CVXPY} has to canonicalize again, $13$ to $14$ times faster.
 \item The tensor approach carries a large upfront cost, which pays off only after many
 re-solves. In
