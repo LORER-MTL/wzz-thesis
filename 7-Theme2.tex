@@ -77,7 +77,7 @@ minimum term. On SDPSegfault1132, dense blocks that cancel in a sum are carried 
 symbolic and numeric passes. On ConvexPlasticity, a diagonal given as a dense array becomes a
 dense block of $\mmat{P}$, which the symbolic pass and the assembly process.
 
-\begin{table}[tb]
+\begin{table}[htbp]
 \centering
 \caption[Canonicalization time on all problems]{\texttt{ignore\_dpp} canonicalization
 time in milliseconds on all $25$ problems, mean $\pm$ standard deviation over the runs.
@@ -124,7 +124,7 @@ UnconstrainedQP             & \textbf{1{,}955 $\pm$ 3} & 1{,}980 $\pm$ 5 & 2{,}4
 \end{tabular}}
 \end{table}
 
-\begin{table}[tb]
+\begin{table}[htbp]
 \centering
 \caption[Phases of the first canonicalization on the four slower problems]{Phases of the first
 canonicalization of \texttt{diffengine} on the four problems on which it is slower, in percent of
@@ -152,6 +152,8 @@ Median, all $25$     & ---  & 4 & 9 & 19 & 14 & 12 & 12 \\
 \end{tabular}}
 \end{table}
 
+\FloatBarrier
+
 Figure~\ref{fig:profiles}a reports the Dolan--Mor\'e performance profile
 \cite{dolan2002} of the canonicalization times, which compares the backends over the whole
 suite at once. With $t_{p,s}$ the median time of backend $s$ on problem $p$, the profile of
@@ -177,7 +179,17 @@ $12$ of the $25$ problems and \texttt{SCIPY} on $8$. In geometric mean, \texttt{
 uses $1.04$ times the memory of \texttt{CPP}, $0.98$ times that of \texttt{COO}, and $1.45$
 times that of \texttt{SCIPY}.
 
-\begin{table}[tb]
+\begin{figure}[htbp]
+\centering
+\includegraphics{profiles_combined_thesis}
+\caption[Performance profiles of canonicalization time and peak memory]{Performance
+profiles~\eqref{eq:perf-profile} of canonicalization time (a), using the median of the
+runs, and of peak memory (b) over all $25$ problems, every backend on the
+\texttt{ignore\_dpp} path.}
+\label{fig:profiles}
+\end{figure}
+
+\begin{table}[htbp]
 \centering
 \caption[Peak memory on all problems]{Growth of the peak resident memory during the first
 canonicalization in megabytes on all $25$ problems, mean over the runs. Bold denotes the least of
@@ -219,6 +231,8 @@ UnconstrainedQP & 1{,}427 & \textbf{1{,}058} & 2{,}105 & 1{,}754 & 644 \\
 \end{tabular}}
 \end{table}
 
+\FloatBarrier
+
 Table~\ref{tab:nodense}\label{sec:bench-ablation} compares \texttt{diffengine} with and
 without the dense blocks, using a switch of our \texttt{CVXPY} branch that stores every constant
 matrix in the sparse format. The dense blocks make \texttt{diffengine} $1.2$ to $3$ times faster
@@ -230,7 +244,7 @@ $1.4$ to $46$ times slower. Over the $25$ problems, turning the dense blocks off
 falls most on CVaR, OptimalAdvertising, ConvexPlasticity and UnconstrainedQP
 (Table~\ref{tab:memory}).
 
-\begin{table}[tb]
+\begin{table}[htbp]
 \centering
 \caption[Effect of the dense blocks]{\texttt{ignore\_dpp} canonicalization time of
 \texttt{diffengine} in milliseconds with and without the dense blocks, mean $\pm$ standard
@@ -277,16 +291,6 @@ UnconstrainedQP & 22{,}937 $\pm$ 21 & 500 $\pm$ 2 & 0.02 \\
 \end{tabular}}
 \end{table}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics{profiles_combined_thesis}
-\caption[Performance profiles of canonicalization time and peak memory]{Performance
-profiles~\eqref{eq:perf-profile} of canonicalization time (a), using the median of the
-runs, and of peak memory (b) over all $25$ problems, every backend on the
-\texttt{ignore\_dpp} path.}
-\label{fig:profiles}
-\end{figure}
-
 \FloatBarrier
 
 \section{Size and density}
@@ -306,7 +310,7 @@ blocks help when about half or more of the data is nonzero, and slow \texttt{dif
 below that, because a dense block stores every entry, zeros included. Without them, \texttt{diffengine} stays
 faster at every density on six of the eight problems.
 
-\begin{table}[tb]
+\begin{table}[htbp]
 \centering
 \caption[Sensitivity to density]{Ratio of the median canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend as the density $\rho$ of the data
@@ -351,7 +355,7 @@ $s = 4$, the ratio stays close to its value at $s = 1$ on $21$ of the $25$ probl
 the memory limit at five sizes where a \texttt{CVXPY} backend finishes. Without the dense
 blocks, three of them finish, on CVaR, ConvexPlasticity and OptimalAdvertising.
 
-\begin{table}[tb]
+\begin{table}[htbp]
 \centering
 \caption[Sensitivity to size]{Ratio of the median canonicalization time of \texttt{diffengine}
 to that of the best \texttt{CVXPY} backend as the size of each problem is scaled by $s$, in the
