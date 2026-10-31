@@ -80,8 +80,8 @@ rendre plus complets, et j'ai aussi découvert quelques erreurs dans les affirma
 faites sur les contributions.
 
 Premièrement, il y a maintenant quatre problèmes qui sont plus lents. J'explique la cause de
-chacun au chapitre~4 (\S\ref{T-sec:bench-oneshot}), avec la part des phases principales du
-temps, et je donne le détail à la section~\ref{sec:results}. Pour deux d'entre eux, l'écart
+chacun au chapitre~4 (\S\ref{T-sec:bench-oneshot}), avec la part de chaque phase du temps
+(tableau~\ref{T-tab:phases}), et je donne le détail à la section~\ref{sec:results}. Pour deux d'entre eux, l'écart
 disparaît presque ou s'inverse avec des changements dans le «~frontend~» (par frontend, je fais
 référence à la manipulation des arbres d'expression avant le calcul des dérivées) :
 UnconstrainedQP passe à $16$~ms contre $13$~ms pour \texttt{CVXPY}, avec le même changement pour
@@ -173,14 +173,14 @@ J1a: statistical significance
 J1b, (ii): ablation
   & Dense blocks turned off on all $25$ problems, in time and memory; the split ablated on the
     re-solves (Q2).
-  & \tref{sec:bench-ablation}, Table~\ref{T-tab:nodense}; Table~\ref{tab:sup-memory} \\
+  & \tref{sec:bench-ablation}, Tables~\ref{T-tab:memory} and~\ref{T-tab:nodense} \\
 J1c: more instances
   & New parameter values for each run, every problem scaled in size, and eight in density.
-  & Ch.~4 introduction; \tsec{sec:bench-sensitivity}; Appendix~\ref{T-app:sweeps} \\
+  & Ch.~4 introduction; \tsec{sec:bench-sensitivity} \\
 J1d: sensitivity to size and sparsity
   & All $25$ problems at five sizes and eight at seven densities, with and without the dense
     blocks.
-  & \tref{sec:bench-sensitivity}; Appendix~\ref{T-app:sweeps}, \tpage{app:sweeps} \\
+  & \tref{sec:bench-sensitivity}, Tables~\ref{T-tab:density} and~\ref{T-tab:size} \\
 J1e, (iii): non-DPP problems
   & Re-solves of two families in DPP, non-DPP and parameter-free variants, and of
     ConvexPlasticity (Q3).
@@ -203,7 +203,7 @@ J3: declaration of AI use
     (here Tables~\ref{tab:new-desc} and~\ref{tab:new-dims}) \\
 (vi): time by phase
   & The share of each phase on the four slower problems, with the cause of each.
-  & \tref{sec:bench-oneshot}; Table~\ref{tab:sup-phases} \\
+  & \tref{sec:bench-oneshot}, Table~\ref{T-tab:phases} \\
 (vii): correctness check
   & $\mmat{P}$, $\mmat{A}$, $\mvec{c}$ and $\mvec{b}$ are checked against the \texttt{CPP}
     backend to within $10^{-9}$ of their largest entry, at the first canonicalization and after
@@ -257,8 +257,7 @@ of the other backend are compared with a two-sided Mann--Whitney $U$ test, with 
 adjusted over the problems by the Holm--Bonferroni method. Over the suite, we test whether the
 geometric mean of the ratios differs from $1$ with a Wilcoxon signed-rank test on their
 logarithms. [\ldots] Every ratio
-in the tables of this chapter and of Appendix~\ref{T-app:sweeps} is significant, except one in
-Table~\ref{T-tab:nodense}.
+in the tables of this chapter is significant unless its caption says otherwise.
 \end{thesisquote}
 \begin{thesisquote}{(vii): Chapter~\ref{T-sec:Theme2}, Setup}
 Before any timing, we check that \texttt{diffengine} returns the same problem data as
@@ -354,6 +353,7 @@ times faster on twelve problems, and $1.4$ to $46$ times slower on CVaR, ConvexP
 UnconstrainedQP, which build a dense block from data that is mostly zeros
 (Table~\ref{tab:sup-nodense}). Without them, \texttt{diffengine} also uses $0.83$ times the peak
 memory in geometric mean (Table~\ref{tab:sup-memory}).
+The thesis states these results in \tsec{sec:bench-ablation}.
 
 The split between the symbolic and numeric passes can be turned off on re-solves only; without
 it, a re-solve is $2.9$ times slower, significantly on all seven problems
@@ -434,16 +434,18 @@ The thesis states the results of Table~\ref{tab:res-nondpp} in \tsec{sec:bench-n
 the table:
 
 \begin{thesisquote}{\tref{sec:bench-nondpp}}
-The numeric pass needs a fixed expression tree, not the \ac{DPP} rules. We write the
-\texttt{lasso} and FactorCovarianceModel with one parameter as the product of two, which
-\ac{DPP} forbids. \texttt{CVXPY} then canonicalizes again at every solve, while
-\texttt{diffengine} reruns only its numeric pass, $13$ to $14$ times faster. The exception is
-ConvexPlasticity, where the re-solve is spent assembling a dense block of $\mmat{P}$.
+The numeric pass needs a fixed expression tree, not the \ac{DPP} rules. We replace one
+parameter of the Lasso problem and of FactorCovarianceModel by the product of two parameters,
+which \ac{DPP} forbids. \texttt{CVXPY} then canonicalizes again at every solve, while
+\texttt{diffengine} reruns only its numeric pass and re-solves $13$ to $14$ times faster.
+ConvexPlasticity, the only problem of the suite that is not \ac{DPP}, is the exception:
+\texttt{diffengine} re-solves it about five times slower than \texttt{CVXPY}, because most of the
+re-solve assembles a dense block of $\mmat{P}$.
 \end{thesisquote}
 \begin{thesisquote}{\tref{sec:bench-summary}}
 Caching canonicalization does not necessarily require the \ac{DPP} ruleset. [\ldots] the
 symbolic and numeric split re-solves within a factor of four of the cached tensor on every
-\ac{DPP} problem. [\ldots] it re-solves problems that are not \ac{DPP}, on which
+\ac{DPP} problem. [\ldots] it re-solves the two problems we wrote outside \ac{DPP}, on which
 \texttt{CVXPY} has to canonicalize again, $13$ to $14$ times faster.
 \end{thesisquote}
 
@@ -471,8 +473,7 @@ parametric problems, mean over the runs, with the standard deviation of the re-s
 memory limit or the time limit. Bold denotes the fastest first canonicalization and the
 faster re-solve. The tensor column is the fastest of the three \texttt{CVXPY} backends, which agree within
 $5\,\%$. The
-ratio is the median re-solve time of \texttt{diffengine} over that of the tensor. Every
-ratio is significant.}
+ratio is the median re-solve time of \texttt{diffengine} over that of the tensor.}
 \label{tab:res-param}
 {\footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -562,10 +563,11 @@ is what the removal of \texttt{cvxcore} aims at.
 
 \section{Results: the new tables and what they show}\label{sec:results}
 
-The thesis adds the table of the dense blocks in Chapter~\ref{T-sec:Theme2}, the two tables of
-Appendix~\ref{T-app:bench} and the two of Appendix~\ref{T-app:sweeps}, and redoes two tables of Chapter~\ref{T-sec:Theme2}
-(Table~\ref{tab:new-items}). To keep the thesis short, five other tables are not in it:
-Tables~\ref{tab:res-ablation} and~\ref{tab:res-nondpp} in the replies above, and the three
+The thesis adds five tables to Chapter~\ref{T-sec:Theme2}: the phases, the peak memory, the dense
+blocks, and the density and size sweeps of \tsec{sec:bench-sensitivity}. It also adds the two
+tables of Appendix~\ref{T-app:bench} and redoes two tables of Chapter~\ref{T-sec:Theme2}
+(Table~\ref{tab:new-items}). To keep the thesis short, three other tables are not in it:
+Tables~\ref{tab:res-ablation} and~\ref{tab:res-nondpp} in the replies above, and the one
 below. The thesis states their results in a sentence or two, and I give them here in full. After each table
 I say what I conclude from it. All are measured as in Chapter~\ref{T-sec:Theme2},
 with the code at \url{https://github.com/SparseDifferentiation/canonicalization-benchmarks}.
@@ -593,6 +595,14 @@ Table~\ref{T-tab:nodense}
   & First canonicalization of \texttt{diffengine} with and without the dense blocks, grouped by
     their effect, \tpage{tab:nodense}; here Table~\ref{tab:sup-nodense}
   & J1b, (ii) \\
+Table~\ref{T-tab:phases}
+  & Phases of the first canonicalization on the four slower problems, \tpage{tab:phases}; here
+    Table~\ref{tab:sup-phases}
+  & (vi) \\
+Table~\ref{T-tab:memory}
+  & Peak memory of the first canonicalization, with and without the dense blocks,
+    \tpage{tab:memory}; here Table~\ref{tab:sup-memory}
+  & J1b, (ii) \\
 Table~\ref{T-tab:param-tensor}
   & Revised: first canonicalization and re-solve of the \ac{DPP} problems, with standard
     deviations and significance,
@@ -604,12 +614,12 @@ Table~\ref{T-tab:instances-desc}
 Table~\ref{T-tab:instances}
   & Dimensions of the benchmark problems, \tpage{tab:instances}; here Table~\ref{tab:new-dims}
   & (v) \\
-Table~\ref{T-tab:app-density}
-  & Ratio at seven densities, with and without the dense blocks, \tpage{tab:app-density}; here
+Table~\ref{T-tab:density}
+  & Ratio at seven densities, with and without the dense blocks, \tpage{tab:density}; here
     Table~\ref{tab:new-density}
   & J1c, J1d \\
-Table~\ref{T-tab:app-size}
-  & Ratio to the best \texttt{CVXPY} backend at five sizes, \tpage{tab:app-size}; here
+Table~\ref{T-tab:size}
+  & Ratio to the best \texttt{CVXPY} backend at five sizes, \tpage{tab:size}; here
     Table~\ref{tab:new-size}
   & J1c, J1d \\
 \end{longtable}}
@@ -621,9 +631,8 @@ Table~\ref{T-tab:app-size}
 \caption{Table~\ref{T-tab:oneshot-compile} of the thesis (\tpage{tab:oneshot-compile}): \texttt{ignore\_dpp} canonicalization
 time in milliseconds on all $25$ problems, mean $\pm$ standard deviation over the runs.
 Bold denotes the fastest of the four backends on each problem. The ratio is the median time
-of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends. Every ratio
-is significant. The final row
-is the geometric mean of the ratios.}
+of \texttt{diffengine} over that of the best of \texttt{CVXPY}'s three backends. The final row
+is the geometric mean of the per-problem ratios.}
 \label{tab:new-oneshot}
 {\footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -675,8 +684,8 @@ problems are the last four rows; I explain each one in \S\ref{sec:res-slower}.
 \caption{Table~\ref{T-tab:nodense} of the thesis (\tpage{tab:nodense}): \texttt{ignore\_dpp}
 canonicalization time of \texttt{diffengine} in milliseconds with and without the dense blocks,
 mean $\pm$ standard deviation over the runs, grouped by the effect of the dense blocks. The ratio
-is the median time without the dense blocks over that with them. Every ratio is significant
-except that of ParametrizedQP.}\label{tab:sup-nodense}
+is the median time without the dense blocks over that with them. The ratio of ParametrizedQP is not
+significant.}\label{tab:sup-nodense}
 {\small
 \begin{tabular}{l rr l}
 \toprule
@@ -745,8 +754,9 @@ them from mostly zeros, and change little on the rest.
 
 {\small
 \begin{longtable}{l rrrrr}
-\caption{Not in the thesis. Growth of the peak resident memory during the first
-canonicalization, in megabytes. Bold denotes the least of the four backends. The last column is
+\caption{Table~\ref{T-tab:memory} of the thesis (\tpage{tab:memory}): growth of the peak
+resident memory during the first canonicalization in megabytes on all $25$ problems, mean over
+the runs. Bold denotes the least of the four backends. The last column is
 \texttt{diffengine} without the dense blocks.}\label{tab:sup-memory}\\
 \toprule
 Benchmark & \texttt{CPP} & \texttt{SCIPY} & \texttt{COO} & \texttt{diffengine} &
@@ -806,13 +816,13 @@ each fix is measured alone.
 
 \begin{table}[htbp]
 \centering
-\caption{Not in the thesis. Phases of the first canonicalization of \texttt{diffengine} on the
-four slower problems, in percent of its time, and the median share over the $25$ problems, mean
-over the $30$ runs. Each phase is timed by a wall-clock timer in our \texttt{CVXPY} branch:
-the conversion of the \texttt{CVXPY} expressions into the trees of the engine, the symbolic
-pass, the numeric pass, the assembly of $\mmat{A}$ and $\mmat{P}$ in CSC format, and the
-formatting of the rows by cone. The front end is the rest of the time, the reductions of
-\texttt{CVXPY} before the engine.}
+\caption{Table~\ref{T-tab:phases} of the thesis (\tpage{tab:phases}): phases of the first
+canonicalization of \texttt{diffengine} on the four problems on which it is slower, in percent of
+its time, and the median share over the $25$ problems, mean over the runs. The phases are the
+conversion of the \texttt{CVXPY} expressions into the trees of the engine, the symbolic pass, the
+numeric pass, the assembly of $\mmat{A}$ and $\mmat{P}$ in CSC format, and the formatting of the
+rows by cone. The front end is the rest of the time, the reductions of \texttt{CVXPY} before the
+engine.}
 \label{tab:sup-phases}
 {\small
 \setlength{\tabcolsep}{4pt}
@@ -872,10 +882,10 @@ improve with a change made before the data reaches the engine.
 
 \begin{table}[htbp]
 \centering
-\caption{Table~\ref{T-tab:app-density} of the thesis (\tpage{tab:app-density}): ratio of the median canonicalization time of
+\caption{Table~\ref{T-tab:density} of the thesis (\tpage{tab:density}): ratio of the median canonicalization time of
 \texttt{diffengine} to that of the best \texttt{CVXPY} backend as the density $\rho$ of the data
-matrix falls, with and without the dense blocks. Below $\rho = 0.05$, \texttt{diffengine}
-stores a constant factor in the sparse format. Every difference is significant.}
+matrix decreases, with and without the dense blocks. Below $\rho = 0.05$, \texttt{diffengine}
+stores a constant factor in the sparse format.}
 \label{tab:new-density}
 {\footnotesize
 \begin{tabular}{l rrrrrrr}
@@ -892,7 +902,7 @@ SimpleQP                    &  0.16 &  0.30 &  0.47 &  0.56 &  0.63 &  0.40 &  0
 HuberRegression             &  0.18 &  0.34 &  0.67 &  1.03 &  1.78 &  1.74 &  2.54 \\
 LeastSquares                &  0.18 &  0.34 &  0.61 &  0.83 &  1.20 &  0.67 &  0.81 \\
 SemidefiniteProgramming     &  0.64 &  0.67 &  1.02 &  1.28 &  1.46 &  1.60 &  1.66 \\
-\texttt{lasso}              &  0.15 &  0.33 &  0.59 &  0.84 &  0.58 &  0.75 &  0.86 \\
+Lasso                       &  0.15 &  0.33 &  0.59 &  0.84 &  0.58 &  0.75 &  0.86 \\
 \midrule
 \multicolumn{8}{l}{\emph{without dense blocks}} \\
 SVMWithL1Regularization     &  0.28 &  0.32 &  0.36 &  0.41 &  0.48 &  0.62 &  0.71 \\
@@ -902,7 +912,7 @@ SimpleQP                    &  0.32 &  0.34 &  0.39 &  0.44 &  0.47 &  0.51 &  0
 HuberRegression             &  0.37 &  0.36 &  0.46 &  0.62 &  0.96 &  1.72 &  2.52 \\
 LeastSquares                &  0.38 &  0.36 &  0.40 &  0.43 &  0.53 &  0.66 &  0.79 \\
 SemidefiniteProgramming     &  0.64 &  0.68 &  1.02 &  1.28 &  1.46 &  1.61 &  1.67 \\
-\texttt{lasso}              &  0.31 &  0.34 &  0.37 &  0.45 &  0.54 &  0.69 &  0.79 \\
+Lasso                       &  0.31 &  0.34 &  0.37 &  0.45 &  0.54 &  0.69 &  0.79 \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -918,12 +928,11 @@ the entries are nonzero.
 
 \begin{table}[htbp]
 \centering
-\caption{Table~\ref{T-tab:app-size} of the thesis (\tpage{tab:app-size}): ratio of the median canonicalization time of \texttt{diffengine}
+\caption{Table~\ref{T-tab:size} of the thesis (\tpage{tab:size}): ratio of the median canonicalization time of \texttt{diffengine}
 to that of the best \texttt{CVXPY} backend as the size of each problem is scaled by $s$, in the
 order of Table~\ref{T-tab:oneshot-compile}. ``cap'' denotes a size at which \texttt{diffengine}
-exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend finished, ``all
-cap'' one at which every backend exceeded it, and a dash a size the problem does not have.
-Every difference is significant.}
+exceeded the \SI{20}{\giga\byte} memory limit while a \texttt{CVXPY} backend canonicalized the problem, ``all
+cap'' one at which every backend exceeded it, and a dash a size the problem does not have.}
 \label{tab:new-size}
 {\footnotesize
 \begin{tabular}{l rrrrr}
@@ -957,14 +966,14 @@ SDPSegfault1132             &    1.47 &    1.39 &    1.32 &     cap & all cap \\
 OptimalAdvertising          &    0.80 &    1.11 &    1.68 &    3.01 &     cap \\
 ConvexPlasticity            &    3.32 &    5.40 &    7.31 &    8.82 &     cap \\
 UnconstrainedQP             &    5.73 &    7.59 &   11.73 &   16.78 &   22.64 \\
-\texttt{lasso}              &    0.16 &    0.15 &    0.15 &    0.14 &    0.15 \\
+Lasso                       &    0.16 &    0.15 &    0.15 &    0.14 &    0.15 \\
 \bottomrule
 \end{tabular}}
 \end{table}
 
 As each problem is scaled from $s = 1/4$ to $s = 4$ (Table~\ref{tab:new-size}), the ratio stays
-within $0.15$ of its value at the original size on $21$ of the $25$ problems, at every size where
-\texttt{diffengine} finishes, so the speedup of
+within $0.15$ of its value at the original size on $21$ of the $25$ problems, at every size that
+\texttt{diffengine} canonicalizes, so the speedup of
 Table~\ref{tab:new-oneshot} does not come from the particular sizes of the suite. On three of the
 others, slower problems whose cost grows faster than their data, the ratio grows for the reasons
 of \S\ref{sec:res-slower}: on OptimalAdvertising the number of terms and the number of variables
@@ -972,8 +981,9 @@ grow together, on ConvexPlasticity the dense block of $\mmat{P}$ grows with the 
 number of points, and on UnconstrainedQP the dense Jacobian of the chain grows with the size of
 the Fourier matrix.
 
-\texttt{diffengine} exceeds the \SI{20}{\giga\byte} memory limit at five sizes where a
-\texttt{CVXPY} backend finishes. Without the dense blocks, three of them finish, at ratios of
+\texttt{diffengine} exceeds the \SI{20}{\giga\byte} memory limit at five sizes that a
+\texttt{CVXPY} backend canonicalizes. Without the dense blocks, \texttt{diffengine} canonicalizes
+three of them, at ratios of
 $0.31$ (CVaR, $s = 2$), $1.57$ (ConvexPlasticity, $s = 4$) and $3.18$ (OptimalAdvertising,
 $s = 4$). The other two exceed the limit with and without the dense blocks: SDPSegfault1132
 already needs $10$ to $13$~GB at its original size (Table~\ref{tab:sup-memory}), and at
