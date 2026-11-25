@@ -77,10 +77,10 @@ clean:
 # The \CodeBefore cell shading of the permuted-dense figures is placed from coordinates
 # written to the .aux on the previous run, so whenever a page is added or removed the
 # panels come out missing (or, inside a scalebox, adrift) until one more run settles them.
-presentation: presentation.tex
-	${PDFLATEX} -interaction=nonstopmode presentation.tex
-	${PDFLATEX} -interaction=nonstopmode presentation.tex
-	${PDFLATEX} -interaction=nonstopmode presentation.tex
+presentation: presentation/presentation.tex
+	cd presentation && ${PDFLATEX} -interaction=nonstopmode presentation.tex
+	cd presentation && ${PDFLATEX} -interaction=nonstopmode presentation.tex
+	cd presentation && ${PDFLATEX} -interaction=nonstopmode presentation.tex
 
 # The rebuttal and the examiner reports live in feedback/; the rebuttal reads ../Document.aux.
 rebuttal: feedback/rebuttal.tex
@@ -124,7 +124,7 @@ rebuttal_clean:
 	@rm -f feedback/rebuttal.{aux,log,out,pdf}
 
 presentation_clean:
-	@rm -f presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}
+	@rm -f presentation/presentation.{aux,log,nav,out,snm,toc,vrb,auxlock,pdf}
 
 all_clean: clean
 	@if [ -d dia ]; then cd dia; ${MAKE} clean; fi
